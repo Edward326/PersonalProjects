@@ -1,0 +1,8 @@
+#ifndef FILEREADER
+#define FILEREADER
+typedef struct{
+  int id;char *value;
+  }element;
+void free_up(element *array);S
+element *read(char *filename,int *nr);
+#endif

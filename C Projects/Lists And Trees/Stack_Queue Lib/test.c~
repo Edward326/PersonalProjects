@@ -1,0 +1,21 @@
+#include<stdio.h>
+#include<stdlib.h>
+
+
+struct nodS{
+  int nr;
+  struct nodS *next;
+};
+struct nodD{
+  int nr;
+  struct nodD *back,*next;
+};
+
+int main(){
+  int* sir={1,2,3,4,5,7};printf("%d",sizeof(sir));
+  //queue-->coada-FIFO
+  struct nodS *first=malloc(sizeof(struct nodS));
+  
+  return 0;
+}
+  

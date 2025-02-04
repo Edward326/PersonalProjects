@@ -1,0 +1,63 @@
+#ifndef LISTS_H
+#define LISTS_H
+#include"list_structure.h"
+
+
+void help();
+
+//op standard de init stergere
+void viewsimple(simple_list *a);
+
+void viewdouble(double_list *a);
+
+void new_elemS(elemS **nod,int nr);
+
+void new_elemD(elemD **nod,int nr);
+
+void initsimple(simple_list **lista);
+
+void initdouble(double_list **lista);
+
+void empty_simple(simple_list *a);
+
+void empty_double(double_list *a);//sterge toate nodurile ,DAR NU ELIBEREAZA MEMORIE SI DE LISTA ,aceea fucntie e trash_
+
+void trash_simple(simple_list **lista);//NU ACCESA LISTA DUPA APELAREA ACESTEI FUNCTII--> PROGRAMUL VA STERGE LISTA DIN MEMORIE DECI NU MAI ACCES LA EA
+
+void trash_double(double_list **lista);//NU ACCESA LISTA DUPA APELAREA ACESTEI FUNCTII--> PROGRAMUL VA STERGE LISTA DIN MEMORIE DECI NU MAI ACCES LA EA
+
+
+//op standard liste simple
+void addsimple(simple_list **a,int number);
+
+void add_sortedsimple(simple_list **a,int nr);
+
+void deletesimple(simple_list *a,int nr);
+
+void deletesimple_sorted(simple_list *a,int nr);
+
+int verifysortedsimple(simple_list *a);
+
+int sortsimple(simple_list *a);
+
+void addreverse_simple(simple_list *list_to_rev,simple_list **rev_list);//pune in rev_list list_to_rv inversata, DACA EA ARE CONTINUT ESTE STERS
+
+int verifyreversed(simple_list *lista);//veridfica daca lista data simpla e palindrom  2 5 3 5 2  e palind
+
+
+//op standard liste duble
+void addouble(double_list **a,int nr);
+
+void add_sortedouble(double_list **a,int nr);
+
+void deletedouble(double_list *a,int nr);
+
+int verifysortedouble(double_list *a);
+
+int sortdouble(double_list *a);
+
+void addreverse_double(double_list *list_to_rev,double_list **rev_list);
+
+int verifyreversed_double(double_list *lista);//veridfica daca lista data simpla e palindrom  2 5 3 5 2  e palind
+
+#endif

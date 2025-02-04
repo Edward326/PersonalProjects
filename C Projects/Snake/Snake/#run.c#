@@ -1,0 +1,12 @@
+#include<stdio.h>
+//#include"snakestructure.h"
+#include"WindowInterface.h"
+#include"GameInterface.h"
+//#include"MovingMechanism.h"
+//#include"WindowDimension.h"
+
+
+
+int main(){
+  StartGameInterface();
+}

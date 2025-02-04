@@ -1,0 +1,7 @@
+#ifndef LISTSOP
+#define LISTSOP
+#include"structure.h"
+
+int verifysorted(simple_list *a);
+
+#endif

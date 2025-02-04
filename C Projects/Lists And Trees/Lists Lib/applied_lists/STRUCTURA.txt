@@ -1,0 +1,6 @@
+main.c include lists.h si listsop.h
+ambale trebuie venite impreuna cu fisierele c ale lor in care se descrie implementarea operatiei declarate numai in header
+
+lists.h  va include structure.h
+listsop.h va include structure.h
+listsop.c va include la randul sau lists.h pentru a se folosii de anumite metode din fisierul lists.h

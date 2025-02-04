@@ -1,0 +1,14 @@
+/home/eduard/Facultate/CFLP/ForProjects/CruceEduardVesea/obj/Debug/net8.0/CruceEduardVesea.GeneratedMSBuildEditorConfig.editorconfig
+/home/eduard/Facultate/CFLP/ForProjects/CruceEduardVesea/obj/Debug/net8.0/CruceEduardVesea.AssemblyInfoInputs.cache
+/home/eduard/Facultate/CFLP/ForProjects/CruceEduardVesea/obj/Debug/net8.0/CruceEduardVesea.AssemblyInfo.cs
+/home/eduard/Facultate/CFLP/ForProjects/CruceEduardVesea/obj/Debug/net8.0/CruceEduardVesea.csproj.CoreCompileInputs.cache
+/home/eduard/Facultate/CFLP/ForProjects/CruceEduardVesea/bin/Debug/net8.0/CruceEduardVesea
+/home/eduard/Facultate/CFLP/ForProjects/CruceEduardVesea/bin/Debug/net8.0/CruceEduardVesea.deps.json
+/home/eduard/Facultate/CFLP/ForProjects/CruceEduardVesea/bin/Debug/net8.0/CruceEduardVesea.runtimeconfig.json
+/home/eduard/Facultate/CFLP/ForProjects/CruceEduardVesea/bin/Debug/net8.0/CruceEduardVesea.dll
+/home/eduard/Facultate/CFLP/ForProjects/CruceEduardVesea/bin/Debug/net8.0/CruceEduardVesea.pdb
+/home/eduard/Facultate/CFLP/ForProjects/CruceEduardVesea/obj/Debug/net8.0/CruceEduardVesea.dll
+/home/eduard/Facultate/CFLP/ForProjects/CruceEduardVesea/obj/Debug/net8.0/refint/CruceEduardVesea.dll
+/home/eduard/Facultate/CFLP/ForProjects/CruceEduardVesea/obj/Debug/net8.0/CruceEduardVesea.pdb
+/home/eduard/Facultate/CFLP/ForProjects/CruceEduardVesea/obj/Debug/net8.0/CruceEduardVesea.genruntimeconfig.cache
+/home/eduard/Facultate/CFLP/ForProjects/CruceEduardVesea/obj/Debug/net8.0/ref/CruceEduardVesea.dll

@@ -1,0 +1,43 @@
+#include<stdio.h>
+#include<stdlib.h>
+#include"lists.h"
+#include"listsop.h"
+
+int main(){
+
+  int nelem,number;printf("nr de elemente: ");scanf("%d",&nelem);printf("\n");
+  simple_list *sirintreg=NULL;
+
+  //datele vor fii date sortate/nesortate de la intrare si sunt puse in lista si verificate ulterior daca sunt sortate
+  for(int i=0;i<nelem;i++){
+    scanf("%d",&number);
+    addsimple(&sirintreg,number);
+  }
+  viewsimple(sirintreg);
+  
+  if(verifysorted(sirintreg))
+    printf("lista sortata");
+  else
+    printf("lista dezordonata");
+
+
+  
+ 
+  free_upsimple(sirintreg);printf("\n");
+  printf("nr de elemente: ");scanf("%d",&nelem);printf("\n\n");
+
+
+
+
+  
+  //datele vor fii date nesortate/sortate iar cand se pun in lista se pun ordonat-->mereu lista la final va fii sortata
+  for(int i=0;i<nelem;i++){
+    scanf("%d",&number);
+    add_sortedsimple(&sirintreg,number);
+  }
+  viewsimple(sirintreg);
+  free_totallysimple(&sirintreg);
+  if(sirintreg)printf("da");
+  
+  return 0;
+}

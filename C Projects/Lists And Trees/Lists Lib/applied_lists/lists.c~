@@ -1,0 +1,106 @@
+#include<stdlib.h>
+#include<stdio.h>
+#include"lists.h"
+
+void initsimple(simple_list **a){
+  *a=malloc(sizeof(simple_list));
+  (*a)->last=(*a)->first=NULL;
+}
+void new_elemS(elemS **new,int nr){
+  *new=malloc(sizeof(elemS));
+  (*new)->nr=nr;
+}
+
+
+void viewsimple(simple_list *a){
+  elemS *i;
+  if(a->last){
+  for(i=a->first;i;i=i->next)
+    if(i)
+      printf("%d ",i->nr);
+  }
+  else
+    printf("empty list");
+  printf("\n");
+}
+void free_upsimple(simple_list *a){
+  if(a->last)
+    {elemS *i,*aux;
+      for(i=a->first;i;i=aux){
+        if(i){
+	aux=i->next;
+	free(i);
+	}
+      }
+      a->first=malloc(sizeof(elemS));
+      a->last=malloc(sizeof(elemS));
+      a->last=a->first=NULL;
+      
+    }
+  else
+    printf("list already is empty");
+}
+void free_totallysimple(simple_list **a){
+  if((*a)->last)
+    free_upsimple(a);
+  free((*a)->last);
+  free((*a)->first);
+  free((*a));
+}
+
+void addsimple(simple_list **a,int number){
+  elemS *new=NULL;
+  new_elemS(&new,number);
+
+  if(*a){
+    if((*a)->last){
+    (*a)->last->next=new;
+    (*a)->last=new;}
+    else
+      (*a)->first=(*a)->last=new;
+      
+  }
+  else
+    {
+      initsimple(*(&a));
+      (*a)->first=(*a)->last=new;
+    }
+}
+
+void add_sortedsimple(simple_list **a,int nr){
+
+
+  
+  elemS *new;
+  new_elemS(&new,nr);
+
+  if((*a)){
+    if((*a)->last==NULL){
+      (*a)->first=(*a)->last=new;
+      return;
+    }
+    if((*a)->first->nr>new->nr){
+      new->next=(*a)->first;
+      (*a)->first=new;
+      return;
+	}
+    else{
+      
+      elemS *i=(*a)->first,*aux=(*a)->first;
+      for(i=i->next;i;i=i->next){
+	if(i->nr>new->nr){
+	  new->next=i;
+	  aux->next=new;return;
+	}
+	  aux=i;
+      }
+    }
+      (*a)->last->next=new;
+      (*a)->last=new;
+  }
+  else{
+    initsimple(*(&a));
+    (*a)->first=(*a)->last=new;
+  }
+}
+

@@ -1,0 +1,198 @@
+#include<stdio.h>
+#include<stdlib.h>
+#include<string.h>
+
+
+typedef struct{
+  char sign[2];
+  int file_size,rez1,offset_start;
+  int sizeH,width,height,planes,btc_px,comprss,img_size;
+  int px_x,px_y,size_color,size_icolor;
+  int **array;
+}image;
+
+
+void show(unsigned int pixel){
+  int chunk=sizeof(pixel)*8-1;
+  
+  for(int i=chunk;i>=0;i--){
+    if((i+1)%4==0 && i!=chunk)
+      printf(" ");
+    
+    if(pixel&((1<<(chunk-1))>>(chunk-i-1)))
+    printf("1");
+    else
+      printf("0");
+  }
+      printf("\n");
+
+}
+
+
+unsigned int black_white24B(unsigned int nr){
+  int red,green,blue,bw_factor,new24=0;
+  
+  red=(nr>>16)&255;//1111 1111
+    green=(nr>>8)&255;//0000 0000 1111 1111
+  blue=nr&255;//0000 0000 0000 0000 1111 1111
+  bw_factor=(red+green+blue)/3;
+  new24|=(bw_factor<<16);
+  new24|=(bw_factor<<8);
+  new24|=(bw_factor);
+
+  return new24;
+}
+
+unsigned int black_white32B(unsigned int nr){
+  int red,green,blue,bw_factor,new32=0;
+  
+  red=(nr>>9)&511;//1111 1111
+    green=(nr>>17)&511;//0000 0000 1111 1111
+  blue=nr&511;//0000 0000 0000 0000 1111 1111
+  bw_factor=(red+green+blue)/3;
+  new32|=(bw_factor<<9);
+  new32|=(bw_factor<<17);
+  new32|=(bw_factor);
+
+  return new32;
+}
+
+unsigned int sepia_24B(unsigned int nr){
+  int red,green,blue,new24=0;
+  int tr,tg,tb;
+  
+  red=(nr>>16)&255;//1111 1111
+    green=(nr>>8)&255;//0000 0000 1111 1111
+  blue=nr&255;//0000 0000 0000 0000 1111 1111
+
+  tr=0.393*red+0.769*green+0.189*blue;
+  tg=0.349*red+0.686*green+0.168*blue;
+  tb=0.272*red+0.534*green+0.131*blue;
+
+    if(tr>255)
+      new24|=(255<<16);
+    else
+      new24|=(tr<<16);
+  
+   if(tg>255)
+      new24|=(255<<8);
+    else
+      new24|=(tg<<8);
+   
+    if(tb>255)
+      new24|=255;
+    else
+      new24|=tb;
+
+
+  return new24;
+}
+unsigned int sepia_32B(unsigned int nr){
+  int red,green,blue,bw_factor,new32=0;
+  
+  red=(nr>>9)&511;//1111 1111
+    green=(nr>>17)&511;//0000 0000 1111 1111
+  blue=nr&511;//0000 0000 0000 0000 1111 1111
+  bw_factor=(red+green+blue)/3;
+  new32|=(bw_factor<<9);
+  new32|=(bw_factor<<17);
+  new32|=(bw_factor);
+
+  return new32;
+}
+
+
+
+
+void load(image *img,FILE *original){
+ fwrite(&img->sign,sizeof(img->sign),1,original);
+     fwrite(&img->file_size,sizeof(int),1,original);
+    fwrite(&img->rez1,sizeof(int),1,original);
+     fwrite(&img->offset_start,sizeof(int),1,original);
+     fwrite(&img->sizeH,sizeof(int),1,original);
+     fwrite(&img->width,sizeof(int),1,original);
+     fwrite(&img->height,sizeof(int),1,original);
+    fwrite(&img->planes,sizeof(int)/2,1,original);
+     fwrite(&img->btc_px,sizeof(int)/2,1,original);
+     fwrite(&img->comprss,sizeof(int),1,original);
+     fwrite(&img->img_size,sizeof(int),1,original);
+     fwrite(&img->px_x,sizeof(int),1,original);
+    fwrite(&img->px_y,sizeof(int),1,original);
+     fwrite(&img->size_color,sizeof(int),1,original);
+     fwrite(&img->size_icolor,sizeof(int),1,original);
+    
+    
+    for(int i=0;i<img->height;i++){
+     
+      for(int j=0;j<img->width;j++){
+	//show(img->array[i][j]);
+	fwrite(&img->array[i][j],(img->btc_px)/8,1,original);
+      }
+    }
+}
+
+
+image *save(image *img,FILE *original){
+  int current=0;
+ fread(&img->sign,sizeof(img->sign),1,original);
+    fread(&img->file_size,sizeof(int),1,original);
+    fread(&img->rez1,sizeof(int),1,original);
+    fread(&img->offset_start,sizeof(int),1,original);
+    fread(&img->sizeH,sizeof(int),1,original);
+    fread(&img->width,sizeof(int),1,original);
+    fread(&img->height,sizeof(int),1,original);
+    fread(&img->planes,sizeof(int)/2,1,original);
+    fread(&img->btc_px,sizeof(int)/2,1,original);
+    fread(&img->comprss,sizeof(int),1,original);
+    fread(&img->img_size,sizeof(int),1,original);
+    fread(&img->px_x,sizeof(int),1,original);
+    fread(&img->px_y,sizeof(int),1,original);
+    fread(&img->size_color,sizeof(int),1,original);
+    fread(&img->size_icolor,sizeof(int),1,original);
+    
+    if((img->array=(int**)malloc(img->height*(sizeof(int*))))==NULL){
+      perror("invalid alloc on pixel array");
+      exit(-1);}   
+    for(int i=0;i<img->height;i++){
+      img->array[i]=malloc(img->width*sizeof(int));
+      for(int j=0;j<img->width;j++){
+	fread(&current,(img->btc_px)/8,1,original);
+	
+	if(img->btc_px==24)
+	  img->array[i][j]=black_white24B(current);
+	if(img->btc_px==32)
+	  img->array[i][j]=black_white32B(current);
+      }
+    }
+
+
+  return img;
+}
+  
+int main(int argv,char** argc){
+
+  FILE *original,*second;
+  char *imagine;
+  if(argv>1){
+
+    if((original=fopen(argc[1],"rb"))==NULL){
+   perror("file doesnt exits in the current path");
+      exit(-1);
+    }
+    second=fopen("rezult.bmp","wb+");
+    imagine=malloc(sizeof(char)*strlen(argc[1]));
+    strcpy(imagine,argc[1]);
+    
+    image *img;img=malloc(sizeof(image));
+    img=save(img,original);
+    load(img,second);
+    
+  }
+  else
+    {
+      perror("not enough arguments");
+      exit(-1);
+    }
+  
+  return 0;
+}

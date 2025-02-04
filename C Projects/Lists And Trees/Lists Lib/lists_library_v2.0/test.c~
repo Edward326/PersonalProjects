@@ -1,0 +1,58 @@
+#include<stdio.h>
+#include<stdlib.h>
+#include"lists.h"
+
+
+int main(){
+  simple_list *total=NULL;free(total);
+  simple_list *total2=NULL;free(total2);
+  double_list *total3=NULL;
+  double_list *total4=NULL;
+/*
+  int nrtot,nr;
+  scanf("%d",&nrtot);
+  for(int i=0;i<nrtot;i++){scanf("%d",&nr);
+    addsimple(&total,nr);
+    add_sortedsimple(&total2,nr);
+      printf("\n");
+  }
+  viewsimple(total);
+  viewsimple(total2);
+*/
+   // printf("%d",verifyreversed(total));
+     //sortsimple(total);
+   //deletesimple(total,5);
+  //trash_simple(&total);trash_simple(&total2);
+  //empty_simple(total);empty_simple(total2);
+  //viewsimple(total); viewsimple(total2);
+
+  int nrtot,nr;
+  scanf("%d",&nrtot);
+  for(int i=0;i<nrtot;i++){scanf("%d",&nr);
+    addouble(&total3,nr);
+    add_sortedouble(&total4,nr);
+      printf("\n");
+  }
+  //trash_double(&total3);trash_double(&total4);
+  //deletedouble(total3,5);
+  //printf("%d//",verifyreversed_double(total3));
+ // double_list *inv;
+  //addreverse_double(total3,&inv);
+  //trash_double(&total3); 
+  //trash_double(&total4);
+  //viewdouble(inv);
+  //viewdouble(total4);
+
+  /*
+   scanf("%d",&nrtot);
+  for(int i=0;i<nrtot;i++){scanf("%d",&nr);
+    //deletesimple(total,nr);
+    deletesimple_sorted(total,nr);
+    viewsimple(total);
+      printf("\n");
+      }
+  free_upsimple(total);
+  */
+
+  return 0;
+}

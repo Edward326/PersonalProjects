@@ -1,0 +1,52 @@
+#include<stdlib.h>
+#include<stdio.h>
+#include"listsop.h"
+
+int verifysorted(simple_list *a){
+  int caz=0;
+  if(a->last==NULL || a->first==a->last){perror("lista e goala//are un singur nod");exit();}
+   
+  if(a->first->nr > a->first->next->nr)
+    caz=1;
+  if(a->first->nr < a->first->next->nr)
+    caz=2;
+  elemS *aux;
+ 
+  
+  if(caz==0)//primele 2 elem egale
+    {    aux=a->first;
+      while(aux->nr==aux->next->nr){
+	if(aux->next->next==NULL)return 1;
+	else
+	aux=aux->next;
+      }
+      
+      if(aux->nr > aux->next->nr)
+	caz=1;
+      else
+	caz=2;
+    }
+  
+  if(caz==1){
+    aux=a->first;
+    while(aux->next)
+      {
+	if(aux->nr < aux->next->nr)
+	  return 0;
+	else
+	  aux=aux->next;
+      }
+  }
+  else{
+   aux=a->first;
+    while(aux->next)
+      {
+	if(aux->nr > aux->next->nr)
+	  return 0;
+	else
+	  aux=aux->next;
+      }
+  }
+  return 1;
+  
+}
