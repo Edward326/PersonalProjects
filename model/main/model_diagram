@@ -1,0 +1,14 @@
+Image->YoloV8-FGDET(ROI cropped)->MobileNetV3L->BBoxes(locality and class of object/bb on image)
+                                ->LightCap->Caption(relation between objects/description of image)
+                                
+YoloV8-FGDET:
+- Input: Image
+- Output: multiple ROI(bboxes whre objects are detected)
+
+MobileNetV3L:
+- Input: ROI cropped from YoloV8-FGDET
+- Output: BBoxes (locality and class of object/bounding box on image)
+
+LightCap:
+- Input: ROI cropped from YoloV8-FGDET
+- Output: Caption (relation between objects/description of image)
