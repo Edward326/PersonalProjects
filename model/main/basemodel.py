@@ -1,464 +1,266 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn import MultiheadAttention
-import torchvision.transforms as T
-from torchvision.models import mobilenet_v3_small
+from torchvision import transforms
+from ultralytics import YOLO
 import clip
+from transformers import AutoModel, AutoTokenizer
 import numpy as np
+from PIL import Image
 from typing import List, Tuple, Dict, Optional
 import cv2
-from ultralytics import YOLO
-from PIL import Image
-import json
 
-# Configuration
-IMAGE_SIZE = 640  # Input resolution for YOLOv8
-ROI_SIZE = 224    # Input size for MobileNetV3 and CLIP
-K_SIMILAR = 5     # Number of most similar regions for captioning
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# Dicționar clase COCO
+COCO_CLASSES = {
+    0: 'person', 1: 'bicycle', 2: 'car', 3: 'motorcycle', 4: 'airplane',
+    5: 'bus', 6: 'train', 7: 'truck', 8: 'boat', 9: 'traffic light',
+    10: 'fire hydrant', 11: 'stop sign', 12: 'parking meter', 13: 'bench',
+    14: 'bird', 15: 'cat', 16: 'dog', 17: 'horse', 18: 'sheep', 19: 'cow',
+    20: 'elephant', 21: 'bear', 22: 'zebra', 23: 'giraffe', 24: 'backpack',
+    25: 'umbrella', 26: 'handbag', 27: 'tie', 28: 'suitcase', 29: 'frisbee',
+    30: 'skis', 31: 'snowboard', 32: 'sports ball', 33: 'kite', 34: 'baseball bat',
+    35: 'baseball glove', 36: 'skateboard', 37: 'surfboard', 38: 'tennis racket',
+    39: 'bottle', 40: 'wine glass', 41: 'cup', 42: 'fork', 43: 'knife',
+    44: 'spoon', 45: 'bowl', 46: 'banana', 47: 'apple', 48: 'sandwich',
+    49: 'orange', 50: 'broccoli', 51: 'carrot', 52: 'hot dog', 53: 'pizza',
+    54: 'donut', 55: 'cake', 56: 'chair', 57: 'couch', 58: 'potted plant',
+    59: 'bed', 60: 'dining table', 61: 'toilet', 62: 'tv', 63: 'laptop',
+    64: 'mouse', 65: 'remote', 66: 'keyboard', 67: 'cell phone', 68: 'microwave',
+    69: 'oven', 70: 'toaster', 71: 'sink', 72: 'refrigerator', 73: 'book',
+    74: 'clock', 75: 'vase', 76: 'scissors', 77: 'teddy bear', 78: 'hair drier',
+    79: 'toothbrush'
+}
 
-# ImageNet class names (simplified - you should load the complete list)
-IMAGENET_CLASSES = [
-    "tench", "goldfish", "great_white_shark", "tiger_shark", "hammerhead_shark",
-    "electric_ray", "stingray", "cock", "hen", "ostrich", "brambling", "goldfinch",
-    # ... Add all 1000 ImageNet classes here
-    "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck"
-    # This is just a sample - you need the full list
-]
 
-class ForegroundDetector(nn.Module):
-    """
-    Modified YOLOv8n with single-class (foreground) detection
-    - Freezes pretrained COCO weights
-    - Treats all detections as foreground (class=1)
-    """
-    def __init__(self, confidence_threshold=0.25):
+class AlignmentModule(nn.Module):
+    """Modul de aliniere între feature-urile vizuale și textuale"""
+    def __init__(self, visual_dim=512, text_dim=768, hidden_dim=512):
         super().__init__()
-        # Load pretrained YOLOv8n
-        self.yolo_model = YOLO('yolov8n.pt')
-        self.confidence_threshold = confidence_threshold
-        
-        # Freeze all parameters
-        for param in self.yolo_model.model.parameters():
-            param.requires_grad = False
-            
-        self.yolo_model.model.eval()
-        
-    def preprocess_image(self, image):
-        """
-        Preprocess image for YOLOv8
-        Input: PIL Image or numpy array
-        Output: Preprocessed tensor
-        """
-        if isinstance(image, np.ndarray):
-            image = Image.fromarray(image)
-        
-        # Convert to RGB if needed
-        if image.mode != 'RGB':
-            image = image.convert('RGB')
-            
-        return image
-        
-    def forward(self, image):
-        """
-        Input: PIL Image or numpy array
-        Output: List of detections with bbox coordinates (xyxy format)
-        """
-        # Preprocess image
-        processed_image = self.preprocess_image(image)
-        
-        # Run detection
-        results = self.yolo_model(processed_image, conf=self.confidence_threshold)
-        
-        # Process detections - treat all as foreground
-        detections = []
-        for result in results:
-            boxes = result.boxes
-            if boxes is not None:
-                for i, box in enumerate(boxes):
-                    x1, y1, x2, y2 = box.xyxy[0].tolist()
-                    conf = box.conf.item()
-                    detections.append({
-                        'bbox': [x1, y1, x2, y2],
-                        'confidence': conf,
-                        'class': 1,  # All detections are foreground
-                        'id': i
-                    })
-        return detections
-
-class ROIProcessor(nn.Module):
-    """
-    Handles ROI cropping and processing:
-    1. Crops regions based on YOLO detections
-    2. Resizes to ROI_SIZE
-    3. Normalizes for MobileNetV3 and CLIP
-    """
-    def __init__(self):
-        super().__init__()
-        self.mobilenet_transform = T.Compose([
-            T.Resize((ROI_SIZE, ROI_SIZE)),
-            T.ToTensor(),
-            T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-        ])
-        
-        # Separate transform for CLIP (it has its own preprocessing)
-        self.clip_transform = T.Compose([
-            T.Resize((ROI_SIZE, ROI_SIZE)),
-            T.ToTensor(),
-        ])
-        
-    def crop_and_resize(self, image, detections):
-        """
-        Input:
-            image - PIL Image
-            detections - list of bbox dicts
-        Output:
-            mobilenet_rois: List of ROI tensors for MobileNetV3
-            clip_rois: List of ROI tensors for CLIP
-            valid_detections: List of valid detections
-        """
-        mobilenet_rois = []
-        clip_rois = []
-        valid_detections = []
-        
-        if isinstance(image, np.ndarray):
-            image = Image.fromarray(image)
-        
-        w, h = image.size
-        
-        for det in detections:
-            x1, y1, x2, y2 = det['bbox']
-            x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
-            
-            # Ensure valid coordinates
-            x1, y1 = max(0, x1), max(0, y1)
-            x2, y2 = min(w, x2), min(h, y2)
-            
-            if x2 <= x1 or y2 <= y1:
-                continue
-                
-            # Crop ROI
-            roi_image = image.crop((x1, y1, x2, y2))
-            
-            if roi_image.size[0] > 0 and roi_image.size[1] > 0:
-                # Process for MobileNet
-                mobilenet_roi = self.mobilenet_transform(roi_image)
-                mobilenet_rois.append(mobilenet_roi)
-                
-                # Process for CLIP
-                clip_roi = self.clip_transform(roi_image)
-                clip_rois.append(clip_roi)
-                
-                valid_detections.append(det)
-                
-        return mobilenet_rois, clip_rois, valid_detections
-
-class ObjectClassifier(nn.Module):
-    """
-    MobileNetV3-Small for ROI classification
-    - Freezes backbone with ImageNet1k weights
-    - Keeps original 1000-class head
-    """
-    def __init__(self):
-        super().__init__()
-        self.model = mobilenet_v3_small(weights='IMAGENET1K_V1')
-        self.model.eval()
-        
-        # Freeze all parameters
-        for param in self.model.parameters():
-            param.requires_grad = False
-            
-    def forward(self, rois):
-        """
-        Input: List of ROI tensors [3, ROI_SIZE, ROI_SIZE]
-        Output: List of class predictions
-        """
-        if not rois:
-            return []
-            
-        batch = torch.stack(rois).to(DEVICE)
-        
-        with torch.no_grad():
-            logits = self.model(batch)
-            probs = F.softmax(logits, dim=1)
-            
-        classifications = []
-        for i, prob in enumerate(probs):
-            top5_probs, top5_indices = torch.topk(prob, 5)
-            classifications.append({
-                'top_class': top5_indices[0].item(),
-                'top_confidence': top5_probs[0].item(),
-                'top5_classes': top5_indices.tolist(),
-                'top5_confidences': top5_probs.tolist(),
-                'class_name': IMAGENET_CLASSES[top5_indices[0].item()] if top5_indices[0].item() < len(IMAGENET_CLASSES) else f"class_{top5_indices[0].item()}"
-            })
-        return classifications
-
-class AlignmentLayer(nn.Module):
-    """Aligns visual and text features to a common space"""
-    def __init__(self, visual_dim=512, text_dim=512, hidden_dim=256):
-        super().__init__()
-        self.visual_proj = nn.Sequential(
-            nn.Linear(visual_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim)
-        )
-        self.text_proj = nn.Sequential(
-            nn.Linear(text_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim)
-        )
+        self.visual_proj = nn.Linear(visual_dim, hidden_dim)
+        self.text_proj = nn.Linear(text_dim, hidden_dim)
+        self.alignment_head = nn.MultiheadAttention(hidden_dim, num_heads=8, batch_first=True)
+        self.norm = nn.LayerNorm(hidden_dim)
         
     def forward(self, visual_features, text_features):
-        aligned_visual = self.visual_proj(visual_features)
-        aligned_text = self.text_proj(text_features)
-        return aligned_visual, aligned_text
-
-class CrossAttentionLayer(nn.Module):
-    """Cross-attention between visual features"""
-    def __init__(self, embed_dim=256, num_heads=8):
-        super().__init__()
-        self.multihead_attn = MultiheadAttention(embed_dim, num_heads, batch_first=True)
-        self.norm = nn.LayerNorm(embed_dim)
+        # Proiectare în spațiu comun
+        visual_proj = self.visual_proj(visual_features)
+        text_proj = self.text_proj(text_features)
         
-    def forward(self, visual_features, context_features=None):
-        if context_features is None:
-            context_features = visual_features
+        # Aliniere prin atenție
+        aligned, _ = self.alignment_head(text_proj, visual_proj, visual_proj)
+        aligned = self.norm(aligned + text_proj)
+        
+        return aligned
+
+class HybridLightCapYOLOv8(nn.Module):
+    """Model hibrid ce combină LightCap cu YOLOv8 pentru image captioning și object detection"""
+    
+    def __init__(self, yolo_model='yolov8n.pt', clip_model='ViT-B/32', device='cuda'):
+        super().__init__()
+        self.device = torch.device(device if torch.cuda.is_available() else 'cpu')
+        
+        # Încărcare YOLOv8 pre-antrenat (frozen)
+        self.yolo = YOLO(yolo_model)
+        self.yolo.model.eval()
+        for param in self.yolo.model.parameters():
+            param.requires_grad = False
             
-        attended, _ = self.multihead_attn(
-            visual_features, context_features, context_features
-        )
-        return self.norm(attended + visual_features)  # Residual connection
-
-class TinyBERT(nn.Module):
-    """Simplified BERT-like decoder for caption generation"""
-    def __init__(self, vocab_size=30522, embed_dim=256, num_layers=3, num_heads=8):
-        super().__init__()
-        self.embed_dim = embed_dim
-        self.token_embedding = nn.Embedding(vocab_size, embed_dim)
-        self.pos_embedding = nn.Embedding(512, embed_dim)  # Max sequence length
-        
-        self.transformer_blocks = nn.ModuleList([
-            nn.TransformerDecoderLayer(
-                d_model=embed_dim,
-                nhead=num_heads,
-                dim_feedforward=embed_dim * 4,
-                batch_first=True
-            ) for _ in range(num_layers)
-        ])
-        
-        self.output_projection = nn.Linear(embed_dim, vocab_size)
-        
-    def forward(self, input_ids, visual_context):
-        seq_len = input_ids.size(1)
-        positions = torch.arange(seq_len, device=input_ids.device).unsqueeze(0)
-        
-        # Embeddings
-        token_embeds = self.token_embedding(input_ids)
-        pos_embeds = self.pos_embedding(positions)
-        hidden_states = token_embeds + pos_embeds
-        
-        # Apply transformer blocks
-        for block in self.transformer_blocks:
-            hidden_states = block(hidden_states, visual_context)
-            
-        # Output projection
-        logits = self.output_projection(hidden_states)
-        return logits
-
-class LightCapCaptioner(nn.Module):
-    """
-    Enhanced LightCap with proper CLIP feature alignment and cross-attention
-    """
-    def __init__(self):
-        super().__init__()
-        # Load CLIP model
-        self.clip_model, self.clip_preprocess = clip.load("ViT-B/32", device=DEVICE)
+        # Încărcare CLIP pre-antrenat
+        self.clip_model, self.clip_preprocess = clip.load(clip_model, device=self.device)
+        self.clip_model.eval()
         for param in self.clip_model.parameters():
             param.requires_grad = False
-        
-        # LightCap components
-        self.alignment = AlignmentLayer(visual_dim=512, text_dim=512, hidden_dim=256)
-        self.cross_attn = CrossAttentionLayer(embed_dim=256, num_heads=8)
-        self.caption_generator = TinyBERT(vocab_size=30522, embed_dim=256)
-        
-        # Move to device
-        self.to(DEVICE)
-        
-    def extract_visual_features(self, clip_rois):
-        """Extract CLIP visual features for ROIs"""
-        if not clip_rois:
-            return torch.empty(0, 512, device=DEVICE)
             
-        features = []
-        for roi in clip_rois:
-            # Convert tensor to PIL for CLIP preprocessing
-            roi_pil = T.ToPILImage()(roi.cpu())
-            roi_processed = self.clip_preprocess(roi_pil).unsqueeze(0).to(DEVICE)
+        # TinyBERT pentru generare caption
+        self.tokenizer = AutoTokenizer.from_pretrained('huawei-noah/TinyBERT_General_4L_312D')
+        self.bert_model = AutoModel.from_pretrained('huawei-noah/TinyBERT_General_4L_312D')
+        
+        # Module de aliniere și fuziune
+        self.alignment_module = AlignmentModule(
+            visual_dim=512,  # CLIP output dim
+            text_dim=312,    # TinyBERT hidden dim
+            hidden_dim=512
+        )
+        
+        # Decoder pentru generare caption
+        self.caption_decoder = nn.TransformerDecoder(
+            nn.TransformerDecoderLayer(d_model=512, nhead=8, batch_first=True),
+            num_layers=3
+        )
+        
+        # Head pentru generare text
+        self.vocab_size = self.tokenizer.vocab_size
+        self.output_head = nn.Linear(512, self.vocab_size)
+        
+        # Embedding pentru text
+        self.text_embedding = nn.Embedding(self.vocab_size, 512)
+        self.positional_encoding = nn.Parameter(torch.randn(1, 100, 512))
+        
+        self.to(self.device)
+        
+    def detect_objects(self, image):
+        """Detectează obiecte folosind YOLOv8"""
+        with torch.no_grad():
+            results = self.yolo(image)
+            
+        detections = []
+        if len(results) > 0:
+            result = results[0]
+            if result.boxes is not None:
+                boxes = result.boxes.xyxy.cpu().numpy()
+                scores = result.boxes.conf.cpu().numpy()
+                classes = result.boxes.cls.cpu().numpy().astype(int)
+                
+                for box, score, cls in zip(boxes, scores, classes):
+                    detections.append({
+                        'bbox': box,
+                        'score': float(score),
+                        'class_id': int(cls),
+                        'class_name': COCO_CLASSES.get(int(cls), 'unknown')
+                    })
+                    
+        return detections
+    
+    def extract_roi_features(self, image, detections):
+        """Extrage feature-uri CLIP pentru regiunile detectate"""
+        if isinstance(image, torch.Tensor):
+            image = transforms.ToPILImage()(image)
+        elif isinstance(image, np.ndarray):
+            image = Image.fromarray(image)
+            
+        roi_features = []
+        
+        for det in detections:
+            x1, y1, x2, y2 = map(int, det['bbox'])
+            roi = image.crop((x1, y1, x2, y2))
+            
+            # Preprocesat pentru CLIP
+            roi_tensor = self.clip_preprocess(roi).unsqueeze(0).to(self.device)
             
             with torch.no_grad():
-                feat = self.clip_model.encode_image(roi_processed).float()
-            features.append(feat.squeeze(0))
-            
-        return torch.stack(features) if features else torch.empty(0, 512, device=DEVICE)
+                features = self.clip_model.encode_image(roi_tensor)
+                roi_features.append(features.squeeze(0))
+                
+        if roi_features:
+            return torch.stack(roi_features)
+        return torch.zeros((1, 512)).to(self.device)
     
-    def select_salient_regions(self, features, k=K_SIMILAR):
-        """
-        Select top-k regions based on visual diversity and feature magnitude
-        """
-        if len(features) <= k:
-            return features, torch.arange(len(features))
+    def generate_caption(self, visual_features, max_length=50):
+        """Generează caption folosind feature-urile vizuale"""
+        batch_size = 1
         
-        # Calculate feature magnitude (importance)
-        magnitude_scores = torch.norm(features, dim=1)
+        # Token de start
+        start_token = self.tokenizer.cls_token_id
+        generated = torch.tensor([[start_token]]).to(self.device)
         
-        # Calculate visual diversity (avoid redundant regions)
-        similarity_matrix = F.cosine_similarity(
-            features.unsqueeze(1), features.unsqueeze(0), dim=-1
-        )
-        diversity_scores = 1 - (similarity_matrix.sum(dim=1) - 1) / (len(features) - 1)
+        # Embedding inițial
+        tgt_emb = self.text_embedding(generated)
+        tgt_emb = tgt_emb + self.positional_encoding[:, :1, :]
         
-        # Combine scores
-        combined_scores = magnitude_scores * 0.7 + diversity_scores * 0.3
+        # Expandare feature-uri vizuale pentru decoder
+        visual_features = visual_features.unsqueeze(0) if visual_features.dim() == 2 else visual_features
         
-        # Select top-k
-        _, top_indices = torch.topk(combined_scores, k)
-        return features[top_indices], top_indices
-
-    def generate_caption(self, visual_features, classifications=None, max_length=30):
-        """Generate caption from attended visual features"""
-        if len(visual_features) == 0:
-            return "No objects detected."
+        caption_tokens = []
+        
+        for _ in range(max_length):
+            # Decodare
+            output = self.caption_decoder(tgt_emb, visual_features)
+            logits = self.output_head(output[:, -1, :])
             
-        # Project visual features to caption space
-        aligned_visual, _ = self.alignment(
-            visual_features.unsqueeze(0),
-            visual_features.unsqueeze(0)  # Self-alignment
-        )
-        
-        # Cross-attention
-        attended = self.cross_attn(aligned_visual)
-        
-        # Simple template-based caption generation (you can replace with proper BERT decoding)
-        caption = self.generate_template_caption(classifications)
+            # Sampling
+            next_token = torch.argmax(logits, dim=-1)
+            caption_tokens.append(next_token.item())
+            
+            # Stop dacă întâlnim token de final
+            if next_token.item() == self.tokenizer.sep_token_id:
+                break
+                
+            # Actualizare embedding pentru următorul pas
+            generated = torch.cat([generated, next_token.unsqueeze(1)], dim=1)
+            tgt_emb = self.text_embedding(generated)
+            tgt_emb = tgt_emb + self.positional_encoding[:, :generated.size(1), :]
+            
+        # Decodare caption
+        caption = self.tokenizer.decode(caption_tokens, skip_special_tokens=True)
         return caption
     
-    def generate_template_caption(self, classifications):
-        """Generate caption using templates and classifications"""
-        if not classifications or len(classifications) == 0:
-            return "I see some objects in the image."
-        
-        # Get top detected objects
-        objects = []
-        for cls in classifications[:3]:  # Top 3 objects
-            objects.append(cls['class_name'])
-        
-        # Simple template-based generation
-        if len(objects) == 1:
-            return f"I see {objects[0]} in the image."
-        elif len(objects) == 2:
-            return f"I see {objects[0]} and {objects[1]} in the image."
-        else:
-            return f"I see {objects[0]}, {objects[1]}, and {objects[2]} in the image."
-
-class VisionAssistModel(nn.Module):
-    """
-    Complete Vision Assist Model combining YOLOv8n, MobileNetV3, and LightCap
-    """
-    def __init__(self):
-        super().__init__()
-        self.detector = ForegroundDetector()
-        self.roi_processor = ROIProcessor()
-        self.classifier = ObjectClassifier()
-        self.captioner = LightCapCaptioner()
-        
-        # Move to device
-        self.to(DEVICE)
-    
-    def annotate_image(self, image, detections, classifications):
-        """Annotate image with bounding boxes and labels"""
-        if isinstance(image, Image.Image):
+    def draw_bboxes(self, image, detections):
+        """Desenează bounding box-uri pe imagine"""
+        if isinstance(image, torch.Tensor):
+            image = image.cpu().numpy()
+            if image.shape[0] == 3:
+                image = np.transpose(image, (1, 2, 0))
+            image = (image * 255).astype(np.uint8)
+        elif isinstance(image, Image.Image):
             image = np.array(image)
-        
-        annotated = image.copy()
-        
-        for i, (det, cls) in enumerate(zip(detections, classifications)):
-            x1, y1, x2, y2 = det['bbox']
-            x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
             
-            # Draw bounding box
-            cv2.rectangle(annotated, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            
-            # Draw label
-            label = f"{cls['class_name']}: {cls['top_confidence']:.2f}"
-            label_size, _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 2)
-            cv2.rectangle(annotated, (x1, y1-20), (x1+label_size[0], y1), (0, 255, 0), -1)
-            cv2.putText(annotated, label, (x1, y1-5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
+        output_image = image.copy()
         
-        return annotated
+        # Culori pentru diferite scale
+        scale_colors = {
+            80: (255, 0, 0),    # Roșu pentru scale 80x80
+            40: (0, 255, 0),    # Verde pentru scale 40x40  
+            20: (0, 0, 255)     # Albastru pentru scale 20x20
+        }
+        
+        for det in detections:
+            x1, y1, x2, y2 = map(int, det['bbox'])
+            
+            # Determină scala bazată pe dimensiunea bbox
+            area = (x2 - x1) * (y2 - y1)
+            if area < 1600:  # 40x40
+                color = scale_colors[20]
+            elif area < 6400:  # 80x80
+                color = scale_colors[40]
+            else:
+                color = scale_colors[80]
+                
+            # Desenare bbox
+            cv2.rectangle(output_image, (x1, y1), (x2, y2), color, 2)
+            
+            # Adăugare text cu numele clasei
+            label = f"{det['class_name']}: {det['score']:.2f}"
+            cv2.putText(output_image, label, (x1, y1-10), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+                       
+        return output_image
     
     def forward(self, image):
-        """
-        Main forward pass
-        Input: PIL Image or numpy array
-        Output: Dictionary with caption, annotated image, and metadata
-        """
-        # Step 1: Object Detection
-        detections = self.detector(image)
+        """Forward pass complet"""
+        # Resize imagine pentru YOLO (640x640)
+        if isinstance(image, np.ndarray):
+            original_image = image.copy()
+            image_pil = Image.fromarray(image)
+        elif isinstance(image, Image.Image):
+            original_image = np.array(image)
+            image_pil = image
+        else:
+            raise ValueError("Input trebuie să fie numpy array sau PIL Image")
+            
+        # Detectare obiecte
+        detections = self.detect_objects(original_image)
         
-        if not detections:
-            return {
-                'caption': "No objects detected in the image.",
-                'annotated_image': np.array(image) if isinstance(image, Image.Image) else image,
-                'detections': [],
-                'classifications': []
-            }
+        # Extragere feature-uri ROI
+        roi_features = self.extract_roi_features(image_pil, detections)
         
-        # Step 2: ROI Processing
-        mobilenet_rois, clip_rois, valid_detections = self.roi_processor.crop_and_resize(
-            image, detections
-        )
+        # Generare caption
+        caption = self.generate_caption(roi_features)
         
-        if not mobilenet_rois:
-            return {
-                'caption': "No valid regions detected.",
-                'annotated_image': np.array(image) if isinstance(image, Image.Image) else image,
-                'detections': detections,
-                'classifications': []
-            }
-        
-        # Step 3: Classification
-        classifications = self.classifier(mobilenet_rois)
-        
-        # Step 4: Caption Generation
-        visual_features = self.captioner.extract_visual_features(clip_rois)
-        salient_features, _ = self.captioner.select_salient_regions(visual_features)
-        caption = self.captioner.generate_caption(salient_features, classifications)
-        
-        # Step 5: Image Annotation
-        annotated_image = self.annotate_image(image, valid_detections, classifications)
+        # Desenare bounding box-uri
+        output_image = self.draw_bboxes(original_image, detections)
         
         return {
+            'image_with_bboxes': output_image,
+            'detections': detections,
             'caption': caption,
-            'annotated_image': annotated_image,
-            'detections': valid_detections,
-            'classifications': classifications,
-            'num_objects': len(valid_detections)
+            'roi_features': roi_features
         }
-
-# Example usage and testing
-def test_model():
-    """Test the complete model pipeline"""
-    model = VisionAssistModel()
     
-    # Load a test image
-    # test_image = Image.open("test_image.jpg")
-    # results = model(test_image)
+    def process_live(self, frame):
+        """Procesare pentru modul live (frame de la cameră)"""
+        return self.forward(frame)
     
-    print("Model initialized successfully!")
-    print(f"Model device: {next(model.parameters()).device}")
-    return model
-
-if __name__ == "__main__":
-    model = test_model()
+    def process_static(self, image_path):
+        """Procesare pentru modul static (imagine salvată)"""
+        image = Image.open(image_path).convert('RGB')
+        return self.forward(np.array(image))
