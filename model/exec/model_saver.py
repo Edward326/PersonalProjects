@@ -8,7 +8,7 @@ from torch.utils.mobile_optimizer import optimize_for_mobile
 from main.basemodel import HybridLightCapYOLOv8
 
 
-def export_model(model, export_dir='../savedPyTMobile'):
+def export_model(model, export_dir='../saved/PyTMobile'):
     print("\n📦 Exportare model pentru mobil...")
 
     os.makedirs(export_dir, exist_ok=True)
