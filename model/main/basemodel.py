@@ -9,6 +9,7 @@ import numpy as np
 from PIL import Image
 from typing import List, Tuple, Dict, Optional
 import cv2
+default_device='cpu'
 
 # Dicționar clase COCO
 COCO_CLASSES = {
@@ -55,9 +56,9 @@ class AlignmentModule(nn.Module):
 class HybridLightCapYOLOv8(nn.Module):
     """Model hibrid ce combină LightCap cu YOLOv8 pentru image captioning și object detection"""
     
-    def __init__(self, yolo_model='yolov8n.pt', clip_model='ViT-B/32', device='cuda'):
+    def __init__(self, yolo_model='../saved/YoloV8/yolov8n.pt', clip_model='ViT-B/32', device=default_device):
         super().__init__()
-        self.device = torch.device(device if torch.cuda.is_available() else 'cpu')
+        self.device = device
         
         # Încărcare YOLOv8 pre-antrenat (frozen)
         self.yolo = YOLO(yolo_model)
@@ -71,16 +72,18 @@ class HybridLightCapYOLOv8(nn.Module):
         for param in self.clip_model.parameters():
             param.requires_grad = False
             
-        # TinyBERT pentru generare caption
-        self.tokenizer = AutoTokenizer.from_pretrained('huawei-noah/TinyBERT_General_4L_312D')
-        self.bert_model = AutoModel.from_pretrained('huawei-noah/TinyBERT_General_4L_312D')
-        
         # Module de aliniere și fuziune
         self.alignment_module = AlignmentModule(
             visual_dim=512,  # CLIP output dim
             text_dim=312,    # TinyBERT hidden dim
             hidden_dim=512
         )
+
+        # TinyBERT pentru generare caption
+        self.tokenizer = AutoTokenizer.from_pretrained('huawei-noah/TinyBERT_General_4L_312D')
+        self.bert_model = AutoModel.from_pretrained('huawei-noah/TinyBERT_General_4L_312D')
+        
+        
         
         # Decoder pentru generare caption
         self.caption_decoder = nn.TransformerDecoder(
