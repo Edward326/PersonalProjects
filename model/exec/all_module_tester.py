@@ -5,7 +5,7 @@ import os,sys
 parent_dir = os.path.abspath(os.path.join(".."))
 if not parent_dir in sys.path:
     sys.path.append(parent_dir)
-from main.extra.alignement_module import AlignmentModule, ContrastiveLoss
+from main.extra.alignment_module import AlignmentModule, ContrastiveLoss
 
 # Test function
 def test_alignment_module(path):
@@ -32,4 +32,4 @@ def test_alignment_module(path):
 
 
 print("Testing Alignment Module...")
-test_alignment_module("../saved/AlignementModule/alignment_module.pth")
+test_alignment_module("../saved/AlignmentModule/alignment_module.pth")

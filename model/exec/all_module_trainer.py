@@ -1,3 +1,43 @@
+import os
+
+# DEPENDENCIES - Fix: Check torch availability after import, not before
+try:
+    import torch
+    torch_available = True
+except ImportError:
+    torch_available = False
+
+print("Installing core dependencies...")
+if torch_available and torch.cuda.is_available():
+    os.system("pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118")
+else:
+    os.system("pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu")
+
+# OpenAI CLIP dependencies
+os.system("pip install ftfy regex tqdm")
+os.system("pip install git+https://github.com/openai/CLIP.git")
+
+# Image processing
+os.system("pip install Pillow")
+
+# Data handling and utilities
+os.system("pip install numpy")
+os.system("pip install requests")
+os.system("pip install matplotlib")
+
+# COCO API
+os.system("pip install pycocotools")
+
+# Optional but recommended for better performance
+os.system("pip install opencv-python")
+os.system("pip install scikit-learn")
+
+print("All dependencies installed!")
+
+import time
+time.sleep(2)
+
+# Now import everything after installation
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -12,29 +52,37 @@ import torchvision.transforms as T
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from pycocotools.coco import COCO
-import os,sys
+import sys
+
+# Add parent directory to path
 parent_dir = os.path.abspath(os.path.join(".."))
-if not parent_dir in sys.path:
+if parent_dir not in sys.path:
     sys.path.append(parent_dir)
+
+# Import custom modules
 from main.extra.alignment_module import AlignmentModule, ContrastiveLoss
-epochs=60
-learning_rate=1e-5,
-batch_size=32,
-save_every=10,
-data_dir='../datasets/coco_data',
-max_train_samples=10000,
-max_val_samples=2000
+
+# Configuration parameters - Fix: Remove trailing commas
+epochs = 60
+learning_rate = 1e-5
+batch_size = 32
+save_every = 10
+data_dir = '../datasets/coco_data'
+max_train_samples = 10000
+max_val_samples = 2000
+
 coco_classes = [
-        'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck', 'boat', 'traffic light',
-        'fire hydrant', 'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep', 'cow',
-        'elephant', 'bear', 'zebra', 'giraffe', 'backpack', 'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee',
-        'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat', 'baseball glove', 'skateboard', 'surfboard',
-        'tennis racket', 'bottle', 'wine glass', 'cup', 'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple',
-        'sandwich', 'orange', 'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch',
-        'potted plant', 'bed', 'dining table', 'toilet', 'tv', 'laptop', 'mouse', 'remote', 'keyboard', 'cell phone',
-        'microwave', 'oven', 'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase', 'scissors', 'teddy bear',
-        'hair drier', 'toothbrush'
-        ]
+    'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck', 'boat', 'traffic light',
+    'fire hydrant', 'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep', 'cow',
+    'elephant', 'bear', 'zebra', 'giraffe', 'backpack', 'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee',
+    'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat', 'baseball glove', 'skateboard', 'surfboard',
+    'tennis racket', 'bottle', 'wine glass', 'cup', 'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple',
+    'sandwich', 'orange', 'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch',
+    'potted plant', 'bed', 'dining table', 'toilet', 'tv', 'laptop', 'mouse', 'remote', 'keyboard', 'cell phone',
+    'microwave', 'oven', 'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase', 'scissors', 'teddy bear',
+    'hair drier', 'toothbrush'
+]
+
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
@@ -46,8 +94,9 @@ class COCOAlignmentDataset(Dataset):
     def __init__(self, 
                  data_dir,
                  split,
-                 max_samples,  # Limit for faster training
-                 clip_model):
+                 max_samples,
+                 clip_model,
+                 clip_preprocess):  # Fix: Add missing clip_preprocess parameter
         
         self.data_dir = data_dir
         self.split = split
@@ -55,6 +104,7 @@ class COCOAlignmentDataset(Dataset):
         self.device = device
         self.coco_classes = coco_classes
         self.clip_model = clip_model
+        self.clip_preprocess = clip_preprocess  # Fix: Store clip_preprocess
         
         # Freeze CLIP parameters
         for param in self.clip_model.parameters():
@@ -102,25 +152,34 @@ class COCOAlignmentDataset(Dataset):
     
     def _download_file(self, url, filename):
         """Download file with progress bar"""
-        response = requests.get(url, stream=True)
-        total_size = int(response.headers.get('content-length', 0))
-        
-        with open(filename, 'wb') as file, tqdm(
-            desc=filename.split('/')[-1],
-            total=total_size,
-            unit='B',
-            unit_scale=True,
-            unit_divisor=1024,
-        ) as bar:
-            for data in response.iter_content(chunk_size=1024):
-                file.write(data)
-                bar.update(len(data))
+        try:
+            response = requests.get(url, stream=True)
+            response.raise_for_status()  # Fix: Add error checking
+            total_size = int(response.headers.get('content-length', 0))
+            
+            with open(filename, 'wb') as file, tqdm(
+                desc=filename.split('/')[-1],
+                total=total_size,
+                unit='B',
+                unit_scale=True,
+                unit_divisor=1024,
+            ) as bar:
+                for data in response.iter_content(chunk_size=1024):
+                    file.write(data)
+                    bar.update(len(data))
+        except Exception as e:
+            print(f"Error downloading {filename}: {e}")
+            raise
     
     def _extract_zip(self, zip_path, extract_to):
         """Extract zip file"""
         print(f"Extracting {zip_path}...")
-        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-            zip_ref.extractall(extract_to)
+        try:
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                zip_ref.extractall(extract_to)
+        except Exception as e:
+            print(f"Error extracting {zip_path}: {e}")
+            raise
     
     def _setup_coco(self):
         """Setup COCO API"""
@@ -130,13 +189,17 @@ class COCOAlignmentDataset(Dataset):
             self._download_coco()
         
         # Initialize COCO API
-        self.coco = COCO(ann_file)
-        self.img_dir = os.path.join(self.data_dir, f'{self.split}2017')
-        
-        # Get category info
-        self.category_ids = self.coco.getCatIds()
-        self.categories = self.coco.loadCats(self.category_ids)
-        self.cat_id_to_name = {cat['id']: cat['name'] for cat in self.categories}
+        try:
+            self.coco = COCO(ann_file)
+            self.img_dir = os.path.join(self.data_dir, f'{self.split}2017')
+            
+            # Get category info
+            self.category_ids = self.coco.getCatIds()
+            self.categories = self.coco.loadCats(self.category_ids)
+            self.cat_id_to_name = {cat['id']: cat['name'] for cat in self.categories}
+        except Exception as e:
+            print(f"Error setting up COCO API: {e}")
+            raise
     
     def _prepare_samples(self):
         """Prepare training samples from COCO"""
@@ -152,41 +215,46 @@ class COCOAlignmentDataset(Dataset):
         print(f"Preparing samples from {len(img_ids)} images...")
         
         for img_id in tqdm(img_ids, desc="Processing images"):
-            # Get image info
-            img_info = self.coco.loadImgs(img_id)[0]
-            img_path = os.path.join(self.img_dir, img_info['file_name'])
-            
-            # Skip if image doesn't exist
-            if not os.path.exists(img_path):
-                continue
-            
-            # Get annotations for this image
-            ann_ids = self.coco.getAnnIds(imgIds=img_id)
-            anns = self.coco.loadAnns(ann_ids)
-            
-            # Process each annotation
-            for ann in anns:
-                # Skip if annotation has issues
-                if ann['area'] < 100 or ann['iscrowd']:  # Skip tiny or crowd objects
+            try:
+                # Get image info
+                img_info = self.coco.loadImgs(img_id)[0]
+                img_path = os.path.join(self.img_dir, img_info['file_name'])
+                
+                # Skip if image doesn't exist
+                if not os.path.exists(img_path):
                     continue
                 
-                bbox = ann['bbox']  # [x, y, width, height]
-                category_id = ann['category_id']
+                # Get annotations for this image
+                ann_ids = self.coco.getAnnIds(imgIds=img_id)
+                anns = self.coco.loadAnns(ann_ids)
                 
-                # Convert to [x1, y1, x2, y2]
-                x1, y1, w, h = bbox
-                x2, y2 = x1 + w, y1 + h
-                
-                # Get category name
-                category_name = self.cat_id_to_name[category_id]
-                
-                samples.append({
-                    'img_path': img_path,
-                    'bbox': [x1, y1, x2, y2],
-                    'category_name': category_name,
-                    'category_id': category_id,
-                    'img_id': img_id
-                })
+                # Process each annotation
+                for ann in anns:
+                    # Skip if annotation has issues
+                    if ann['area'] < 100 or ann['iscrowd']:
+                        continue
+                    
+                    bbox = ann['bbox']  # [x, y, width, height]
+                    category_id = ann['category_id']
+                    
+                    # Convert to [x1, y1, x2, y2]
+                    x1, y1, w, h = bbox
+                    x2, y2 = x1 + w, y1 + h
+                    
+                    # Get category name
+                    if category_id in self.cat_id_to_name:
+                        category_name = self.cat_id_to_name[category_id]
+                        
+                        samples.append({
+                            'img_path': img_path,
+                            'bbox': [x1, y1, x2, y2],
+                            'category_name': category_name,
+                            'category_id': category_id,
+                            'img_id': img_id
+                        })
+            except Exception as e:
+                print(f"Error processing image {img_id}: {e}")
+                continue
         
         return samples
     
@@ -210,7 +278,6 @@ class COCOAlignmentDataset(Dataset):
             x2, y2 = min(w, x2), min(h, y2)
             
             if x2 <= x1 or y2 <= y1:
-                # Return dummy data for invalid crops
                 return self._get_dummy_sample()
             
             # Crop region
@@ -248,12 +315,12 @@ class COCOAlignmentDataset(Dataset):
             'category_name': 'unknown'
         }
 
+
 class AlignmentTrainer:
     """
     Trainer for Alignment Module
     """
-    def __init__(self, 
-                 model_save_path='../saved/AlignementModule'):
+    def __init__(self, model_save_path='../saved/AlignmentModule'):
         
         self.device = device
         self.model_save_path = model_save_path
@@ -264,7 +331,7 @@ class AlignmentTrainer:
         # Initialize CLIP
         print("Loading CLIP model...")
         self.clip_model, self.clip_preprocess = clip.load("ViT-B/32", device=self.device)
-        print("Done")
+        print("CLIP model loaded successfully")
 
         # Initialize alignment module
         self.alignment_model = AlignmentModule(
@@ -280,27 +347,26 @@ class AlignmentTrainer:
         self.train_losses = []
         self.val_losses = []
     
-    def create_datasets(self, 
-                       data_dir,
-                       max_train_samples,
-                       max_val_samples):
+    def create_datasets(self, data_dir, max_train_samples, max_val_samples):
         """Create train and validation datasets"""
         print("Creating datasets...")
-        # Training dataset
+        
+        # Training dataset - Fix: Pass clip_preprocess
         self.train_dataset = COCOAlignmentDataset(
             data_dir=data_dir,
             split='train',
             max_samples=max_train_samples,
             clip_model=self.clip_model,
-            device=self.device
+            clip_preprocess=self.clip_preprocess
         )
-        # Validation dataset  
+        
+        # Validation dataset - Fix: Pass clip_preprocess  
         self.val_dataset = COCOAlignmentDataset(
             data_dir=data_dir,
             split='val',
             max_samples=max_val_samples,
             clip_model=self.clip_model,
-            device=self.device
+            clip_preprocess=self.clip_preprocess
         )
         
         print(f"Train samples: {len(self.train_dataset)}")
@@ -308,6 +374,9 @@ class AlignmentTrainer:
     
     def create_dataloaders(self, batch_size=32, num_workers=4):
         """Create data loaders"""
+        # Fix: Reduce num_workers for stability
+        num_workers = min(num_workers, 2) if os.name == 'nt' else num_workers  # Windows compatibility
+        
         self.train_loader = DataLoader(
             self.train_dataset,
             batch_size=batch_size,
@@ -338,32 +407,36 @@ class AlignmentTrainer:
         progress_bar = tqdm(self.train_loader, desc='Training')
         
         for batch in progress_bar:
-            # Get batch data
-            visual_emb = batch['visual_embedding'].to(self.device)
-            text_emb = batch['text_embedding'].to(self.device)
-            
-            # Forward pass
-            optimizer.zero_grad()
-            aligned_visual, aligned_text = self.alignment_model(visual_emb, text_emb)
-            
-            # Compute loss
-            loss, similarity = self.criterion(aligned_visual, aligned_text)
-            
-            # Backward pass
-            loss.backward()
-            optimizer.step()
-            
-            # Update metrics
-            total_loss += loss.item()
-            num_batches += 1
-            
-            # Update progress bar
-            progress_bar.set_postfix({
-                'Loss': f'{loss.item():.4f}',
-                'Avg Loss': f'{total_loss/num_batches:.4f}'
-            })
+            try:
+                # Get batch data
+                visual_emb = batch['visual_embedding'].to(self.device)
+                text_emb = batch['text_embedding'].to(self.device)
+                
+                # Forward pass
+                optimizer.zero_grad()
+                aligned_visual, aligned_text = self.alignment_model(visual_emb, text_emb)
+                
+                # Compute loss
+                loss, similarity = self.criterion(aligned_visual, aligned_text)
+                
+                # Backward pass
+                loss.backward()
+                optimizer.step()
+                
+                # Update metrics
+                total_loss += loss.item()
+                num_batches += 1
+                
+                # Update progress bar
+                progress_bar.set_postfix({
+                    'Loss': f'{loss.item():.4f}',
+                    'Avg Loss': f'{total_loss/num_batches:.4f}'
+                })
+            except Exception as e:
+                print(f"Error in training batch: {e}")
+                continue
         
-        return total_loss / num_batches
+        return total_loss / max(num_batches, 1)
     
     def validate(self):
         """Validate the model"""
@@ -373,20 +446,24 @@ class AlignmentTrainer:
         
         with torch.no_grad():
             for batch in tqdm(self.val_loader, desc='Validation'):
-                # Get batch data
-                visual_emb = batch['visual_embedding'].to(self.device)
-                text_emb = batch['text_embedding'].to(self.device)
-                
-                # Forward pass
-                aligned_visual, aligned_text = self.alignment_model(visual_emb, text_emb)
-                
-                # Compute loss
-                loss, _ = self.criterion(aligned_visual, aligned_text)
-                
-                total_loss += loss.item()
-                num_batches += 1
+                try:
+                    # Get batch data
+                    visual_emb = batch['visual_embedding'].to(self.device)
+                    text_emb = batch['text_embedding'].to(self.device)
+                    
+                    # Forward pass
+                    aligned_visual, aligned_text = self.alignment_model(visual_emb, text_emb)
+                    
+                    # Compute loss
+                    loss, _ = self.criterion(aligned_visual, aligned_text)
+                    
+                    total_loss += loss.item()
+                    num_batches += 1
+                except Exception as e:
+                    print(f"Error in validation batch: {e}")
+                    continue
         
-        return total_loss / num_batches
+        return total_loss / max(num_batches, 1)
     
     def train(self, 
               epochs=epochs,
@@ -396,9 +473,8 @@ class AlignmentTrainer:
               data_dir=data_dir,
               max_train_samples=max_train_samples,
               max_val_samples=max_val_samples):
-        """
-        Full training pipeline
-        """
+        """Full training pipeline"""
+        
         print("\nDataset initialization...")
         # Create datasets
         self.create_datasets(data_dir, max_train_samples, max_val_samples)
@@ -408,7 +484,6 @@ class AlignmentTrainer:
         
         # Setup optimizer
         optimizer = optim.Adam(self.alignment_model.parameters(), lr=learning_rate)
-        #scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
         
         print("\n\nTraining phase...")
         # Training loop
@@ -425,27 +500,25 @@ class AlignmentTrainer:
             val_loss = self.validate()
             self.val_losses.append(val_loss)
             
-            # Update learning rate
-            #scheduler.step()
-            current_lr = optimizer.param_groups[0]['lr']
-            
             print(f"Train Loss: {train_loss:.4f}")
-            print(f"Val Loss: {val_loss:.4f}\n")
+            print(f"Val Loss: {val_loss:.4f}")
             
             # Save best model
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
-                best_model_path = os.path.join(self.model_save_path, f'best_alignment_model_e{epoch+1}.pth')
+                best_model_path = os.path.join(self.model_save_path, f'alignment_model_best_e{epoch+1}.pth')
                 self.alignment_model.save_model(best_model_path)
-                print(f"💾 New best model saved! Val Loss: {val_loss:.4f}")
-        
-        # Final save
-        final_model_path = os.path.join(self.model_save_path, 'final_alignment_model.pth')
-        self.alignment_model.save_model(final_model_path)
+                print(f"New best model saved! Val Loss: {val_loss:.4f}")
+            
+            # Save periodic checkpoints
+            if (epoch + 1) % save_every == 0:
+                checkpoint_path = os.path.join(self.model_save_path, f'alignment_model_e{epoch+1}.pth')
+                self.alignment_model.save_model(checkpoint_path)
+                print(f"Checkpoint saved: {checkpoint_path}")
         
         # Plot training curves
-        self.plot_training_curves()
         print("\n\nTRAINING COMPLETED!")
+        self.plot_training_curves()
         print(f"Best validation loss: {best_val_loss:.4f}")
         print(f"Models saved in: {self.model_save_path}")
     
@@ -464,27 +537,17 @@ class AlignmentTrainer:
         plot_path = os.path.join(self.model_save_path, 'training_curves.png')
         plt.savefig(plot_path, dpi=300, bbox_inches='tight')
         plt.show()
-        
-        print(f"Training curves saved: {plot_path}")
 
-def quick_test():
-    """Quick test with minimal data"""
-    print("Running quick test...")
-    
-    trainer = AlignmentTrainer(model_save_path='./test_alignment')
-    trainer.train(
-        epochs=3,
-        learning_rate=1e-4,
-        batch_size=8,
-        max_train_samples=100,
-        max_val_samples=20
-    )
-    
-    print("Quick test completed!")
 
 # Main training execution
 if __name__ == "__main__":
     print("COCO Alignment Module Training")
-    print("\n")
-    trainer = AlignmentTrainer()   
-    trainer.train()
+    print("=" * 50)
+    
+    try:
+        trainer = AlignmentTrainer()   
+        trainer.train()
+    except Exception as e:
+        print(f"Training failed with error: {e}")
+        import traceback
+        traceback.print_exc()
