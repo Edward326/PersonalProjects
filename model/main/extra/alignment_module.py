@@ -11,7 +11,7 @@ class ContrastiveLoss(nn.Module):
     """
     def __init__(self, temperature=0.07):
         super(ContrastiveLoss, self).__init__()
-        self.temperature = nn.Parameter(torch.tensor([temperature])) 
+        self.temperature = temperature 
         self.cross_entropy = nn.CrossEntropyLoss()
         
     def forward(self, visual_features, text_features):
@@ -28,7 +28,7 @@ class ContrastiveLoss(nn.Module):
         batch_size = visual_features.size(0)
         
         # Compute similarity matrix
-        similarity_matrix = torch.matmul(visual_features, text_features.T) / self.temperature.clamp(min=1e-8)
+        similarity_matrix = torch.matmul(visual_features, text_features.T) / self.temperature
         
         # Labels are diagonal (positive pairs)
         labels = torch.arange(batch_size, device=visual_features.device)
@@ -113,6 +113,34 @@ class AlignmentModule(nn.Module):
         
         return aligned_visual, aligned_text
     
+    def encode_image(self, image_features):
+        """
+        Encode image features through the alignment module
+        
+        Args:
+            image_features: Tensor of shape [batch_size, input_dim]
+            
+        Returns:
+            aligned_image: Tensor of shape [batch_size, output_dim]
+        """
+        aligned_visual = self.visual_alignment(image_features)
+        aligned_image = F.normalize(aligned_visual, p=2, dim=-1)
+        return aligned_image
+    
+    def encode_text(self, text_features):
+        """
+        Encode text features through the alignment module
+        
+        Args:
+            text_features: Tensor of shape [batch_size, input_dim]
+            
+        Returns:
+            aligned_text: Tensor of shape [batch_size, output_dim]
+        """
+        aligned_text = self.text_alignment(text_features)
+        aligned_text = F.normalize(aligned_text, p=2, dim=-1)
+        return aligned_text
+
     def compute_similarity(self, aligned_visual, aligned_text):
         """
         Compute cosine similarity between aligned features
