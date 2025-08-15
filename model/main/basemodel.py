@@ -15,7 +15,6 @@ yolo_model_param='../saved/YoloV8/yolov8n.pt'
 alignmment_module_path='../../saved/AlignmentModule/alignment_model.pth'
 clip_model_base_arh='ViT-B/32'
 base_dataset='coco'
-
 # COCO Classes dictionary (same as before)
 COCO_CLASSES = {
     0: 'person', 1: 'bicycle', 2: 'car', 3: 'motorcycle', 4: 'airplane',
@@ -113,6 +112,7 @@ class HybridLightCapYOLOv8(nn.Module):
         # TinyBERT for caption generation
         self.tokenizer = AutoTokenizer.from_pretrained('huawei-noah/TinyBERT_General_4L_312D')
         self.bert_model = AutoModel.from_pretrained('huawei-noah/TinyBERT_General_4L_312D')
+        
         # Caption generation components (updated for aligned feature dimensions)
         self.caption_decoder = nn.TransformerDecoder(
             nn.TransformerDecoderLayer(d_model=self.alignment_module.output_dim, nhead=8, batch_first=True),
@@ -148,14 +148,15 @@ class HybridLightCapYOLOv8(nn.Module):
         print(f"   Shape: {aligned_text_embeddings.shape}")  # [80, aligned_dim]
         print("🚀 Visual concepts pre-computed and cached for fast inference!")
         
-    def detect_objects(self, image):
-        """Detect objects using YOLOv8"""
+    def detect_objects(self, images):
+        """Detect objects using YOLOv8 - handles single image and batch"""
         with torch.no_grad():
-            results = self.yolo(image)
-            
-        detections = []
-        if len(results) > 0:
-            result = results[0]
+            results = self.yolo(images)
+        
+        # Process all results (works for single image(phone foward) or batch(training foward))
+        all_detections = []
+        for result in results:
+            detections = []
             if result.boxes is not None:
                 boxes = result.boxes.xyxy.cpu().numpy()
                 scores = result.boxes.conf.cpu().numpy()
@@ -168,13 +169,107 @@ class HybridLightCapYOLOv8(nn.Module):
                         'class_id': int(cls),
                         'class_name': COCO_CLASSES.get(int(cls), 'unknown')
                     })
+            all_detections.append(detections)
                     
-        return detections
+        return all_detections
+    
+    def extract_batch_roi_features(self, images, all_detections):
+        """
+        Extract ROI features for batch of images (training mode)
+        Returns stacked visual features from all images
+        """
+        all_roi_features = []
+        all_class_labels = []
+        
+        for image, detections in zip(images, all_detections):
+            if isinstance(image, torch.Tensor):
+                image = transforms.ToPILImage()(image)
+            elif isinstance(image, np.ndarray):
+                image = Image.fromarray(image)
+                
+            if not detections:
+                continue
+                
+            roi_features = []
+            class_labels = []
+            
+            for det in detections:
+                x1, y1, x2, y2 = map(int, det['bbox'])
+                
+                # Ensure valid crop coordinates
+                x1, y1 = max(0, x1), max(0, y1)
+                x2, y2 = min(image.width, x2), min(image.height, y2)
+                
+                if x2 <= x1 or y2 <= y1:
+                    continue
+                    
+                # Crop region
+                roi = image.crop((x1, y1, x2, y2))
+                
+                # Preprocess for CLIP
+                roi_tensor = self.clip_preprocess(roi).unsqueeze(0).to(self.device)
+                
+                # Extract visual features using CLIP
+                with torch.no_grad():
+                    visual_features = self.clip_model.encode_image(roi_tensor).squeeze(0)
+                    
+                roi_features.append(visual_features)
+                class_labels.append(det['class_name'])
+                    
+            if roi_features:
+                # Stack visual features for this image
+                image_roi_features = torch.stack(roi_features)  # [num_regions, 512]
+                
+                # Process through alignment module VISUAL ENCODER ONLY
+                with torch.no_grad():
+                    aligned_visual = self.alignment_module.encode_visual(image_roi_features)
+                    
+                all_roi_features.append(aligned_visual)
+                all_class_labels.extend(class_labels)
+        
+        if all_roi_features:
+            # Stack all ROI features from all images
+            batch_roi_features = torch.cat(all_roi_features, dim=0)  # [total_regions, aligned_dim]
+            return batch_roi_features, all_class_labels
+        else:
+            return torch.zeros((0, self.alignment_module.output_dim)).to(self.device), []
+        
+    def draw_single_image_bboxes(self, image, detections, line_width=2, color=(0, 255, 0)):
+        """
+        Draw bounding boxes on single image for phone inference
+        
+        Args:
+            image: Input image (numpy array or PIL Image)
+            detections: List of detections for this image
+            line_width: Width of bounding box lines
+            color: RGB color tuple for bounding boxes
+        """
+        if isinstance(image, torch.Tensor):
+            image = image.cpu().numpy()
+            if image.shape[0] == 3:
+                image = np.transpose(image, (1, 2, 0))
+            image = (image * 255).astype(np.uint8)
+        elif isinstance(image, Image.Image):
+            image = np.array(image)
+            
+        output_image = image.copy()
+        
+        for det in detections:
+            x1, y1, x2, y2 = map(int, det['bbox'])
+                
+            # Draw bbox
+            cv2.rectangle(output_image, (x1, y1), (x2, y2), color, line_width)
+            
+            # Add class name and score
+            label = f"{det['class_name']}: {det['score']:.2f}"
+            cv2.putText(output_image, label, (x1, y1-10), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, line_width)
+                       
+        return output_image
     
     def extract_roi_features(self, image, detections):
         """
-        Extract and align ROI features using VISUAL ENCODER ONLY
-        Much faster since we don't process text concepts repeatedly
+        Extract and align ROI features for single image (phone inference)
         """
         if isinstance(image, torch.Tensor):
             image = transforms.ToPILImage()(image)
@@ -219,7 +314,6 @@ class HybridLightCapYOLOv8(nn.Module):
         # Process through alignment module VISUAL ENCODER ONLY
         with torch.no_grad():
             aligned_visual = self.alignment_module.encode_visual(roi_features)
-            # aligned_visual: [num_regions, aligned_dim] - same space as concept_vocabulary
             
         return aligned_visual, class_labels
     
@@ -318,40 +412,72 @@ class HybridLightCapYOLOv8(nn.Module):
         caption = self.tokenizer.decode(caption_tokens, skip_special_tokens=True)
         return caption
     
-    def forward(self, image):
-        """Complete forward pass implementing optimized LightCap pipeline"""
-        # Convert image to proper format
-        if isinstance(image, np.ndarray):
-            original_image = image.copy()
-            image_pil = Image.fromarray(image)
-        elif isinstance(image, Image.Image):
-            original_image = np.array(image)
-            image_pil = image
-        else:
-            raise ValueError("Input must be numpy array or PIL Image")
+    def forward(self, images):
+        """Complete forward pass - handles single image (phone) and batch (training)"""
+        # Handle input format
+        is_single_image = False
+        if isinstance(images, (np.ndarray, Image.Image)):
+            is_single_image = True
+            if isinstance(images, np.ndarray):
+                original_image = images.copy()
+                image_pil = Image.fromarray(images)
+            else:  # PIL Image
+                original_image = np.array(images)
+                image_pil = images
+            images = [images]  # Convert to batch format
             
-        # Step 1: Detect objects using YOLOv8
-        detections = self.detect_objects(original_image)
+        # Step 1: Detect objects for all images
+        all_detections = self.detect_objects(images)
         
-        if not detections:
-            return {
-                'image_with_bboxes': original_image,
-                'detections': [],
-                'caption': "No objects detected",
-                'roi_features': torch.zeros((0, self.alignment_module.output_dim)).to(self.device)
-            }
+        # Check if any detections found
+        if not any(det for det in all_detections):
+            if is_single_image:
+                return {
+                    'image_with_bboxes': original_image,
+                    'detections': [],
+                    'caption': "No objects detected",
+                    'roi_features': torch.zeros((0, self.alignment_module.output_dim)).to(self.device)
+                }
+            else:
+                return {
+                    'image_with_bboxes': None,  # No bbox drawing for batch
+                    'detections': all_detections,
+                    'caption': "No objects detected",
+                    'roi_features': torch.zeros((0, self.alignment_module.output_dim)).to(self.device)
+                }
         
-        # Step 2: Extract ROI features and process through alignment module VISUAL ENCODER ONLY
-        aligned_visual_features, detected_classes = self.extract_roi_features(image_pil, detections)
+        # Branch: Single image (phone inference)
+        if is_single_image:
+            detections = all_detections[0]
+            
+            # Draw bboxes on image
+            output_image = self.draw_single_image_bboxes(original_image, detections)
+            
+            # Extract ROI features for single image
+            aligned_visual_features, detected_classes = self.extract_roi_features(image_pil, detections)
+            
+            if aligned_visual_features.size(0) == 0:
+                return {
+                    'image_with_bboxes': output_image,
+                    'detections': detections,
+                    'caption': "No valid regions detected",
+                    'roi_features': torch.zeros((0, self.alignment_module.output_dim)).to(self.device)
+                }
         
-        if aligned_visual_features.size(0) == 0:
-            return {
-                'image_with_bboxes': original_image,
-                'detections': detections,
-                'caption': "No valid regions detected",
-                'roi_features': torch.zeros((0, self.alignment_module.output_dim)).to(self.device)
-            }
+        # Branch: Batch processing (training)
+        else:
+            # Extract ROI features for entire batch (no bbox drawing)
+            aligned_visual_features, detected_classes = self.extract_batch_roi_features(images, all_detections)
+            
+            if aligned_visual_features.size(0) == 0:
+                return {
+                    'image_with_bboxes': None,  # No bbox drawing for batch
+                    'detections': all_detections,
+                    'caption': "No valid regions detected",
+                    'roi_features': torch.zeros((0, self.alignment_module.output_dim)).to(self.device)
+                }
         
+        # Common processing for both single and batch
         # Step 3: Retrieve visual concepts using similarity matrix with confidence scores
         visual_concepts, concept_confidences = self.retrieve_visual_concepts(aligned_visual_features)
         
@@ -364,18 +490,27 @@ class HybridLightCapYOLOv8(nn.Module):
         # Step 6: Generate caption
         caption = self.generate_caption(multimodal_input)
         
-        # Draw bounding boxes
-        output_image = self.draw_bboxes(original_image, detections)
-        
-        return {
-            'image_with_bboxes': output_image,
-            'detections': detections,
-            'caption': caption,
-            'roi_features': modulated_features,
-            'visual_concepts': visual_concepts,
-            'concept_confidences': concept_confidences,
-            'aligned_features': aligned_visual_features
-        }
+        # Return appropriate format
+        if is_single_image:
+            return {
+                'image_with_bboxes': output_image,
+                'detections': detections,
+                'caption': caption,
+                'roi_features': modulated_features,
+                'visual_concepts': visual_concepts,
+                'concept_confidences': concept_confidences,
+                'aligned_features': aligned_visual_features
+            }
+        else:
+            return {
+                'image_with_bboxes': None,  # No bbox drawing for batch
+                'detections': all_detections,
+                'caption': caption,
+                'roi_features': modulated_features,
+                'visual_concepts': visual_concepts,
+                'concept_confidences': concept_confidences,
+                'aligned_features': aligned_visual_features
+            }
     
     def draw_bboxes(self, image, detections):
         """Draw bounding boxes on image"""
@@ -419,13 +554,17 @@ class HybridLightCapYOLOv8(nn.Module):
         return output_image
     
     def process_live(self, frame):
-        """Process live frame from camera"""
+        """Process live frame from camera (single image)"""
         return self.forward(frame)
     
     def process_static(self, image_path):
-        """Process static image from file"""
+        """Process static image from file (single image)"""
         image = Image.open(image_path).convert('RGB')
         return self.forward(np.array(image))
+        
+    def process_batch(self, image_batch):
+        """Process batch of images (training mode)"""
+        return self.forward(image_batch)
     
     def profile_performance(self):
         """Display performance optimizations"""
