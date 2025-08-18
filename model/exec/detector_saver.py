@@ -1,11 +1,14 @@
 import os,sys
-import torch
+parent_dir = os.path.abspath(os.path.join(".."))
+if not parent_dir in sys.path:
+    sys.path.append(parent_dir)
+from main.detector import YOLOv8Optimizer
 from torch.utils.mobile_optimizer import optimize_for_mobile
-implicit_path='../saved/detector/yolov8n_mobile.ptl'
-model_to_export='yolov8n.pt'
+model_path='yolov8n.pt'
+save_path='../saved/detector/yolov8n_mobile.ptl'
+class_names_path = '../saved/detector/coco_class_names.txt'
 
-os.system(f'yolo export model={model_to_export} format=torchscript optimize=True')
-ts_model = torch.jit.load("yolov8n.torchscript")
-ts_model.eval()
-optimized = optimize_for_mobile(ts_model)
-optimized._save_for_lite_interpreter(implicit_path)
+if __name__ == "__main__":
+    opt = YOLOv8Optimizer(model_path, save_path)
+    opt.export_to_ptl()
+    opt.save_class_names(class_names_path)

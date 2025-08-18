@@ -1,136 +1,81 @@
 import torch
-import torch.nn as nn
 from ultralytics import YOLO
-import torch.quantization as quant
+from torch.utils.mobile_optimizer import optimize_for_mobile
 import os
 
 class YOLOv8Optimizer:
-    def __init__(self, model_size='n'):
+    def __init__(self, model_path, save_path):
         """
-        Initialize YOLOv8 model with optimization capabilities
-        model_size: 'n', 's', 'm', 'l', 'x' (nano, small, medium, large, extra-large)
+        model_path: path to YOLO .pt model (e.g., 'yolov8n.pt')
+        save_path: final export path for .ptl file (e.g., '../saved/detector/yolov8n_mobile.ptl')
         """
-        self.model_size = model_size
+        self.model_path = model_path
+        self.save_path = save_path
         self.model = None
-        self.optimized_model = None
         self.class_names = None
-        
+
     def load_model(self):
         """Load YOLOv8 model"""
-        print(f"🔄 Loading YOLOv8{self.model_size} model...")
-        self.model = YOLO(f'yolov8{self.model_size}.pt')
-        
-        # Get class names for later use
-        self.class_names = self.model.names
-        print("✅ YOLOv8 model loaded successfully")
-        return self.model
-    
-    def apply_quantization(self):
-        """Apply dynamic quantization for mobile deployment"""
-        print("🔧 Applying dynamic quantization...")
-        
-        # Get the PyTorch model from ultralytics wrapper
-        pytorch_model = self.model.model
-        
-        # Set to evaluation mode
-        pytorch_model.eval()
-        
-        # Apply dynamic quantization - be more conservative for mobile
+        print(f"📄 Loading YOLO model from {self.model_path}...")
         try:
-            quantized_model = torch.quantization.quantize_dynamic(
-                pytorch_model,
-                {nn.Linear, nn.Conv2d},  # Quantize these layer types
-                dtype=torch.qint8
-            )
-            
-            # Wrap back for ultralytics compatibility
-            self.model.model = quantized_model
-            self.optimized_model = self.model
-            
-            print("✅ Dynamic quantization applied")
+            self.model = YOLO(self.model_path)
+            self.class_names = self.model.names
+            print("✅ YOLOv8 model loaded successfully")
+            return self.model
         except Exception as e:
-            print(f"⚠️ Quantization failed, using original model: {e}")
-            self.optimized_model = self.model
+            print(f"❌ Failed to load YOLOv8 model: {e}")
+            self.model = None
+            self.class_names = None
         
-        return self.optimized_model
-    
-    def optimize_for_mobile(self):
-        """Complete optimization pipeline for mobile deployment"""
-        print("📱 Starting mobile optimization pipeline...")
-        
-        # Load model
-        self.load_model()
-        
-        # Apply light quantization (conservative approach)
-        self.apply_quantization()
-        
-        print("✅ Mobile optimization complete")
-        return self.optimized_model
-    
-    def get_exportable_model(self):
-        """Get a model ready for TorchScript export"""
-        if self.optimized_model is None:
-            self.optimize_for_mobile()
-        
-        # Return the core PyTorch model for export
-        return self.optimized_model.model
-    
+    def export_to_ptl(self):
+        """Export YOLOv8 to TorchScript + optimize for mobile -> save .ptl"""
+        if self.model is None:
+            self.load_model()
+
+        print("🔧 Exporting to TorchScript...")
+        try:
+            exported_file = self.model.export(
+                format="torchscript",
+                optimize=True,
+                half=False,
+                dynamic=False,
+                simplify=True
+            )
+
+            if not exported_file or not os.path.exists(exported_file):
+                print(f"❌ Export failed: {exported_file} not found")
+                return None
+
+            # Load TorchScript model
+            ts_model = torch.jit.load(exported_file)
+            ts_model.eval()
+
+            # Optimize for mobile
+            print("📱 Optimizing TorchScript for mobile...")
+            optimized_model = optimize_for_mobile(ts_model)
+
+            # Save as Lite Interpreter .ptl
+            optimized_model._save_for_lite_interpreter(self.save_path)
+            print(f"✅ Export complete! Saved at {self.save_path}")
+            os.remove(self.model_path);os.remove(os.path.splitext(self.model_path)[0]+'.torchscript')
+            return self.save_path
+
+        except Exception as e:
+            print(f"❌ Export to .ptl failed: {e}")
+            return None
+
     def get_class_names(self):
-        """Get COCO class names dictionary"""
         if self.class_names is None and self.model is not None:
             self.class_names = self.model.names
         return self.class_names
-    
-    def test_inference(self, test_image_path=None):
-        """Test inference speed and accuracy"""
-        print("🧪 Testing inference...")
-        
-        if test_image_path is None:
-            # Create dummy input for testing
-            dummy_input = torch.randn(1, 3, 640, 640)
-            print("Using dummy input for testing")
-        
-        model_to_test = self.optimized_model if self.optimized_model else self.model
-        
-        # Warm up
-        with torch.no_grad():
-            for _ in range(5):
-                if test_image_path:
-                    _ = model_to_test(test_image_path)
-                else:
-                    # For dummy input, we need to use the pytorch model directly
-                    _ = model_to_test.model(dummy_input)
-        
-        # Time inference
-        import time
-        start_time = time.time()
-        
-        with torch.no_grad():
-            for _ in range(10):
-                if test_image_path:
-                    results = model_to_test(test_image_path)
-                else:
-                    results = model_to_test.model(dummy_input)
-        
-        end_time = time.time()
-        avg_time = (end_time - start_time) / 10
-        
-        print(f"⏱️ Average inference time: {avg_time:.3f} seconds")
-        print(f"🚀 FPS: {1/avg_time:.1f}")
-        
-        return avg_time
 
-if __name__ == "__main__":
-    # Example usage
-    optimizer = YOLOv8Optimizer(model_size='n')  # Use nano version for mobile
-    
-    # Optimize model
-    optimized_model = optimizer.optimize_for_mobile()
-    
-    # Test inference
-    optimizer.test_inference()
-    
-    print("\n📋 Optimization Summary:")
-    print("- Dynamic quantization applied for faster inference")
-    print("- Model optimized for mobile deployment")
-    print("- Ready for TorchScript conversion")
+    def save_class_names(self, output_path):
+        """Save COCO class names to file"""
+        class_names = self.get_class_names()
+        if class_names:
+            with open(output_path, "w") as f:
+                for idx, name in class_names.items():
+                    f.write(f"{idx},{name}\n")
+            print(f"✅ Class names saved to {output_path}")
+            return output_path
+        return None
