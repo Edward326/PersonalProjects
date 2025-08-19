@@ -1,17 +1,26 @@
 import os,sys
+from PIL import Image
 parent_dir = os.path.abspath(os.path.join(".."))
 if not parent_dir in sys.path:
     sys.path.append(parent_dir)
-from main.captioner import BLIPVQAWrapper,export_blip_vqa_to_onnx,quantize_onnx_model
+from main.captioner import BLIPCaptionConverter
+model_name="Salesforce/blip-image-captioning-base"
+checkpoint=None
+save_path="../saved/captioner"
 
+# --- Main Execution ---
 if __name__ == "__main__":
-    export_blip_vqa_to_onnx()
-    
-    # Optionally quantize the models
-    export_dir = "../saved/captioner"
-    onnx_files = [f for f in os.listdir(export_dir) if f.endswith('.onnx')]
-    
-    for onnx_file in onnx_files:
-        onnx_path = os.path.join(export_dir, onnx_file)
-        quantized_path = os.path.join(export_dir, f"quantized_{onnx_file}")
-        quantize_onnx_model(onnx_path, quantized_path)
+    captioner = BLIPCaptionConverter(model_name=model_name,checkpoint=checkpoint)
+
+    # Test caption generation with the PyTorch model
+    print("\nGenerating a sample caption...")
+    try:
+        test_image = Image.open("dataset-card.jpg").convert("RGB")
+        caption = captioner.generate_caption_pytorch(test_image)
+        print(f"Caption:\n{caption}")
+    except Exception as e:
+        print(f"Could not generate caption: {e}")
+
+    # Export the vision model to ONNX for mobile deployment
+    #print("\nExporting vision model to ONNX...")
+    #captioner.export_to_onnx(save_path)
