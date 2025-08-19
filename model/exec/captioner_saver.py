@@ -15,12 +15,12 @@ if __name__ == "__main__":
     # Test caption generation with the PyTorch model
     print("\nGenerating a sample caption...")
     try:
-        test_image = Image.open("dataset-card.jpg").convert("RGB")
+        test_image = Image.new(mode="RGB", size=(256, 256),color='red')
         caption = captioner.generate_caption_pytorch(test_image)
         print(f"Caption:\n{caption}")
     except Exception as e:
         print(f"Could not generate caption: {e}")
 
-    # Export the vision model to ONNX for mobile deployment
-    #print("\nExporting vision model to ONNX...")
-    #captioner.export_to_onnx(save_path)
+    #Export the vision model to ONNX for mobile deployment
+    print("\nExporting vision model to ONNX...")
+    captioner.export_to_onnx(save_path)
