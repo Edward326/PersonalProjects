@@ -1,0 +1,6 @@
+Name:
+-introduce numele
+
+Next:
+-verifica daca numele e corect, daca nu reeseteaza input de nume si afiseasza boxul de eroare care dispare dupa apsarea but. OK
+    			      , daca da seteaza constanta de nume, si prompt la contirbute to our research(agree->UserInfoE1/disagree->UserInfo2)

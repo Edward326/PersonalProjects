@@ -1,0 +1,11 @@
+Box,Text,Background:
+-se va seta constanta r,g,b prin slider(0->255) pentru box,text,backround si se va actualiza real time pe imaginea de exemplu culoarea
+
+Switch Bold:
+-va seta cionstata de bold la text, si va actualiza real time pe imagenea de exemplu text bold
+
+Info:
+-va afisa inforamtion tab, care se dezact prin apasare but. OK
+
+Next:
+-seteaza constantele si merge la UserAccesibility2

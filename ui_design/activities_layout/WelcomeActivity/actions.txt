@@ -1,0 +1,10 @@
+Butonul de limbha, sageata:
+-deschide meniu cu 2 optinui si slider
+
+Meniu:
+-va seta o constanta de limba
+-va incarca WelcomeActivityRO daca romanian
+-daca e pe Welcome ActivityRO va icnarca WelcomeActivity
+
+Butonul de next:
+-lanseaza LoaderActivity

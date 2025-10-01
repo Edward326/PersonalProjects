@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App Name -->
+    <string name="app_name">VisionAssist</string>
+
+    <!-- Welcome Screen -->
+    <string name="welcome_to">Welcome to</string>
+
+    <!-- Common -->
+    <string name="vision_assist_logo">VisionAssist Logo</string>
+    <string name="language_icon">Language selection icon</string>
+    <string name="dropdown_arrow">Dropdown arrow</string>
+    <string name="forward_arrow">Forward arrow</string>
+    <string name="back_button">Back navigation button</string>
+    <string name="home_button">Home navigation button</string>
+    <string name="recent_apps_button">Recent apps navigation button</string>
+    <string name="continue_button">Continue</string>
+    <string name="next">Next</string>
+    <string name="back">Back</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
+
+    <!-- LoadingBox -->
+    <string name="wait_en">Please wait</string>
+    <string name="wait_ro">Vă rugăm așteptați</string>
+
+</resources>

@@ -1,0 +1,13 @@
+buildscript {
+    ext {
+        kotlin_version = '2.2.20'
+    }
+    repositories {
+        google()      // <-- Android plugin lives here
+        mavenCentral()// <-- Kotlin plugin lives here
+    }
+    dependencies {
+        classpath "com.android.tools.build:gradle:8.12.2"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}

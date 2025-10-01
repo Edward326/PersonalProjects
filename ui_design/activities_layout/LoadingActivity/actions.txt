@@ -1,0 +1,8 @@
+Butonul de Load profile:
+-deschiude file exporer
+-pana verifica si incarca setarile->loading please wait
+-fisierul nu e valid->afiseaza a doua informatie, sleep, si merge in UserInfo1Activity
+-fisierul e valid->incarca setarile, afiseaza prima informatie, sleep, si merge in HomeActivity
+
+Butonul de New profile:
+-merge in UserInfo1Activity

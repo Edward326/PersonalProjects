@@ -1,0 +1,2 @@
+-cand aplcaitia poroentse , se verifica temp telelofonul, si daca se depasteste un MAX_TEMP se inchide aplciatia
+-pentru blind/lowweysistigness  pentru detectiue si caption se verifica temp telelofonul, si daca se depasteste un MAX_TEMP se inchide aplciatia
