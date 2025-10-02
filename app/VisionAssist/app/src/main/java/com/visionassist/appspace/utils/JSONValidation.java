@@ -67,20 +67,24 @@ public class JSONValidation {
         }
 
         if(jsonObject.has("user_name")) {
-            if (jsonObject.getBoolean("contributor") == true) {
-                if (!jsonObject.has("age")) {
-                    return 2;
+            try {
+                if (jsonObject.getBoolean("contributor") == true) {
+                    if (!jsonObject.has("age")) {
+                        return 2;
+                    }
+                    if (!jsonObject.has("visual_condition") && !isBlindProfile) {
+                        return 3;
+                    }
+                    if (!jsonObject.has("email")) {
+                        return 4;
+                    }
+                    if (isBlindProfile) {
+                        if (!jsonObject.has("tts_pitch"))
+                            return 5;
+                    }
                 }
-                if (!jsonObject.has("visual_condition") && !isBlindProfile) {
-                    return 3;
-                }
-                if (!jsonObject.has("email")) {
-                    return 4;
-                }
-                if(isBlindProfile){
-                    if(!jsonObject.has("tts_pitch"))
-                        return 5;
-                }
+            }catch (JSONException e) {
+                return 1;
             }
         }
         else

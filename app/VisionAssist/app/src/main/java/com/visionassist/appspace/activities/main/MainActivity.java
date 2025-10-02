@@ -32,11 +32,8 @@ public class MainActivity extends AppCompatActivity {
 
         logoImage.setVisibility(View.VISIBLE);
         loadingManager.showLoading("Verifying profile, please wait");
-        try {
-            Utils.checkProfile(this);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+
+        //Utils.checkProfile(this);
 
 
         loadingManager.hideLoading();
