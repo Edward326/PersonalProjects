@@ -17,45 +17,36 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.visionassist.appspace.utils.Language
-import com.visionassist.appspace.utils.AppConfig
 import com.visionassist.appspace.R
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
+import com.visionassist.appspace.utils.load_loadingText
 
 val robotoRegular = FontFamily(
     Font(R.font.roboto_regular_ttf, weight = FontWeight.Medium)
 )
 
-fun loadingTextFor(language: Language, context: Context): String {
-    return when (language.code) {
-        "en" -> context.getString(R.string.wait_en)
-        "ro" -> context.getString(R.string.wait_ro)
-        else -> context.getString(R.string.wait_en)
-    }
-}
-
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun LoadingComponent(
     isVisible: Boolean = true,
-    loadingText: String = loadingTextFor(AppConfig.mainLanguage, LocalContext.current),
-    modifier: Modifier = Modifier
+    loadingText: String = "_undefined_",
+    modifier: Modifier = Modifier,
+    context: Context
 ) {
     // AnimatedVisibility with fade animation
     AnimatedVisibility(
@@ -86,7 +77,7 @@ fun LoadingComponent(
             ) {
                 // Loading Text
                 Text(
-                    text = loadingText,
+                    text = if((loadingText)=="_undefined_") load_loadingText(context) else loadingText,
                     fontSize = 12.sp,
                     fontFamily = robotoRegular,
                     fontWeight = FontWeight.Medium,
@@ -117,6 +108,7 @@ fun LoadingComponent(
 fun LoadingComponentPreview() {
     LoadingComponent(
         isVisible = true,
-        loadingText = "Please wait"
+        loadingText = "Please wait",
+        context = androidx.compose.ui.platform.LocalContext.current
     )
 }

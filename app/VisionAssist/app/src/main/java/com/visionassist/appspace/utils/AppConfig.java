@@ -3,4 +3,7 @@ package com.visionassist.appspace.utils;
 
 public class AppConfig {
     public static Language mainLanguage;
+    public static boolean blindness ;
+    public static float TTS_SPEECH_RATE;
+    public static float TTS_PITCH;
 }

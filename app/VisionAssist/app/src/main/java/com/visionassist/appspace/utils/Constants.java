@@ -2,6 +2,7 @@
 package com.visionassist.appspace.utils;
 
 import android.graphics.Color;
+import android.os.Build;
 
 public class Constants {
     // Model Configuration
@@ -35,11 +36,27 @@ public class Constants {
 
     // File Handling
     public static final String PROFILE_FILE = "profiles/profile.json";
-    public static final String TEMP_IMAGE_NAME = "temp_capture";
 
     // Intent Extras
     public static final String EXTRA_IMAGE_PATH = "extra_image_path";
     public static final String EXTRA_CAPTION_TEXT = "extra_caption_text";
+    public static final String EXTRA_PERMISSION_OPTION = "permission_option";
+    public static final String EXTRA_NEXT_ACTIVITY = "next_activity";
+
+    // Battery and Temperature Checks
+    public static final boolean APPLY_BATTERY_CHECK = true;
+    public static final int MIN_BATTERY_LEVEL = 15; // Minimum battery level percentage
+    public static final boolean APPLY_TEMPERATURE_CHECK = true;
+    public static final int MAX_PHONE_TEMPERATURE = 40; // Maximum temperature in Celsius
+
+    // Monitoring settings
+    public static final long WAIT_CHECK = 5000; // Check every 5 seconds (in milliseconds)
+
+    // API Level of the device
+    public static final int API_LEVEL = Build.VERSION.SDK_INT;
+
+    // Shutdown delay after showing error (in milliseconds)
+    public static final int SHUTDOWN_DELAY_MS = 10000;
 
     // Debug Configuration
     public static final boolean DEBUG_MODE = true; // Enable for detailed logging

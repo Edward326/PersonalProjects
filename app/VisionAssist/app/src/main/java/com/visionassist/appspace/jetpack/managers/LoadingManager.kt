@@ -1,13 +1,14 @@
 package com.visionassist.appspace.jetpack.managers
 
-import android.view.View
+import android.content.Context
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.ComposeView
 import com.visionassist.appspace.jetpack.design.LoadingComponent
 
 class LoadingManager(
     private val loadingBox: ComposeView,
-    private val initMessage: Boolean = false
+    private val initMessage: Boolean = false,
+    private val context: Context
 ) {
     private var isVisibleState = mutableStateOf(false)
     private var currentMessageState = mutableStateOf("Please wait")
@@ -21,11 +22,13 @@ class LoadingManager(
             if (initMessage) {
                 LoadingComponent(
                     isVisible = isVisibleState.value,
-                    loadingText = currentMessageState.value
+                    loadingText = currentMessageState.value,
+                    context=context
                 )
             } else {
                 LoadingComponent(
-                    isVisible = isVisibleState.value
+                    isVisible = isVisibleState.value,
+                    context=context
                 )
             }
         }

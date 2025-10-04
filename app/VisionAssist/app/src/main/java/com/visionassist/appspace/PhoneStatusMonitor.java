@@ -1,0 +1,211 @@
+package com.visionassist.appspace;
+
+import android.annotation.SuppressLint;
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.Application;
+import android.content.Context;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.util.Log;
+import android.util.Pair;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import com.visionassist.appspace.models.ttsengine.TTSManager;
+import com.visionassist.appspace.utils.AppConfig;
+import com.visionassist.appspace.utils.Constants;
+import com.visionassist.appspace.utils.Utils;
+import com.visionassist.appspace.utils.UtilsKt;
+
+public class PhoneStatusMonitor implements Application.ActivityLifecycleCallbacks {
+    private static final String TAG = "PhoneStatusMonitor";
+
+    private Context appContext;
+    private Handler handler;
+    private Runnable monitoringRunnable;
+    private boolean isMonitoring = false;
+    private int activeActivityCount = 0;
+    private Activity currentActivity;
+    private boolean errorShown = false;
+    private TTSManager ttsManager;
+    @SuppressLint("StaticFieldLeak")
+    private static PhoneStatusMonitor instance;
+
+    private PhoneStatusMonitor(Context context) {
+        this.appContext = context.getApplicationContext();
+        this.handler = new Handler(Looper.getMainLooper());
+        setupMonitoringRunnable();
+
+        // Initialize TTSManager here
+        this.ttsManager = new TTSManager(this.appContext);
+    }
+
+    public static void initialize(Application application) {
+        if (instance == null) {
+            instance = new PhoneStatusMonitor(application);
+            application.registerActivityLifecycleCallbacks(instance);
+            Log.d(TAG, "PhoneStatusMonitor initialized");
+        }
+    }
+
+    public static PhoneStatusMonitor getInstance() {
+        return instance;
+    }
+
+    private void setupMonitoringRunnable() {
+        monitoringRunnable = new Runnable() {
+            @Override
+            public void run() {
+                // Only monitor if the app is active and no error is currently displayed
+                if (isMonitoring && !errorShown) {
+                    checkPhoneStatus();
+                    handler.postDelayed(this, Constants.WAIT_CHECK);
+                }
+            }
+        };
+    }
+
+    private void checkPhoneStatus() {
+        try {
+            // Util.checkPhoneStatus returns Pair<BatteryStatus, TemperatureStatus>
+            Pair<Integer, Integer> status = Utils.checkPhoneStatus(appContext);
+            int batteryStatus = status.first;
+            int temperatureStatus = status.second;
+
+            Log.d(TAG, "Battery: " + batteryStatus + ", Temperature: " + temperatureStatus);
+            handlePhoneStatus(batteryStatus, temperatureStatus);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error checking phone status", e);
+        }
+    }
+
+    private void handlePhoneStatus(int batteryStatus, int temperatureStatus) {
+        String errorMessage = null;
+
+        if (Constants.APPLY_BATTERY_CHECK && batteryStatus == 1) {
+            errorMessage = UtilsKt.load_batteryLowText(appContext);
+        } else if (Constants.APPLY_TEMPERATURE_CHECK && temperatureStatus == 1) {
+            errorMessage = UtilsKt.load_tempErrorText(appContext);
+        }
+
+        if (errorMessage != null && currentActivity != null && !errorShown) {
+            errorShown = true;
+            showErrorAndShutdown(errorMessage);
+        }
+    }
+
+    private void showErrorAndShutdown(String message) {
+        if (currentActivity != null && !currentActivity.isFinishing()) {
+
+            // 1. Conditional Speaking Logic
+            if (AppConfig.blindness) {
+                // Speak the message before showing the visual dialog
+                // TTS pitch and speed are assumed to be constants in AppConfig or defaults are used (1.0f, 1.2f)
+                ttsManager.speak(message, 1.0f, 1.2f);
+            }
+
+            // 2. Show the AlertDialog on the main thread (No Exit button)
+            currentActivity.runOnUiThread(() -> new AlertDialog.Builder(currentActivity)
+                    .setTitle(UtilsKt.load_criticalWarning(appContext))
+                    .setMessage(message)
+                    .setCancelable(false) // User cannot dismiss this
+                    .show());
+
+            // 3. Schedule automatic shutdown after the delay
+            handler.postDelayed(() -> {
+                Log.w(TAG, "Automatic shutdown initiated after " + (Constants.SHUTDOWN_DELAY_MS / 1000) + " seconds.");
+                shutdownApp();
+            }, Constants.SHUTDOWN_DELAY_MS);
+        }
+    }
+
+    private void shutdownApp() {
+        stopMonitoring();
+        // Crucial: Shut down the TTS engine first
+        if (ttsManager != null) {
+            ttsManager.shutdown();
+        }
+
+        if (currentActivity != null) {
+            // Close all activities associated with this application
+            currentActivity.finishAffinity();
+        }
+        // Force exit after a short delay to allow the OS to clean up
+        new Handler(Looper.getMainLooper()).postDelayed(() -> System.exit(0), 300);
+    }
+
+    private void startMonitoring() {
+        if (!isMonitoring) {
+            isMonitoring = true;
+            errorShown = false;
+            handler.post(monitoringRunnable);
+            Log.d(TAG, "Monitoring started");
+        }
+    }
+
+    private void stopMonitoring() {
+        if (isMonitoring) {
+            isMonitoring = false;
+            handler.removeCallbacks(monitoringRunnable);
+            Log.d(TAG, "Monitoring stopped");
+        }
+    }
+
+    // --- ActivityLifecycleCallbacks Implementation (omitted for brevity, assume they are present) ---
+    // (Ensure all lifecycle callback methods are fully present in your final file)
+
+    @Override
+    public void onActivityCreated(@NonNull Activity activity, @Nullable Bundle savedInstanceState) {
+        currentActivity = activity;
+    }
+
+    @Override
+    public void onActivityStarted(@NonNull Activity activity) {
+        activeActivityCount++;
+        currentActivity = activity;
+        if (activeActivityCount == 1) {
+            startMonitoring(); // Start monitoring when the first activity starts
+        }
+    }
+
+    @Override
+    public void onActivityResumed(@NonNull Activity activity) {
+        currentActivity = activity;
+    }
+
+    @Override
+    public void onActivityPaused(@NonNull Activity activity) {
+    }
+
+    @Override
+    public void onActivityStopped(@NonNull Activity activity) {
+        activeActivityCount--;
+        if (activeActivityCount == 0) {
+            stopMonitoring(); // Stop monitoring when the last activity stops
+        }
+    }
+
+    @Override
+    public void onActivitySaveInstanceState(@NonNull Activity activity, @NonNull Bundle outState) {
+    }
+
+    @Override
+    public void onActivityDestroyed(@NonNull Activity activity) {
+        if (currentActivity == activity) {
+            currentActivity = null;
+        }
+    }
+
+    public void shutdown() {
+        stopMonitoring();
+        if (appContext instanceof Application) {
+            ((Application) appContext).unregisterActivityLifecycleCallbacks(this);
+        }
+        // Crucial: Shut down the TTS engine when the monitor is shut down
+        if (ttsManager != null) {
+            ttsManager.shutdown();
+        }
+    }
+}

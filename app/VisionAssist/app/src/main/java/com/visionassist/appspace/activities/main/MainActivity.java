@@ -9,14 +9,13 @@ import com.visionassist.appspace.R;
 import com.visionassist.appspace.jetpack.managers.LoadingManager;
 import com.visionassist.appspace.utils.JSONValidation;
 import com.visionassist.appspace.utils.Utils;
-
 import java.io.IOException;
+
 
 public class MainActivity extends AppCompatActivity {
 
     private LoadingManager loadingManager;
     private ImageView logoImage;
-    private View loadingOverlay;
     private ComposeView loadingBox;
 
     @Override
@@ -27,7 +26,7 @@ public class MainActivity extends AppCompatActivity {
         // 1. Initialize views
         logoImage = findViewById(R.id.logo_image);
         loadingBox = findViewById(R.id.loading_box);
-        loadingManager = new LoadingManager(loadingBox,true);
+        loadingManager = new LoadingManager(loadingBox,true,this);
         loadingManager.setupLoadingBox();
 
         logoImage.setVisibility(View.VISIBLE);

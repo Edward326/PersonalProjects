@@ -1,18 +1,11 @@
 //JSON file validation methods, verify if the file is json, its format(if the app format is respected) and for a full valid profile.
 package com.visionassist.appspace.utils;
 
-import java.io.IOException;
-import java.io.InputStream;
-import android.content.Context;
-import android.content.Intent;
 import android.util.Log;
-
 import org.json.JSONException;
 import org.json.JSONObject;
-import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 
 public class JSONValidation {
     private static final String TAG = "JSONValidation";
