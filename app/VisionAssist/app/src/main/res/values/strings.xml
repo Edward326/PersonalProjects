@@ -28,7 +28,7 @@
 
     <!-- Shutdown Error Messages -->
     <string name="temp_error_en">Device temperature is too high.The application will shut down to prevent damage.</string>
-    <string name="temp_error_ro">Temperatura dispozitivului este prea mare.Aplicația se va oprii pentru a preveni deteriorarea.</string>
+    <string name="temp_error_ro">Temperatura dispozitivului este prea mare.Aplicația se va opri pentru a preveni deteriorarea.</string>
     <string name="battery_low_en">Battery level is too low.Please charge your device immediately.Application will shutdown.</string>
     <string name="battery_low_ro"> Nivelul bateriei este prea scăzut.Vă rugăm să încărcați dispozitivul imediat.Aplicația se va opri.</string>
     <string name="critical_warning_en">Critical Warning!</string>

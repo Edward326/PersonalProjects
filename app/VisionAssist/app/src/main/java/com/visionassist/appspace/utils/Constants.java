@@ -30,7 +30,7 @@ public class Constants {
     public static final float TEXT_SIZE = 24.0f; // Increased text size
 
     // Text-to-Speech Configuration
-    public static final float TTS_SPEECH_RATE = 0.8f;
+    public static final float TTS_SPEECH_RATE = 1.0f;
     public static final float TTS_PITCH = 1.0f;
     public static final float CAPTION_TEXT_SIZE = 25.0f;
 
@@ -57,6 +57,11 @@ public class Constants {
 
     // Shutdown delay after showing error (in milliseconds)
     public static final int SHUTDOWN_DELAY_MS = 10000;
+    public static final int RETRY_TTS_DELAY_MS = 1000;
+    public static final long BLINDNESS_SHUTDOWN_DELAY_MS =10000;
+
+    // Language Check Attempts
+    public static final int MAX_LANGUAGE_CHECK_ATTEMPTS = 3;
 
     // Debug Configuration
     public static final boolean DEBUG_MODE = true; // Enable for detailed logging

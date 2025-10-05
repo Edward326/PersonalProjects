@@ -49,6 +49,7 @@ public class Utils {
                 if (temperature != -1) {
                     // Convert to degrees Celsius
                     float tempCelsius = temperature / 10.0f;
+                    Log.d(TAG, "Phone temperature: " + tempCelsius + "°C");
                     // Check against threshold from Constants
                     return (tempCelsius >= Constants.MAX_PHONE_TEMPERATURE) ? 1 : 0;
                 }
@@ -73,15 +74,16 @@ public class Utils {
             if (batteryStatus != null) {
                 // EXTRA_BATTERY_LOW is a boolean: true if the system considers the battery to be low.
                 boolean isLow;
-                if(Constants.API_LEVEL>= 28) {
-                    isLow = batteryStatus.getBooleanExtra(BatteryManager.EXTRA_BATTERY_LOW, false);
-                }
-                else {
+                //if(Constants.API_LEVEL>= 28) {
+                //    isLow = batteryStatus.getBooleanExtra(BatteryManager.EXTRA_BATTERY_LOW, false);
+                //}
+                //else {
                     int batteryPct = returnBatteryLevel(context);
                     if(batteryPct==-1)
                         return 0; // Unable to retrieve battery level, assume not low)
+                    Log.d(TAG, "Battery level: " + batteryPct);
                     isLow = batteryPct <= Constants.MIN_BATTERY_LEVEL;
-                }
+                //}
 
                 return (isLow)? 1 : 0;
             }

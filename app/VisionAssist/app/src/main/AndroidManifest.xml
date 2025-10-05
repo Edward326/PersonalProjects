@@ -29,6 +29,11 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".activities.newprofile.PermissionsActivity"
+            android:screenOrientation="portrait"
+            />
+
         <!-- Your other activities -->
 
     </application>

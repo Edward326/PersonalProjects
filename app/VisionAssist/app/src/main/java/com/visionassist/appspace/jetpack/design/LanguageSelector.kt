@@ -62,10 +62,10 @@ val robotoMedium = FontFamily(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun LanguageSelector(
-    selectedLanguage: Language = Language("en", "English"),
+    selectedLanguage: Language = Language("en", "English","US"),
     availableLanguages: List<Language> = listOf(
-        Language("en", "English"),
-        Language("ro", "Romanian")
+        Language("en", "English","US"),
+        Language("ro", "Română","RO"),
     ),
     onLanguageSelected: (Language) -> Unit = {}
 ) {

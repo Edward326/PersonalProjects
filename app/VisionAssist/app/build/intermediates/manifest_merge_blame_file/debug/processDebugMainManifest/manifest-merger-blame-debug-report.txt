@@ -1,0 +1,209 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.visionassist.objectdetector"
+4    android:versionCode="1"
+5    android:versionName="1.0" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="24"
+9        android:targetSdkVersion="35" />
+10
+11    <!-- Existing permissions -->
+12    <uses-feature
+12-->D:\Facultate\LICENTA\app\VisionAssist\app\src\main\AndroidManifest.xml:6:5-8:36
+13        android:name="android.hardware.camera"
+13-->D:\Facultate\LICENTA\app\VisionAssist\app\src\main\AndroidManifest.xml:7:9-47
+14        android:required="false" />
+14-->D:\Facultate\LICENTA\app\VisionAssist\app\src\main\AndroidManifest.xml:8:9-33
+15
+16    <uses-permission android:name="android.permission.CAMERA" />
+16-->D:\Facultate\LICENTA\app\VisionAssist\app\src\main\AndroidManifest.xml:10:5-65
+16-->D:\Facultate\LICENTA\app\VisionAssist\app\src\main\AndroidManifest.xml:10:22-62
+17    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+17-->D:\Facultate\LICENTA\app\VisionAssist\app\src\main\AndroidManifest.xml:11:5-80
+17-->D:\Facultate\LICENTA\app\VisionAssist\app\src\main\AndroidManifest.xml:11:22-77
+18    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+18-->D:\Facultate\LICENTA\app\VisionAssist\app\src\main\AndroidManifest.xml:12:5-81
+18-->D:\Facultate\LICENTA\app\VisionAssist\app\src\main\AndroidManifest.xml:12:22-78
+19    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+19-->D:\Facultate\LICENTA\app\VisionAssist\app\src\main\AndroidManifest.xml:13:5-76
+19-->D:\Facultate\LICENTA\app\VisionAssist\app\src\main\AndroidManifest.xml:13:22-73
+20
+21    <queries>
+21-->[androidx.camera:camera-extensions:1.5.0] C:\Users\eduar\.gradle\caches\8.13\transforms\7a6822b5cd00926606d868d02d2428b4\transformed\camera-extensions-1.5.0\AndroidManifest.xml:22:5-26:15
+22        <intent>
+22-->[androidx.camera:camera-extensions:1.5.0] C:\Users\eduar\.gradle\caches\8.13\transforms\7a6822b5cd00926606d868d02d2428b4\transformed\camera-extensions-1.5.0\AndroidManifest.xml:23:9-25:18
+23            <action android:name="androidx.camera.extensions.action.VENDOR_ACTION" />
+23-->[androidx.camera:camera-extensions:1.5.0] C:\Users\eduar\.gradle\caches\8.13\transforms\7a6822b5cd00926606d868d02d2428b4\transformed\camera-extensions-1.5.0\AndroidManifest.xml:24:13-86
+23-->[androidx.camera:camera-extensions:1.5.0] C:\Users\eduar\.gradle\caches\8.13\transforms\7a6822b5cd00926606d868d02d2428b4\transformed\camera-extensions-1.5.0\AndroidManifest.xml:24:21-83
+24        </intent>
+25    </queries>
+26
+27    <permission
+27-->[androidx.core:core:1.17.0] C:\Users\eduar\.gradle\caches\8.13\transforms\be79445bfc13589e70f397d603bd2825\transformed\core-1.17.0\AndroidManifest.xml:22:5-24:47
+28        android:name="com.visionassist.objectdetector.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+28-->[androidx.core:core:1.17.0] C:\Users\eduar\.gradle\caches\8.13\transforms\be79445bfc13589e70f397d603bd2825\transformed\core-1.17.0\AndroidManifest.xml:23:9-81
+29        android:protectionLevel="signature" />
+29-->[androidx.core:core:1.17.0] C:\Users\eduar\.gradle\caches\8.13\transforms\be79445bfc13589e70f397d603bd2825\transformed\core-1.17.0\AndroidManifest.xml:24:9-44
+30
+31    <uses-permission android:name="com.visionassist.objectdetector.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+31-->[androidx.core:core:1.17.0] C:\Users\eduar\.gradle\caches\8.13\transforms\be79445bfc13589e70f397d603bd2825\transformed\core-1.17.0\AndroidManifest.xml:26:5-97
+31-->[androidx.core:core:1.17.0] C:\Users\eduar\.gradle\caches\8.13\transforms\be79445bfc13589e70f397d603bd2825\transformed\core-1.17.0\AndroidManifest.xml:26:22-94
+32
+33    <application
+33-->D:\Facultate\LICENTA\app\VisionAssist\app\src\main\AndroidManifest.xml:15:5-39:19
+34        android:name="com.visionassist.appspace.VisionAssistApplication"
+34-->D:\Facultate\LICENTA\app\VisionAssist\app\src\main\AndroidManifest.xml:16:9-48
+35        android:allowBackup="true"
+35-->D:\Facultate\LICENTA\app\VisionAssist\app\src\main\AndroidManifest.xml:17:9-35
+36        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+36-->[androidx.core:core:1.17.0] C:\Users\eduar\.gradle\caches\8.13\transforms\be79445bfc13589e70f397d603bd2825\transformed\core-1.17.0\AndroidManifest.xml:28:18-86
+37        android:debuggable="true"
+38        android:extractNativeLibs="false"
+39        android:icon="@mipmap/ic_launcher"
+39-->D:\Facultate\LICENTA\app\VisionAssist\app\src\main\AndroidManifest.xml:18:9-43
+40        android:label="@string/app_name"
+40-->D:\Facultate\LICENTA\app\VisionAssist\app\src\main\AndroidManifest.xml:19:9-41
+41        android:theme="@style/AppTheme" >
+41-->D:\Facultate\LICENTA\app\VisionAssist\app\src\main\AndroidManifest.xml:20:9-40
+42
+43        <!-- Existing activities -->
+44        <activity
+44-->D:\Facultate\LICENTA\app\VisionAssist\app\src\main\AndroidManifest.xml:23:9-30:20
+45            android:name="com.visionassist.appspace.activities.main.MainActivity"
+45-->D:\Facultate\LICENTA\app\VisionAssist\app\src\main\AndroidManifest.xml:24:13-57
+46            android:exported="true" >
+46-->D:\Facultate\LICENTA\app\VisionAssist\app\src\main\AndroidManifest.xml:25:13-36
+47            <intent-filter>
+47-->D:\Facultate\LICENTA\app\VisionAssist\app\src\main\AndroidManifest.xml:26:13-29:29
+48                <action android:name="android.intent.action.MAIN" />
+48-->D:\Facultate\LICENTA\app\VisionAssist\app\src\main\AndroidManifest.xml:27:17-69
+48-->D:\Facultate\LICENTA\app\VisionAssist\app\src\main\AndroidManifest.xml:27:25-66
+49
+50                <category android:name="android.intent.category.LAUNCHER" />
+50-->D:\Facultate\LICENTA\app\VisionAssist\app\src\main\AndroidManifest.xml:28:17-77
+50-->D:\Facultate\LICENTA\app\VisionAssist\app\src\main\AndroidManifest.xml:28:27-74
+51            </intent-filter>
+52        </activity>
+53        <activity
+53-->D:\Facultate\LICENTA\app\VisionAssist\app\src\main\AndroidManifest.xml:32:9-35:15
+54            android:name="com.visionassist.appspace.activities.newprofile.PermissionsActivity"
+54-->D:\Facultate\LICENTA\app\VisionAssist\app\src\main\AndroidManifest.xml:33:13-70
+55            android:screenOrientation="portrait" />
+55-->D:\Facultate\LICENTA\app\VisionAssist\app\src\main\AndroidManifest.xml:34:13-49
+56
+57        <!-- Your other activities -->
+58
+59        <activity
+59-->[com.karumi:dexter:6.2.3] C:\Users\eduar\.gradle\caches\8.13\transforms\b972fc32aa8537acca1f97952739ad4e\transformed\dexter-6.2.3\AndroidManifest.xml:27:9-29:72
+60            android:name="com.karumi.dexter.DexterActivity"
+60-->[com.karumi:dexter:6.2.3] C:\Users\eduar\.gradle\caches\8.13\transforms\b972fc32aa8537acca1f97952739ad4e\transformed\dexter-6.2.3\AndroidManifest.xml:28:13-60
+61            android:theme="@style/Dexter.Internal.Theme.Transparent" />
+61-->[com.karumi:dexter:6.2.3] C:\Users\eduar\.gradle\caches\8.13\transforms\b972fc32aa8537acca1f97952739ad4e\transformed\dexter-6.2.3\AndroidManifest.xml:29:13-69
+62
+63        <uses-library
+63-->[androidx.camera:camera-extensions:1.5.0] C:\Users\eduar\.gradle\caches\8.13\transforms\7a6822b5cd00926606d868d02d2428b4\transformed\camera-extensions-1.5.0\AndroidManifest.xml:29:9-31:40
+64            android:name="androidx.camera.extensions.impl"
+64-->[androidx.camera:camera-extensions:1.5.0] C:\Users\eduar\.gradle\caches\8.13\transforms\7a6822b5cd00926606d868d02d2428b4\transformed\camera-extensions-1.5.0\AndroidManifest.xml:30:13-59
+65            android:required="false" />
+65-->[androidx.camera:camera-extensions:1.5.0] C:\Users\eduar\.gradle\caches\8.13\transforms\7a6822b5cd00926606d868d02d2428b4\transformed\camera-extensions-1.5.0\AndroidManifest.xml:31:13-37
+66
+67        <service
+67-->[androidx.camera:camera-camera2:1.5.0] C:\Users\eduar\.gradle\caches\8.13\transforms\68652d3ddf74c202133a583d4474eaf7\transformed\camera-camera2-1.5.0\AndroidManifest.xml:24:9-33:19
+68            android:name="androidx.camera.core.impl.MetadataHolderService"
+68-->[androidx.camera:camera-camera2:1.5.0] C:\Users\eduar\.gradle\caches\8.13\transforms\68652d3ddf74c202133a583d4474eaf7\transformed\camera-camera2-1.5.0\AndroidManifest.xml:25:13-75
+69            android:enabled="false"
+69-->[androidx.camera:camera-camera2:1.5.0] C:\Users\eduar\.gradle\caches\8.13\transforms\68652d3ddf74c202133a583d4474eaf7\transformed\camera-camera2-1.5.0\AndroidManifest.xml:26:13-36
+70            android:exported="false" >
+70-->[androidx.camera:camera-camera2:1.5.0] C:\Users\eduar\.gradle\caches\8.13\transforms\68652d3ddf74c202133a583d4474eaf7\transformed\camera-camera2-1.5.0\AndroidManifest.xml:27:13-37
+71            <meta-data
+71-->[androidx.camera:camera-camera2:1.5.0] C:\Users\eduar\.gradle\caches\8.13\transforms\68652d3ddf74c202133a583d4474eaf7\transformed\camera-camera2-1.5.0\AndroidManifest.xml:30:13-32:89
+72                android:name="androidx.camera.core.impl.MetadataHolderService.DEFAULT_CONFIG_PROVIDER"
+72-->[androidx.camera:camera-camera2:1.5.0] C:\Users\eduar\.gradle\caches\8.13\transforms\68652d3ddf74c202133a583d4474eaf7\transformed\camera-camera2-1.5.0\AndroidManifest.xml:31:17-103
+73                android:value="androidx.camera.camera2.Camera2Config$DefaultProvider" />
+73-->[androidx.camera:camera-camera2:1.5.0] C:\Users\eduar\.gradle\caches\8.13\transforms\68652d3ddf74c202133a583d4474eaf7\transformed\camera-camera2-1.5.0\AndroidManifest.xml:32:17-86
+74        </service>
+75
+76        <activity
+76-->[androidx.compose.ui:ui-tooling-android:1.9.1] C:\Users\eduar\.gradle\caches\8.13\transforms\ba450b6b1cbcf7918824e84ecf3f6048\transformed\ui-tooling\AndroidManifest.xml:23:9-25:39
+77            android:name="androidx.compose.ui.tooling.PreviewActivity"
+77-->[androidx.compose.ui:ui-tooling-android:1.9.1] C:\Users\eduar\.gradle\caches\8.13\transforms\ba450b6b1cbcf7918824e84ecf3f6048\transformed\ui-tooling\AndroidManifest.xml:24:13-71
+78            android:exported="true" />
+78-->[androidx.compose.ui:ui-tooling-android:1.9.1] C:\Users\eduar\.gradle\caches\8.13\transforms\ba450b6b1cbcf7918824e84ecf3f6048\transformed\ui-tooling\AndroidManifest.xml:25:13-36
+79        <activity
+79-->[androidx.compose.ui:ui-test-manifest:1.9.1] C:\Users\eduar\.gradle\caches\8.13\transforms\baefdd4f629f6328b0e5b7d2be4ea92e\transformed\ui-test-manifest-1.9.1\AndroidManifest.xml:23:9-26:79
+80            android:name="androidx.activity.ComponentActivity"
+80-->[androidx.compose.ui:ui-test-manifest:1.9.1] C:\Users\eduar\.gradle\caches\8.13\transforms\baefdd4f629f6328b0e5b7d2be4ea92e\transformed\ui-test-manifest-1.9.1\AndroidManifest.xml:24:13-63
+81            android:exported="true"
+81-->[androidx.compose.ui:ui-test-manifest:1.9.1] C:\Users\eduar\.gradle\caches\8.13\transforms\baefdd4f629f6328b0e5b7d2be4ea92e\transformed\ui-test-manifest-1.9.1\AndroidManifest.xml:25:13-36
+82            android:theme="@android:style/Theme.Material.Light.NoActionBar" />
+82-->[androidx.compose.ui:ui-test-manifest:1.9.1] C:\Users\eduar\.gradle\caches\8.13\transforms\baefdd4f629f6328b0e5b7d2be4ea92e\transformed\ui-test-manifest-1.9.1\AndroidManifest.xml:26:13-76
+83
+84        <provider
+84-->[androidx.emoji2:emoji2:1.4.0] C:\Users\eduar\.gradle\caches\8.13\transforms\31e73cbf26b432fa826804057765a1e7\transformed\emoji2-1.4.0\AndroidManifest.xml:24:9-32:20
+85            android:name="androidx.startup.InitializationProvider"
+85-->[androidx.emoji2:emoji2:1.4.0] C:\Users\eduar\.gradle\caches\8.13\transforms\31e73cbf26b432fa826804057765a1e7\transformed\emoji2-1.4.0\AndroidManifest.xml:25:13-67
+86            android:authorities="com.visionassist.objectdetector.androidx-startup"
+86-->[androidx.emoji2:emoji2:1.4.0] C:\Users\eduar\.gradle\caches\8.13\transforms\31e73cbf26b432fa826804057765a1e7\transformed\emoji2-1.4.0\AndroidManifest.xml:26:13-68
+87            android:exported="false" >
+87-->[androidx.emoji2:emoji2:1.4.0] C:\Users\eduar\.gradle\caches\8.13\transforms\31e73cbf26b432fa826804057765a1e7\transformed\emoji2-1.4.0\AndroidManifest.xml:27:13-37
+88            <meta-data
+88-->[androidx.emoji2:emoji2:1.4.0] C:\Users\eduar\.gradle\caches\8.13\transforms\31e73cbf26b432fa826804057765a1e7\transformed\emoji2-1.4.0\AndroidManifest.xml:29:13-31:52
+89                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+89-->[androidx.emoji2:emoji2:1.4.0] C:\Users\eduar\.gradle\caches\8.13\transforms\31e73cbf26b432fa826804057765a1e7\transformed\emoji2-1.4.0\AndroidManifest.xml:30:17-75
+90                android:value="androidx.startup" />
+90-->[androidx.emoji2:emoji2:1.4.0] C:\Users\eduar\.gradle\caches\8.13\transforms\31e73cbf26b432fa826804057765a1e7\transformed\emoji2-1.4.0\AndroidManifest.xml:31:17-49
+91            <meta-data
+91-->[androidx.lifecycle:lifecycle-process:2.9.0] C:\Users\eduar\.gradle\caches\8.13\transforms\58c5add1bc01ccadeed9d4f5ab32b0b6\transformed\lifecycle-process-2.9.0\AndroidManifest.xml:29:13-31:52
+92                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+92-->[androidx.lifecycle:lifecycle-process:2.9.0] C:\Users\eduar\.gradle\caches\8.13\transforms\58c5add1bc01ccadeed9d4f5ab32b0b6\transformed\lifecycle-process-2.9.0\AndroidManifest.xml:30:17-78
+93                android:value="androidx.startup" />
+93-->[androidx.lifecycle:lifecycle-process:2.9.0] C:\Users\eduar\.gradle\caches\8.13\transforms\58c5add1bc01ccadeed9d4f5ab32b0b6\transformed\lifecycle-process-2.9.0\AndroidManifest.xml:31:17-49
+94            <meta-data
+94-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\eduar\.gradle\caches\8.13\transforms\e52edb747e2a01a48c191e43b0d7ffa8\transformed\profileinstaller-1.4.0\AndroidManifest.xml:29:13-31:52
+95                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+95-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\eduar\.gradle\caches\8.13\transforms\e52edb747e2a01a48c191e43b0d7ffa8\transformed\profileinstaller-1.4.0\AndroidManifest.xml:30:17-85
+96                android:value="androidx.startup" />
+96-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\eduar\.gradle\caches\8.13\transforms\e52edb747e2a01a48c191e43b0d7ffa8\transformed\profileinstaller-1.4.0\AndroidManifest.xml:31:17-49
+97        </provider>
+98
+99        <receiver
+99-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\eduar\.gradle\caches\8.13\transforms\e52edb747e2a01a48c191e43b0d7ffa8\transformed\profileinstaller-1.4.0\AndroidManifest.xml:34:9-52:20
+100            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+100-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\eduar\.gradle\caches\8.13\transforms\e52edb747e2a01a48c191e43b0d7ffa8\transformed\profileinstaller-1.4.0\AndroidManifest.xml:35:13-76
+101            android:directBootAware="false"
+101-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\eduar\.gradle\caches\8.13\transforms\e52edb747e2a01a48c191e43b0d7ffa8\transformed\profileinstaller-1.4.0\AndroidManifest.xml:36:13-44
+102            android:enabled="true"
+102-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\eduar\.gradle\caches\8.13\transforms\e52edb747e2a01a48c191e43b0d7ffa8\transformed\profileinstaller-1.4.0\AndroidManifest.xml:37:13-35
+103            android:exported="true"
+103-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\eduar\.gradle\caches\8.13\transforms\e52edb747e2a01a48c191e43b0d7ffa8\transformed\profileinstaller-1.4.0\AndroidManifest.xml:38:13-36
+104            android:permission="android.permission.DUMP" >
+104-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\eduar\.gradle\caches\8.13\transforms\e52edb747e2a01a48c191e43b0d7ffa8\transformed\profileinstaller-1.4.0\AndroidManifest.xml:39:13-57
+105            <intent-filter>
+105-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\eduar\.gradle\caches\8.13\transforms\e52edb747e2a01a48c191e43b0d7ffa8\transformed\profileinstaller-1.4.0\AndroidManifest.xml:40:13-42:29
+106                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+106-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\eduar\.gradle\caches\8.13\transforms\e52edb747e2a01a48c191e43b0d7ffa8\transformed\profileinstaller-1.4.0\AndroidManifest.xml:41:17-91
+106-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\eduar\.gradle\caches\8.13\transforms\e52edb747e2a01a48c191e43b0d7ffa8\transformed\profileinstaller-1.4.0\AndroidManifest.xml:41:25-88
+107            </intent-filter>
+108            <intent-filter>
+108-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\eduar\.gradle\caches\8.13\transforms\e52edb747e2a01a48c191e43b0d7ffa8\transformed\profileinstaller-1.4.0\AndroidManifest.xml:43:13-45:29
+109                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+109-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\eduar\.gradle\caches\8.13\transforms\e52edb747e2a01a48c191e43b0d7ffa8\transformed\profileinstaller-1.4.0\AndroidManifest.xml:44:17-85
+109-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\eduar\.gradle\caches\8.13\transforms\e52edb747e2a01a48c191e43b0d7ffa8\transformed\profileinstaller-1.4.0\AndroidManifest.xml:44:25-82
+110            </intent-filter>
+111            <intent-filter>
+111-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\eduar\.gradle\caches\8.13\transforms\e52edb747e2a01a48c191e43b0d7ffa8\transformed\profileinstaller-1.4.0\AndroidManifest.xml:46:13-48:29
+112                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+112-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\eduar\.gradle\caches\8.13\transforms\e52edb747e2a01a48c191e43b0d7ffa8\transformed\profileinstaller-1.4.0\AndroidManifest.xml:47:17-88
+112-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\eduar\.gradle\caches\8.13\transforms\e52edb747e2a01a48c191e43b0d7ffa8\transformed\profileinstaller-1.4.0\AndroidManifest.xml:47:25-85
+113            </intent-filter>
+114            <intent-filter>
+114-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\eduar\.gradle\caches\8.13\transforms\e52edb747e2a01a48c191e43b0d7ffa8\transformed\profileinstaller-1.4.0\AndroidManifest.xml:49:13-51:29
+115                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+115-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\eduar\.gradle\caches\8.13\transforms\e52edb747e2a01a48c191e43b0d7ffa8\transformed\profileinstaller-1.4.0\AndroidManifest.xml:50:17-95
+115-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\eduar\.gradle\caches\8.13\transforms\e52edb747e2a01a48c191e43b0d7ffa8\transformed\profileinstaller-1.4.0\AndroidManifest.xml:50:25-92
+116            </intent-filter>
+117        </receiver>
+118    </application>
+119
+120</manifest>

@@ -35,10 +35,8 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
     private PhoneStatusMonitor(Context context) {
         this.appContext = context.getApplicationContext();
         this.handler = new Handler(Looper.getMainLooper());
-        setupMonitoringRunnable();
-
-        // Initialize TTSManager here
         this.ttsManager = new TTSManager(this.appContext);
+        setupMonitoringRunnable();
     }
 
     public static void initialize(Application application) {
@@ -59,6 +57,7 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
             public void run() {
                 // Only monitor if the app is active and no error is currently displayed
                 if (isMonitoring && !errorShown) {
+                    Log.d(TAG, "Monitoring phone status...");
                     checkPhoneStatus();
                     handler.postDelayed(this, Constants.WAIT_CHECK);
                 }
@@ -74,50 +73,121 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
             int temperatureStatus = status.second;
 
             Log.d(TAG, "Battery: " + batteryStatus + ", Temperature: " + temperatureStatus);
-            handlePhoneStatus(batteryStatus, temperatureStatus);
+            batteryStatus(batteryStatus, temperatureStatus);
 
         } catch (Exception e) {
             Log.e(TAG, "Error checking phone status", e);
         }
     }
 
-    private void handlePhoneStatus(int batteryStatus, int temperatureStatus) {
-        String errorMessage = null;
-
+    private void batteryStatus(int batteryStatus, int temperatureStatus) {
         if (Constants.APPLY_BATTERY_CHECK && batteryStatus == 1) {
-            errorMessage = UtilsKt.load_batteryLowText(appContext);
-        } else if (Constants.APPLY_TEMPERATURE_CHECK && temperatureStatus == 1) {
-            errorMessage = UtilsKt.load_tempErrorText(appContext);
+            errorShown = true;
+            // Only use TTS/retry logic if the app is in blindness mode.
+                Handler writeHandler = new Handler(Looper.getMainLooper());
+
+                // We use a final reference because it's captured by the Runnable
+                final String[] finalErrorMessage = {null};
+
+                // Recursive Runnable for TTS retry and language check
+                Runnable ttsRetryRunnable = new Runnable() {
+                    @Override
+                    public void run() {
+                        if (ttsManager.isReady()) {
+                            // SUCCESS: TTS is ready. Get the localized message based on the active language.
+                            String currentLangCode = ttsManager.tts.getVoice().getLocale().getLanguage();
+                            finalErrorMessage[0] = UtilsKt.load_batteryLowText(appContext, currentLangCode);
+                            showErrorAndShutdown(finalErrorMessage[0]);
+                        } else{
+                            Log.w(TAG, "TTS not ready on attempt. Retrying...");
+                            writeHandler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS); // Retry after delay
+                        }
+                    }
+                };
+                writeHandler.post(ttsRetryRunnable);
+            }
+        else
+            temperatureStatus(temperatureStatus);
+    }
+
+    private void temperatureStatus(int temperatureStatus) {
+        if (Constants.APPLY_TEMPERATURE_CHECK && temperatureStatus == 1) {
+            errorShown = true;
+                // Only use TTS/retry logic if the app is in blindness mode.
+                Handler writeHandler = new Handler(Looper.getMainLooper());
+
+                // We use a final reference because it's captured by the Runnable
+                final String[] finalErrorMessage = {null};
+
+                // Recursive Runnable for TTS retry and language check
+                Runnable ttsRetryRunnable = new Runnable() {
+                    @Override
+                    public void run() {
+                        if (ttsManager.isReady()) {
+                            // SUCCESS: TTS is ready. Get the localized message based on the active language.
+                            String currentLangCode = ttsManager.tts.getVoice().getLocale().getLanguage();
+                            finalErrorMessage[0] = UtilsKt.load_tempErrorText(appContext, currentLangCode);
+                            showErrorAndShutdown(finalErrorMessage[0]);
+                        } else{
+                            Log.w(TAG, "TTS not ready on attempt. Retrying...");
+                            writeHandler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS); // Retry after delay
+                        }
+                    }
+                };
+                writeHandler.post(ttsRetryRunnable);
+            }
+    }
+
+    private void showAlertDialogAndScheduleShutdown(String message) {
+        if (currentActivity == null || currentActivity.isFinishing()) {
+            // Cannot show alert, but still schedule a shutdown for safety
+            handler.postDelayed(this::shutdownApp, 100);
+            return;
         }
 
-        if (errorMessage != null && currentActivity != null && !errorShown) {
-            errorShown = true;
-            showErrorAndShutdown(errorMessage);
-        }
+        // 1. Show the AlertDialog on the main thread (No Exit button)
+        currentActivity.runOnUiThread(() -> new AlertDialog.Builder(currentActivity)
+                .setTitle(UtilsKt.load_criticalWarning(appContext,ttsManager.tts.getVoice().getLocale().getLanguage()))
+                .setMessage(message)
+                .setCancelable(false) // User cannot dismiss this
+                .show());
+
+        // 2. Schedule automatic shutdown after the delay
+        handler.postDelayed(this::shutdownApp, Constants.SHUTDOWN_DELAY_MS);
     }
 
     private void showErrorAndShutdown(String message) {
         if (currentActivity != null && !currentActivity.isFinishing()) {
 
-            // 1. Conditional Speaking Logic
+            // 1. Conditional Speaking Logic (with loop/retry)
             if (AppConfig.blindness) {
-                // Speak the message before showing the visual dialog
-                // TTS pitch and speed are assumed to be constants in AppConfig or defaults are used (1.0f, 1.2f)
-                ttsManager.speak(message, 1.0f, 1.2f);
+                Log.d(TAG, "App is in blindness mode, attempting TTS.");
+
+                Handler speakHandler = new Handler(Looper.getMainLooper());
+
+                // Recursive Runnable for TTS retry
+                Runnable ttsRetryRunnable = new Runnable() {
+                    @Override
+                    public void run() {
+                        // Assuming TTSManager has an isReady() check
+                        if (ttsManager.isReady()) {
+                            // SUCCESS: Speak the message and immediately proceed.
+                            ttsManager.speak(message, AppConfig.TTS_PITCH, AppConfig.TTS_SPEECH_RATE);
+                            // Proceed to shutdown *after* speaking
+
+                            handler.postDelayed(PhoneStatusMonitor.this::shutdownApp, Constants.BLINDNESS_SHUTDOWN_DELAY_MS);
+                        } else{
+                            Log.w(TAG, "TTS not ready on attempt ");
+                            speakHandler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS); // Retry after delay
+                        }
+                    }
+                };
+                // Start the attempt loop
+                speakHandler.post(ttsRetryRunnable);
+            } else {
+                // Not in blindness mode: proceed directly to show alert and schedule shutdown
+                showAlertDialogAndScheduleShutdown(message);
             }
-
-            // 2. Show the AlertDialog on the main thread (No Exit button)
-            currentActivity.runOnUiThread(() -> new AlertDialog.Builder(currentActivity)
-                    .setTitle(UtilsKt.load_criticalWarning(appContext))
-                    .setMessage(message)
-                    .setCancelable(false) // User cannot dismiss this
-                    .show());
-
-            // 3. Schedule automatic shutdown after the delay
-            handler.postDelayed(() -> {
-                Log.w(TAG, "Automatic shutdown initiated after " + (Constants.SHUTDOWN_DELAY_MS / 1000) + " seconds.");
-                shutdownApp();
-            }, Constants.SHUTDOWN_DELAY_MS);
         }
     }
 
@@ -153,9 +223,12 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
         }
     }
 
+    public TTSManager getTTSManager() {
+        return ttsManager;
+    }
+
     // --- ActivityLifecycleCallbacks Implementation (omitted for brevity, assume they are present) ---
     // (Ensure all lifecycle callback methods are fully present in your final file)
-
     @Override
     public void onActivityCreated(@NonNull Activity activity, @Nullable Bundle savedInstanceState) {
         currentActivity = activity;
