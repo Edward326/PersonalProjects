@@ -31,7 +31,7 @@ public class PermissionsActivity extends AppCompatActivity {
         nextActivityClassName = intent.getStringExtra(Constants.EXTRA_NEXT_ACTIVITY);
 
         // Initialize UI and request permissions
-        //initializePermissionRequest();
+        initializePermissionRequest();
     }
 
     private void initializePermissionRequest() {

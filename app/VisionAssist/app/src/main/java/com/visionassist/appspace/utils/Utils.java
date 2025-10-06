@@ -6,21 +6,30 @@ import android.content.IntentFilter;
 import android.os.BatteryManager;
 import android.util.Log;
 import android.util.Pair;
-
+import com.visionassist.appspace.jetpack.managers.LoadingManager;
+import org.json.JSONObject;
 import java.io.IOException;
 import java.io.InputStream;
 
 public class Utils {
     private static final String TAG = "Utils";
 
-    public static int checkProfile(Context context) {
+    public static void profileSelector(Pair<Integer, JSONObject> profileStatusDecider, LoadingManager loadingManager){
+        //select profile based on opt
+    }
+
+    public static void uploadProfile(JSONObject profileSource){
+        //upload profile to AppConfig
+    }
+
+    public static Pair<Integer, JSONObject> checkProfile(Context context) {
         if(!FileUtils.assetExists(context, Constants.PROFILE_FILE))
-            return 1;
+            return new Pair<>(1, null);
         try {
             InputStream inputStream = context.getAssets().open(Constants.PROFILE_FILE);
-            return JSONValidation.validateProfile(inputStream,false);
+            return JSONValidation.validateProfile(inputStream);
         }catch (IOException e) {
-            return 1;
+            return new Pair<>(1, null);
         }
     }
 

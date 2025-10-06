@@ -8,10 +8,11 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import androidx.core.content.ContextCompat;
 import com.visionassist.appspace.activities.newprofile.PermissionsActivity;
+import com.visionassist.appspace.jetpack.managers.LoadingManager;
 
 public class PermissionChecker {
 
-    public static void checkAndRequestPermissions(Activity activity, Class<?> nextActivityClass) {
+    public static void checkAndRequestPermissions(Activity activity, Class<?> nextActivityClass, LoadingManager loadingManager) {
         boolean cameraGranted = false;
         boolean storageGranted = false;
 
@@ -55,6 +56,7 @@ public class PermissionChecker {
         Intent intent = new Intent(activity, PermissionsActivity.class);
         intent.putExtra(Constants.EXTRA_PERMISSION_OPTION, permissionOption);
         intent.putExtra(Constants.EXTRA_NEXT_ACTIVITY, nextActivityClass.getName());
+        if(loadingManager!=null)loadingManager.hideLoading();
         activity.startActivity(intent);
     }
 }

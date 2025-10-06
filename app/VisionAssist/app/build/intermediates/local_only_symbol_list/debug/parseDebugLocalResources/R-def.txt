@@ -26,6 +26,7 @@ color purple_primary
 color semi_transparent
 color status_bar_color
 color std_cyan
+color std_purple
 color teal_200
 color teal_700
 color text_dark
@@ -50,6 +51,8 @@ drawable welcome_background
 font roboto_light_ttf
 font roboto_medium_ttf
 font roboto_regular_ttf
+font roboto_semibold
+id always_allow_box
 id app_name_text
 id btn_generate_caption
 id btn_speak
@@ -63,12 +66,12 @@ id language_selector
 id loading_box
 id logo_image
 id next_button
+id permissions_text
 id progress_bar
 id result_image_view
 id retry_button
 id status_bar_spacer
 id status_text_view
-id ui_overlay
 id welcome_text
 layout activity_caption
 layout activity_detection
@@ -79,6 +82,8 @@ layout activity_welcome
 mipmap ic_launcher
 mipmap ic_launcher_foreground
 mipmap ic_launcher_round
+string always_allow_en
+string always_allow_ro
 string app_name
 string back
 string back_button
@@ -95,6 +100,7 @@ string language_icon
 string next
 string no
 string ok
+string permissions
 string recent_apps_button
 string temp_error_en
 string temp_error_ro

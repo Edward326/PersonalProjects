@@ -40,15 +40,12 @@ public final class ActivityWelcomeBinding implements ViewBinding {
   public final View statusBarSpacer;
 
   @NonNull
-  public final View uiOverlay;
-
-  @NonNull
   public final TextView welcomeText;
 
   private ActivityWelcomeBinding(@NonNull RelativeLayout rootView, @NonNull TextView appNameText,
       @NonNull ComposeView languageSelector, @NonNull ComposeView loadingBox,
       @NonNull ImageView logoImage, @NonNull ComposeView nextButton, @NonNull View statusBarSpacer,
-      @NonNull View uiOverlay, @NonNull TextView welcomeText) {
+      @NonNull TextView welcomeText) {
     this.rootView = rootView;
     this.appNameText = appNameText;
     this.languageSelector = languageSelector;
@@ -56,7 +53,6 @@ public final class ActivityWelcomeBinding implements ViewBinding {
     this.logoImage = logoImage;
     this.nextButton = nextButton;
     this.statusBarSpacer = statusBarSpacer;
-    this.uiOverlay = uiOverlay;
     this.welcomeText = welcomeText;
   }
 
@@ -123,12 +119,6 @@ public final class ActivityWelcomeBinding implements ViewBinding {
         break missingId;
       }
 
-      id = R.id.ui_overlay;
-      View uiOverlay = ViewBindings.findChildViewById(rootView, id);
-      if (uiOverlay == null) {
-        break missingId;
-      }
-
       id = R.id.welcome_text;
       TextView welcomeText = ViewBindings.findChildViewById(rootView, id);
       if (welcomeText == null) {
@@ -136,7 +126,7 @@ public final class ActivityWelcomeBinding implements ViewBinding {
       }
 
       return new ActivityWelcomeBinding((RelativeLayout) rootView, appNameText, languageSelector,
-          loadingBox, logoImage, nextButton, statusBarSpacer, uiOverlay, welcomeText);
+          loadingBox, logoImage, nextButton, statusBarSpacer, welcomeText);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

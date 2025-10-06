@@ -2471,6 +2471,7 @@ color secondary_text_disabled_material_light
 color semi_transparent
 color status_bar_color
 color std_cyan
+color std_purple
 color switch_thumb_disabled_material_dark
 color switch_thumb_disabled_material_light
 color switch_thumb_material_dark
@@ -3745,6 +3746,7 @@ drawable welcome_background
 font roboto_light_ttf
 font roboto_medium_ttf
 font roboto_regular_ttf
+font roboto_semibold
 id ALT
 id BOTTOM_END
 id BOTTOM_START
@@ -3823,6 +3825,7 @@ id aligned
 id all
 id allStates
 id always
+id always_allow_box
 id androidx_compose_ui_view_composition_context
 id animateToEnd
 id animateToStart
@@ -4143,6 +4146,7 @@ id pathRelative
 id peekHeight
 id percent
 id performance
+id permissions_text
 id pin
 id pooling_container_listener_holder_tag
 id position
@@ -4282,7 +4286,6 @@ id transition_position
 id transition_scene_layoutid_cache
 id transition_transform
 id triangle
-id ui_overlay
 id unchecked
 id uniform
 id unlabeled
@@ -4552,6 +4555,8 @@ string abc_searchview_description_voice
 string abc_shareactionprovider_share_with
 string abc_shareactionprovider_share_with_application
 string abc_toolbar_collapse_description
+string always_allow_en
+string always_allow_ro
 string androidx_startup
 string app_name
 string appbar_scrolling_view_behavior
@@ -4792,6 +4797,7 @@ string path_password_eye
 string path_password_eye_mask_strike_through
 string path_password_eye_mask_visible
 string path_password_strike_through
+string permissions
 string range_end
 string range_start
 string recent_apps_button

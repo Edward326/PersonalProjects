@@ -1,0 +1,142 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
+package com.visionassist.appspace.jetpack.design
+
+import android.content.Context
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.visionassist.appspace.R
+import com.visionassist.appspace.utils.load_alwaysAllow
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun PermissionDialog(
+    context: Context,
+    modifier: Modifier = Modifier,
+    isVisible: Boolean = true,
+    message: String = "_undefined_",
+    onOkClick: () -> Unit = {},
+) {
+    // AnimatedVisibility with fade animation (same as LoadingBox)
+    AnimatedVisibility(
+        visible = isVisible,
+        enter = fadeIn(
+            initialAlpha = 0f,
+            animationSpec = tween(durationMillis = 1500)
+        ),
+        exit = fadeOut(
+            targetAlpha = 0f,
+            animationSpec = tween(durationMillis = 1500)
+        )
+    ) {
+        // Full screen white overlay with 50% opacity
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(Color.White.copy(alpha = 0.5f)),
+            contentAlignment = Alignment.Center
+        ) {
+            // Dialog Card
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth(0.85f)
+                    .padding(16.dp),
+                shape = RoundedCornerShape(48.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFFECE6F0)
+                ),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 8.dp
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Warning Icon
+                    Icon(
+                        imageVector = Icons.Filled.Error,
+                        contentDescription = "Error",
+                        modifier = Modifier.size(24.dp),
+                        tint = Color(0xFFB3261E)
+                    )
+
+                    // Message
+                    Text(
+                        text = if((message)=="_undefined_") load_alwaysAllow(context) else message,
+                        fontSize = 14.sp,
+                        fontFamily = robotoRegular,
+                        color = Color(0xFF49454F),
+                        textAlign = TextAlign.Center,
+                        lineHeight = 20.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // OK Button
+                    Button(
+                        onClick = onOkClick,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        shape = RoundedCornerShape(48.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFF7F2FA),
+                            contentColor =colorResource(R.color.std_purple),
+                        )
+                    ) {
+                        Text(
+                            text = "OK",
+                            fontSize = 16.sp,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Preview(name = "Permission Dialog", showBackground = true, widthDp = 400, heightDp = 800)
+@Composable
+fun PermissionDialogPreview() {
+    PermissionDialog(
+        context = androidx.compose.ui.platform.LocalContext.current,
+        message = "Please select \"Allow only while the app is in use\" for correct execution of the app",
+        onOkClick = {}
+    )
+}

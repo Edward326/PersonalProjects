@@ -40,3 +40,11 @@ fun load_criticalWarning(context: Context,codeLanguage: String): String {
         else -> context.getString(R.string.critical_warning_en)
     }
 }
+
+fun load_alwaysAllow(context: Context): String {
+    return when (AppConfig.mainLanguage.code) {
+        "en" -> context.getString(R.string.always_allow_en)
+        "ro" -> context.getString(R.string.always_allow_ro)
+        else -> context.getString(R.string.always_allow_en)
+    }
+}

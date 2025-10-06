@@ -21,6 +21,7 @@
     <color name="semi_transparent">#80000000</color>
     <color name="status_bar_color">@color/transparent</color>
     <color name="std_cyan">#6096BA</color>
+    <color name="std_purple">#6750A4</color>
     <color name="teal_200">#03DAC5</color>
     <color name="teal_700">#018786</color>
     <color name="text_dark">#333333</color>
@@ -29,11 +30,13 @@
     <color name="text_white">#FFFFFF</color>
     <color name="transparent">#00000000</color>
     <color name="white">#FFFFFF</color>
+    <string name="always_allow_en">Please allow access while the app is in use, for correct execution of the app</string>
+    <string name="always_allow_ro">Vă rugăm să permiteți accesul în timp ce aplicația este în executie, pentru o funcționare corectă a aplicației</string>
     <string name="app_name">VisionAssist</string>
     <string name="back">Back</string>
     <string name="back_button">Back navigation button</string>
-    <string name="battery_low_en">Battery level is too low.Please charge your device immediately.Application will shutdown.</string>
-    <string name="battery_low_ro"> Nivelul bateriei este prea scăzut.Vă rugăm să încărcați dispozitivul imediat.Aplicația se va opri.</string>
+    <string name="battery_low_en">Battery level is too low.Please charge your device immediately.Application will shutdown</string>
+    <string name="battery_low_ro"> Nivelul bateriei este prea scăzut.Vă rugăm să încărcați dispozitivul imediat.Aplicația se va opri</string>
     <string name="cancel">Cancel</string>
     <string name="continue_button">Continue</string>
     <string name="critical_warning_en">Critical Warning!</string>
@@ -45,9 +48,10 @@
     <string name="next">Next</string>
     <string name="no">No</string>
     <string name="ok">OK</string>
+    <string name="permissions">Permissions</string>
     <string name="recent_apps_button">Recent apps navigation button</string>
-    <string name="temp_error_en">Device temperature is too high.The application will shut down to prevent damage.</string>
-    <string name="temp_error_ro">Temperatura dispozitivului este prea mare.Aplicația se va opri pentru a preveni deteriorarea.</string>
+    <string name="temp_error_en">Device temperature is too high.The application will shut down to prevent damage</string>
+    <string name="temp_error_ro">Temperatura dispozitivului este prea mare.Aplicația se va opri pentru a preveni deteriorarea</string>
     <string name="vision_assist_logo">VisionAssist Logo</string>
     <string name="wait_en">Please wait</string>
     <string name="wait_ro">Vă rugăm așteptați</string>

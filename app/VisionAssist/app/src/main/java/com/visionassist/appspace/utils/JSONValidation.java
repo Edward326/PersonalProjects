@@ -2,6 +2,7 @@
 package com.visionassist.appspace.utils;
 
 import android.util.Log;
+import android.util.Pair;
 import org.json.JSONException;
 import org.json.JSONObject;
 import java.io.IOException;
@@ -10,7 +11,7 @@ import java.io.InputStream;
 public class JSONValidation {
     private static final String TAG = "JSONValidation";
 
-    public static int validateProfile(InputStream inputStream,boolean profileExistance) throws IOException {
+    public static Pair<Integer, JSONObject> validateProfile(InputStream inputStream) throws IOException {
         String profileContent;
 
         // Read the InputStream into a String
@@ -19,13 +20,13 @@ public class JSONValidation {
 
         } catch (Exception e) {
             Log.d(TAG, "Could not read contents of inputStream");
-            return 1; // Error reading file
+            return new Pair<>(1, null); // Error reading file
         }
 
         // Check if content is empty
         if (profileContent == null || profileContent.trim().isEmpty()) {
             Log.d(TAG, "File is empty or string[] is null");
-            return 1; // Empty file
+            return new Pair<>(1, null); // Empty file
         }
 
         // Parse JSON
@@ -34,72 +35,72 @@ public class JSONValidation {
             jsonObject = new JSONObject(profileContent);
         } catch (JSONException e) {
             Log.d(TAG, "Invalid JSON format of file");
-            return 1; // Invalid JSON format
+            return new Pair<>(1, null); // Invalid JSON format
         }
 
         if(jsonObject.has("blindness") && jsonObject.length()==1)
-            return -3;//go to WelcomeActivity
+            return new Pair<>(-3,jsonObject);//go to WelcomeActivity
         else {
             if (!jsonObject.has("blindness"))
-                return 1;
+                return new Pair<>(1, null); // Missing blindness key
         }
 
-        boolean isBlindProfile = false;
+        boolean isBlindProfile;
         try {
             isBlindProfile = jsonObject.getBoolean("blindness");
         } catch (JSONException e) {
             Log.d(TAG, "Could not parse blindness value");
-            return 1;
+            return new Pair<>(1, null); // Error parsing blindness value
         }
 
         if(jsonObject.has("user_language") && jsonObject.length()<=2){
             if(jsonObject.has("new_profile"))
-                return -1;//go to UserInfo1Activity
+                return new Pair<>(-1,jsonObject);//go to UserInfo1Activity
             else
-                return -2;//go to LoadingActivity
+                return new Pair<>(-2,jsonObject);//go to LoadingActivity
         }
 
         if(jsonObject.has("user_name")) {
             try {
-                if (jsonObject.getBoolean("contributor") == true) {
+                if (jsonObject.getBoolean("contributor")) {
                     if (!jsonObject.has("age")) {
-                        return 2;
+                        return new Pair<>(2, jsonObject);
                     }
                     if (!jsonObject.has("visual_condition") && !isBlindProfile) {
-                        return 3;
+                        return new Pair<>(3, jsonObject);
                     }
                     if (!jsonObject.has("email")) {
-                        return 4;
+                        return new Pair<>(4, jsonObject);
                     }
                     if (isBlindProfile) {
                         if (!jsonObject.has("tts_pitch"))
-                            return 5;
+                            return new Pair<>(5, jsonObject);
                     }
                 }
             }catch (JSONException e) {
-                return 1;
+                return new Pair<>(1, null); // Error parsing contributor value
             }
         }
         else
-            return 1;
+            return new Pair<>(1, null); // Invalid profile
 
         if(!isBlindProfile) {
             if (!jsonObject.has("bbox_color"))
-                return 6;
+                return new Pair<>(6, jsonObject);
             if(!jsonObject.has("caption_color"))
-                return 7;
+                return new Pair<>(7, jsonObject);
         }
 
         if (!jsonObject.has("hash_caching"))
-            return 8;
+            return new Pair<>(8, jsonObject);
 
         if (!jsonObject.has("env_reports") && !isBlindProfile) {
-            return 9;
+            return new Pair<>(9, jsonObject);
         }
 
         inputStream.close();
 
         // All validations passed
-        return 0;
+        return new Pair<>(0, jsonObject);
     }
 }

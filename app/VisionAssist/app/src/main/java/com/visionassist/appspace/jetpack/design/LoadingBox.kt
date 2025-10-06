@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
@@ -43,10 +44,10 @@ val robotoRegular = FontFamily(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun LoadingComponent(
+    context: Context,
+    modifier: Modifier = Modifier,
     isVisible: Boolean = true,
     loadingText: String = "_undefined_",
-    modifier: Modifier = Modifier,
-    context: Context
 ) {
     // AnimatedVisibility with fade animation
     AnimatedVisibility(
@@ -94,7 +95,7 @@ fun LoadingComponent(
                         .width(200.dp)
                         .height(4.dp)
                         .clip(RoundedCornerShape(1000.dp)),
-                    color = Color(0xFF6750A4),
+                    color = colorResource(R.color.std_purple),
                     trackColor = Color(0xFFE8DEF8),
                     gapSize = 10.dp
                 )

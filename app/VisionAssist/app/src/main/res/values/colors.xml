@@ -5,6 +5,7 @@
     <color name="purple_light">#9C8CFF</color>
     <color name="purple_dark">#5A4FCF</color>
     <color name="std_cyan">#6096BA</color>
+    <color name="std_purple">#6750A4</color>
 
     <!-- Background Colors -->
     <color name="background_gradient_start">#E8E3FF</color>

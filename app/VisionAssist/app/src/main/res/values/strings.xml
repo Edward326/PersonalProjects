@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- App Name -->
+    <!-- WelcomeActivity -->
     <string name="app_name">VisionAssist</string>
-
-    <!-- Welcome Screen -->
     <string name="welcome_to">Welcome to</string>
-
-    <!-- Common -->
     <string name="vision_assist_logo">VisionAssist Logo</string>
+
+    <!-- PermissionsActivity -->
+    <string name="permissions">Permissions</string>
+
+
+    <!-- Composable values -->
     <string name="language_icon">Language selection icon</string>
     <string name="dropdown_arrow">Dropdown arrow</string>
     <string name="forward_arrow">Forward arrow</string>
@@ -21,16 +23,16 @@
     <string name="cancel">Cancel</string>
     <string name="yes">Yes</string>
     <string name="no">No</string>
-
-    <!-- LoadingBox -->
     <string name="wait_en">Please wait</string>
     <string name="wait_ro">Vă rugăm așteptați</string>
+    <string name="always_allow_en">Please allow access while the app is in use, for correct execution of the app</string>
+    <string name="always_allow_ro">Vă rugăm să permiteți accesul în timp ce aplicația este în executie, pentru o funcționare corectă a aplicației</string>
 
     <!-- Shutdown Error Messages -->
-    <string name="temp_error_en">Device temperature is too high.The application will shut down to prevent damage.</string>
-    <string name="temp_error_ro">Temperatura dispozitivului este prea mare.Aplicația se va opri pentru a preveni deteriorarea.</string>
-    <string name="battery_low_en">Battery level is too low.Please charge your device immediately.Application will shutdown.</string>
-    <string name="battery_low_ro"> Nivelul bateriei este prea scăzut.Vă rugăm să încărcați dispozitivul imediat.Aplicația se va opri.</string>
+    <string name="temp_error_en">Device temperature is too high.The application will shut down to prevent damage</string>
+    <string name="temp_error_ro">Temperatura dispozitivului este prea mare.Aplicația se va opri pentru a preveni deteriorarea</string>
+    <string name="battery_low_en">Battery level is too low.Please charge your device immediately.Application will shutdown</string>
+    <string name="battery_low_ro"> Nivelul bateriei este prea scăzut.Vă rugăm să încărcați dispozitivul imediat.Aplicația se va opri</string>
     <string name="critical_warning_en">Critical Warning!</string>
     <string name="critical_warning_ro">Avertisment critic!</string>
 
