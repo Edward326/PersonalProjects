@@ -9,7 +9,7 @@ android {
     compileSdk= 36  // Latest for Android 15.0
 
     defaultConfig {
-        applicationId "com.visionassist.objectdetector"
+        applicationId "com.visionassist"
         minSdk 24      // Keep minimum for broader compatibility
         targetSdk 35   // Target Android 15.0
         versionCode 1

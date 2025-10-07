@@ -25,12 +25,14 @@
     <string name="no">No</string>
     <string name="wait_en">Please wait</string>
     <string name="wait_ro">Vă rugăm așteptați</string>
+    <string name="audio_permission_warning_en">Permissions are required for the app.Please hand the device to a sighted person for setup</string>
+    <string name="audio_permission_warning_ro">Sunt necesare permisiuni pentru aplicație. Vă rugăm să înmânați dispozitivul unei persoane văzătoare pentru configurare</string>
     <string name="always_allow_en">Please allow access, for correct execution of the app</string>
     <string name="always_allow_ro">Vă rugăm să permiteți accesul, pentru o funcționare corectă a aplicației</string>
-    <string name="settingsOpen_en">Please allow access, for correct execution of the app, the button will send you to settings page</string>
-    <string name="settingsOpen_ro">Please allow access, for correct execution of the app, butonul vă va trimite la pagina de setări</string>
-    <string name="settingsButton_en">Settings</string>
-    <string name="settingsButton_ro">Setări</string>
+    <string name="settings_open_en">Please allow access from the settings page, in the Permissions section, for correct execution of the app</string>
+    <string name="settings_open_ro">Vă rugăm să permiteți accesul din pagina de setări, în secțiunea Permisiuni, pentru o funcționare corectă a aplicației</string>
+    <string name="settings_button_en">Settings</string>
+    <string name="settings_button_ro">Setări</string>
 
     <!-- Shutdown Error Messages -->
     <string name="temp_error_en">Device temperature is too high.The application will shut down to prevent damage</string>

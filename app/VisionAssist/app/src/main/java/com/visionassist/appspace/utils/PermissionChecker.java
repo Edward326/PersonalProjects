@@ -6,13 +6,18 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
+import android.util.Log;
 import androidx.core.content.ContextCompat;
+import com.visionassist.appspace.PhoneStatusMonitor;
 import com.visionassist.appspace.activities.newprofile.PermissionsActivity;
 import com.visionassist.appspace.jetpack.managers.LoadingManager;
+import com.visionassist.appspace.models.ttsengine.TTSManager;
 
 public class PermissionChecker {
 
-    public static void checkAndRequestPermissions(Activity activity, Class<?> nextActivityClass, LoadingManager loadingManager) {
+    public static void checkAndRequestPermissions(Activity activity, Class<?> nextActivityClass, LoadingManager loadingManager, boolean blindProfile) {
         boolean cameraGranted = false;
         boolean storageGranted = false;
 
@@ -52,11 +57,39 @@ public class PermissionChecker {
             return;
         }
 
-        // Navigate to PermissionsActivity with the option and next activity
-        Intent intent = new Intent(activity, PermissionsActivity.class);
-        intent.putExtra(Constants.EXTRA_PERMISSION_OPTION, permissionOption);
-        intent.putExtra(Constants.EXTRA_NEXT_ACTIVITY, nextActivityClass.getName());
-        if(loadingManager!=null)loadingManager.hideLoading();
-        activity.startActivity(intent);
+        if(blindProfile) {
+            PhoneStatusMonitor monitor = PhoneStatusMonitor.getInstance();
+            TTSManager ttsManager = monitor.getTTSManager();
+            Handler speakHandler = new Handler(Looper.getMainLooper());
+            Runnable ttsRetryRunnable = new Runnable() {
+                @Override
+                public void run() {
+                    if (ttsManager.isReady()) {
+                        // SUCCESS: TTS is ready. Get the localized message based on the active language.
+                        ttsManager.speak(UtilsKt.load_PermissionActivityWarning(activity),AppConfig.TTS_PITCH,AppConfig.TTS_SPEECH_RATE);
+                        Handler speakHandler2 = new Handler(Looper.getMainLooper());
+                        speakHandler2.postDelayed(() -> {
+                        Intent intent = new Intent(activity, PermissionsActivity.class);
+                        intent.putExtra(Constants.EXTRA_PERMISSION_OPTION, permissionOption);
+                        intent.putExtra(Constants.EXTRA_NEXT_ACTIVITY, nextActivityClass.getName());
+                        if (loadingManager != null) loadingManager.hideLoading();
+                        activity.startActivity(intent);
+                        },Constants.BLINDNESS_SHUTDOWN_DELAY_MS);
+                    } else{
+                        Log.e("MainActivity", "TTS not ready on attempt. Retrying...");
+                        speakHandler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS); // Retry after delay
+                    }
+                }
+            };
+            speakHandler.post(ttsRetryRunnable);
+        }
+        else {
+            // Navigate to PermissionsActivity with the option and next activity
+            Intent intent = new Intent(activity, PermissionsActivity.class);
+            intent.putExtra(Constants.EXTRA_PERMISSION_OPTION, permissionOption);
+            intent.putExtra(Constants.EXTRA_NEXT_ACTIVITY, nextActivityClass.getName());
+            if (loadingManager != null) loadingManager.hideLoading();
+            activity.startActivity(intent);
+        }
     }
 }

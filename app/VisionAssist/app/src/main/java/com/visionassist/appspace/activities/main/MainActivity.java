@@ -29,18 +29,18 @@ public class MainActivity extends AppCompatActivity {
 
         logoImage.setVisibility(View.VISIBLE);
         loadingManager.showLoading("Verifying profile, please wait");
-
         Pair<Integer, JSONObject> profileStatusDecider=Utils.checkProfile(this);
         if(profileStatusDecider.first!=0)
             Utils.profileSelector(profileStatusDecider,loadingManager);
         else {
             Utils.uploadProfile(profileStatusDecider.second);
             Class<?> nextActivityClass = (AppConfig.blindness) ? BlindHomeActivity.class : HomeActivity.class;
-            PermissionChecker.checkAndRequestPermissions(this, nextActivityClass, loadingManager);
+            PermissionChecker.checkAndRequestPermissions(this, nextActivityClass, loadingManager,AppConfig.blindness);
             Intent intent = new Intent(this, nextActivityClass);
             loadingManager.hideLoading();
             this.startActivity(intent);
         }
+
         /*
         //in case you want to change the TTS language(global object)
         PhoneStatusMonitor monitor = PhoneStatusMonitor.getInstance();
@@ -63,5 +63,6 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         */
+
     }
 }

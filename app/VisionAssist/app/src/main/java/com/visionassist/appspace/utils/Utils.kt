@@ -3,7 +3,7 @@ package com.visionassist.appspace.utils
 import android.content.Context
 import com.visionassist.appspace.R
 
-public data class Language(
+data class Language(
     val code: String,
     val name: String,
     val country: String
@@ -51,16 +51,24 @@ fun load_alwaysAllowPermDialogBox(context: Context): String {
 
 fun load_SettingsInfo(context: Context): String {
     return when (AppConfig.mainLanguage.code) {
-        "en" -> context.getString(R.string.always_allow_en)
-        "ro" -> context.getString(R.string.always_allow_ro)
-        else -> context.getString(R.string.always_allow_en)
+        "en" -> context.getString(R.string.settings_open_en)
+        "ro" -> context.getString(R.string.settings_open_ro)
+        else -> context.getString(R.string.settings_open_en)
     }
 }
 
 fun load_SettingsButton(context: Context): String {
     return when (AppConfig.mainLanguage.code) {
-        "en" -> context.getString(R.string.always_allow_en)
-        "ro" -> context.getString(R.string.always_allow_ro)
-        else -> context.getString(R.string.always_allow_en)
+        "en" -> context.getString(R.string.settings_button_en)
+        "ro" -> context.getString(R.string.settings_button_ro)
+        else -> context.getString(R.string.settings_button_en)
+    }
+}
+
+fun load_PermissionActivityWarning(context: Context): String {
+    return when (AppConfig.mainLanguage.code) {
+        "en" -> context.getString(R.string.audio_permission_warning_en)
+        "ro" -> context.getString(R.string.audio_permission_warning_ro)
+        else -> context.getString(R.string.audio_permission_warning_en)
     }
 }

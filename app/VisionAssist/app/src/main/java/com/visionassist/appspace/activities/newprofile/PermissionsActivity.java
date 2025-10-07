@@ -1,7 +1,5 @@
 package com.visionassist.appspace.activities.newprofile;
 
-import static com.visionassist.appspace.utils.Constants.SETTINGS_REQUEST;
-
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -13,13 +11,13 @@ import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
-
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.compose.ui.platform.ComposeView;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-
 import com.visionassist.appspace.PhoneStatusMonitor;
 import com.visionassist.appspace.R;
 import com.visionassist.appspace.jetpack.managers.LoadingManager;
@@ -29,20 +27,37 @@ import com.visionassist.appspace.utils.Constants;
 public class PermissionsActivity extends AppCompatActivity {
     private static final String TAG = "PermissionsActivity";
 
+    private PhoneStatusMonitor phoneMonitor;
     private int permissionOption;
     private String nextActivityClassName;
     private PermissionDialogManager dialogManager;
     private PermissionDialogManager dialogManagerSettings;
 
-    private boolean cameraGranted = false;
-    private boolean storageGranted = false;
+    // Launcher for opening Settings
+    private ActivityResultLauncher<Intent> settingsLauncher;
+
     private boolean waitingForSettingsReturn = false;
     private String currentPermissionType = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        PhoneStatusMonitor phoneMonitor = PhoneStatusMonitor.getInstance();
+
+        // 1. Register the Launcher in onCreate
+        settingsLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    // This callback runs when the user returns from the Settings app
+                    if (waitingForSettingsReturn) {
+                        waitingForSettingsReturn = false;
+
+                        // 2. Post a delayed check to read the updated permission status reliably
+                        new Handler(Looper.getMainLooper()).postDelayed(this::checkPermissionAfterSettings, 500);
+                    }
+                }
+        );
+
+        phoneMonitor=PhoneStatusMonitor.getInstance();
         if (phoneMonitor != null) {
             phoneMonitor.pauseMonitoring();
         }
@@ -65,9 +80,6 @@ public class PermissionsActivity extends AppCompatActivity {
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             Log.d(TAG, "Permission option: " + permissionOption);
             handlePermissions();
-            //if (phoneMonitor != null) {
-            //    phoneMonitor.resumeMonitoring();
-            //}
         }, Constants.PERMISSION_SLEEP);
     }
 
@@ -99,7 +111,6 @@ public class PermissionsActivity extends AppCompatActivity {
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
                 == PackageManager.PERMISSION_GRANTED) {
-            cameraGranted = true;
 
             // If we're handling all permissions, move to storage
             if (permissionOption == 0) {
@@ -133,7 +144,6 @@ public class PermissionsActivity extends AppCompatActivity {
         }
 
         if (allGranted) {
-            storageGranted = true;
             navigateToNextActivity();
             return;
         }
@@ -160,7 +170,6 @@ public class PermissionsActivity extends AppCompatActivity {
 
         if (requestCode == Constants.CAMERA_PERMISSION_REQUEST) {
             if (allGranted) {
-                cameraGranted = true;
                 Log.d(TAG, "Camera permission granted");
 
                 // If handling all permissions, move to storage
@@ -179,7 +188,6 @@ public class PermissionsActivity extends AppCompatActivity {
             }
         } else if (requestCode == Constants.STORAGE_PERMISSION_REQUEST) {
             if (allGranted) {
-                storageGranted = true;
                 Log.d(TAG, "Storage permissions granted");
                 navigateToNextActivity();
             } else {
@@ -198,58 +206,53 @@ public class PermissionsActivity extends AppCompatActivity {
             dialogManager.hideDialog();
 
             // Retry permission request
-            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            new Handler(Looper.getMainLooper()).post(() -> {
                 if (permType.equals("camera")) {
                     handleCameraPermission();
                 } else {
                     handleStoragePermissions();
                 }
-            }, 500);
+            });
             return null;
         });
 
-        dialogManager.showDialog();
+        // Add delay to allow Compose to finish setup
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            dialogManager.showDialog();
+        }, 100);  // 100ms delay
     }
 
     private void showGoToSettingsDialog(String permType) {
         waitingForSettingsReturn = true;
         currentPermissionType = permType;
 
-        dialogManager.setupDialog(() -> {
-            dialogManager.hideDialog();
+        dialogManagerSettings.setupDialog(() -> {
+            dialogManagerSettings.hideDialog();
 
             // Open app settings
-            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            new Handler(Looper.getMainLooper()).post(() -> {
                 Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
                 intent.setData(android.net.Uri.parse("package:" + getPackageName()));
-                startActivityForResult(intent, SETTINGS_REQUEST);
-            }, 500);
+
+                // Use the Launcher to start the Intent
+                settingsLauncher.launch(intent);
+            });
             return null;
         });
 
-        dialogManager.showDialog();
+        // Add delay to allow Compose to finish setup
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            dialogManagerSettings.showDialog();
+        }, 100);  // 100ms delay
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
+    // Removed the old onResume logic entirely, as the settingsLauncher handles the return.
 
-        if (waitingForSettingsReturn) {
-            waitingForSettingsReturn = false;
-
-            // Check if permission was granted in settings
-            new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                checkPermissionAfterSettings();
-            }, 500);
-        }
-    }
-
+    // 3. The actual permission check function, called after the 500ms delay.
     private void checkPermissionAfterSettings() {
         if (currentPermissionType.equals("camera")) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
                     == PackageManager.PERMISSION_GRANTED) {
-                cameraGranted = true;
-
                 if (permissionOption == 0) {
                     handleStoragePermissions();
                 } else {
@@ -271,7 +274,6 @@ public class PermissionsActivity extends AppCompatActivity {
             }
 
             if (allGranted) {
-                storageGranted = true;
                 navigateToNextActivity();
             } else {
                 showGoToSettingsDialog("storage");
@@ -293,6 +295,9 @@ public class PermissionsActivity extends AppCompatActivity {
     private void navigateToNextActivity() {
         if (nextActivityClassName != null && !nextActivityClassName.isEmpty()) {
             try {
+                if (phoneMonitor != null) {
+                    phoneMonitor.resumeMonitoring();
+                }
                 Class<?> nextActivityClass = Class.forName(nextActivityClassName);
                 Intent intent = new Intent(this, nextActivityClass);
                 startActivity(intent);

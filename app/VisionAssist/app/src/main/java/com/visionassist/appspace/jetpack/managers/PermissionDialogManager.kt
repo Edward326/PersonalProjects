@@ -65,7 +65,9 @@ class PermissionDialogManager(
     }
 
     fun showDialog() {
-        isVisibleState.value = true
+        if(!initMessage) {
+            isVisibleState.value = true
+        }
     }
 
     fun hideDialog() {
