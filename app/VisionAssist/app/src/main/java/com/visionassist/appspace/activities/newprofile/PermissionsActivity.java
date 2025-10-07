@@ -32,6 +32,7 @@ public class PermissionsActivity extends AppCompatActivity {
     private int permissionOption;
     private String nextActivityClassName;
     private PermissionDialogManager dialogManager;
+    private PermissionDialogManager dialogManagerSettings;
 
     private boolean cameraGranted = false;
     private boolean storageGranted = false;
@@ -45,14 +46,17 @@ public class PermissionsActivity extends AppCompatActivity {
         if (phoneMonitor != null) {
             phoneMonitor.pauseMonitoring();
         }
+
         setContentView(R.layout.activity_permissions);
 
         // Initialize dialog box
         TextView titleView = findViewById(R.id.permissions_text);
         ComposeView dialogBox = findViewById(R.id.permission_dialog_box);
         ComposeView loadingBox = findViewById(R.id.loading_box);
-        dialogManager = new PermissionDialogManager(dialogBox,true,this);
-        LoadingManager loadingManager = new LoadingManager(loadingBox, true, this);
+        LoadingManager loadingManager = new LoadingManager(loadingBox, false, this);
+        loadingManager.setupLoadingBox();
+        dialogManager = new PermissionDialogManager(dialogBox,false,false,this);
+        dialogManagerSettings = new PermissionDialogManager(dialogBox,false,true,this);
         Intent intent = getIntent();
         permissionOption = intent.getIntExtra(Constants.EXTRA_PERMISSION_OPTION, 0);
         nextActivityClassName = intent.getStringExtra(Constants.EXTRA_NEXT_ACTIVITY);
@@ -61,9 +65,9 @@ public class PermissionsActivity extends AppCompatActivity {
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             Log.d(TAG, "Permission option: " + permissionOption);
             handlePermissions();
-            if (phoneMonitor != null) {
-                phoneMonitor.resumeMonitoring();
-            }
+            //if (phoneMonitor != null) {
+            //    phoneMonitor.resumeMonitoring();
+            //}
         }, Constants.PERMISSION_SLEEP);
     }
 
@@ -276,7 +280,7 @@ public class PermissionsActivity extends AppCompatActivity {
     }
 
     private String[] getStoragePermissions() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        if (Constants.API_LEVEL >= Build.VERSION_CODES.TIRAMISU) {
             return new String[]{Manifest.permission.READ_MEDIA_IMAGES};
         } else {
             return new String[]{

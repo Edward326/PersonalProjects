@@ -25,8 +25,12 @@
     <string name="no">No</string>
     <string name="wait_en">Please wait</string>
     <string name="wait_ro">Vă rugăm așteptați</string>
-    <string name="always_allow_en">Please allow access while the app is in use, for correct execution of the app</string>
-    <string name="always_allow_ro">Vă rugăm să permiteți accesul în timp ce aplicația este în executie, pentru o funcționare corectă a aplicației</string>
+    <string name="always_allow_en">Please allow access, for correct execution of the app</string>
+    <string name="always_allow_ro">Vă rugăm să permiteți accesul, pentru o funcționare corectă a aplicației</string>
+    <string name="settingsOpen_en">Please allow access, for correct execution of the app, the button will send you to settings page</string>
+    <string name="settingsOpen_ro">Please allow access, for correct execution of the app, butonul vă va trimite la pagina de setări</string>
+    <string name="settingsButton_en">Settings</string>
+    <string name="settingsButton_ro">Setări</string>
 
     <!-- Shutdown Error Messages -->
     <string name="temp_error_en">Device temperature is too high.The application will shut down to prevent damage</string>

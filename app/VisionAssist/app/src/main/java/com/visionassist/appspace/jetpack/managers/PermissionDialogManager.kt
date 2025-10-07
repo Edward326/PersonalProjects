@@ -8,6 +8,7 @@ import com.visionassist.appspace.jetpack.design.PermissionDialog
 class PermissionDialogManager(
     private val dialogBox: ComposeView,
     private val initMessage: Boolean = false,
+    private val showSettings: Boolean=false,
     private val context: Context
 ) {
     private var isVisibleState = mutableStateOf(false)
@@ -30,14 +31,28 @@ class PermissionDialogManager(
             }
         }
         else {
-            dialogBox.setContent {
-                PermissionDialog(
-                    context = context,
-                    isVisible = isVisibleState.value,
-                    onOkClick = {
-                        onOkClickHandler?.invoke()
-                    }
-                )
+            if(showSettings) {
+                dialogBox.setContent {
+                    PermissionDialog(
+                        context = context,
+                        isVisible = isVisibleState.value,
+                        buttonText = "settings",
+                        onOkClick = {
+                            onOkClickHandler?.invoke()
+                        }
+                    )
+                }
+            }
+            else{
+                dialogBox.setContent {
+                    PermissionDialog(
+                        context = context,
+                        isVisible = isVisibleState.value,
+                        onOkClick = {
+                            onOkClickHandler?.invoke()
+                        }
+                    )
+                }
             }
         }
     }

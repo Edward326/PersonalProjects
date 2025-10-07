@@ -41,7 +41,23 @@ fun load_criticalWarning(context: Context,codeLanguage: String): String {
     }
 }
 
-fun load_alwaysAllow(context: Context): String {
+fun load_alwaysAllowPermDialogBox(context: Context): String {
+    return when (AppConfig.mainLanguage.code) {
+        "en" -> context.getString(R.string.always_allow_en)
+        "ro" -> context.getString(R.string.always_allow_ro)
+        else -> context.getString(R.string.always_allow_en)
+    }
+}
+
+fun load_SettingsInfo(context: Context): String {
+    return when (AppConfig.mainLanguage.code) {
+        "en" -> context.getString(R.string.always_allow_en)
+        "ro" -> context.getString(R.string.always_allow_ro)
+        else -> context.getString(R.string.always_allow_en)
+    }
+}
+
+fun load_SettingsButton(context: Context): String {
     return when (AppConfig.mainLanguage.code) {
         "en" -> context.getString(R.string.always_allow_en)
         "ro" -> context.getString(R.string.always_allow_ro)
