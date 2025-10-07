@@ -3,7 +3,7 @@ package com.visionassist.appspace.utils
 import android.content.Context
 import com.visionassist.appspace.R
 
-data class Language(
+public data class Language(
     val code: String,
     val name: String,
     val country: String

@@ -60,6 +60,14 @@ public class Constants {
     public static final int RETRY_TTS_DELAY_MS = 1000;
     public static final long BLINDNESS_SHUTDOWN_DELAY_MS =10000;
 
+    // Permission Request Codes
+    public static final int CAMERA_PERMISSION_REQUEST = 101;
+    public static final int STORAGE_PERMISSION_REQUEST = 102;
+    public static final int SETTINGS_REQUEST = 103;
+
+    // Time to wait before popping the permission intent
+    public static final int PERMISSION_SLEEP=2000;
+
     // Language Check Attempts
     public static final int MAX_LANGUAGE_CHECK_ATTEMPTS = 3;
 

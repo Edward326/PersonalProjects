@@ -1,202 +1,194 @@
 [
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\font_roboto_medium_ttf.ttf.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\font\\roboto_medium_ttf.ttf"
+        "merged": "com.visionassist.appspace.app-debug-64:/drawable_ic_launcher_foreground.xml.flat",
+        "source": "com.visionassist.appspace.app-main-66:/drawable/ic_launcher_foreground.xml"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\drawable_ic_dropdown_arrow.xml.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\drawable\\ic_dropdown_arrow.xml"
+        "merged": "com.visionassist.appspace.app-debug-64:/layout_activity_shutdown.xml.flat",
+        "source": "com.visionassist.appspace.app-main-66:/layout/activity_shutdown.xml"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\layout_activity_caption.xml.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\layout\\activity_caption.xml"
+        "merged": "com.visionassist.appspace.app-debug-64:/font_roboto_medium_ttf.ttf.flat",
+        "source": "com.visionassist.appspace.app-main-66:/font/roboto_medium_ttf.ttf"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\anim_fade_in.xml.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\anim\\fade_in.xml"
+        "merged": "com.visionassist.appspace.app-debug-64:/font_roboto_light_ttf.ttf.flat",
+        "source": "com.visionassist.appspace.app-main-66:/font/roboto_light_ttf.ttf"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\mipmap-xxhdpi_ic_launcher_foreground.webp.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\mipmap-xxhdpi\\ic_launcher_foreground.webp"
+        "merged": "com.visionassist.appspace.app-debug-64:/anim_slide_up.xml.flat",
+        "source": "com.visionassist.appspace.app-main-66:/anim/slide_up.xml"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\layout_activity_permissions.xml.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\layout\\activity_permissions.xml"
+        "merged": "com.visionassist.appspace.app-debug-64:/drawable_vision_assist_logo.png.flat",
+        "source": "com.visionassist.appspace.app-main-66:/drawable/vision_assist_logo.png"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\mipmap-anydpi-v26_ic_launcher_round.xml.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\mipmap-anydpi-v26\\ic_launcher_round.xml"
+        "merged": "com.visionassist.appspace.app-debug-64:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
+        "source": "com.visionassist.appspace.app-main-66:/mipmap-anydpi-v26/ic_launcher_round.xml"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\layout_activity_shutdown.xml.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\layout\\activity_shutdown.xml"
+        "merged": "com.visionassist.appspace.app-debug-64:/drawable_ic_nav_back.xml.flat",
+        "source": "com.visionassist.appspace.app-main-66:/drawable/ic_nav_back.xml"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\drawable_ic_nav_recent.xml.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\drawable\\ic_nav_recent.xml"
+        "merged": "com.visionassist.appspace.app-debug-64:/drawable_ic_launcher_background.xml.flat",
+        "source": "com.visionassist.appspace.app-main-66:/drawable/ic_launcher_background.xml"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\mipmap-hdpi_ic_launcher.webp.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\mipmap-hdpi\\ic_launcher.webp"
+        "merged": "com.visionassist.appspace.app-debug-64:/mipmap-xxhdpi_ic_launcher_foreground.webp.flat",
+        "source": "com.visionassist.appspace.app-main-66:/mipmap-xxhdpi/ic_launcher_foreground.webp"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\drawable_ic_launcher_background.xml.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\drawable\\ic_launcher_background.xml"
+        "merged": "com.visionassist.appspace.app-debug-64:/mipmap-xxhdpi_ic_launcher_round.webp.flat",
+        "source": "com.visionassist.appspace.app-main-66:/mipmap-xxhdpi/ic_launcher_round.webp"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\mipmap-xxhdpi_ic_launcher_round.webp.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\mipmap-xxhdpi\\ic_launcher_round.webp"
+        "merged": "com.visionassist.appspace.app-debug-64:/mipmap-xxxhdpi_ic_launcher_round.webp.flat",
+        "source": "com.visionassist.appspace.app-main-66:/mipmap-xxxhdpi/ic_launcher_round.webp"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\mipmap-xhdpi_ic_launcher_foreground.webp.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\mipmap-xhdpi\\ic_launcher_foreground.webp"
+        "merged": "com.visionassist.appspace.app-debug-64:/mipmap-mdpi_ic_launcher_round.webp.flat",
+        "source": "com.visionassist.appspace.app-main-66:/mipmap-mdpi/ic_launcher_round.webp"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\anim_slide_down.xml.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\anim\\slide_down.xml"
-    },
-    {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\layout_activity_detection.xml.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\layout\\activity_detection.xml"
-    },
-    {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\drawable_ic_launcher_foreground.xml.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\drawable\\ic_launcher_foreground.xml"
-    },
-    {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\layout_activity_welcome.xml.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\layout\\activity_welcome.xml"
-    },
-    {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\drawable_dropdown_background.xml.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\drawable\\dropdown_background.xml"
-    },
-    {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\layout_activity_main.xml.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\layout\\activity_main.xml"
-    },
-    {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\mipmap-mdpi_ic_launcher.webp.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\mipmap-mdpi\\ic_launcher.webp"
-    },
-    {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\mipmap-xxxhdpi_ic_launcher_foreground.webp.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\mipmap-xxxhdpi\\ic_launcher_foreground.webp"
+        "merged": "com.visionassist.appspace.app-debug-64:/drawable_ic_dropdown_arrow.xml.flat",
+        "source": "com.visionassist.appspace.app-main-66:/drawable/ic_dropdown_arrow.xml"
     },
     {
         "merged": "com.visionassist.appspace.app-debug-64:/font_roboto_semibold.ttf.flat",
         "source": "com.visionassist.appspace.app-main-66:/font/roboto_semibold.ttf"
     },
     {
+        "merged": "com.visionassist.appspace.app-debug-64:/xml_data_extraction_rules.xml.flat",
+        "source": "com.visionassist.appspace.app-main-66:/xml/data_extraction_rules.xml"
+    },
+    {
+        "merged": "com.visionassist.appspace.app-debug-64:/anim_slide_in_right.xml.flat",
+        "source": "com.visionassist.appspace.app-main-66:/anim/slide_in_right.xml"
+    },
+    {
+        "merged": "com.visionassist.appspace.app-debug-64:/layout_activity_detection.xml.flat",
+        "source": "com.visionassist.appspace.app-main-66:/layout/activity_detection.xml"
+    },
+    {
         "merged": "com.visionassist.appspace.app-debug-64:/layout_activity_permissions.xml.flat",
         "source": "com.visionassist.appspace.app-main-66:/layout/activity_permissions.xml"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\anim_slide_in_right.xml.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\anim\\slide_in_right.xml"
+        "merged": "com.visionassist.appspace.app-debug-64:/mipmap-mdpi_ic_launcher_foreground.webp.flat",
+        "source": "com.visionassist.appspace.app-main-66:/mipmap-mdpi/ic_launcher_foreground.webp"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\drawable_continue_button_background.xml.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\drawable\\continue_button_background.xml"
+        "merged": "com.visionassist.appspace.app-debug-64:/mipmap-hdpi_ic_launcher.webp.flat",
+        "source": "com.visionassist.appspace.app-main-66:/mipmap-hdpi/ic_launcher.webp"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\mipmap-hdpi_ic_launcher_foreground.webp.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\mipmap-hdpi\\ic_launcher_foreground.webp"
+        "merged": "com.visionassist.appspace.app-debug-64:/drawable_ic_forward_arrow.xml.flat",
+        "source": "com.visionassist.appspace.app-main-66:/drawable/ic_forward_arrow.xml"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\drawable_ic_forward_arrow.xml.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\drawable\\ic_forward_arrow.xml"
+        "merged": "com.visionassist.appspace.app-debug-64:/drawable_ic_globe.xml.flat",
+        "source": "com.visionassist.appspace.app-main-66:/drawable/ic_globe.xml"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\font_roboto_regular_ttf.ttf.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\font\\roboto_regular_ttf.ttf"
+        "merged": "com.visionassist.appspace.app-debug-64:/mipmap-xhdpi_ic_launcher.webp.flat",
+        "source": "com.visionassist.appspace.app-main-66:/mipmap-xhdpi/ic_launcher.webp"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\mipmap-xxxhdpi_ic_launcher.webp.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\mipmap-xxxhdpi\\ic_launcher.webp"
+        "merged": "com.visionassist.appspace.app-debug-64:/mipmap-xxhdpi_ic_launcher.webp.flat",
+        "source": "com.visionassist.appspace.app-main-66:/mipmap-xxhdpi/ic_launcher.webp"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\drawable_ic_nav_back.xml.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\drawable\\ic_nav_back.xml"
+        "merged": "com.visionassist.appspace.app-debug-64:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "com.visionassist.appspace.app-main-66:/mipmap-anydpi-v26/ic_launcher.xml"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\mipmap-mdpi_ic_launcher_round.webp.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\mipmap-mdpi\\ic_launcher_round.webp"
+        "merged": "com.visionassist.appspace.app-debug-64:/xml_file_paths.xml.flat",
+        "source": "com.visionassist.appspace.app-main-66:/xml/file_paths.xml"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\mipmap-mdpi_ic_launcher_foreground.webp.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\mipmap-mdpi\\ic_launcher_foreground.webp"
+        "merged": "com.visionassist.appspace.app-debug-64:/layout_activity_main.xml.flat",
+        "source": "com.visionassist.appspace.app-main-66:/layout/activity_main.xml"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\anim_slide_out_left.xml.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\anim\\slide_out_left.xml"
+        "merged": "com.visionassist.appspace.app-debug-64:/drawable_welcome_background.jpg.flat",
+        "source": "com.visionassist.appspace.app-main-66:/drawable/welcome_background.jpg"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\drawable_language_selector_background.xml.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\drawable\\language_selector_background.xml"
+        "merged": "com.visionassist.appspace.app-debug-64:/mipmap-xxxhdpi_ic_launcher_foreground.webp.flat",
+        "source": "com.visionassist.appspace.app-main-66:/mipmap-xxxhdpi/ic_launcher_foreground.webp"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\font_roboto_light_ttf.ttf.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\font\\roboto_light_ttf.ttf"
+        "merged": "com.visionassist.appspace.app-debug-64:/drawable_language_selector_background.xml.flat",
+        "source": "com.visionassist.appspace.app-main-66:/drawable/language_selector_background.xml"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\drawable_ic_globe.xml.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\drawable\\ic_globe.xml"
+        "merged": "com.visionassist.appspace.app-debug-64:/drawable_dropdown_background.xml.flat",
+        "source": "com.visionassist.appspace.app-main-66:/drawable/dropdown_background.xml"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\mipmap-anydpi-v26_ic_launcher.xml.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\mipmap-anydpi-v26\\ic_launcher.xml"
+        "merged": "com.visionassist.appspace.app-debug-64:/mipmap-xxxhdpi_ic_launcher.webp.flat",
+        "source": "com.visionassist.appspace.app-main-66:/mipmap-xxxhdpi/ic_launcher.webp"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\drawable_vision_assist_logo.png.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\drawable\\vision_assist_logo.png"
+        "merged": "com.visionassist.appspace.app-debug-64:/mipmap-xhdpi_ic_launcher_round.webp.flat",
+        "source": "com.visionassist.appspace.app-main-66:/mipmap-xhdpi/ic_launcher_round.webp"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\xml_backup_rules.xml.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\xml\\backup_rules.xml"
+        "merged": "com.visionassist.appspace.app-debug-64:/mipmap-mdpi_ic_launcher.webp.flat",
+        "source": "com.visionassist.appspace.app-main-66:/mipmap-mdpi/ic_launcher.webp"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\xml_data_extraction_rules.xml.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\xml\\data_extraction_rules.xml"
+        "merged": "com.visionassist.appspace.app-debug-64:/drawable_ic_nav_home.xml.flat",
+        "source": "com.visionassist.appspace.app-main-66:/drawable/ic_nav_home.xml"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\anim_slide_up.xml.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\anim\\slide_up.xml"
+        "merged": "com.visionassist.appspace.app-debug-64:/xml_backup_rules.xml.flat",
+        "source": "com.visionassist.appspace.app-main-66:/xml/backup_rules.xml"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\mipmap-xhdpi_ic_launcher_round.webp.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\mipmap-xhdpi\\ic_launcher_round.webp"
+        "merged": "com.visionassist.appspace.app-debug-64:/anim_slide_down.xml.flat",
+        "source": "com.visionassist.appspace.app-main-66:/anim/slide_down.xml"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\drawable_welcome_background.jpg.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\drawable\\welcome_background.jpg"
+        "merged": "com.visionassist.appspace.app-debug-64:/drawable_ic_nav_recent.xml.flat",
+        "source": "com.visionassist.appspace.app-main-66:/drawable/ic_nav_recent.xml"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\xml_file_paths.xml.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\xml\\file_paths.xml"
+        "merged": "com.visionassist.appspace.app-debug-64:/mipmap-xhdpi_ic_launcher_foreground.webp.flat",
+        "source": "com.visionassist.appspace.app-main-66:/mipmap-xhdpi/ic_launcher_foreground.webp"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\mipmap-xhdpi_ic_launcher.webp.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\mipmap-xhdpi\\ic_launcher.webp"
+        "merged": "com.visionassist.appspace.app-debug-64:/anim_slide_out_left.xml.flat",
+        "source": "com.visionassist.appspace.app-main-66:/anim/slide_out_left.xml"
     },
     {
         "merged": "com.visionassist.appspace.app-debug-64:/layout_activity_welcome.xml.flat",
         "source": "com.visionassist.appspace.app-main-66:/layout/activity_welcome.xml"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\mipmap-xxxhdpi_ic_launcher_round.webp.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\mipmap-xxxhdpi\\ic_launcher_round.webp"
+        "merged": "com.visionassist.appspace.app-debug-64:/mipmap-hdpi_ic_launcher_round.webp.flat",
+        "source": "com.visionassist.appspace.app-main-66:/mipmap-hdpi/ic_launcher_round.webp"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\mipmap-xxhdpi_ic_launcher.webp.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\mipmap-xxhdpi\\ic_launcher.webp"
+        "merged": "com.visionassist.appspace.app-debug-64:/drawable_continue_button_background.xml.flat",
+        "source": "com.visionassist.appspace.app-main-66:/drawable/continue_button_background.xml"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\drawable_ic_nav_home.xml.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\drawable\\ic_nav_home.xml"
+        "merged": "com.visionassist.appspace.app-debug-64:/mipmap-hdpi_ic_launcher_foreground.webp.flat",
+        "source": "com.visionassist.appspace.app-main-66:/mipmap-hdpi/ic_launcher_foreground.webp"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-debug-64:\\mipmap-hdpi_ic_launcher_round.webp.flat",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\mipmap-hdpi\\ic_launcher_round.webp"
+        "merged": "com.visionassist.appspace.app-debug-64:/font_roboto_regular_ttf.ttf.flat",
+        "source": "com.visionassist.appspace.app-main-66:/font/roboto_regular_ttf.ttf"
+    },
+    {
+        "merged": "com.visionassist.appspace.app-debug-64:/layout_activity_caption.xml.flat",
+        "source": "com.visionassist.appspace.app-main-66:/layout/activity_caption.xml"
+    },
+    {
+        "merged": "com.visionassist.appspace.app-debug-64:/anim_fade_in.xml.flat",
+        "source": "com.visionassist.appspace.app-main-66:/anim/fade_in.xml"
     }
 ]

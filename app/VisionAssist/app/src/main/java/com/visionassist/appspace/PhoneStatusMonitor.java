@@ -28,6 +28,7 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
     private int activeActivityCount = 0;
     private Activity currentActivity;
     private boolean errorShown = false;
+    private boolean isPaused = false;
     private TTSManager ttsManager;
     @SuppressLint("StaticFieldLeak")
     private static PhoneStatusMonitor instance;
@@ -55,10 +56,13 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
         monitoringRunnable = new Runnable() {
             @Override
             public void run() {
-                // Only monitor if the app is active and no error is currently displayed
-                if (isMonitoring && !errorShown) {
+                // Check if monitoring is active AND not paused
+                if (isMonitoring && !errorShown && !isPaused) {
                     Log.d(TAG, "Monitoring phone status...");
                     checkPhoneStatus();
+                    handler.postDelayed(this, Constants.WAIT_CHECK);
+                } else if (isMonitoring && isPaused) {
+                    // Still schedule next check, just skip this one
                     handler.postDelayed(this, Constants.WAIT_CHECK);
                 }
             }
@@ -221,6 +225,16 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
             handler.removeCallbacks(monitoringRunnable);
             Log.d(TAG, "Monitoring stopped");
         }
+    }
+
+    public void pauseMonitoring() {
+        isPaused = true;
+        Log.d(TAG, "Monitoring paused");
+    }
+
+    public void resumeMonitoring() {
+        isPaused = false;
+        Log.d(TAG, "Monitoring resumed");
     }
 
     public TTSManager getTTSManager() {

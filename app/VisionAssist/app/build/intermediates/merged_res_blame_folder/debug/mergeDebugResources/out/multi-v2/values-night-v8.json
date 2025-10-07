@@ -4,7 +4,7 @@
             "outputFile": "com.visionassist.appspace.app-mergeDebugResources-62:/values-night-v8/values-night-v8.xml",
             "map": [
                 {
-                    "source": "C:\\Users\\eduar\\.gradle\\caches\\8.13\\transforms\\d5cc08c2a5e55c43a79b4429e4c53581\\transformed\\appcompat-1.7.1\\res\\values-night-v8\\values-night-v8.xml",
+                    "source": "/home/eduard/.gradle/caches/8.13/transforms/6c53a8a2f3b1aa5128d8501184855a1a/transformed/appcompat-1.7.1/res/values-night-v8/values-night-v8.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9",
                         "startColumns": "4,4,4,4,4,4,4,4",
@@ -21,14 +21,14 @@
                     }
                 },
                 {
-                    "source": "D:\\Facultate\\LICENTA\\app\\VisionAssist\\app\\src\\main\\res\\values-night\\themes.xml",
+                    "source": "/home/eduard/Facultate/LICENTA/app/VisionAssist/app/src/main/res/values-night/themes.xml",
                     "from": {
                         "startLines": "1",
                         "startColumns": "4",
-                        "startOffsets": "64",
+                        "startOffsets": "63",
                         "endLines": "9",
                         "endColumns": "12",
-                        "endOffsets": "654"
+                        "endOffsets": "645"
                     },
                     "to": {
                         "startLines": "40",
@@ -40,7 +40,7 @@
                     }
                 },
                 {
-                    "source": "C:\\Users\\eduar\\.gradle\\caches\\8.13\\transforms\\8abe1aa09408dfcbac82f537913ad3a9\\transformed\\material-1.14.0-alpha04\\res\\values-night-v8\\values-night-v8.xml",
+                    "source": "/home/eduard/.gradle/caches/8.13/transforms/b4a043b7e86fbd569cbe8313200a948a/transformed/material-1.14.0-alpha04/res/values-night-v8/values-night-v8.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41",
                         "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",

@@ -5,7 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.ComposeView
 import com.visionassist.appspace.jetpack.design.LoadingComponent
 
-class LoadingManager(
+public class LoadingManager(
     private val loadingBox: ComposeView,
     private val initMessage: Boolean = false,
     private val context: Context

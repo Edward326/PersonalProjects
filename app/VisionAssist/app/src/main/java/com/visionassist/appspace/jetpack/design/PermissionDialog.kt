@@ -33,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -71,22 +72,19 @@ fun PermissionDialog(
             // Dialog Card
             Card(
                 modifier = Modifier
-                    .fillMaxWidth(0.85f)
-                    .padding(16.dp),
-                shape = RoundedCornerShape(48.dp),
+                    .fillMaxWidth(0.70f),
+                shape = RoundedCornerShape(28.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = Color(0xFFECE6F0)
-                ),
-                elevation = CardDefaults.cardElevation(
-                    defaultElevation = 8.dp
                 )
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(24.dp),
+                        .padding(25.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     // Warning Icon
                     Icon(
@@ -100,13 +98,12 @@ fun PermissionDialog(
                     Text(
                         text = if((message)=="_undefined_") load_alwaysAllow(context) else message,
                         fontSize = 14.sp,
-                        fontFamily = robotoRegular,
                         color = Color(0xFF49454F),
                         textAlign = TextAlign.Center,
-                        lineHeight = 20.sp
+                        lineHeight = 23.sp
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(2.dp))
 
                     // OK Button
                     Button(
@@ -114,7 +111,7 @@ fun PermissionDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(48.dp),
-                        shape = RoundedCornerShape(48.dp),
+                        shape = RoundedCornerShape(28.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color(0xFFF7F2FA),
                             contentColor =colorResource(R.color.std_purple),
@@ -122,7 +119,7 @@ fun PermissionDialog(
                     ) {
                         Text(
                             text = "OK",
-                            fontSize = 16.sp,
+                            fontSize = 14.sp,
                         )
                     }
                 }
@@ -131,12 +128,12 @@ fun PermissionDialog(
     }
 }
 
-@Preview(name = "Permission Dialog", showBackground = true, widthDp = 400, heightDp = 800)
+@Preview(name = "Permission Dialog", showBackground = true, widthDp = 412, heightDp = 917, backgroundColor = 0x80FFFFFF)
 @Composable
 fun PermissionDialogPreview() {
     PermissionDialog(
         context = androidx.compose.ui.platform.LocalContext.current,
-        message = "Please select \"Allow only while the app is in use\" for correct execution of the app",
+        message= stringResource(R.string.always_allow_en),
         onOkClick = {}
     )
 }

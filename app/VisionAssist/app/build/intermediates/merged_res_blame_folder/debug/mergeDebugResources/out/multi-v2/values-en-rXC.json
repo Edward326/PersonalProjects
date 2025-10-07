@@ -4,24 +4,7 @@
             "outputFile": "com.visionassist.appspace.app-mergeDebugResources-62:/values-en-rXC/values-en-rXC.xml",
             "map": [
                 {
-                    "source": "C:\\Users\\eduar\\.gradle\\caches\\8.13\\transforms\\d71bdb3b0de74e558a2fccdac8c6738e\\transformed\\ui-release\\res\\values-en-rXC\\values-en-rXC.xml",
-                    "from": {
-                        "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20",
-                        "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
-                        "startOffsets": "105,296,481,678,880,1067,1252,1445,1633,1820,2001,2186,2352,2538,2716,2891,3062,3241,3408",
-                        "endColumns": "190,184,196,201,186,184,192,187,186,180,184,165,185,177,174,170,178,166,237",
-                        "endOffsets": "291,476,673,875,1062,1247,1440,1628,1815,1996,2181,2347,2533,2711,2886,3057,3236,3403,3641"
-                    },
-                    "to": {
-                        "startLines": "36,37,38,39,40,41,42,104,105,106,107,109,110,111,112,113,115,116,117",
-                        "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
-                        "startOffsets": "6955,7146,7331,7528,7730,7917,8102,21022,21210,21397,21578,21949,22115,22301,22479,22654,23029,23208,23375",
-                        "endColumns": "190,184,196,201,186,184,192,187,186,180,184,165,185,177,174,170,178,166,237",
-                        "endOffsets": "7141,7326,7523,7725,7912,8097,8290,21205,21392,21573,21758,22110,22296,22474,22649,22820,23203,23370,23608"
-                    }
-                },
-                {
-                    "source": "C:\\Users\\eduar\\.gradle\\caches\\8.13\\transforms\\d5cc08c2a5e55c43a79b4429e4c53581\\transformed\\appcompat-1.7.1\\res\\values-en-rXC\\values-en-rXC.xml",
+                    "source": "/home/eduard/.gradle/caches/8.13/transforms/6c53a8a2f3b1aa5128d8501184855a1a/transformed/appcompat-1.7.1/res/values-en-rXC/values-en-rXC.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29",
                         "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
@@ -38,7 +21,7 @@
                     }
                 },
                 {
-                    "source": "C:\\Users\\eduar\\.gradle\\caches\\8.13\\transforms\\a938a055d3f34eadcf9bbf6205052d87\\transformed\\material3\\res\\values-en-rXC\\values-en-rXC.xml",
+                    "source": "/home/eduard/.gradle/caches/8.13/transforms/cef9b1d42831dfeeb728c1bc01c09f7d/transformed/material3/res/values-en-rXC/values-en-rXC.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61",
                         "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
@@ -55,24 +38,41 @@
                     }
                 },
                 {
-                    "source": "C:\\Users\\eduar\\.gradle\\caches\\8.13\\transforms\\e3c26ed3ad01fd7db0e65087fd2226b3\\transformed\\foundation-release\\res\\values-en-rXC\\values-en-rXC.xml",
+                    "source": "/home/eduard/.gradle/caches/8.13/transforms/dc5d51df3e35dce8a1cf2ca49ee15110/transformed/material/res/values-en-rXC/values-en-rXC.xml",
                     "from": {
-                        "startLines": "2,3",
-                        "startColumns": "4,4",
-                        "startOffsets": "55,243",
-                        "endColumns": "187,186",
-                        "endOffsets": "238,425"
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "190",
+                        "endOffsets": "241"
                     },
                     "to": {
-                        "startLines": "118,119",
-                        "startColumns": "4,4",
-                        "startOffsets": "23613,23801",
-                        "endColumns": "187,186",
-                        "endOffsets": "23796,23983"
+                        "startLines": "103",
+                        "startColumns": "4",
+                        "startOffsets": "20831",
+                        "endColumns": "190",
+                        "endOffsets": "21017"
                     }
                 },
                 {
-                    "source": "C:\\Users\\eduar\\.gradle\\caches\\8.13\\transforms\\be79445bfc13589e70f397d603bd2825\\transformed\\core-1.17.0\\res\\values-en-rXC\\values-en-rXC.xml",
+                    "source": "/home/eduard/.gradle/caches/8.13/transforms/e9e41b28251a39d03dae1e6126ee6f2a/transformed/ui-release/res/values-en-rXC/values-en-rXC.xml",
+                    "from": {
+                        "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20",
+                        "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
+                        "startOffsets": "105,296,481,678,880,1067,1252,1445,1633,1820,2001,2186,2352,2538,2716,2891,3062,3241,3408",
+                        "endColumns": "190,184,196,201,186,184,192,187,186,180,184,165,185,177,174,170,178,166,237",
+                        "endOffsets": "291,476,673,875,1062,1247,1440,1628,1815,1996,2181,2347,2533,2711,2886,3057,3236,3403,3641"
+                    },
+                    "to": {
+                        "startLines": "36,37,38,39,40,41,42,104,105,106,107,109,110,111,112,113,115,116,117",
+                        "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
+                        "startOffsets": "6955,7146,7331,7528,7730,7917,8102,21022,21210,21397,21578,21949,22115,22301,22479,22654,23029,23208,23375",
+                        "endColumns": "190,184,196,201,186,184,192,187,186,180,184,165,185,177,174,170,178,166,237",
+                        "endOffsets": "7141,7326,7523,7725,7912,8097,8290,21205,21392,21573,21758,22110,22296,22474,22649,22820,23203,23370,23608"
+                    }
+                },
+                {
+                    "source": "/home/eduard/.gradle/caches/8.13/transforms/de49dfe80bcb476241368d56906a758e/transformed/core-1.17.0/res/values-en-rXC/values-en-rXC.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9",
                         "startColumns": "4,4,4,4,4,4,4,4",
@@ -89,20 +89,20 @@
                     }
                 },
                 {
-                    "source": "C:\\Users\\eduar\\.gradle\\caches\\8.13\\transforms\\748d6c0d0e7f7760195ec61d055dff4a\\transformed\\material\\res\\values-en-rXC\\values-en-rXC.xml",
+                    "source": "/home/eduard/.gradle/caches/8.13/transforms/9f989c5adf2c50acb68c2ab069cba546/transformed/foundation-release/res/values-en-rXC/values-en-rXC.xml",
                     "from": {
-                        "startLines": "2",
-                        "startColumns": "4",
-                        "startOffsets": "55",
-                        "endColumns": "190",
-                        "endOffsets": "241"
+                        "startLines": "2,3",
+                        "startColumns": "4,4",
+                        "startOffsets": "55,243",
+                        "endColumns": "187,186",
+                        "endOffsets": "238,425"
                     },
                     "to": {
-                        "startLines": "103",
-                        "startColumns": "4",
-                        "startOffsets": "20831",
-                        "endColumns": "190",
-                        "endOffsets": "21017"
+                        "startLines": "118,119",
+                        "startColumns": "4,4",
+                        "startOffsets": "23613,23801",
+                        "endColumns": "187,186",
+                        "endOffsets": "23796,23983"
                     }
                 }
             ]

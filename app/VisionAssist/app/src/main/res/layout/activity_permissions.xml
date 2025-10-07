@@ -28,7 +28,7 @@
 
     <!-- Allways Allow Box -->
     <androidx.compose.ui.platform.ComposeView
-        android:id="@+id/always_allow_box"
+        android:id="@+id/permission_dialog_box"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_centerHorizontal="true"
