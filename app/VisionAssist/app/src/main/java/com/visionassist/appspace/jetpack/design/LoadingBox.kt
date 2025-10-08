@@ -27,19 +27,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.colorResource
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.visionassist.appspace.R
+import com.visionassist.appspace.utils.Constants
 import com.visionassist.appspace.utils.load_loadingText
-
-val robotoRegular = FontFamily(
-    Font(R.font.roboto_regular_ttf, weight = FontWeight.Medium)
-)
+import com.visionassist.appspace.utils.robotoRegular
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -55,12 +51,12 @@ fun LoadingComponent(
         enter = fadeIn(
             // Duration of fade in animation (in milliseconds)
             initialAlpha = 0f,
-            animationSpec = tween(durationMillis = 1500)
+            animationSpec = tween(durationMillis = Constants.ANIMATION_DELAY)
         ),
         exit = fadeOut(
             // Duration of fade out animation
             targetAlpha = 0f,
-            animationSpec = tween(durationMillis = 1500)
+            animationSpec = tween(durationMillis = Constants.ANIMATION_DELAY)
         )
     ) {
         // Full screen white overlay with 50% opacity

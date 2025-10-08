@@ -30,9 +30,11 @@
     <color name="text_white">#FFFFFF</color>
     <color name="transparent">#00000000</color>
     <color name="white">#FFFFFF</color>
-    <string name="always_allow_en">Please allow access while the app is in use, for correct execution of the app</string>
-    <string name="always_allow_ro">Vă rugăm să permiteți accesul în timp ce aplicația este în executie, pentru o funcționare corectă a aplicației</string>
+    <string name="always_allow_en">Please allow access, for correct execution of the app</string>
+    <string name="always_allow_ro">Vă rugăm să permiteți accesul, pentru o funcționare corectă a aplicației</string>
     <string name="app_name">VisionAssist</string>
+    <string name="audio_permission_warning_en">Permissions are required for the app.Please hand the device to a sighted person for setup</string>
+    <string name="audio_permission_warning_ro">Sunt necesare permisiuni pentru aplicație. Vă rugăm să înmânați dispozitivul unei persoane văzătoare pentru configurare</string>
     <string name="back">Back</string>
     <string name="back_button">Back navigation button</string>
     <string name="battery_low_en">Battery level is too low.Please charge your device immediately.Application will shutdown</string>
@@ -42,6 +44,8 @@
     <string name="critical_warning_en">Critical Warning!</string>
     <string name="critical_warning_ro">Avertisment critic!</string>
     <string name="dropdown_arrow">Dropdown arrow</string>
+    <string name="exit_error_en">A critical error has occurred and the application needs to close to protect the integrity of your data. If this happens again, contact support with the code below</string>
+    <string name="exit_error_ro">A apărut o eroare critică și aplicația trebuie închisă pentru a proteja integritatea datelor dumneavoastră. Dacă se întâmplă din nou acest lucru, contactați asistența cu codul de mai jos</string>
     <string name="forward_arrow">Forward arrow</string>
     <string name="home_button">Home navigation button</string>
     <string name="language_icon">Language selection icon</string>
@@ -50,6 +54,10 @@
     <string name="ok">OK</string>
     <string name="permissions">Permissions</string>
     <string name="recent_apps_button">Recent apps navigation button</string>
+    <string name="settings_button_en">Settings</string>
+    <string name="settings_button_ro">Setări</string>
+    <string name="settings_open_en">Please allow access from the settings page, in the Permissions section, for correct execution of the app</string>
+    <string name="settings_open_ro">Vă rugăm să permiteți accesul din pagina de setări, în secțiunea Permisiuni, pentru o funcționare corectă a aplicației</string>
     <string name="temp_error_en">Device temperature is too high.The application will shut down to prevent damage</string>
     <string name="temp_error_ro">Temperatura dispozitivului este prea mare.Aplicația se va opri pentru a preveni deteriorarea</string>
     <string name="vision_assist_logo">VisionAssist Logo</string>

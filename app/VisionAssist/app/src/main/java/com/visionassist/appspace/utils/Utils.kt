@@ -1,12 +1,22 @@
 package com.visionassist.appspace.utils
 
 import android.content.Context
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import com.visionassist.appspace.R
 
 data class Language(
     val code: String,
     val name: String,
     val country: String
+)
+
+val robotoRegular = FontFamily(
+    Font(R.font.roboto_regular_ttf)
+)
+
+val robotoSemibold = FontFamily(
+    Font(R.font.roboto_semibold)
 )
 
 fun load_loadingText(context: Context): String {
@@ -49,7 +59,7 @@ fun load_alwaysAllowPermDialogBox(context: Context): String {
     }
 }
 
-fun load_SettingsInfo(context: Context): String {
+fun load_settingsInfo(context: Context): String {
     return when (AppConfig.mainLanguage.code) {
         "en" -> context.getString(R.string.settings_open_en)
         "ro" -> context.getString(R.string.settings_open_ro)
@@ -57,7 +67,7 @@ fun load_SettingsInfo(context: Context): String {
     }
 }
 
-fun load_SettingsButton(context: Context): String {
+fun load_settingsButton(context: Context): String {
     return when (AppConfig.mainLanguage.code) {
         "en" -> context.getString(R.string.settings_button_en)
         "ro" -> context.getString(R.string.settings_button_ro)
@@ -65,10 +75,18 @@ fun load_SettingsButton(context: Context): String {
     }
 }
 
-fun load_PermissionActivityWarning(context: Context): String {
+fun load_permissionActivityWarning(context: Context): String {
     return when (AppConfig.mainLanguage.code) {
         "en" -> context.getString(R.string.audio_permission_warning_en)
         "ro" -> context.getString(R.string.audio_permission_warning_ro)
         else -> context.getString(R.string.audio_permission_warning_en)
+    }
+}
+
+fun load_errorText(context: Context): String {
+    return when (AppConfig.mainLanguage.code) {
+        "en" -> context.getString(R.string.exit_error_en)
+        "ro" -> context.getString(R.string.exit_error_ro)
+        else -> context.getString(R.string.exit_error_en)
     }
 }

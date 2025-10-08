@@ -3825,7 +3825,6 @@ id aligned
 id all
 id allStates
 id always
-id always_allow_box
 id androidx_compose_ui_view_composition_context
 id animateToEnd
 id animateToStart
@@ -4146,6 +4145,7 @@ id pathRelative
 id peekHeight
 id percent
 id performance
+id permission_dialog_box
 id permissions_text
 id pin
 id pooling_container_listener_holder_tag
@@ -4560,6 +4560,8 @@ string always_allow_ro
 string androidx_startup
 string app_name
 string appbar_scrolling_view_behavior
+string audio_permission_warning_en
+string audio_permission_warning_ro
 string autofill
 string back
 string back_button
@@ -4599,6 +4601,8 @@ string dropdown_arrow
 string dropdown_menu
 string error_a11y_label
 string error_icon_content_description
+string exit_error_en
+string exit_error_ro
 string exposed_dropdown_menu_content_description
 string fab_transformation_scrim_behavior
 string fab_transformation_sheet_behavior
@@ -4806,6 +4810,10 @@ string searchbar_scrolling_view_behavior
 string searchview_clear_text_content_description
 string searchview_navigation_content_description
 string selected
+string settings_button_en
+string settings_button_ro
+string settings_open_en
+string settings_open_ro
 string side_sheet_accessibility_pane_title
 string side_sheet_behavior
 string snackbar_pane_title

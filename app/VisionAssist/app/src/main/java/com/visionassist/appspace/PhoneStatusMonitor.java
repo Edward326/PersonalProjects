@@ -12,6 +12,8 @@ import android.util.Log;
 import android.util.Pair;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+
+import com.visionassist.appspace.jetpack.managers.ErrorDialogManager;
 import com.visionassist.appspace.models.ttsengine.TTSManager;
 import com.visionassist.appspace.utils.AppConfig;
 import com.visionassist.appspace.utils.Constants;
@@ -145,7 +147,7 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
     private void showAlertDialogAndScheduleShutdown(String message) {
         if (currentActivity == null || currentActivity.isFinishing()) {
             // Cannot show alert, but still schedule a shutdown for safety
-            handler.postDelayed(this::shutdownApp, 100);
+            handler.postDelayed(this::exitApp, 100);
             return;
         }
 
@@ -157,7 +159,7 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
                 .show());
 
         // 2. Schedule automatic shutdown after the delay
-        handler.postDelayed(this::shutdownApp, Constants.SHUTDOWN_DELAY_MS);
+        handler.postDelayed(this::exitApp, Constants.SHUTDOWN_DELAY_MS);
     }
 
     private void showErrorAndShutdown(String message) {
@@ -176,10 +178,10 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
                         // Assuming TTSManager has an isReady() check
                         if (ttsManager.isReady()) {
                             // SUCCESS: Speak the message and immediately proceed.
-                            ttsManager.speak(message, AppConfig.TTS_PITCH, AppConfig.TTS_SPEECH_RATE);
+                            ttsManager.speak(message, AppConfig.tts_pitch, AppConfig.tts_speech_rate);
                             // Proceed to shutdown *after* speaking
 
-                            handler.postDelayed(PhoneStatusMonitor.this::shutdownApp, Constants.BLINDNESS_SHUTDOWN_DELAY_MS);
+                            handler.postDelayed(PhoneStatusMonitor.this::exitApp, Constants.BLINDNESS_SHUTDOWN_DELAY_MS);
                         } else{
                             Log.w(TAG, "TTS not ready on attempt ");
                             speakHandler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS); // Retry after delay
@@ -195,8 +197,18 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
         }
     }
 
-    private void shutdownApp() {
+    public void shutdownApp(ErrorDialogManager errorManager) {
+        if(errorManager!=null) {
+            errorManager.showDialog();
+            new Handler(Looper.getMainLooper()).postDelayed(this::exitApp, Constants.ERROR_READ_DELAY);
+        }
+       else
+           exitApp();
+    }
+
+    private void exitApp(){
         stopMonitoring();
+
         // Crucial: Shut down the TTS engine first
         if (ttsManager != null) {
             ttsManager.shutdown();
@@ -207,7 +219,7 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
             currentActivity.finishAffinity();
         }
         // Force exit after a short delay to allow the OS to clean up
-        new Handler(Looper.getMainLooper()).postDelayed(() -> System.exit(0), 300);
+        new Handler(Looper.getMainLooper()).postDelayed(() -> System.exit(0), 500);
     }
 
     private void startMonitoring() {

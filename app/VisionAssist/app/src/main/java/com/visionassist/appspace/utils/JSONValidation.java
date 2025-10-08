@@ -3,10 +3,8 @@ package com.visionassist.appspace.utils;
 
 import android.util.Log;
 import android.util.Pair;
-
 import org.json.JSONException;
 import org.json.JSONObject;
-
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -52,8 +50,20 @@ public class JSONValidation {
             }
         }
 
-        if (!jsonObject.has("user_language"))
-            return new Pair<>(-3, jsonObject);   // WelcomeActivity
+        if (!jsonObject.has("language_code")) {
+            if (!jsonObject.has("language_desc")
+                    && !jsonObject.has("language_country"))
+                return new Pair<>(-3, jsonObject);   // WelcomeActivity
+            else if (jsonObject.has("language_desc")
+                || jsonObject.has("language_country"))
+                return new Pair<>(1, jsonObject);   // ConfigurationActivity
+
+        }
+        else{
+            if (!jsonObject.has("language_desc")
+                    || !jsonObject.has("language_country"))
+                return new Pair<>(1, jsonObject);   // ConfigurationActivity
+        }
 
         if (!jsonObject.has("new_profile"))
             return new Pair<>(-2, jsonObject);   // pmerissions+LoadingActivity
@@ -124,11 +134,27 @@ public class JSONValidation {
             }
         }
 
-        if (!jsonObject.has("bbox_color"))
-            return new Pair<>(6, jsonObject);   // UserAccesibility1Activity
+        if (!jsonObject.has("bbox_color")) {
+            if (!jsonObject.has("label_color")
+                    && !jsonObject.has("label_bck_color"))
+                return new Pair<>(6, jsonObject);    // UserAccesibility1Activity
+            else if (jsonObject.has("label_color")
+                    || jsonObject.has("label_bck_color"))
+                return new Pair<>(1, jsonObject);   // ConfigurationActivity
+        }
+        else{
+            if (!jsonObject.has("label_color")
+                    || !jsonObject.has("label_bck_color"))
+                return new Pair<>(1, jsonObject);   // ConfigurationActivity
+        }
 
         if (!jsonObject.has("caption_color"))
-            return new Pair<>(7, jsonObject);   // UserAccesibility2Activity
+            if (jsonObject.has("caption_bck_color"))
+                return new Pair<>(1, jsonObject);   // ConfigurationActivity
+            else
+                return new Pair<>(7, jsonObject);   // UserAccesibility2Activity
+        if (!jsonObject.has("caption_bck_color"))
+            return new Pair<>(1, jsonObject);   // ConfigurationActivity
 
         if (!jsonObject.has("hash_caching"))
             return new Pair<>(8, jsonObject);   // UserHashCachingActivity

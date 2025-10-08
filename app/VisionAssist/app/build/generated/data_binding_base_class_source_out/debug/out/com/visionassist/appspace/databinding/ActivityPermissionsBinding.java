@@ -21,10 +21,10 @@ public final class ActivityPermissionsBinding implements ViewBinding {
   private final RelativeLayout rootView;
 
   @NonNull
-  public final ComposeView alwaysAllowBox;
+  public final ComposeView loadingBox;
 
   @NonNull
-  public final ComposeView loadingBox;
+  public final ComposeView permissionDialogBox;
 
   @NonNull
   public final TextView permissionsText;
@@ -33,11 +33,11 @@ public final class ActivityPermissionsBinding implements ViewBinding {
   public final View statusBarSpacer;
 
   private ActivityPermissionsBinding(@NonNull RelativeLayout rootView,
-      @NonNull ComposeView alwaysAllowBox, @NonNull ComposeView loadingBox,
+      @NonNull ComposeView loadingBox, @NonNull ComposeView permissionDialogBox,
       @NonNull TextView permissionsText, @NonNull View statusBarSpacer) {
     this.rootView = rootView;
-    this.alwaysAllowBox = alwaysAllowBox;
     this.loadingBox = loadingBox;
+    this.permissionDialogBox = permissionDialogBox;
     this.permissionsText = permissionsText;
     this.statusBarSpacer = statusBarSpacer;
   }
@@ -69,15 +69,15 @@ public final class ActivityPermissionsBinding implements ViewBinding {
     // This is done to optimize the compiled bytecode for size and performance.
     int id;
     missingId: {
-      id = R.id.always_allow_box;
-      ComposeView alwaysAllowBox = ViewBindings.findChildViewById(rootView, id);
-      if (alwaysAllowBox == null) {
-        break missingId;
-      }
-
       id = R.id.loading_box;
       ComposeView loadingBox = ViewBindings.findChildViewById(rootView, id);
       if (loadingBox == null) {
+        break missingId;
+      }
+
+      id = R.id.permission_dialog_box;
+      ComposeView permissionDialogBox = ViewBindings.findChildViewById(rootView, id);
+      if (permissionDialogBox == null) {
         break missingId;
       }
 
@@ -93,8 +93,8 @@ public final class ActivityPermissionsBinding implements ViewBinding {
         break missingId;
       }
 
-      return new ActivityPermissionsBinding((RelativeLayout) rootView, alwaysAllowBox, loadingBox,
-          permissionsText, statusBarSpacer);
+      return new ActivityPermissionsBinding((RelativeLayout) rootView, loadingBox,
+          permissionDialogBox, permissionsText, statusBarSpacer);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

@@ -52,7 +52,6 @@ font roboto_light_ttf
 font roboto_medium_ttf
 font roboto_regular_ttf
 font roboto_semibold
-id always_allow_box
 id app_name_text
 id btn_generate_caption
 id btn_speak
@@ -66,6 +65,7 @@ id language_selector
 id loading_box
 id logo_image
 id next_button
+id permission_dialog_box
 id permissions_text
 id progress_bar
 id result_image_view
@@ -85,6 +85,8 @@ mipmap ic_launcher_round
 string always_allow_en
 string always_allow_ro
 string app_name
+string audio_permission_warning_en
+string audio_permission_warning_ro
 string back
 string back_button
 string battery_low_en
@@ -94,6 +96,8 @@ string continue_button
 string critical_warning_en
 string critical_warning_ro
 string dropdown_arrow
+string exit_error_en
+string exit_error_ro
 string forward_arrow
 string home_button
 string language_icon
@@ -102,6 +106,10 @@ string no
 string ok
 string permissions
 string recent_apps_button
+string settings_button_en
+string settings_button_ro
+string settings_open_en
+string settings_open_ro
 string temp_error_en
 string temp_error_ro
 string vision_assist_logo

@@ -33,6 +33,8 @@
     <string name="settings_open_ro">Vă rugăm să permiteți accesul din pagina de setări, în secțiunea Permisiuni, pentru o funcționare corectă a aplicației</string>
     <string name="settings_button_en">Settings</string>
     <string name="settings_button_ro">Setări</string>
+    <string name="exit_error_en">A critical error has occurred and the application needs to close to protect the integrity of your data. If this happens again, contact support with the code below</string>
+    <string name="exit_error_ro">A apărut o eroare critică și aplicația trebuie închisă pentru a proteja integritatea datelor dumneavoastră. Dacă se întâmplă din nou acest lucru, contactați asistența cu codul de mai jos</string>
 
     <!-- Shutdown Error Messages -->
     <string name="temp_error_en">Device temperature is too high.The application will shut down to prevent damage</string>

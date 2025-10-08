@@ -4,7 +4,7 @@
             "outputFile": "com.visionassist.appspace.app-mergeDebugResources-62:/values-watch-v21/values-watch-v21.xml",
             "map": [
                 {
-                    "source": "/home/eduard/.gradle/caches/8.13/transforms/6c53a8a2f3b1aa5128d8501184855a1a/transformed/appcompat-1.7.1/res/values-watch-v21/values-watch-v21.xml",
+                    "source": "C:\\Users\\eduar\\.gradle\\caches\\8.13\\transforms\\6c53a8a2f3b1aa5128d8501184855a1a\\transformed\\appcompat-1.7.1\\res\\values-watch-v21\\values-watch-v21.xml",
                     "from": {
                         "startLines": "2,6,10",
                         "startColumns": "4,4,4",

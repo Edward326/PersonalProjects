@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.visionassist.objectdetector"
+    package="com.visionassist"
     android:versionCode="1"
     android:versionName="1.0" >
 
@@ -25,10 +25,10 @@
     </queries>
 
     <permission
-        android:name="com.visionassist.objectdetector.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+        android:name="com.visionassist.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
         android:protectionLevel="signature" />
 
-    <uses-permission android:name="com.visionassist.objectdetector.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+    <uses-permission android:name="com.visionassist.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
 
     <application
         android:name="com.visionassist.appspace.VisionAssistApplication"
@@ -83,7 +83,7 @@
 
         <provider
             android:name="androidx.startup.InitializationProvider"
-            android:authorities="com.visionassist.objectdetector.androidx-startup"
+            android:authorities="com.visionassist.androidx-startup"
             android:exported="false" >
             <meta-data
                 android:name="androidx.emoji2.text.EmojiCompatInitializer"

@@ -38,8 +38,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.visionassist.appspace.R
-import com.visionassist.appspace.utils.load_SettingsButton
-import com.visionassist.appspace.utils.load_SettingsInfo
+import com.visionassist.appspace.utils.Constants
+import com.visionassist.appspace.utils.load_settingsButton
+import com.visionassist.appspace.utils.load_settingsInfo
 import com.visionassist.appspace.utils.load_alwaysAllowPermDialogBox
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -57,7 +58,7 @@ fun PermissionDialog(
         visible = isVisible,
         enter = fadeIn(
             initialAlpha = 0f,
-            animationSpec = tween(durationMillis = 1500)
+            animationSpec = tween(durationMillis = Constants.ANIMATION_DELAY)
         )
     ) {
         // Full screen white overlay with 50% opacity
@@ -70,7 +71,7 @@ fun PermissionDialog(
             // Dialog Card
             Card(
                 modifier = Modifier
-                    .fillMaxWidth(0.70f),
+                    .fillMaxWidth(0.80f),
                 shape = RoundedCornerShape(28.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = Color(0xFFECE6F0)
@@ -94,7 +95,7 @@ fun PermissionDialog(
 
                     // Message
                     Text(
-                        text = if((message)=="_undefined_"){if((buttonText)=="settings") load_SettingsInfo(context) else load_alwaysAllowPermDialogBox(context)} else message,
+                        text = if((message)=="_undefined_"){if((buttonText)=="settings") load_settingsInfo(context) else load_alwaysAllowPermDialogBox(context)} else message,
                         fontSize = 14.sp,
                         color = Color(0xFF49454F),
                         textAlign = TextAlign.Center,
@@ -116,7 +117,7 @@ fun PermissionDialog(
                         )
                     ) {
                         Text(
-                            text = if((buttonText)=="_undefined_") "OK" else {if((buttonText)=="settings") load_SettingsButton(context) else buttonText},
+                            text = if((buttonText)=="_undefined_") "OK" else {if((buttonText)=="settings") load_settingsButton(context) else buttonText},
                             fontSize = 14.sp,
                         )
                     }

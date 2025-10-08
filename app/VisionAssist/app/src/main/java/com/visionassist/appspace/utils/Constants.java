@@ -70,6 +70,19 @@ public class Constants {
     // Language Check Attempts
     public static final int MAX_LANGUAGE_CHECK_ATTEMPTS = 3;
 
+    // UI overlay for notification
+    public static final int ANIMATION_DELAY = 1500;
+
+    // Error read delay
+    public static final int ERROR_READ_DELAY = 10000;
+
+    // Error codes
+    public static final int JSON_PARSE_ERROR=1;
+
+
+
+
+
     // Debug Configuration
     public static final boolean DEBUG_MODE = true; // Enable for detailed logging
 }

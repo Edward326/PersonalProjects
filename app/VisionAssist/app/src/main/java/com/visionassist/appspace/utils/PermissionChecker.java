@@ -66,7 +66,7 @@ public class PermissionChecker {
                 public void run() {
                     if (ttsManager.isReady()) {
                         // SUCCESS: TTS is ready. Get the localized message based on the active language.
-                        ttsManager.speak(UtilsKt.load_PermissionActivityWarning(activity),AppConfig.TTS_PITCH,AppConfig.TTS_SPEECH_RATE);
+                        ttsManager.speak(UtilsKt.load_permissionActivityWarning(activity),AppConfig.tts_pitch,AppConfig.tts_speech_rate);
                         Handler speakHandler2 = new Handler(Looper.getMainLooper());
                         speakHandler2.postDelayed(() -> {
                         Intent intent = new Intent(activity, PermissionsActivity.class);

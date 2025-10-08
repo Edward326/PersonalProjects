@@ -12,6 +12,7 @@ import androidx.compose.ui.platform.ComposeView;
 import com.visionassist.appspace.R;
 import com.visionassist.appspace.jetpack.managers.LoadingManager;
 import com.visionassist.appspace.utils.AppConfig;
+import com.visionassist.appspace.utils.Constants;
 import com.visionassist.appspace.utils.PermissionChecker;
 import com.visionassist.appspace.utils.Utils;
 import org.json.JSONObject;
@@ -33,16 +34,14 @@ public class MainActivity extends AppCompatActivity {
         loadingManager.showLoading("Verifying profile, please wait");
         Pair<Integer, JSONObject> profileStatusDecider=Utils.checkProfile(this);
         if(profileStatusDecider.first!=0)
-            Utils.profileSelector(this,profileStatusDecider,loadingManager);
+            Utils.profileSelector(this,this,profileStatusDecider,loadingManager);
         else {
-            Utils.uploadProfile(profileStatusDecider.second);
+            Utils.uploadProfile(this,profileStatusDecider.second);
             Class<?> nextActivityClass = (AppConfig.blindness) ? BlindHomeActivity.class : HomeActivity.class;
             PermissionChecker.checkAndRequestPermissions(this, nextActivityClass, loadingManager,AppConfig.blindness);
             Intent intent = new Intent(this, nextActivityClass);
             loadingManager.hideLoading();
-            new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                this.startActivity(intent);
-            }, 1500);  // 100ms delay
+            new Handler(Looper.getMainLooper()).postDelayed(() -> this.startActivity(intent), Constants.ANIMATION_DELAY);  // 100ms delay
         }
 
         /*
