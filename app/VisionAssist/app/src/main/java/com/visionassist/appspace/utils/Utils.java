@@ -4,8 +4,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.BatteryManager;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.util.Pair;
+import com.visionassist.appspace.activities.newprofile.ConfigurationActivity;
 import com.visionassist.appspace.jetpack.managers.LoadingManager;
 import org.json.JSONObject;
 import java.io.IOException;
@@ -14,8 +17,18 @@ import java.io.InputStream;
 public class Utils {
     private static final String TAG = "Utils";
 
-    public static void profileSelector(Pair<Integer, JSONObject> profileStatusDecider, LoadingManager loadingManager){
-        //select profile based on opt
+    public static void profileSelector(Context context, Pair<Integer, JSONObject> profileStatusDecider, LoadingManager loadingManager){
+    switch (profileStatusDecider.first){
+        case 0:
+            Intent intent = new Intent(context, ConfigurationActivity.class);
+            loadingManager.hideLoading();
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                context.startActivity(intent);
+            }, 1500);  // 100ms delay
+        default:
+
+            break;
+    }
     }
 
     public static void uploadProfile(JSONObject profileSource){

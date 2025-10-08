@@ -2,6 +2,8 @@ package com.visionassist.appspace.activities.main;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Pair;
 import android.view.View;
 import android.widget.ImageView;
@@ -31,14 +33,16 @@ public class MainActivity extends AppCompatActivity {
         loadingManager.showLoading("Verifying profile, please wait");
         Pair<Integer, JSONObject> profileStatusDecider=Utils.checkProfile(this);
         if(profileStatusDecider.first!=0)
-            Utils.profileSelector(profileStatusDecider,loadingManager);
+            Utils.profileSelector(this,profileStatusDecider,loadingManager);
         else {
             Utils.uploadProfile(profileStatusDecider.second);
             Class<?> nextActivityClass = (AppConfig.blindness) ? BlindHomeActivity.class : HomeActivity.class;
             PermissionChecker.checkAndRequestPermissions(this, nextActivityClass, loadingManager,AppConfig.blindness);
             Intent intent = new Intent(this, nextActivityClass);
             loadingManager.hideLoading();
-            this.startActivity(intent);
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                this.startActivity(intent);
+            }, 1500);  // 100ms delay
         }
 
         /*

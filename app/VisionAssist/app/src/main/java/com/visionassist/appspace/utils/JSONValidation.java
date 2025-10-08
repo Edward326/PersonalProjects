@@ -3,8 +3,10 @@ package com.visionassist.appspace.utils;
 
 import android.util.Log;
 import android.util.Pair;
+
 import org.json.JSONException;
 import org.json.JSONObject;
+
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -38,68 +40,103 @@ public class JSONValidation {
             return new Pair<>(1, null); // Invalid JSON format
         }
 
-        if(jsonObject.has("blindness") && jsonObject.length()==1)
-            return new Pair<>(-3,jsonObject);//go to WelcomeActivity
-        else {
-            if (!jsonObject.has("blindness"))
-                return new Pair<>(1, null); // Missing blindness key
-        }
-
         boolean isBlindProfile;
-        try {
-            isBlindProfile = jsonObject.getBoolean("blindness");
-        } catch (JSONException e) {
-            Log.d(TAG, "Could not parse blindness value");
-            return new Pair<>(1, null); // Error parsing blindness value
-        }
-
-        if(jsonObject.has("user_language") && jsonObject.length()<=2){
-            if(jsonObject.has("new_profile"))
-                return new Pair<>(-1,jsonObject);//go to UserInfo1Activity
-            else
-                return new Pair<>(-2,jsonObject);//go to LoadingActivity
-        }
-
-        if(jsonObject.has("user_name")) {
+        if (!jsonObject.has("blindness"))
+            return new Pair<>(1, null); // ConfigurationActivity
+        else {
             try {
-                if (jsonObject.getBoolean("contributor")) {
-                    if (!jsonObject.has("age")) {
-                        return new Pair<>(2, jsonObject);
-                    }
-                    if (!jsonObject.has("visual_condition") && !isBlindProfile) {
-                        return new Pair<>(3, jsonObject);
-                    }
-                    if (!jsonObject.has("email")) {
-                        return new Pair<>(4, jsonObject);
-                    }
-                    if (isBlindProfile) {
-                        if (!jsonObject.has("tts_pitch"))
-                            return new Pair<>(5, jsonObject);
-                    }
-                }
-            }catch (JSONException e) {
+                isBlindProfile = jsonObject.getBoolean("blindness");
+            } catch (JSONException e) {
+                Log.d(TAG, "Could not parse blindness value");
+                return new Pair<>(1, null); // Error parsing blindness value
+            }
+        }
+
+        if (!jsonObject.has("user_language"))
+            return new Pair<>(-3, jsonObject);   // WelcomeActivity
+
+        if (!jsonObject.has("new_profile"))
+            return new Pair<>(-2, jsonObject);   // pmerissions+LoadingActivity
+
+        if (!jsonObject.has("user_name"))
+            return new Pair<>(-1, jsonObject);   // UserInfoActivity
+
+        boolean isContributor;
+        if (!jsonObject.has("contributor"))
+            return new Pair<>(1, jsonObject);   // ConfigurationActivity
+        else {
+            try {
+                isContributor = jsonObject.getBoolean("contributor");
+            } catch (JSONException e) {
+                Log.d(TAG, "Could not parse contributor value");
                 return new Pair<>(1, null); // Error parsing contributor value
             }
         }
-        else
-            return new Pair<>(1, null); // Invalid profile
 
-        if(!isBlindProfile) {
-            if (!jsonObject.has("bbox_color"))
-                return new Pair<>(6, jsonObject);
-            if(!jsonObject.has("caption_color"))
-                return new Pair<>(7, jsonObject);
+        if (isContributor) {
+            if (!jsonObject.has("age")) {
+                return new Pair<>(2, jsonObject);   //UserInfoE1Activity
+            }
+            if (!jsonObject.has("visual_condition") && !isBlindProfile) {
+                return new Pair<>(3, jsonObject);   //UserInfoE2Activity
+            }
+            if (!jsonObject.has("email")) {
+                return new Pair<>(4, jsonObject);   //UserInfoE3Activity
+            }
+            if (isBlindProfile) {
+                if (!jsonObject.has("tts_pitch"))
+                    if (jsonObject.has("tts_speed"))
+                        return new Pair<>(1, jsonObject);   // ConfigurationActivity
+                    else
+                        return new Pair<>(5, jsonObject);   //UserInfoE4Activity
+                if (!jsonObject.has("tts_speed"))
+                    return new Pair<>(1, jsonObject);   // ConfigurationActivity
+
+                if (!jsonObject.has("hash_caching"))
+                    return new Pair<>(8, jsonObject);   // UserHashCachingActivity
+
+                if (!jsonObject.has("env_reports"))
+                    return new Pair<>(9, jsonObject);   // EnvironmentReportsIActivity
+
+                inputStream.close();
+                // All validations passed
+                return new Pair<>(0, jsonObject);
+            }
+        } else {
+            if (isBlindProfile) {
+                if (!jsonObject.has("tts_pitch"))
+                    if (jsonObject.has("tts_speed"))
+                        return new Pair<>(1, jsonObject);   // ConfigurationActivity
+                    else
+                        return new Pair<>(5, jsonObject);   //UserInfoE4Activity
+                if (!jsonObject.has("tts_speed"))
+                    return new Pair<>(1, jsonObject);   // ConfigurationActivity
+
+                if (!jsonObject.has("hash_caching"))
+                    return new Pair<>(8, jsonObject);   // UserHashCachingActivity
+
+                if (!jsonObject.has("env_reports"))
+                    return new Pair<>(9, jsonObject);   // EnvironmentReportsIActivity
+
+                inputStream.close();
+                // All validations passed
+                return new Pair<>(0, jsonObject);
+            }
         }
+
+        if (!jsonObject.has("bbox_color"))
+            return new Pair<>(6, jsonObject);   // UserAccesibility1Activity
+
+        if (!jsonObject.has("caption_color"))
+            return new Pair<>(7, jsonObject);   // UserAccesibility2Activity
 
         if (!jsonObject.has("hash_caching"))
-            return new Pair<>(8, jsonObject);
+            return new Pair<>(8, jsonObject);   // UserHashCachingActivity
 
-        if (!jsonObject.has("env_reports") && !isBlindProfile) {
-            return new Pair<>(9, jsonObject);
-        }
+        if (!jsonObject.has("env_reports"))
+            return new Pair<>(9, jsonObject);   // EnvironmentReportsIActivity
 
         inputStream.close();
-
         // All validations passed
         return new Pair<>(0, jsonObject);
     }
