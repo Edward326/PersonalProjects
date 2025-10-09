@@ -33,12 +33,24 @@ public class Utils {
     private static final String TAG = "Utils";
 
     public static Pair<Integer, JSONObject> checkProfile(Context context) {
-        if (!FileUtils.assetExists(context, Constants.PROFILE_FILE))
+        // Check if profile directory exists
+        if (!FileUtils.profileDirectoryExists(context)) {
+            Log.d(TAG, "Profile directory does not exist");
             return new Pair<>(1, null);
+        }
+
+        // Check if profile file exists
+        if (!FileUtils.profileFileExists(context)) {
+            Log.d(TAG, "Profile file does not exist");
+            return new Pair<>(1, null);
+        }
+
+        // Read and validate profile file
         try {
-            InputStream inputStream = context.getAssets().open(Constants.PROFILE_FILE);
+            InputStream inputStream = FileUtils.getProfileInputStream(context);
             return JSONValidation.validateProfile(inputStream);
         } catch (IOException e) {
+            Log.e(TAG, "Error reading profile file", e);
             return new Pair<>(1, null);
         }
     }
@@ -49,6 +61,19 @@ public class Utils {
         switch (profileStatusDecider.first) {
 
             case 1:
+                // Delete existing profile directory if it exists
+                if (FileUtils.profileDirectoryExists(context)) {
+                    boolean deleted = FileUtils.deleteProfileDirectory(context);
+                    Log.d(TAG, "Profile directory deletion: " + (deleted ? "success" : "failed"));
+                }
+
+                // Create fresh profile structure
+                boolean created = FileUtils.createProfileStructure(context);
+                if (!created) {
+                    Log.e(TAG, "Failed to create profile structure");
+                    // Still continue to ConfigurationActivity, let it handle the error
+                }
+
                 intent = new Intent(context, ConfigurationActivity.class);
                 loadingManager.hideLoading();
                 Intent finalIntent = intent;
@@ -74,7 +99,7 @@ public class Utils {
                 try {
                     AppConfig.blindness = profileStatusDecider.second.getBoolean("blindness");
                     AppConfig.mainLanguage = languageExtractor(profileStatusDecider.second);
-                    PermissionChecker.checkAndRequestPermissions(activity, WelcomeActivity.class, loadingManager, false);
+                    // REMOVED: PermissionChecker.checkAndRequestPermissions call
                     intent = new Intent(context, WelcomeActivity.class);
                     Intent finalIntent2 = intent;
                     loadingManager.hideLoading();
@@ -284,12 +309,10 @@ public class Utils {
     }
 
     public static Pair<Integer, Integer> checkPhoneStatus(Context context) {
-        // Check battery level
         int battery = -1, temperature = -1;
         if (Constants.APPLY_BATTERY_CHECK)
             battery = checkIfBatteryIsLow(context);
 
-        // Check phone temperature
         if (Constants.APPLY_TEMPERATURE_CHECK)
             temperature = checkPhoneTemperature(context);
 
@@ -302,58 +325,44 @@ public class Utils {
             Intent batteryStatus = context.registerReceiver(null, ifilter);
 
             if (batteryStatus != null) {
-                // Temperature is in tenths of degrees Celsius
                 int temperature = batteryStatus.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1);
 
                 if (temperature != -1) {
-                    // Convert to degrees Celsius
                     float tempCelsius = temperature / 10.0f;
                     Log.d(TAG, "Phone temperature: " + tempCelsius + "°C");
-                    // Check against threshold from Constants
                     return (tempCelsius >= Constants.MAX_PHONE_TEMPERATURE) ? 1 : 0;
                 }
             }
 
-            // If we can't read temperature, assume it's OK
             Log.e(TAG, "Could not retrieve phone temperature.");
             return 0;
 
         } catch (Exception e) {
             Log.e(TAG, "Error checking phone temperature", e);
-            return 0; // Default to OK if error occurs
+            return 0;
         }
     }
 
     public static int checkIfBatteryIsLow(Context context) {
         try {
-            // ACTION_BATTERY_CHANGED is a sticky broadcast, we get the last one immediately.
             IntentFilter ifilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
             Intent batteryStatus = context.registerReceiver(null, ifilter);
 
             if (batteryStatus != null) {
-                // EXTRA_BATTERY_LOW is a boolean: true if the system considers the battery to be low.
-                boolean isLow;
-                //if(Constants.API_LEVEL>= 28) {
-                //    isLow = batteryStatus.getBooleanExtra(BatteryManager.EXTRA_BATTERY_LOW, false);
-                //}
-                //else {
                 int batteryPct = returnBatteryLevel(context);
                 if (batteryPct == -1)
-                    return 0; // Unable to retrieve battery level, assume not low)
+                    return 0;
                 Log.d(TAG, "Battery level: " + batteryPct);
-                isLow = batteryPct <= Constants.MIN_BATTERY_LEVEL;
-                //}
-
+                boolean isLow = batteryPct <= Constants.MIN_BATTERY_LEVEL;
                 return (isLow) ? 1 : 0;
             }
 
             Log.e(TAG, "Battery status intent is null.");
-            // Default to not low if status cannot be retrieved
             return 0;
 
         } catch (Exception e) {
             Log.e(TAG, "Error checking battery low status", e);
-            return 0; // Default to OK if error occurs
+            return 0;
         }
     }
 
@@ -369,11 +378,11 @@ public class Utils {
             }
 
             Log.e(TAG, "Battery status intent is null.");
-            return -1; // Unable to retrieve battery level
+            return -1;
 
         } catch (Exception e) {
             Log.e(TAG, "Error retrieving battery level", e);
-            return -1; // Error occurred
+            return -1;
         }
     }
 }

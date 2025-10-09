@@ -27,22 +27,26 @@ public class MainActivity extends AppCompatActivity {
         // 1. Initialize views
         ImageView logoImage = findViewById(R.id.logo_image);
         ComposeView loadingBox = findViewById(R.id.loading_box);
-        LoadingManager loadingManager = new LoadingManager(loadingBox,true,this);
+        LoadingManager loadingManager = new LoadingManager(loadingBox, true, this);
         loadingManager.setupLoadingBox();
 
         logoImage.setVisibility(View.VISIBLE);
         loadingManager.showLoading("Verifying profile, please wait");
-        Pair<Integer, JSONObject> profileStatusDecider=Utils.checkProfile(this);
-        if(profileStatusDecider.first!=0)
-            Utils.profileSelector(this,this,profileStatusDecider,loadingManager);
-        else {
-            Utils.uploadProfile(this,profileStatusDecider.second);
-            Class<?> nextActivityClass = (AppConfig.blindness) ? BlindHomeActivity.class : HomeActivity.class;
-            PermissionChecker.checkAndRequestPermissions(this, nextActivityClass, loadingManager,AppConfig.blindness);
-            Intent intent = new Intent(this, nextActivityClass);
-            loadingManager.hideLoading();
-            new Handler(Looper.getMainLooper()).postDelayed(() -> this.startActivity(intent), Constants.ANIMATION_DELAY);  // 100ms delay
-        }
+        new Handler(Looper.getMainLooper()).postDelayed(() ->
+        {
+            PermissionChecker.checkAndRequestPermissions(this, MainActivity.class, loadingManager, false);
+            Pair<Integer, JSONObject> profileStatusDecider = Utils.checkProfile(this);
+            if (profileStatusDecider.first != 0)
+                Utils.profileSelector(this, this, profileStatusDecider, loadingManager);
+            else {
+                Utils.uploadProfile(this, profileStatusDecider.second);
+                Class<?> nextActivityClass = (AppConfig.blindness) ? BlindHomeActivity.class : HomeActivity.class;
+                Intent intent = new Intent(this, nextActivityClass);
+                loadingManager.hideLoading();
+                new Handler(Looper.getMainLooper()).postDelayed(() -> this.startActivity(intent), Constants.ANIMATION_DELAY);  // 100ms delay
+            }
+        }, Constants.ANIMATION_DELAY + 1500);
+    }
 
         /*
         //in case you want to change the TTS language(global object)
@@ -67,5 +71,4 @@ public class MainActivity extends AppCompatActivity {
         }
         */
 
-    }
 }

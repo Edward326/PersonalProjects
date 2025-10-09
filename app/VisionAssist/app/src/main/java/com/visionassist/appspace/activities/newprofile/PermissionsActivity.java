@@ -33,7 +33,6 @@ public class PermissionsActivity extends AppCompatActivity {
     private PermissionDialogManager dialogManager;
     private PermissionDialogManager dialogManagerSettings;
 
-    // Launcher for opening Settings
     private ActivityResultLauncher<Intent> settingsLauncher;
 
     private boolean waitingForSettingsReturn = false;
@@ -43,35 +42,31 @@ public class PermissionsActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // 1. Register the Launcher in onCreate
         settingsLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
-                    // This callback runs when the user returns from the Settings app
                     if (waitingForSettingsReturn) {
                         waitingForSettingsReturn = false;
-
-                        // 2. Post a delayed check to read the updated permission status reliably
                         new Handler(Looper.getMainLooper()).postDelayed(this::checkPermissionAfterSettings, 500);
                     }
                 }
         );
 
-        phoneMonitor=PhoneStatusMonitor.getInstance();
+        phoneMonitor = PhoneStatusMonitor.getInstance();
         if (phoneMonitor != null) {
             phoneMonitor.pauseMonitoring();
         }
 
         setContentView(R.layout.activity_permissions);
 
-        // Initialize dialog box
         TextView titleView = findViewById(R.id.permissions_text);
         ComposeView dialogBox = findViewById(R.id.permission_dialog_box);
         ComposeView loadingBox = findViewById(R.id.loading_box);
         LoadingManager loadingManager = new LoadingManager(loadingBox, false, this);
         loadingManager.setupLoadingBox();
-        dialogManager = new PermissionDialogManager(dialogBox,false,false,this);
-        dialogManagerSettings = new PermissionDialogManager(dialogBox,false,true,this);
+        dialogManager = new PermissionDialogManager(dialogBox, false, false, this);
+        dialogManagerSettings = new PermissionDialogManager(dialogBox, false, true, this);
+
         Intent intent = getIntent();
         permissionOption = intent.getIntExtra(Constants.EXTRA_PERMISSION_OPTION, 0);
         nextActivityClassName = intent.getStringExtra(Constants.EXTRA_NEXT_ACTIVITY);
@@ -99,20 +94,16 @@ public class PermissionsActivity extends AppCompatActivity {
         }
     }
 
-    // Option 0: Handle all permissions
     private void handleAllPermissions() {
-        // First check and request camera, then storage
         handleCameraPermission();
     }
 
-    // Option 1: Handle camera permission only
     private void handleCameraPermission() {
         currentPermissionType = "camera";
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
                 == PackageManager.PERMISSION_GRANTED) {
 
-            // If we're handling all permissions, move to storage
             if (permissionOption == 0) {
                 handleStoragePermissions();
             } else {
@@ -121,7 +112,6 @@ public class PermissionsActivity extends AppCompatActivity {
             return;
         }
 
-        // Request camera permission
         ActivityCompat.requestPermissions(
                 this,
                 new String[]{Manifest.permission.CAMERA},
@@ -129,7 +119,6 @@ public class PermissionsActivity extends AppCompatActivity {
         );
     }
 
-    // Option 2: Handle storage permissions only
     private void handleStoragePermissions() {
         currentPermissionType = "storage";
 
@@ -148,7 +137,6 @@ public class PermissionsActivity extends AppCompatActivity {
             return;
         }
 
-        // Request storage permissions
         ActivityCompat.requestPermissions(
                 this,
                 storagePerms,
@@ -172,14 +160,12 @@ public class PermissionsActivity extends AppCompatActivity {
             if (allGranted) {
                 Log.d(TAG, "Camera permission granted");
 
-                // If handling all permissions, move to storage
                 if (permissionOption == 0) {
                     handleStoragePermissions();
                 } else {
                     navigateToNextActivity();
                 }
             } else {
-                // Check if we should show rationale or if user selected "Never ask again"
                 if (shouldShowRequestPermissionRationale(Manifest.permission.CAMERA)) {
                     showPermissionDeniedDialog("camera");
                 } else {
@@ -205,7 +191,6 @@ public class PermissionsActivity extends AppCompatActivity {
         dialogManager.setupDialog(() -> {
             dialogManager.hideDialog();
 
-            // Retry permission request
             new Handler(Looper.getMainLooper()).post(() -> {
                 if (permType.equals("camera")) {
                     handleCameraPermission();
@@ -216,10 +201,7 @@ public class PermissionsActivity extends AppCompatActivity {
             return null;
         });
 
-        // Add delay to allow Compose to finish setup
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            dialogManager.showDialog();
-        }, 100);  // 100ms delay
+        new Handler(Looper.getMainLooper()).postDelayed(() -> dialogManager.showDialog(), 100);
     }
 
     private void showGoToSettingsDialog(String permType) {
@@ -229,26 +211,17 @@ public class PermissionsActivity extends AppCompatActivity {
         dialogManagerSettings.setupDialog(() -> {
             dialogManagerSettings.hideDialog();
 
-            // Open app settings
             new Handler(Looper.getMainLooper()).post(() -> {
                 Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
                 intent.setData(android.net.Uri.parse("package:" + getPackageName()));
-
-                // Use the Launcher to start the Intent
                 settingsLauncher.launch(intent);
             });
             return null;
         });
 
-        // Add delay to allow Compose to finish setup
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            dialogManagerSettings.showDialog();
-        }, 100);  // 100ms delay
+        new Handler(Looper.getMainLooper()).postDelayed(() -> dialogManagerSettings.showDialog(), 100);
     }
 
-    // Removed the old onResume logic entirely, as the settingsLauncher handles the return.
-
-    // 3. The actual permission check function, called after the 500ms delay.
     private void checkPermissionAfterSettings() {
         if (currentPermissionType.equals("camera")) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
@@ -259,7 +232,6 @@ public class PermissionsActivity extends AppCompatActivity {
                     navigateToNextActivity();
                 }
             } else {
-                // Still not granted, show dialog again
                 showGoToSettingsDialog("camera");
             }
         } else if (currentPermissionType.equals("storage")) {
@@ -281,8 +253,13 @@ public class PermissionsActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Get storage permissions array with backward compatibility
+     * API 33+ (Android 13+): READ_MEDIA_IMAGES
+     * API 24-32: READ_EXTERNAL_STORAGE and WRITE_EXTERNAL_STORAGE
+     */
     private String[] getStoragePermissions() {
-        if (Constants.API_LEVEL >= Build.VERSION_CODES.TIRAMISU) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) { // API 33+
             return new String[]{Manifest.permission.READ_MEDIA_IMAGES};
         } else {
             return new String[]{
