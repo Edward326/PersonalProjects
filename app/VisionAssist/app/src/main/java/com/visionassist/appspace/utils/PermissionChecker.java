@@ -34,44 +34,51 @@ public class PermissionChecker {
             return;
         }
 
-        if(blindProfile) {
+        if (blindProfile) {
             PhoneStatusMonitor monitor = PhoneStatusMonitor.getInstance();
             TTSManager ttsManager = monitor.getTTSManager();
             Handler speakHandler = new Handler(Looper.getMainLooper());
-            Runnable ttsRetryRunnable = new Runnable() {
+            Runnable ttsRetryRunnableReady = new Runnable() {
                 @Override
                 public void run() {
                     if (ttsManager.isReady()) {
-                        ttsManager.speak(UtilsKt.load_permissionActivityWarning(activity),AppConfig.tts_pitch,AppConfig.tts_speech_rate);
+                        ttsManager.speak(UtilsKt.load_permissionActivityWarning(activity), AppConfig.tts_pitch, AppConfig.tts_speech_rate, true,null);
                         Handler speakHandler2 = new Handler(Looper.getMainLooper());
-                        speakHandler2.postDelayed(() -> {
-                            Intent intent = new Intent(activity, PermissionsActivity.class);
-                            intent.putExtra(Constants.EXTRA_PERMISSION_OPTION, permissionOption);
-                            intent.putExtra(Constants.EXTRA_NEXT_ACTIVITY, nextActivityClass.getName());
-                            if (loadingManager != null){
-                                loadingManager.hideLoading();
-                                new Handler(Looper.getMainLooper()).postDelayed(() -> activity.startActivity(intent), Constants.ANIMATION_DELAY);
+                        Runnable ttsRetryRunnableSpeak = new Runnable() {
+                            @Override
+                            public void run() {
+                                if(ttsManager.isDoneSpeaking()) {
+                                    Intent intent = new Intent(activity, PermissionsActivity.class);
+                                    intent.putExtra(Constants.EXTRA_PERMISSION_OPTION, permissionOption);
+                                    intent.putExtra(Constants.EXTRA_NEXT_ACTIVITY, nextActivityClass.getName());
+                                    if (loadingManager != null) {
+                                        loadingManager.hideLoading();
+                                        new Handler(Looper.getMainLooper()).postDelayed(() -> activity.startActivity(intent), Constants.ANIMATION_DELAY);
+                                    } else
+                                        activity.startActivity(intent);
+                                }
+                                else {
+                                    Log.e(TAG, "TTS not done speaking on attempt. Retrying...");
+                                    speakHandler2.postDelayed(this, Constants.RETRY_TTS_DELAY_MS);
+                                }
                             }
-                            else
-                                activity.startActivity(intent);
-                        },Constants.BLINDNESS_SHUTDOWN_DELAY_MS);
-                    } else{
+                        };
+                        speakHandler2.post(ttsRetryRunnableSpeak);
+                    } else {
                         Log.e(TAG, "TTS not ready on attempt. Retrying...");
                         speakHandler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS);
                     }
                 }
             };
-            speakHandler.post(ttsRetryRunnable);
-        }
-        else {
+            speakHandler.post(ttsRetryRunnableReady);
+        } else {
             Intent intent = new Intent(activity, PermissionsActivity.class);
             intent.putExtra(Constants.EXTRA_PERMISSION_OPTION, permissionOption);
             intent.putExtra(Constants.EXTRA_NEXT_ACTIVITY, nextActivityClass.getName());
-            if (loadingManager != null){
+            if (loadingManager != null) {
                 loadingManager.hideLoading();
                 new Handler(Looper.getMainLooper()).postDelayed(() -> activity.startActivity(intent), Constants.ANIMATION_DELAY);
-            }
-            else
+            } else
                 activity.startActivity(intent);
         }
     }

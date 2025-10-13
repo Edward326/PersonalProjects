@@ -1611,6 +1611,7 @@ color dropdown_border
 color dropdown_divider
 color error_color_material_dark
 color error_color_material_light
+color error_red
 color foreground_material_dark
 color foreground_material_light
 color gray_dark
@@ -2447,7 +2448,10 @@ color mtrl_textinput_filled_box_default_background_color
 color mtrl_textinput_focused_box_stroke_color
 color mtrl_textinput_hovered_box_stroke_color
 color notification_action_color_filter
+color notification_button_white
 color notification_icon_bg_color
+color notification_text_gray
+color notification_white
 color primary_dark_material_dark
 color primary_dark_material_light
 color primary_material_dark
@@ -3617,6 +3621,7 @@ drawable abc_textfield_search_material
 drawable abc_vector_test
 drawable avd_hide_password
 drawable avd_show_password
+drawable blindness
 drawable btn_checkbox_checked_mtrl
 drawable btn_checkbox_checked_to_unchecked_mtrl_animation
 drawable btn_checkbox_unchecked_mtrl
@@ -3632,6 +3637,7 @@ drawable design_ic_visibility_off
 drawable design_password_eye
 drawable design_snackbar_background
 drawable dropdown_background
+drawable eyesight
 drawable ic_arrow_back_black_24
 drawable ic_call_answer
 drawable ic_call_answer_low
@@ -3869,6 +3875,7 @@ id centerCrop
 id centerInside
 id center_horizontal
 id center_vertical
+id centrum
 id chain
 id chain2
 id chains
@@ -4152,6 +4159,8 @@ id pooling_container_listener_holder_tag
 id position
 id postLayout
 id pressed
+id problem
+id problem2
 id progress_bar
 id progress_circular
 id progress_horizontal
@@ -4434,6 +4443,7 @@ layout abc_search_view
 layout abc_select_dialog_material
 layout abc_tooltip
 layout activity_caption
+layout activity_configuration
 layout activity_detection
 layout activity_main
 layout activity_permissions
@@ -4528,6 +4538,7 @@ mipmap ic_launcher
 mipmap ic_launcher_foreground
 mipmap ic_launcher_round
 plurals mtrl_badge_content_description
+raw repeat_alert
 string abc_action_bar_home_description
 string abc_action_bar_up_description
 string abc_action_menu_overflow_description
@@ -4592,6 +4603,7 @@ string character_counter_pattern
 string clear_text_end_icon_content_description
 string close_drawer
 string close_sheet
+string config_activity
 string continue_button
 string critical_warning_en
 string critical_warning_ro
@@ -4612,6 +4624,7 @@ string home_button
 string icon_content_description
 string in_progress
 string indeterminate
+string initial_blindness_notification
 string item_view_role_description
 string language_icon
 string m3_exceed_max_badge_text_suffix
@@ -4802,6 +4815,8 @@ string path_password_eye_mask_strike_through
 string path_password_eye_mask_visible
 string path_password_strike_through
 string permissions
+string problem
+string problem2
 string range_end
 string range_start
 string recent_apps_button
@@ -4828,6 +4843,7 @@ string temp_error_ro
 string template_percent
 string tooltip_description
 string tooltip_label
+string tutorial_speak
 string vision_assist_logo
 string wait_en
 string wait_ro

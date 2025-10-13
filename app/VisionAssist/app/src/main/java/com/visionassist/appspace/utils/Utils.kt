@@ -90,3 +90,7 @@ fun load_errorText(context: Context): String {
         else -> context.getString(R.string.exit_error_en)
     }
 }
+
+fun haptic_model0(): LongArray {
+    return longArrayOf(0, 500)
+}

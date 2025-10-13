@@ -13,10 +13,14 @@ color button_background_pressed
 color dropdown_background
 color dropdown_border
 color dropdown_divider
+color error_red
 color gray_dark
 color gray_light
 color gray_medium
 color ic_launcher_background
+color notification_button_white
+color notification_text_gray
+color notification_white
 color purple_200
 color purple_500
 color purple_700
@@ -35,8 +39,10 @@ color text_secondary
 color text_white
 color transparent
 color white
+drawable blindness
 drawable continue_button_background
 drawable dropdown_background
+drawable eyesight
 drawable ic_dropdown_arrow
 drawable ic_forward_arrow
 drawable ic_globe
@@ -58,6 +64,7 @@ id btn_speak
 id btn_view_caption
 id buttons_layout
 id caption_text_view
+id centrum
 id error_message_text
 id error_title
 id exit_button
@@ -67,6 +74,8 @@ id logo_image
 id next_button
 id permission_dialog_box
 id permissions_text
+id problem
+id problem2
 id progress_bar
 id result_image_view
 id retry_button
@@ -74,6 +83,7 @@ id status_bar_spacer
 id status_text_view
 id welcome_text
 layout activity_caption
+layout activity_configuration
 layout activity_detection
 layout activity_main
 layout activity_permissions
@@ -82,6 +92,7 @@ layout activity_welcome
 mipmap ic_launcher
 mipmap ic_launcher_foreground
 mipmap ic_launcher_round
+raw repeat_alert
 string always_allow_en
 string always_allow_ro
 string app_name
@@ -92,6 +103,7 @@ string back_button
 string battery_low_en
 string battery_low_ro
 string cancel
+string config_activity
 string continue_button
 string critical_warning_en
 string critical_warning_ro
@@ -100,11 +112,14 @@ string exit_error_en
 string exit_error_ro
 string forward_arrow
 string home_button
+string initial_blindness_notification
 string language_icon
 string next
 string no
 string ok
 string permissions
+string problem
+string problem2
 string recent_apps_button
 string settings_button_en
 string settings_button_ro
@@ -112,6 +127,7 @@ string settings_open_en
 string settings_open_ro
 string temp_error_en
 string temp_error_ro
+string tutorial_speak
 string vision_assist_logo
 string wait_en
 string wait_ro

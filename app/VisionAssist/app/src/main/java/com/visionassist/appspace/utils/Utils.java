@@ -92,7 +92,7 @@ public class Utils {
                     PhoneStatusMonitor phoneMonitor = PhoneStatusMonitor.getInstance();
                     ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
                     errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
-                    phoneMonitor.shutdownApp(errorDialog);
+                    phoneMonitor.shutdownApp(errorDialog,context);
                 }
 
             case -2:
@@ -109,7 +109,7 @@ public class Utils {
                     PhoneStatusMonitor phoneMonitor = PhoneStatusMonitor.getInstance();
                     ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
                     errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
-                    phoneMonitor.shutdownApp(errorDialog);
+                    phoneMonitor.shutdownApp(errorDialog,context);
                 }
 
             case -1:
@@ -125,7 +125,7 @@ public class Utils {
                     PhoneStatusMonitor phoneMonitor = PhoneStatusMonitor.getInstance();
                     ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
                     errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
-                    phoneMonitor.shutdownApp(errorDialog);
+                    phoneMonitor.shutdownApp(errorDialog,context);
                 }
 
             case 2:
@@ -141,7 +141,7 @@ public class Utils {
                     PhoneStatusMonitor phoneMonitor = PhoneStatusMonitor.getInstance();
                     ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
                     errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
-                    phoneMonitor.shutdownApp(errorDialog);
+                    phoneMonitor.shutdownApp(errorDialog,context);
                 }
 
             case 3:
@@ -157,7 +157,7 @@ public class Utils {
                     PhoneStatusMonitor phoneMonitor = PhoneStatusMonitor.getInstance();
                     ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
                     errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
-                    phoneMonitor.shutdownApp(errorDialog);
+                    phoneMonitor.shutdownApp(errorDialog,context);
                 }
 
             case 4:
@@ -173,7 +173,7 @@ public class Utils {
                     PhoneStatusMonitor phoneMonitor = PhoneStatusMonitor.getInstance();
                     ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
                     errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
-                    phoneMonitor.shutdownApp(errorDialog);
+                    phoneMonitor.shutdownApp(errorDialog,context);
                 }
 
             case 5:
@@ -189,7 +189,7 @@ public class Utils {
                     PhoneStatusMonitor phoneMonitor = PhoneStatusMonitor.getInstance();
                     ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
                     errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
-                    phoneMonitor.shutdownApp(errorDialog);
+                    phoneMonitor.shutdownApp(errorDialog,context);
                 }
 
             case 6:
@@ -205,7 +205,7 @@ public class Utils {
                     PhoneStatusMonitor phoneMonitor = PhoneStatusMonitor.getInstance();
                     ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
                     errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
-                    phoneMonitor.shutdownApp(errorDialog);
+                    phoneMonitor.shutdownApp(errorDialog,context);
                 }
 
             case 7:
@@ -221,7 +221,7 @@ public class Utils {
                     PhoneStatusMonitor phoneMonitor = PhoneStatusMonitor.getInstance();
                     ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
                     errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
-                    phoneMonitor.shutdownApp(errorDialog);
+                    phoneMonitor.shutdownApp(errorDialog,context);
                 }
 
             case 8:
@@ -237,7 +237,7 @@ public class Utils {
                     PhoneStatusMonitor phoneMonitor = PhoneStatusMonitor.getInstance();
                     ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
                     errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
-                    phoneMonitor.shutdownApp(errorDialog);
+                    phoneMonitor.shutdownApp(errorDialog,context);
                 }
 
             case 9:
@@ -253,7 +253,7 @@ public class Utils {
                     PhoneStatusMonitor phoneMonitor = PhoneStatusMonitor.getInstance();
                     ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
                     errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
-                    phoneMonitor.shutdownApp(errorDialog);
+                    phoneMonitor.shutdownApp(errorDialog,context);
                 }
 
             default:
@@ -265,7 +265,7 @@ public class Utils {
         }
     }
 
-    public static void uploadProfile(Activity activity, JSONObject profileSource) {
+    public static void uploadProfile(Activity activity,Context context, JSONObject profileSource) {
         try {
             AppConfig.blindness = profileSource.getBoolean("blindness");
             AppConfig.mainLanguage = languageExtractor(profileSource);
@@ -297,7 +297,7 @@ public class Utils {
             PhoneStatusMonitor phoneMonitor = PhoneStatusMonitor.getInstance();
             ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
             errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
-            phoneMonitor.shutdownApp(errorDialog);
+            phoneMonitor.shutdownApp(errorDialog,context);
         }
     }
 

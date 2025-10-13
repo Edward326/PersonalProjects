@@ -62,7 +62,11 @@ public class Constants {
     // Shutdown delay after showing error (in milliseconds)
     public static final int SHUTDOWN_DELAY_MS = 10000;
     public static final int RETRY_TTS_DELAY_MS = 1000;
-    public static final long BLINDNESS_SHUTDOWN_DELAY_MS = 10000;
+
+    // TTS Repeat Configuration
+    public static final long REPEAT_DELAY = 3000; // 5 seconds wait for volume button
+    public static final float LOW_SPEECH_RATE = 0.5f; // Lower pitch for repeat
+    public static final float HIGH_SPEECH_RATE = 1.5f; // Lower pitch for repeat
 
     // Permission Request Codes
     public static final int CAMERA_PERMISSION_REQUEST = 101;
@@ -82,6 +86,7 @@ public class Constants {
 
     // Error codes
     public static final int JSON_PARSE_ERROR = 1;
+    public static final int FILE_WRITE_ERROR = 2;
 
     // Debug Configuration
     public static final boolean DEBUG_MODE = true;

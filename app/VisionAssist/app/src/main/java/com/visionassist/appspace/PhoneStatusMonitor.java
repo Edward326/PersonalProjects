@@ -1,5 +1,7 @@
 package com.visionassist.appspace;
 
+import static com.visionassist.appspace.utils.UtilsKt.load_errorText;
+
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -10,6 +12,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.util.Pair;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
@@ -31,6 +34,7 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
     private Activity currentActivity;
     private boolean errorShown = false;
     private boolean isPaused = false;
+    private boolean profileLoaded = false;
     private TTSManager ttsManager;
     @SuppressLint("StaticFieldLeak")
     private static PhoneStatusMonitor instance;
@@ -90,58 +94,57 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
         if (Constants.APPLY_BATTERY_CHECK && batteryStatus == 1) {
             errorShown = true;
             // Only use TTS/retry logic if the app is in blindness mode.
-                Handler writeHandler = new Handler(Looper.getMainLooper());
+            Handler writeHandler = new Handler(Looper.getMainLooper());
 
-                // We use a final reference because it's captured by the Runnable
-                final String[] finalErrorMessage = {null};
+            // We use a final reference because it's captured by the Runnable
+            final String[] finalErrorMessage = {null};
 
-                // Recursive Runnable for TTS retry and language check
-                Runnable ttsRetryRunnable = new Runnable() {
-                    @Override
-                    public void run() {
-                        if (ttsManager.isReady()) {
-                            // SUCCESS: TTS is ready. Get the localized message based on the active language.
-                            String currentLangCode = ttsManager.tts.getVoice().getLocale().getLanguage();
-                            finalErrorMessage[0] = UtilsKt.load_batteryLowText(appContext, currentLangCode);
-                            showErrorAndShutdown(finalErrorMessage[0]);
-                        } else{
-                            Log.w(TAG, "TTS not ready on attempt. Retrying...");
-                            writeHandler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS); // Retry after delay
-                        }
+            // Recursive Runnable for TTS retry and language check
+            Runnable ttsRetryRunnable = new Runnable() {
+                @Override
+                public void run() {
+                    if (ttsManager.isReady()) {
+                        // SUCCESS: TTS is ready. Get the localized message based on the active language.
+                        String currentLangCode = ttsManager.tts.getVoice().getLocale().getLanguage();
+                        finalErrorMessage[0] = UtilsKt.load_batteryLowText(appContext, currentLangCode);
+                        showErrorAndShutdown(finalErrorMessage[0]);
+                    } else {
+                        Log.w(TAG, "TTS not ready on attempt. Retrying...");
+                        writeHandler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS); // Retry after delay
                     }
-                };
-                writeHandler.post(ttsRetryRunnable);
-            }
-        else
+                }
+            };
+            writeHandler.post(ttsRetryRunnable);
+        } else
             temperatureStatus(temperatureStatus);
     }
 
     private void temperatureStatus(int temperatureStatus) {
         if (Constants.APPLY_TEMPERATURE_CHECK && temperatureStatus == 1) {
             errorShown = true;
-                // Only use TTS/retry logic if the app is in blindness mode.
-                Handler writeHandler = new Handler(Looper.getMainLooper());
+            // Only use TTS/retry logic if the app is in blindness mode.
+            Handler writeHandler = new Handler(Looper.getMainLooper());
 
-                // We use a final reference because it's captured by the Runnable
-                final String[] finalErrorMessage = {null};
+            // We use a final reference because it's captured by the Runnable
+            final String[] finalErrorMessage = {null};
 
-                // Recursive Runnable for TTS retry and language check
-                Runnable ttsRetryRunnable = new Runnable() {
-                    @Override
-                    public void run() {
-                        if (ttsManager.isReady()) {
-                            // SUCCESS: TTS is ready. Get the localized message based on the active language.
-                            String currentLangCode = ttsManager.tts.getVoice().getLocale().getLanguage();
-                            finalErrorMessage[0] = UtilsKt.load_tempErrorText(appContext, currentLangCode);
-                            showErrorAndShutdown(finalErrorMessage[0]);
-                        } else{
-                            Log.w(TAG, "TTS not ready on attempt. Retrying...");
-                            writeHandler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS); // Retry after delay
-                        }
+            // Recursive Runnable for TTS retry and language check
+            Runnable ttsRetryRunnable = new Runnable() {
+                @Override
+                public void run() {
+                    if (ttsManager.isReady()) {
+                        // SUCCESS: TTS is ready. Get the localized message based on the active language.
+                        String currentLangCode = ttsManager.tts.getVoice().getLocale().getLanguage();
+                        finalErrorMessage[0] = UtilsKt.load_tempErrorText(appContext, currentLangCode);
+                        showErrorAndShutdown(finalErrorMessage[0]);
+                    } else {
+                        Log.w(TAG, "TTS not ready on attempt. Retrying...");
+                        writeHandler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS); // Retry after delay
                     }
-                };
-                writeHandler.post(ttsRetryRunnable);
-            }
+                }
+            };
+            writeHandler.post(ttsRetryRunnable);
+        }
     }
 
     private void showAlertDialogAndScheduleShutdown(String message) {
@@ -153,7 +156,7 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
 
         // 1. Show the AlertDialog on the main thread (No Exit button)
         currentActivity.runOnUiThread(() -> new AlertDialog.Builder(currentActivity)
-                .setTitle(UtilsKt.load_criticalWarning(appContext,ttsManager.tts.getVoice().getLocale().getLanguage()))
+                .setTitle(UtilsKt.load_criticalWarning(appContext, ttsManager.tts.getVoice().getLocale().getLanguage()))
                 .setMessage(message)
                 .setCancelable(false) // User cannot dismiss this
                 .show());
@@ -165,31 +168,48 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
     private void showErrorAndShutdown(String message) {
         if (currentActivity != null && !currentActivity.isFinishing()) {
 
+
             // 1. Conditional Speaking Logic (with loop/retry)
-            if (AppConfig.blindness) {
-                Log.d(TAG, "App is in blindness mode, attempting TTS.");
+            if (profileLoaded) {
+                if (AppConfig.blindness) {
+                    Log.d(TAG, "App is in blindness mode, attempting TTS.");
 
-                Handler speakHandler = new Handler(Looper.getMainLooper());
+                    Handler speakHandler = new Handler(Looper.getMainLooper());
 
-                // Recursive Runnable for TTS retry
-                Runnable ttsRetryRunnable = new Runnable() {
-                    @Override
-                    public void run() {
-                        // Assuming TTSManager has an isReady() check
-                        if (ttsManager.isReady()) {
-                            // SUCCESS: Speak the message and immediately proceed.
-                            ttsManager.speak(message, AppConfig.tts_pitch, AppConfig.tts_speech_rate);
-                            // Proceed to shutdown *after* speaking
-
-                            handler.postDelayed(PhoneStatusMonitor.this::exitApp, Constants.BLINDNESS_SHUTDOWN_DELAY_MS);
-                        } else{
-                            Log.w(TAG, "TTS not ready on attempt ");
-                            speakHandler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS); // Retry after delay
+                    // Recursive Runnable for TTS retry
+                    Runnable ttsRetryRunnable = new Runnable() {
+                        @Override
+                        public void run() {
+                            // Assuming TTSManager has an isReady() check
+                            if (ttsManager.isReady()) {
+                                // SUCCESS: Speak the message and immediately proceed.
+                                ttsManager.speak(message, AppConfig.tts_pitch, AppConfig.tts_speech_rate, false, null);
+                                // Proceed to shutdown *after* speaking
+                                Handler speakHandler2 = new Handler(Looper.getMainLooper());
+                                Runnable ttsRetryRunnableSpeak = new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        if (ttsManager.isDoneSpeaking())
+                                            exitApp();
+                                        else {
+                                            Log.e(TAG, "TTS not done speaking on attempt. Retrying...");
+                                            speakHandler2.postDelayed(this, Constants.RETRY_TTS_DELAY_MS);
+                                        }
+                                    }
+                                };
+                                speakHandler2.post(ttsRetryRunnableSpeak);
+                            } else {
+                                Log.w(TAG, "TTS not ready on attempt ");
+                                speakHandler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS); // Retry after delay
+                            }
                         }
-                    }
-                };
-                // Start the attempt loop
-                speakHandler.post(ttsRetryRunnable);
+                    };
+                    // Start the attempt loop
+                    speakHandler.post(ttsRetryRunnable);
+                } else {
+                    // Not in blindness mode: proceed directly to show alert and schedule shutdown
+                    showAlertDialogAndScheduleShutdown(message);
+                }
             } else {
                 // Not in blindness mode: proceed directly to show alert and schedule shutdown
                 showAlertDialogAndScheduleShutdown(message);
@@ -197,16 +217,40 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
         }
     }
 
-    public void shutdownApp(ErrorDialogManager errorManager) {
-        if(errorManager!=null) {
-            errorManager.showDialog();
-            new Handler(Looper.getMainLooper()).postDelayed(this::exitApp, Constants.ERROR_READ_DELAY);
-        }
-       else
-           exitApp();
+    public void shutdownApp(ErrorDialogManager errorManager, Context context) {
+        if (errorManager != null) {
+            if (profileLoaded) {
+                if (AppConfig.blindness) {
+                    ttsManager.speak(load_errorText(context), AppConfig.tts_pitch, AppConfig.tts_speech_rate, false, null);
+                    Handler speakHandler = new Handler(Looper.getMainLooper());
+                    // Recursive Runnable for TTS retry
+                    Runnable ttsRetryRunnable = new Runnable() {
+                        @Override
+                        public void run() {
+                            // Assuming TTSManager has an isReady() check
+                            if (ttsManager.isDoneSpeaking())
+                                exitApp();
+                            else {
+                                Log.w(TAG, "TTS not ready on attempt ");
+                                speakHandler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS); // Retry after delay
+                            }
+                        }
+                    };
+                    // Start the attempt loop
+                    speakHandler.post(ttsRetryRunnable);
+                } else {
+                    errorManager.showDialog();
+                    new Handler(Looper.getMainLooper()).postDelayed(this::exitApp, Constants.ERROR_READ_DELAY);
+                }
+            } else {
+                errorManager.showDialog();
+                new Handler(Looper.getMainLooper()).postDelayed(this::exitApp, Constants.ERROR_READ_DELAY);
+            }
+        } else
+            exitApp();
     }
 
-    private void exitApp(){
+    private void exitApp() {
         stopMonitoring();
 
         // Crucial: Shut down the TTS engine first
@@ -247,6 +291,10 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
     public void resumeMonitoring() {
         isPaused = false;
         Log.d(TAG, "Monitoring resumed");
+    }
+
+    public void isProfileLoaded(boolean isLoaded) {
+        profileLoaded = isLoaded;
     }
 
     public TTSManager getTTSManager() {

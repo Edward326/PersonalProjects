@@ -9,6 +9,7 @@ import android.view.View;
 import android.widget.ImageView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.compose.ui.platform.ComposeView;
+import com.visionassist.appspace.PhoneStatusMonitor;
 import com.visionassist.appspace.R;
 import com.visionassist.appspace.jetpack.managers.LoadingManager;
 import com.visionassist.appspace.utils.AppConfig;
@@ -18,6 +19,7 @@ import com.visionassist.appspace.utils.Utils;
 import org.json.JSONObject;
 
 public class MainActivity extends AppCompatActivity {
+    private PhoneStatusMonitor monitor = PhoneStatusMonitor.getInstance();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,7 +41,8 @@ public class MainActivity extends AppCompatActivity {
             if (profileStatusDecider.first != 0)
                 Utils.profileSelector(this, this, profileStatusDecider, loadingManager);
             else {
-                Utils.uploadProfile(this, profileStatusDecider.second);
+                Utils.uploadProfile(this,this, profileStatusDecider.second);
+                monitor.isProfileLoaded(true);
                 Class<?> nextActivityClass = (AppConfig.blindness) ? BlindHomeActivity.class : HomeActivity.class;
                 Intent intent = new Intent(this, nextActivityClass);
                 loadingManager.hideLoading();

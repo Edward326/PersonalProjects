@@ -8,10 +8,14 @@
     <color name="dropdown_background">#FFFFFF</color>
     <color name="dropdown_border">#E0E0E0</color>
     <color name="dropdown_divider">#F0F0F0</color>
+    <color name="error_red">#B3261E</color>
     <color name="gray_dark">#666666</color>
     <color name="gray_light">#F5F5F5</color>
     <color name="gray_medium">#CCCCCC</color>
     <color name="ic_launcher_background">#6096BA</color>
+    <color name="notification_button_white">#F7F2FA</color>
+    <color name="notification_text_gray">#49454F</color>
+    <color name="notification_white">#ECE6F0</color>
     <color name="purple_200">#CE93D8</color>
     <color name="purple_500">#9C27B0</color>
     <color name="purple_700">#7B1FA2</color>
@@ -40,6 +44,12 @@
     <string name="battery_low_en">Battery level is too low.Please charge your device immediately.Application will shutdown</string>
     <string name="battery_low_ro"> Nivelul bateriei este prea scăzut.Vă rugăm să încărcați dispozitivul imediat.Aplicația se va opri</string>
     <string name="cancel">Cancel</string>
+    <string name="config_activity">
+        The current page is about deciding whether you want a low-eyesight or blindness profile.
+        In the buttom of the page there exists 2 buttons.
+        The left one is for choosing blindness profile.
+        The right one is for choosing low-eyesight profile.
+    </string>
     <string name="continue_button">Continue</string>
     <string name="critical_warning_en">Critical Warning!</string>
     <string name="critical_warning_ro">Avertisment critic!</string>
@@ -48,11 +58,16 @@
     <string name="exit_error_ro">A apărut o eroare critică și aplicația trebuie închisă pentru a proteja integritatea datelor dumneavoastră. Dacă se întâmplă din nou acest lucru, contactați asistența cu codul de mai jos</string>
     <string name="forward_arrow">Forward arrow</string>
     <string name="home_button">Home navigation button</string>
+    <string name="initial_blindness_notification">
+        Please let a person with good eyesight to set up your profile, so the app can understand you better
+    </string>
     <string name="language_icon">Language selection icon</string>
     <string name="next">Next</string>
     <string name="no">No</string>
     <string name="ok">OK</string>
     <string name="permissions">Permissions</string>
+    <string name="problem">What is your</string>
+    <string name="problem2">visual problem?</string>
     <string name="recent_apps_button">Recent apps navigation button</string>
     <string name="settings_button_en">Settings</string>
     <string name="settings_button_ro">Setări</string>
@@ -60,6 +75,18 @@
     <string name="settings_open_ro">Vă rugăm să permiteți accesul din pagina de setări, în secțiunea Permisiuni, pentru o funcționare corectă a aplicației</string>
     <string name="temp_error_en">Device temperature is too high.The application will shut down to prevent damage</string>
     <string name="temp_error_ro">Temperatura dispozitivului este prea mare.Aplicația se va opri pentru a preveni deteriorarea</string>
+    <string name="tutorial_speak">
+        Welcome to VissionAssist app,
+        the sound you heard is telling you that,
+        the following content that will be spoken
+        could be repeated.
+        By pressing volume down button once you will,
+        repeat the spoken sentence at a slower rate,
+        and by pressing volume down second time,
+        repeat at an higher rate.
+        After the spoken sentence the system will wait 3 seconds
+        if you wish to repeat the sentence
+    </string>
     <string name="vision_assist_logo">VisionAssist Logo</string>
     <string name="wait_en">Please wait</string>
     <string name="wait_ro">Vă rugăm așteptați</string>

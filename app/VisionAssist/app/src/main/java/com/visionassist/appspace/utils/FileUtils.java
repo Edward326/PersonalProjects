@@ -1,8 +1,14 @@
 //file manipulation methods
 package com.visionassist.appspace.utils;
 
+import android.app.Activity;
 import android.content.Context;
 import android.util.Log;
+
+import com.visionassist.appspace.PhoneStatusMonitor;
+import com.visionassist.appspace.R;
+import com.visionassist.appspace.jetpack.managers.ErrorDialogManager;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -145,7 +151,7 @@ public class FileUtils {
     /**
      * Write JSON string to profile file
      */
-    public static boolean writeProfileFile(Context context, String jsonContent) {
+    public static boolean writeProfileFile(Activity activity, Context context, String jsonContent) {
         try {
             File profileFile = getProfileFile(context);
             try (FileOutputStream fos = new FileOutputStream(profileFile);
@@ -156,9 +162,12 @@ public class FileUtils {
             Log.d(TAG, "Profile file written successfully: " + profileFile.getAbsolutePath());
             return true;
         } catch (IOException e) {
-            Log.e(TAG, "Error writing profile file", e);
-            return false;
+                PhoneStatusMonitor phoneMonitor = PhoneStatusMonitor.getInstance();
+                ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
+                errorDialog.setupDialog(Constants.FILE_WRITE_ERROR, String.valueOf(R.string.exit_error_en));
+                phoneMonitor.shutdownApp(errorDialog,context);
         }
+        return false;
     }
 
     /**

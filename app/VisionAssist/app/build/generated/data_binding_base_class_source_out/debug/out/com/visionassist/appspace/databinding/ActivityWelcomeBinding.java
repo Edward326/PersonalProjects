@@ -25,6 +25,9 @@ public final class ActivityWelcomeBinding implements ViewBinding {
   public final TextView appNameText;
 
   @NonNull
+  public final View centrum;
+
+  @NonNull
   public final ComposeView languageSelector;
 
   @NonNull
@@ -43,11 +46,12 @@ public final class ActivityWelcomeBinding implements ViewBinding {
   public final TextView welcomeText;
 
   private ActivityWelcomeBinding(@NonNull RelativeLayout rootView, @NonNull TextView appNameText,
-      @NonNull ComposeView languageSelector, @NonNull ComposeView loadingBox,
+      @NonNull View centrum, @NonNull ComposeView languageSelector, @NonNull ComposeView loadingBox,
       @NonNull ImageView logoImage, @NonNull ComposeView nextButton, @NonNull View statusBarSpacer,
       @NonNull TextView welcomeText) {
     this.rootView = rootView;
     this.appNameText = appNameText;
+    this.centrum = centrum;
     this.languageSelector = languageSelector;
     this.loadingBox = loadingBox;
     this.logoImage = logoImage;
@@ -89,6 +93,12 @@ public final class ActivityWelcomeBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.centrum;
+      View centrum = ViewBindings.findChildViewById(rootView, id);
+      if (centrum == null) {
+        break missingId;
+      }
+
       id = R.id.language_selector;
       ComposeView languageSelector = ViewBindings.findChildViewById(rootView, id);
       if (languageSelector == null) {
@@ -125,8 +135,8 @@ public final class ActivityWelcomeBinding implements ViewBinding {
         break missingId;
       }
 
-      return new ActivityWelcomeBinding((RelativeLayout) rootView, appNameText, languageSelector,
-          loadingBox, logoImage, nextButton, statusBarSpacer, welcomeText);
+      return new ActivityWelcomeBinding((RelativeLayout) rootView, appNameText, centrum,
+          languageSelector, loadingBox, logoImage, nextButton, statusBarSpacer, welcomeText);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

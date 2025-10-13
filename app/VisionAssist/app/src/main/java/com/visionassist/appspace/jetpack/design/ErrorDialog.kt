@@ -26,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -59,7 +60,7 @@ fun ErrorDialog(
                     .fillMaxWidth(0.80f),
                 shape = RoundedCornerShape(28.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = Color(0xFFECE6F0)
+                    containerColor = colorResource(R.color.notification_white)
                 )
             ) {
                 Column(
@@ -74,14 +75,14 @@ fun ErrorDialog(
                         imageVector = Icons.Filled.Error,
                         contentDescription = "Error",
                         modifier = Modifier.size(24.dp),
-                        tint = Color(0xFFB3261E)
+                        tint = colorResource(R.color.error_red)
                     )
 
                     // Message
                     Text(
                         text = if(message=="_undefined_") load_errorText(context) else message,
                         fontSize = 14.sp,
-                        color = Color(0xFF49454F),
+                        color = colorResource(R.color.notification_text_gray),
                         textAlign = TextAlign.Center,
                         lineHeight = 23.sp
                     )
