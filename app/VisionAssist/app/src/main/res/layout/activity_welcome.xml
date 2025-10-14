@@ -12,15 +12,20 @@
         android:layout_width="match_parent"
         android:layout_height="40dp"
         android:layout_alignParentTop="true" />
+    <!-- Home Bar Spacer -->
+    <View
+        android:id="@+id/home_bar_spacer"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:layout_alignParentBottom="true" />
 
     <!-- Logo -->
     <ImageView
-        android:id="@+id/logo_image"
+        android:id="@id/logo_image"
         android:layout_width="200dp"
         android:layout_height="200dp"
         android:layout_below="@id/status_bar_spacer"
         android:layout_marginTop="-25dp"
-        android:layout_marginLeft="-5dp"
         android:contentDescription="@string/vision_assist_logo"
         android:src="@drawable/vision_assist_logo" />
 
@@ -65,6 +70,15 @@
         android:layout_marginTop="20dp"
         android:layout_below="@id/app_name_text" />
 
+    <!-- Back and Next -->
+    <androidx.compose.ui.platform.ComposeView
+        android:id="@+id/next_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@id/home_bar_spacer"
+        android:layout_marginBottom="40dp"
+        android:layout_centerHorizontal="true" />
+
     <!-- LoadingBox -->
     <androidx.compose.ui.platform.ComposeView
         android:id="@+id/loading_box"
@@ -72,13 +86,4 @@
         android:layout_height="wrap_content"
         android:layout_centerHorizontal="true"
         android:layout_centerVertical="true" />
-
-    <!-- Next -->
-    <androidx.compose.ui.platform.ComposeView
-        android:id="@+id/next_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:layout_marginBottom="100dp"
-        android:layout_centerHorizontal="true" />
 </RelativeLayout>

@@ -43,7 +43,7 @@ fun BackArrowLargeFab(
     }
 }
 
-@Preview(showBackground = true, name = "Next Button", widthDp = 500, heightDp = 500)
+@Preview(showBackground = true, name = "Back Button", widthDp = 412, heightDp = 917)
 @Composable
 fun BackArrowLargeFabPreview() {
     // Center the FAB on screen for preview purposes
@@ -51,9 +51,6 @@ fun BackArrowLargeFabPreview() {
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        NextArrowLargeFab {
-            // This block runs when the FAB is clicked in a real app
-            println("Next FAB clicked")
-        }
+        BackArrowLargeFab()
     }
 }

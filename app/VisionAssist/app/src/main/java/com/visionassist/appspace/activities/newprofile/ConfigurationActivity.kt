@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.view.KeyEvent
 import android.view.LayoutInflater
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -75,6 +76,17 @@ class ConfigurationActivity : ComponentActivity() {
             )
         }
         speakInitialCaption()
+    }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        when (keyCode) {
+            KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                Log.d(TAG, "Volume button down for repeat pressed")
+                ttsManager.onVolumeDownPressed()
+                return true
+            }
+        }
+        return super.onKeyDown(keyCode, event)
     }
 
     private fun speakInitialCaption() {
@@ -196,6 +208,8 @@ class ConfigurationActivity : ComponentActivity() {
             jsonObject.put("blindness", blindness)
             // Write back to file
             FileUtils.writeProfileFile(this, this, jsonObject.toString())
+
+            Log.d(TAG, "ConfigurationActivity has written to the profile file")
 
             // Update AppConfig
             AppConfig.blindness = blindness

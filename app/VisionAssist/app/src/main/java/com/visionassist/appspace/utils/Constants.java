@@ -62,6 +62,7 @@ public class Constants {
     // Shutdown delay after showing error (in milliseconds)
     public static final int SHUTDOWN_DELAY_MS = 10000;
     public static final int RETRY_TTS_DELAY_MS = 1000;
+    public static final int MAX_LANGUAGE_CHECK_ATTEMPTS = 3;
 
     // TTS Repeat Configuration
     public static final long REPEAT_DELAY = 3000; // 5 seconds wait for volume button
@@ -75,8 +76,6 @@ public class Constants {
     // Time to wait before popping the permission intent
     public static final int PERMISSION_SLEEP = 2000;
 
-    // Language Check Attempts
-    public static final int MAX_LANGUAGE_CHECK_ATTEMPTS = 3;
 
     // UI overlay for notification
     public static final int ANIMATION_DELAY = 1500;

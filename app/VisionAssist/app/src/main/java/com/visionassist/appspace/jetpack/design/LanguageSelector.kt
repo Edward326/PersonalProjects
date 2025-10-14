@@ -67,7 +67,7 @@ fun LanguageSelector(
         Language("en", "English","US"),
         Language("ro", "Română","RO"),
     ),
-    onLanguageSelected: (Language) -> Unit = {}
+    onLanguageSelected: (Language) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
     var currentLanguage by remember { mutableStateOf(selectedLanguage) }
@@ -75,9 +75,7 @@ fun LanguageSelector(
 
     val density = LocalDensity.current
 
-    Box(
-        modifier = Modifier.wrapContentSize(Alignment.TopStart)
-    ) {
+    Box{
         SplitButtonLayout(
             modifier = Modifier.onGloballyPositioned { coordinates ->
                 buttonWidth = coordinates.size.width
@@ -197,7 +195,7 @@ fun LanguageSelector(
 }
 
 // Preview function for real-time design updates
-@Preview(showBackground = true, widthDp = 500, heightDp = 500)
+@Preview(showBackground = true, widthDp = 412, heightDp = 917)
 @Composable
 fun LanguageSelectorPreview() {
     Box(
@@ -207,10 +205,7 @@ fun LanguageSelectorPreview() {
         contentAlignment = Alignment.Center
     ) {
         LanguageSelector(
-            onLanguageSelected = { language ->
-                // Preview callback - you can see this in logs during preview
-                println("Language selected: ${language.name}")
-            }
+            onLanguageSelected = {}
         )
     }
 }

@@ -24,6 +24,7 @@ import com.visionassist.appspace.activities.newprofile.UserInfoE4Activity;
 import com.visionassist.appspace.activities.newprofile.WelcomeActivity;
 import com.visionassist.appspace.jetpack.managers.ErrorDialogManager;
 import com.visionassist.appspace.jetpack.managers.LoadingManager;
+import com.visionassist.appspace.models.ttsengine.TTSManager;
 import org.json.JSONException;
 import org.json.JSONObject;
 import java.io.IOException;
@@ -31,6 +32,8 @@ import java.io.InputStream;
 
 public class Utils {
     private static final String TAG = "Utils";
+
+    private static final PhoneStatusMonitor phoneMonitor=PhoneStatusMonitor.getInstance();
 
     public static Pair<Integer, JSONObject> checkProfile(Context context) {
         // Check if profile directory exists
@@ -89,7 +92,6 @@ public class Utils {
                     new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent1), Constants.ANIMATION_DELAY);
                     break;
                 } catch (JSONException e) {
-                    PhoneStatusMonitor phoneMonitor = PhoneStatusMonitor.getInstance();
                     ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
                     errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
                     phoneMonitor.shutdownApp(errorDialog,context);
@@ -106,7 +108,6 @@ public class Utils {
                     new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent2), Constants.ANIMATION_DELAY);
                     break;
                 } catch (JSONException e) {
-                    PhoneStatusMonitor phoneMonitor = PhoneStatusMonitor.getInstance();
                     ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
                     errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
                     phoneMonitor.shutdownApp(errorDialog,context);
@@ -122,7 +123,6 @@ public class Utils {
                     new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent3), Constants.ANIMATION_DELAY);
                     break;
                 } catch (JSONException e) {
-                    PhoneStatusMonitor phoneMonitor = PhoneStatusMonitor.getInstance();
                     ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
                     errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
                     phoneMonitor.shutdownApp(errorDialog,context);
@@ -138,7 +138,6 @@ public class Utils {
                     new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent4), Constants.ANIMATION_DELAY);
                     break;
                 } catch (JSONException e) {
-                    PhoneStatusMonitor phoneMonitor = PhoneStatusMonitor.getInstance();
                     ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
                     errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
                     phoneMonitor.shutdownApp(errorDialog,context);
@@ -154,7 +153,6 @@ public class Utils {
                     new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent5), Constants.ANIMATION_DELAY);
                     break;
                 } catch (JSONException e) {
-                    PhoneStatusMonitor phoneMonitor = PhoneStatusMonitor.getInstance();
                     ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
                     errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
                     phoneMonitor.shutdownApp(errorDialog,context);
@@ -170,7 +168,6 @@ public class Utils {
                     new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent6), Constants.ANIMATION_DELAY);
                     break;
                 } catch (JSONException e) {
-                    PhoneStatusMonitor phoneMonitor = PhoneStatusMonitor.getInstance();
                     ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
                     errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
                     phoneMonitor.shutdownApp(errorDialog,context);
@@ -186,7 +183,6 @@ public class Utils {
                     new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent7), Constants.ANIMATION_DELAY);
                     break;
                 } catch (JSONException e) {
-                    PhoneStatusMonitor phoneMonitor = PhoneStatusMonitor.getInstance();
                     ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
                     errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
                     phoneMonitor.shutdownApp(errorDialog,context);
@@ -202,7 +198,6 @@ public class Utils {
                     new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent8), Constants.ANIMATION_DELAY);
                     break;
                 } catch (JSONException e) {
-                    PhoneStatusMonitor phoneMonitor = PhoneStatusMonitor.getInstance();
                     ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
                     errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
                     phoneMonitor.shutdownApp(errorDialog,context);
@@ -218,7 +213,6 @@ public class Utils {
                     new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent9), Constants.ANIMATION_DELAY);
                     break;
                 } catch (JSONException e) {
-                    PhoneStatusMonitor phoneMonitor = PhoneStatusMonitor.getInstance();
                     ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
                     errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
                     phoneMonitor.shutdownApp(errorDialog,context);
@@ -234,7 +228,6 @@ public class Utils {
                     new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent10), Constants.ANIMATION_DELAY);
                     break;
                 } catch (JSONException e) {
-                    PhoneStatusMonitor phoneMonitor = PhoneStatusMonitor.getInstance();
                     ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
                     errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
                     phoneMonitor.shutdownApp(errorDialog,context);
@@ -250,7 +243,6 @@ public class Utils {
                     new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent11), Constants.ANIMATION_DELAY);
                     break;
                 } catch (JSONException e) {
-                    PhoneStatusMonitor phoneMonitor = PhoneStatusMonitor.getInstance();
                     ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
                     errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
                     phoneMonitor.shutdownApp(errorDialog,context);
@@ -293,8 +285,10 @@ public class Utils {
             }
             AppConfig.hash_caching = profileSource.getString("hash_caching");
             AppConfig.env_reports = profileSource.getBoolean("env_reports");
+            TTSManager ttsManager=phoneMonitor.getTTSManager();
+            ttsManager.changeLanguage(AppConfig.mainLanguage,activity);
+
         } catch (JSONException e) {
-            PhoneStatusMonitor phoneMonitor = PhoneStatusMonitor.getInstance();
             ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
             errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
             phoneMonitor.shutdownApp(errorDialog,context);

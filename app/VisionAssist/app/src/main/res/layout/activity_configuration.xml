@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/welcome_background"
-    tools:context=".activities.newprofile.WelcomeActivity">
+    tools:context=".activities.newprofile.ConfigurationActivity">
 
     <!-- Status Bar Spacer -->
     <View
@@ -12,6 +12,12 @@
         android:layout_width="match_parent"
         android:layout_height="40dp"
         android:layout_alignParentTop="true" />
+    <!-- Home Bar Spacer -->
+    <View
+        android:id="@+id/home_bar_spacer"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:layout_alignParentBottom="true" />
 
     <!-- Logo -->
     <ImageView
@@ -20,7 +26,6 @@
         android:layout_height="200dp"
         android:layout_below="@id/status_bar_spacer"
         android:layout_marginTop="-25dp"
-        android:layout_marginLeft="-5dp"
         android:contentDescription="@string/vision_assist_logo"
         android:src="@drawable/vision_assist_logo" />
 
@@ -55,6 +60,8 @@
         android:textSize="40sp"
         android:fontFamily="@font/roboto_light_ttf"
         android:letterSpacing="0.15" />
+
+    <!-- What is your problem -->
     <TextView
         android:id="@+id/problem"
         android:layout_width="wrap_content"
@@ -79,4 +86,12 @@
         android:fontFamily="@font/roboto_semibold"
         android:gravity="center_horizontal"
         />
+
+    <!-- LoadingBox -->
+    <androidx.compose.ui.platform.ComposeView
+        android:id="@+id/loading_box"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_centerVertical="true"/>
 </RelativeLayout>

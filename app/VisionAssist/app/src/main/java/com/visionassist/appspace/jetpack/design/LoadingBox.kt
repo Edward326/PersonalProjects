@@ -89,7 +89,7 @@ fun LoadingComponent(
                 LinearProgressIndicator(
                     modifier = Modifier
                         .width(200.dp)
-                        .height(4.dp)
+                        .height(5.dp)
                         .clip(RoundedCornerShape(1000.dp)),
                     color = colorResource(R.color.std_purple),
                     trackColor = Color(0xFFE8DEF8),
@@ -100,7 +100,7 @@ fun LoadingComponent(
     }
 }
 
-@Preview(name = "Loading Linear", showBackground = true, widthDp = 500, heightDp = 500)
+@Preview(name = "Loading Linear", showBackground = true, widthDp = 412, heightDp = 917, backgroundColor = 0x80FFFFFF)
 @Composable
 fun LoadingComponentPreview() {
     LoadingComponent(
