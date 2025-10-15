@@ -65,9 +65,7 @@ id btn_view_caption
 id buttons_layout
 id caption_text_view
 id centrum
-id error_message_text
-id error_title
-id exit_button
+id home_bar_spacer
 id language_selector
 id loading_box
 id logo_image
@@ -78,7 +76,6 @@ id problem
 id problem2
 id progress_bar
 id result_image_view
-id retry_button
 id status_bar_spacer
 id status_text_view
 id welcome_text
@@ -87,7 +84,6 @@ layout activity_configuration
 layout activity_detection
 layout activity_main
 layout activity_permissions
-layout activity_shutdown
 layout activity_welcome
 mipmap ic_launcher
 mipmap ic_launcher_foreground

@@ -1,34 +1,26 @@
 [
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-mergeDebugResources-63:\\layout\\activity_main.xml",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\layout\\activity_main.xml"
-    },
-    {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-mergeDebugResources-63:\\layout\\activity_permissions.xml",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\layout\\activity_permissions.xml"
+        "merged": "com.visionassist.appspace.app-mergeDebugResources-63:/layout/activity_permissions.xml",
+        "source": "com.visionassist.appspace.app-main-66:/layout/activity_permissions.xml"
     },
     {
         "merged": "com.visionassist.appspace.app-mergeDebugResources-63:/layout/activity_welcome.xml",
         "source": "com.visionassist.appspace.app-main-66:/layout/activity_welcome.xml"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-mergeDebugResources-63:\\layout\\activity_caption.xml",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\layout\\activity_caption.xml"
+        "merged": "com.visionassist.appspace.app-mergeDebugResources-63:/layout/activity_caption.xml",
+        "source": "com.visionassist.appspace.app-main-66:/layout/activity_caption.xml"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-mergeDebugResources-63:\\layout\\activity_detection.xml",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\layout\\activity_detection.xml"
+        "merged": "com.visionassist.appspace.app-mergeDebugResources-63:/layout/activity_main.xml",
+        "source": "com.visionassist.appspace.app-main-66:/layout/activity_main.xml"
     },
     {
         "merged": "com.visionassist.appspace.app-mergeDebugResources-63:/layout/activity_configuration.xml",
         "source": "com.visionassist.appspace.app-main-66:/layout/activity_configuration.xml"
     },
     {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-mergeDebugResources-63:\\layout\\activity_shutdown.xml",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\layout\\activity_shutdown.xml"
-    },
-    {
-        "merged": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-mergeDebugResources-63:\\layout\\activity_welcome.xml",
-        "source": "C:\\Users\\eduar\\.gradle\\daemon\\8.13\\com.visionassist.appspace.app-main-66:\\layout\\activity_welcome.xml"
+        "merged": "com.visionassist.appspace.app-mergeDebugResources-63:/layout/activity_detection.xml",
+        "source": "com.visionassist.appspace.app-main-66:/layout/activity_detection.xml"
     }
 ]

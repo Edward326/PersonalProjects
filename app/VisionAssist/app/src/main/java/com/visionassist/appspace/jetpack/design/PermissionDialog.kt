@@ -65,7 +65,7 @@ fun PermissionDialog(
         Box(
             modifier = modifier
                 .fillMaxSize()
-                .background(Color.White.copy(alpha = 0.5f)),
+                .background(Color.Gray.copy(alpha = 0.5f)),
             contentAlignment = Alignment.Center
         ) {
             // Dialog Card
@@ -127,7 +127,7 @@ fun PermissionDialog(
     }
 }
 
-@Preview(name = "Permission Dialog", showBackground = true, widthDp = 412, heightDp = 917, backgroundColor = 0x80FFFFFF)
+@Preview(name = "Permission Dialog", showBackground = true, widthDp = 412, heightDp = 917)
 @Composable
 fun PermissionDialogPreview() {
     PermissionDialog(

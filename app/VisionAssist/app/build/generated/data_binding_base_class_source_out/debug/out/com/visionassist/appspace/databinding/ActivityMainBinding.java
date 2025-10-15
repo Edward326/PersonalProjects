@@ -21,6 +21,9 @@ public final class ActivityMainBinding implements ViewBinding {
   private final RelativeLayout rootView;
 
   @NonNull
+  public final View homeBarSpacer;
+
+  @NonNull
   public final ComposeView loadingBox;
 
   @NonNull
@@ -29,9 +32,11 @@ public final class ActivityMainBinding implements ViewBinding {
   @NonNull
   public final View statusBarSpacer;
 
-  private ActivityMainBinding(@NonNull RelativeLayout rootView, @NonNull ComposeView loadingBox,
-      @NonNull ImageView logoImage, @NonNull View statusBarSpacer) {
+  private ActivityMainBinding(@NonNull RelativeLayout rootView, @NonNull View homeBarSpacer,
+      @NonNull ComposeView loadingBox, @NonNull ImageView logoImage,
+      @NonNull View statusBarSpacer) {
     this.rootView = rootView;
+    this.homeBarSpacer = homeBarSpacer;
     this.loadingBox = loadingBox;
     this.logoImage = logoImage;
     this.statusBarSpacer = statusBarSpacer;
@@ -64,6 +69,12 @@ public final class ActivityMainBinding implements ViewBinding {
     // This is done to optimize the compiled bytecode for size and performance.
     int id;
     missingId: {
+      id = R.id.home_bar_spacer;
+      View homeBarSpacer = ViewBindings.findChildViewById(rootView, id);
+      if (homeBarSpacer == null) {
+        break missingId;
+      }
+
       id = R.id.loading_box;
       ComposeView loadingBox = ViewBindings.findChildViewById(rootView, id);
       if (loadingBox == null) {
@@ -82,8 +93,8 @@ public final class ActivityMainBinding implements ViewBinding {
         break missingId;
       }
 
-      return new ActivityMainBinding((RelativeLayout) rootView, loadingBox, logoImage,
-          statusBarSpacer);
+      return new ActivityMainBinding((RelativeLayout) rootView, homeBarSpacer, loadingBox,
+          logoImage, statusBarSpacer);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

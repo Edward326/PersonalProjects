@@ -12,6 +12,12 @@
         android:layout_width="match_parent"
         android:layout_height="40dp"
         android:layout_alignParentTop="true" />
+    <!-- Home Bar Spacer -->
+    <View
+        android:id="@+id/home_bar_spacer"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:layout_alignParentBottom="true" />
 
     <!-- Permissions-->
     <TextView

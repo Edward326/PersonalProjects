@@ -63,7 +63,7 @@ fun LoadingComponent(
         Box(
             modifier = modifier
                 .fillMaxSize()
-                .background(Color.White.copy(alpha = 0.5f)),
+                .background(Color.Gray.copy(alpha = 0.5f)),
             contentAlignment = Alignment.Center
         ) {
             // Loading content
@@ -100,7 +100,7 @@ fun LoadingComponent(
     }
 }
 
-@Preview(name = "Loading Linear", showBackground = true, widthDp = 412, heightDp = 917, backgroundColor = 0x80FFFFFF)
+@Preview(name = "Loading Linear", showBackground = true, widthDp = 412, heightDp = 917)
 @Composable
 fun LoadingComponentPreview() {
     LoadingComponent(

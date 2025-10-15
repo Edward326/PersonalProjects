@@ -3952,11 +3952,8 @@ id endToStart
 id enterAlways
 id enterAlwaysCollapsed
 id entireSpace
-id error_message_text
-id error_title
 id escape
 id exitUntilCollapsed
-id exit_button
 id expand_activities_button
 id expanded_menu
 id fade
@@ -3997,6 +3994,7 @@ id hide_in_inspector_tag
 id hideable
 id home
 id homeAsUp
+id home_bar_spacer
 id honorRequest
 id horizontal
 id horizontal_only
@@ -4171,7 +4169,6 @@ id rectangles
 id report_drawn
 id result_image_view
 id retreat
-id retry_button
 id reverseSawtooth
 id right
 id rightToLeft
@@ -4447,7 +4444,6 @@ layout activity_configuration
 layout activity_detection
 layout activity_main
 layout activity_permissions
-layout activity_shutdown
 layout activity_welcome
 layout custom_dialog
 layout design_bottom_navigation_item

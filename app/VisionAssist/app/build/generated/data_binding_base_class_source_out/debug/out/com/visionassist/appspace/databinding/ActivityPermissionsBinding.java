@@ -21,6 +21,9 @@ public final class ActivityPermissionsBinding implements ViewBinding {
   private final RelativeLayout rootView;
 
   @NonNull
+  public final View homeBarSpacer;
+
+  @NonNull
   public final ComposeView loadingBox;
 
   @NonNull
@@ -32,10 +35,11 @@ public final class ActivityPermissionsBinding implements ViewBinding {
   @NonNull
   public final View statusBarSpacer;
 
-  private ActivityPermissionsBinding(@NonNull RelativeLayout rootView,
+  private ActivityPermissionsBinding(@NonNull RelativeLayout rootView, @NonNull View homeBarSpacer,
       @NonNull ComposeView loadingBox, @NonNull ComposeView permissionDialogBox,
       @NonNull TextView permissionsText, @NonNull View statusBarSpacer) {
     this.rootView = rootView;
+    this.homeBarSpacer = homeBarSpacer;
     this.loadingBox = loadingBox;
     this.permissionDialogBox = permissionDialogBox;
     this.permissionsText = permissionsText;
@@ -69,6 +73,12 @@ public final class ActivityPermissionsBinding implements ViewBinding {
     // This is done to optimize the compiled bytecode for size and performance.
     int id;
     missingId: {
+      id = R.id.home_bar_spacer;
+      View homeBarSpacer = ViewBindings.findChildViewById(rootView, id);
+      if (homeBarSpacer == null) {
+        break missingId;
+      }
+
       id = R.id.loading_box;
       ComposeView loadingBox = ViewBindings.findChildViewById(rootView, id);
       if (loadingBox == null) {
@@ -93,7 +103,7 @@ public final class ActivityPermissionsBinding implements ViewBinding {
         break missingId;
       }
 
-      return new ActivityPermissionsBinding((RelativeLayout) rootView, loadingBox,
+      return new ActivityPermissionsBinding((RelativeLayout) rootView, homeBarSpacer, loadingBox,
           permissionDialogBox, permissionsText, statusBarSpacer);
     }
     String missingId = rootView.getResources().getResourceName(id);
