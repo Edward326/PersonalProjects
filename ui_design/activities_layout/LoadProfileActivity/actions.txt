@@ -1,0 +1,10 @@
+Butonul de back:
+-merge la activiatea anterioara
+
+Have an account button:
+-prompt componenta account load, aici se fac verificarile si daca e ok se importeaza profilul si se merge catre home
+-daca nu e ok prompt basic dialog 2,basic dialog_, componenet 11, compoinenet 12_
+
+Locally button:
+-prompt intent componenet 12, dupa ce se primeste fisierul si se verifica, daca e ok, prompt compoennet 14 soi mergi in home
+-daca nu e ok prompt componenet 14
