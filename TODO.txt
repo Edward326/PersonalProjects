@@ -1,8 +1,5 @@
--facut UI NewProfileActivity/LoadProfileActivity +exportat+numire actiuni
--modificat usecasediagram pentru main(permisisons+sincronizat profil in caz de profil online) si ukt
-,modificat pentru loadingactivity si facut pentru newprtofile si loadprofile
--modificat cerinte si specificatii pentru SMA a.i sa fie si local si remote user data
--modificat  MainActivity astfel incat sa suporte sincronizarea cu database
--modificat validateProfile, uploadProfile
--implmenatre LoadingActivity
+-modificat  MainActivity astfel incat sa suporte sincronizarea cu database(pus in PhoneStatusMonitor variabila care va retine statusul sync profile)
+-modificat validateProfile, profileSelector, uploadProfile
+-modificat WelcomeActivity	
 -impklmenetare LoadProfileActvity/NewProfileActivity
+-implementat comentariul dijn uploadProfile

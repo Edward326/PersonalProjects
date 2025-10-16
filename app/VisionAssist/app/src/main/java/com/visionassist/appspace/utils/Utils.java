@@ -20,7 +20,6 @@ import com.visionassist.appspace.activities.newprofile.UserInfoActivity;
 import com.visionassist.appspace.activities.newprofile.UserInfoE1Activity;
 import com.visionassist.appspace.activities.newprofile.UserInfoE2Activity;
 import com.visionassist.appspace.activities.newprofile.UserInfoE3Activity;
-import com.visionassist.appspace.activities.newprofile.UserInfoE4Activity;
 import com.visionassist.appspace.activities.newprofile.WelcomeActivity;
 import com.visionassist.appspace.jetpack.managers.ErrorDialogManager;
 import com.visionassist.appspace.jetpack.managers.LoadingManager;
@@ -287,6 +286,8 @@ public class Utils {
             AppConfig.env_reports = profileSource.getBoolean("env_reports");
             TTSManager ttsManager=phoneMonitor.getTTSManager();
             ttsManager.changeLanguage(AppConfig.mainLanguage,activity);
+            //instantate the detector model, the captioner, the classifier, the language translater(if the langiage is difffrent than english)
+            //load the classes names and vocab from files
 
         } catch (JSONException e) {
             ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
