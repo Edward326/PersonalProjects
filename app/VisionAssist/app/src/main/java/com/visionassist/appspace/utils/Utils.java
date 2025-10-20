@@ -1,5 +1,6 @@
 package com.visionassist.appspace.utils;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
@@ -9,6 +10,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.util.Pair;
+import com.visionassist.appspace.ExceptionVisionAssist;
 import com.visionassist.appspace.PhoneStatusMonitor;
 import com.visionassist.appspace.R;
 import com.visionassist.appspace.activities.newprofile.ConfigurationActivity;
@@ -32,7 +34,12 @@ import java.io.InputStream;
 public class Utils {
     private static final String TAG = "Utils";
 
-    private static final PhoneStatusMonitor phoneMonitor=PhoneStatusMonitor.getInstance();
+    @SuppressLint("StaticFieldLeak")
+    static final PhoneStatusMonitor phoneMonitor = PhoneStatusMonitor.getInstance();
+    @SuppressLint("StaticFieldLeak")
+    static Activity activity=phoneMonitor.getCurrentActivity();
+    @SuppressLint("StaticFieldLeak")
+    static Context context=phoneMonitor.getCurrentContext();
 
     public static Pair<Integer, JSONObject> checkProfile(Context context) {
         // Check if profile directory exists
@@ -57,30 +64,32 @@ public class Utils {
         }
     }
 
-    public static void profileSelector(Activity activity, Context context, Pair<Integer, JSONObject> profileStatusDecider, LoadingManager loadingManager) {
+    public static void profileSelector(Pair<Integer, JSONObject> profileStatusDecider, LoadingManager loadingManager) throws Exception {
         Intent intent;
+        Context context=phoneMonitor.getCurrentContext();
 
         switch (profileStatusDecider.first) {
 
             case 1:
-                // Delete existing profile directory if it exists
-                if (FileUtils.profileDirectoryExists(context)) {
-                    boolean deleted = FileUtils.deleteProfileDirectory(context);
-                    Log.d(TAG, "Profile directory deletion: " + (deleted ? "success" : "failed"));
-                }
+                    // Delete existing profile directory if it exists
+                    if (FileUtils.profileDirectoryExists(context)) {
+                        boolean deleted = FileUtils.deleteProfileDirectory(context);
+                        Log.d(TAG, "Profile directory deletion: " + (deleted ? "success" : "failed"));
+                    }
 
-                // Create fresh profile structure
-                boolean created = FileUtils.createProfileStructure(context);
-                if (!created) {
-                    Log.e(TAG, "Failed to create profile structure");
-                    // Still continue to ConfigurationActivity, let it handle the error
-                }
+                    // Create fresh profile structure
+                    boolean created = FileUtils.createProfileStructure(context);
+                    if (!created) {
+                        Log.e(TAG, "Failed to create profile structure");
+                        // Still continue to ConfigurationActivity, let it handle the error
+                    }
 
-                intent = new Intent(context, ConfigurationActivity.class);
-                loadingManager.hideLoading();
-                Intent finalIntent = intent;
-                new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent), Constants.ANIMATION_DELAY);
-                break;
+                    intent = new Intent(context, ConfigurationActivity.class);
+                    loadingManager.hideLoading();
+                    Intent finalIntent = intent;
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent), Constants.ANIMATION_DELAY);
+                    break;
+
 
             case -3:
                 try {
@@ -91,9 +100,7 @@ public class Utils {
                     new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent1), Constants.ANIMATION_DELAY);
                     break;
                 } catch (JSONException e) {
-                    ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
-                    errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
-                    phoneMonitor.shutdownApp(errorDialog,context);
+                    throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR,loadingManager);
                 }
 
             case -2:
@@ -107,9 +114,7 @@ public class Utils {
                     new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent2), Constants.ANIMATION_DELAY);
                     break;
                 } catch (JSONException e) {
-                    ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
-                    errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
-                    phoneMonitor.shutdownApp(errorDialog,context);
+                    throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR,loadingManager);
                 }
 
             case -1:
@@ -122,9 +127,7 @@ public class Utils {
                     new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent3), Constants.ANIMATION_DELAY);
                     break;
                 } catch (JSONException e) {
-                    ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
-                    errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
-                    phoneMonitor.shutdownApp(errorDialog,context);
+                    throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR,loadingManager);
                 }
 
             case 2:
@@ -137,9 +140,7 @@ public class Utils {
                     new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent4), Constants.ANIMATION_DELAY);
                     break;
                 } catch (JSONException e) {
-                    ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
-                    errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
-                    phoneMonitor.shutdownApp(errorDialog,context);
+                    throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR,loadingManager);
                 }
 
             case 3:
@@ -152,9 +153,7 @@ public class Utils {
                     new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent5), Constants.ANIMATION_DELAY);
                     break;
                 } catch (JSONException e) {
-                    ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
-                    errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
-                    phoneMonitor.shutdownApp(errorDialog,context);
+                    throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR,loadingManager);
                 }
 
             case 4:
@@ -167,9 +166,7 @@ public class Utils {
                     new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent6), Constants.ANIMATION_DELAY);
                     break;
                 } catch (JSONException e) {
-                    ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
-                    errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
-                    phoneMonitor.shutdownApp(errorDialog,context);
+                    throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR,loadingManager);
                 }
 
             case 5:
@@ -182,9 +179,7 @@ public class Utils {
                     new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent7), Constants.ANIMATION_DELAY);
                     break;
                 } catch (JSONException e) {
-                    ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
-                    errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
-                    phoneMonitor.shutdownApp(errorDialog,context);
+                    throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR,loadingManager);
                 }
 
             case 6:
@@ -197,9 +192,7 @@ public class Utils {
                     new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent8), Constants.ANIMATION_DELAY);
                     break;
                 } catch (JSONException e) {
-                    ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
-                    errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
-                    phoneMonitor.shutdownApp(errorDialog,context);
+                    throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR,loadingManager);
                 }
 
             case 7:
@@ -212,9 +205,7 @@ public class Utils {
                     new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent9), Constants.ANIMATION_DELAY);
                     break;
                 } catch (JSONException e) {
-                    ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
-                    errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
-                    phoneMonitor.shutdownApp(errorDialog,context);
+                    throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR,loadingManager);
                 }
 
             case 8:
@@ -227,9 +218,7 @@ public class Utils {
                     new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent10), Constants.ANIMATION_DELAY);
                     break;
                 } catch (JSONException e) {
-                    ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
-                    errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
-                    phoneMonitor.shutdownApp(errorDialog,context);
+                    throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR,loadingManager);
                 }
 
             case 9:
@@ -242,9 +231,7 @@ public class Utils {
                     new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent11), Constants.ANIMATION_DELAY);
                     break;
                 } catch (JSONException e) {
-                    ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
-                    errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
-                    phoneMonitor.shutdownApp(errorDialog,context);
+                    throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR,loadingManager);
                 }
 
             default:
@@ -256,7 +243,7 @@ public class Utils {
         }
     }
 
-    public static void uploadProfile(Activity activity,Context context, JSONObject profileSource) {
+    public static void uploadProfile(JSONObject profileSource,LoadingManager loadingManager) {
         try {
             AppConfig.blindness = profileSource.getBoolean("blindness");
             AppConfig.mainLanguage = languageExtractor(profileSource);
@@ -284,15 +271,27 @@ public class Utils {
             }
             AppConfig.hash_caching = profileSource.getString("hash_caching");
             AppConfig.env_reports = profileSource.getBoolean("env_reports");
-            TTSManager ttsManager=phoneMonitor.getTTSManager();
-            ttsManager.changeLanguage(AppConfig.mainLanguage,activity);
+            TTSManager ttsManager = phoneMonitor.getTTSManager();
+            ttsManager.changeLanguage(AppConfig.mainLanguage, activity);
             //instantate the detector model, the captioner, the classifier, the language translater(if the langiage is difffrent than english)
             //load the classes names and vocab from files
 
-        } catch (JSONException e) {
-            ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
-            errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
-            phoneMonitor.shutdownApp(errorDialog,context);
+        } catch (Exception e) {
+            if(e instanceof ExceptionVisionAssist) {
+                int errorCode=((ExceptionVisionAssist) e).getErrorCode();
+                Log.e(TAG, "Thrown special exception, error code: " + errorCode);
+                ErrorDialogManager errorDialog = new ErrorDialogManager(phoneMonitor.getCurrentActivity());
+                errorDialog.setupDialog(errorCode, String.valueOf(R.string.exit_error_en));
+                if(loadingManager!=null)loadingManager.hideLoading();
+                phoneMonitor.shutdownApp(errorDialog,phoneMonitor.getCurrentContext());
+            }
+            else
+            {
+                Log.e(TAG, "Thrown exception, explanation: ",e);
+                ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
+                errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
+                phoneMonitor.shutdownApp(errorDialog, context);
+            }
         }
     }
 

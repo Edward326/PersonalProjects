@@ -2,25 +2,39 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.visionassist.appspace">
 
-    <!-- Existing permissions -->
+    <!-- Camera feature -->
     <uses-feature
         android:name="android.hardware.camera"
         android:required="false" />
 
+    <!-- Camera permission - all API levels -->
     <uses-permission android:name="android.permission.CAMERA" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+
+    <!-- Other basic permissions -->
     <uses-permission android:name="android.permission.VIBRATE" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Storage permissions for API 24-29 (Android 7.0 - Android 10) -->
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
+
+    <!-- Storage permissions for API 33+ (Android 13+) -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
 
     <application
         android:name=".VisionAssistApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
-        android:theme="@style/AppTheme">
+        android:theme="@style/AppTheme"
+        android:requestLegacyExternalStorage="true">
 
-        <!-- Existing activities -->
         <activity
             android:name=".activities.main.MainActivity"
             android:exported="true">
@@ -32,8 +46,7 @@
 
         <activity
             android:name=".activities.newprofile.PermissionsActivity"
-            android:screenOrientation="portrait"
-            />
+            android:screenOrientation="portrait" />
 
         <!-- Your other activities -->
 

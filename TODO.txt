@@ -1,5 +1,7 @@
--modificat  MainActivity astfel incat sa suporte sincronizarea cu database(pus in PhoneStatusMonitor variabila care va retine statusul sync profile)
+-peste tot unde se face operatii lungi se incloduieste cu bakgroihundtaslexexcutor
+-modificat  MainActivity astfel incat sa suporte sincronizarea cu database
+-instantat PhoneStatusMonitor dbmanager
 -modificat validateProfile, profileSelector, uploadProfile
--modificat WelcomeActivity	
+-modificat WelcomeActivity
 -impklmenetare LoadProfileActvity/NewProfileActivity
--implementat comentariul dijn uploadProfile
+-implementat comentariul dijn uploadProfilee

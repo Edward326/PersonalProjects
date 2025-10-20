@@ -1,6 +1,7 @@
 //file manipulation methods
 package com.visionassist.appspace.utils;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.util.Log;
@@ -22,6 +23,13 @@ import java.util.Map;
 
 public class FileUtils {
     private static final String TAG = "FileUtils";
+
+    @SuppressLint("StaticFieldLeak")
+    static final PhoneStatusMonitor phoneMonitor = PhoneStatusMonitor.getInstance();
+    @SuppressLint("StaticFieldLeak")
+    static Activity activity=phoneMonitor.getCurrentActivity();
+    @SuppressLint("StaticFieldLeak")
+    static Context context=phoneMonitor.getCurrentContext();
 
     /**
      * Get the profile directory in internal storage
@@ -121,8 +129,11 @@ public class FileUtils {
             return deleteRecursive(dir);
         } catch (Exception e) {
             Log.e(TAG, "Error deleting profile directory", e);
-            return false;
+            ErrorDialogManager errorDialog = new ErrorDialogManager(phoneMonitor.getCurrentActivity());
+            errorDialog.setupDialog(Constants.DIR_DELETE_ERROR, String.valueOf(R.string.exit_error_en));
+            phoneMonitor.shutdownApp(errorDialog, phoneMonitor.getCurrentContext());
         }
+        return false;
     }
 
     /**

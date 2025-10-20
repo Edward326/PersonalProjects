@@ -83,41 +83,58 @@ public class PermissionChecker {
         }
     }
 
-    /**
-     * Check camera permission - works across all API levels
-     */
     private static boolean checkCameraPermission(Activity activity) {
         return ContextCompat.checkSelfPermission(activity, Manifest.permission.CAMERA)
                 == PackageManager.PERMISSION_GRANTED;
     }
 
-    /**
-     * Check storage permissions with backward compatibility
-     * API 33+ (Android 13+): READ_MEDIA_IMAGES
-     * API 24-32: READ_EXTERNAL_STORAGE and WRITE_EXTERNAL_STORAGE
-     */
     private static boolean checkStoragePermissions(Activity activity) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) { // API 33+
-            // Android 13+ uses READ_MEDIA_IMAGES
-            return ContextCompat.checkSelfPermission(activity, Manifest.permission.READ_MEDIA_IMAGES)
-                    == PackageManager.PERMISSION_GRANTED;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // API 33+ (Android 13+): Granular media permissions
+            // For reading images
+            boolean readImagesGranted = ContextCompat.checkSelfPermission(activity,
+                    Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED;
+
+            // Return true if at least images permission is granted
+            return readImagesGranted;
+
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // API 30-32 (Android 11-12): Scoped storage, but still uses READ_EXTERNAL_STORAGE
+            return ContextCompat.checkSelfPermission(activity,
+                    Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
+
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            // API 29 (Android 10): Scoped storage introduced
+            // READ_EXTERNAL_STORAGE still works, WRITE is limited
+            return ContextCompat.checkSelfPermission(activity,
+                    Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
+
         } else {
-            // Android 12 and below (API 24-32)
-            boolean readGranted = ContextCompat.checkSelfPermission(activity, Manifest.permission.READ_EXTERNAL_STORAGE)
-                    == PackageManager.PERMISSION_GRANTED;
-            boolean writeGranted = ContextCompat.checkSelfPermission(activity, Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                    == PackageManager.PERMISSION_GRANTED;
+            // API 24-28 (Android 7-9): Traditional storage permissions
+            boolean readGranted = ContextCompat.checkSelfPermission(activity,
+                    Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
+            boolean writeGranted = ContextCompat.checkSelfPermission(activity,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
+
             return readGranted && writeGranted;
         }
     }
 
-    /**
-     * Get the appropriate storage permissions array for the current API level
-     */
     public static String[] getStoragePermissionsArray() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) { // API 33+
-            return new String[]{Manifest.permission.READ_MEDIA_IMAGES};
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // API 33+ (Android 13+)
+            return new String[]{
+                    Manifest.permission.READ_MEDIA_IMAGES,
+            };
+
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            // API 29-32 (Android 10-12)
+            return new String[]{
+                    Manifest.permission.READ_EXTERNAL_STORAGE
+            };
+
         } else {
+            // API 24-28 (Android 7-9)
             return new String[]{
                     Manifest.permission.READ_EXTERNAL_STORAGE,
                     Manifest.permission.WRITE_EXTERNAL_STORAGE

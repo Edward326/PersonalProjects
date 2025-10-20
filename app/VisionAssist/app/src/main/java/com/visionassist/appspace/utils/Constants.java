@@ -84,6 +84,8 @@ public class Constants {
     public static final int ERROR_READ_DELAY = 10000;
 
     // Error codes
+    public static final int EXCEPTION_CLASS_ERROR = 0;
+    public static final int DIR_DELETE_ERROR = 1;
     public static final int JSON_PARSE_ERROR = 1;
     public static final int FILE_WRITE_ERROR = 2;
 

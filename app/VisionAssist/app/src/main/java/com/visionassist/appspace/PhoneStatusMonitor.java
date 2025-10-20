@@ -1,7 +1,6 @@
 package com.visionassist.appspace;
 
 import static com.visionassist.appspace.utils.UtilsKt.load_errorText;
-
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -12,10 +11,9 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.util.Pair;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-
+import com.visionassist.appspace.database.DBManager;
 import com.visionassist.appspace.jetpack.managers.ErrorDialogManager;
 import com.visionassist.appspace.models.ttsengine.TTSManager;
 import com.visionassist.appspace.utils.AppConfig;
@@ -32,16 +30,19 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
     private boolean isMonitoring = false;
     private int activeActivityCount = 0;
     private Activity currentActivity;
+    private Context currentContext;
     private boolean errorShown = false;
     private boolean isPaused = false;
     private boolean profileLoaded = false;
     private TTSManager ttsManager;
+    private DBManager dbManager;
     @SuppressLint("StaticFieldLeak")
     private static PhoneStatusMonitor instance;
 
     private PhoneStatusMonitor(Context context) {
         this.appContext = context.getApplicationContext();
         this.handler = new Handler(Looper.getMainLooper());
+        this.dbManager = new DBManager(this.appContext);
         this.ttsManager = new TTSManager(this.appContext);
         setupMonitoringRunnable();
     }
@@ -56,6 +57,22 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
 
     public static PhoneStatusMonitor getInstance() {
         return instance;
+    }
+
+    public TTSManager getTTSManager() {
+        return ttsManager;
+    }
+
+    public DBManager getDBManager() {
+        return dbManager;
+    }
+
+    public Activity getCurrentActivity() {
+        return currentActivity;
+    }
+
+    public Context getCurrentContext() {
+        return currentContext != null ? currentContext : appContext;
     }
 
     private void setupMonitoringRunnable() {
@@ -297,21 +314,22 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
         profileLoaded = isLoaded;
     }
 
-    public TTSManager getTTSManager() {
-        return ttsManager;
-    }
-
-    // --- ActivityLifecycleCallbacks Implementation (omitted for brevity, assume they are present) ---
-    // (Ensure all lifecycle callback methods are fully present in your final file)
+    // --- ActivityLifecycleCallbacks Implementation ---
     @Override
     public void onActivityCreated(@NonNull Activity activity, @Nullable Bundle savedInstanceState) {
         currentActivity = activity;
+        currentContext = activity;
+        Log.d(TAG, "Activity created: " + activity.getClass().getSimpleName());
     }
 
     @Override
     public void onActivityStarted(@NonNull Activity activity) {
         activeActivityCount++;
         currentActivity = activity;
+        currentContext = activity;
+        Log.d(TAG, "Activity started: " + activity.getClass().getSimpleName() +
+                " (Active count: " + activeActivityCount + ")");
+
         if (activeActivityCount == 1) {
             startMonitoring(); // Start monitoring when the first activity starts
         }
@@ -320,28 +338,41 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
     @Override
     public void onActivityResumed(@NonNull Activity activity) {
         currentActivity = activity;
+        currentContext = activity;
+        Log.d(TAG, "Activity resumed: " + activity.getClass().getSimpleName());
     }
 
     @Override
     public void onActivityPaused(@NonNull Activity activity) {
+        Log.d(TAG, "Activity paused: " + activity.getClass().getSimpleName());
     }
 
     @Override
     public void onActivityStopped(@NonNull Activity activity) {
         activeActivityCount--;
+        Log.d(TAG, "Activity stopped: " + activity.getClass().getSimpleName() +
+                " (Active count: " + activeActivityCount + ")");
+
         if (activeActivityCount == 0) {
             stopMonitoring(); // Stop monitoring when the last activity stops
+            // Clear current references when no activities are active
+            currentActivity = null;
+            currentContext = null;
         }
     }
 
     @Override
     public void onActivitySaveInstanceState(@NonNull Activity activity, @NonNull Bundle outState) {
+        Log.d(TAG, "Activity saving state: " + activity.getClass().getSimpleName());
     }
 
     @Override
     public void onActivityDestroyed(@NonNull Activity activity) {
+        Log.d(TAG, "Activity destroyed: " + activity.getClass().getSimpleName());
+
         if (currentActivity == activity) {
             currentActivity = null;
+            currentContext = null;
         }
     }
 
@@ -354,5 +385,8 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
         if (ttsManager != null) {
             ttsManager.shutdown();
         }
+        // Clear references
+        currentActivity = null;
+        currentContext = null;
     }
 }

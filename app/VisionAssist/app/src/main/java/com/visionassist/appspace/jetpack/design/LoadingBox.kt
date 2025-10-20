@@ -6,7 +6,6 @@ import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -51,11 +50,6 @@ fun LoadingComponent(
         enter = fadeIn(
             // Duration of fade in animation (in milliseconds)
             initialAlpha = 0f,
-            animationSpec = tween(durationMillis = Constants.ANIMATION_DELAY)
-        ),
-        exit = fadeOut(
-            // Duration of fade out animation
-            targetAlpha = 0f,
             animationSpec = tween(durationMillis = Constants.ANIMATION_DELAY)
         )
     ) {
