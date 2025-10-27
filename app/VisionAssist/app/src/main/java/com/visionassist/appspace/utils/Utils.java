@@ -28,7 +28,6 @@ import com.visionassist.appspace.jetpack.managers.LoadingManager;
 import com.visionassist.appspace.models.ttsengine.TTSManager;
 import org.json.JSONException;
 import org.json.JSONObject;
-import java.io.IOException;
 import java.io.InputStream;
 
 public class Utils {
@@ -58,7 +57,7 @@ public class Utils {
         try {
             InputStream inputStream = FileUtils.getProfileInputStream(context);
             return JSONValidation.validateProfile(inputStream);
-        } catch (IOException e) {
+        } catch (Exception e) {
             Log.e(TAG, "Error reading profile file", e);
             return new Pair<>(1, null);
         }
@@ -85,9 +84,10 @@ public class Utils {
                     }
 
                     intent = new Intent(context, ConfigurationActivity.class);
-                    loadingManager.hideLoading();
                     Intent finalIntent = intent;
-                    new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent), Constants.ANIMATION_DELAY);
+                    loadingManager.hideLoading();
+                    context.startActivity(finalIntent);
+                    activity.finish();
                     break;
 
 
@@ -97,7 +97,8 @@ public class Utils {
                     intent = new Intent(context, WelcomeActivity.class);
                     Intent finalIntent1 = intent;
                     loadingManager.hideLoading();
-                    new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent1), Constants.ANIMATION_DELAY);
+                    context.startActivity(finalIntent1);
+                    activity.finish();
                     break;
                 } catch (JSONException e) {
                     throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR,loadingManager);
@@ -111,7 +112,8 @@ public class Utils {
                     intent = new Intent(context, WelcomeActivity.class);
                     Intent finalIntent2 = intent;
                     loadingManager.hideLoading();
-                    new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent2), Constants.ANIMATION_DELAY);
+                    context.startActivity(finalIntent2);
+                    activity.finish();
                     break;
                 } catch (JSONException e) {
                     throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR,loadingManager);
@@ -124,7 +126,8 @@ public class Utils {
                     intent = new Intent(context, UserInfoActivity.class);
                     Intent finalIntent3 = intent;
                     loadingManager.hideLoading();
-                    new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent3), Constants.ANIMATION_DELAY);
+                    context.startActivity(finalIntent3);
+                    activity.finish();
                     break;
                 } catch (JSONException e) {
                     throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR,loadingManager);
@@ -137,7 +140,8 @@ public class Utils {
                     intent = new Intent(context, UserInfoE1Activity.class);
                     Intent finalIntent4 = intent;
                     loadingManager.hideLoading();
-                    new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent4), Constants.ANIMATION_DELAY);
+                    context.startActivity(finalIntent4);
+                    activity.finish();
                     break;
                 } catch (JSONException e) {
                     throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR,loadingManager);
@@ -150,7 +154,8 @@ public class Utils {
                     intent = new Intent(context, UserInfoE2Activity.class);
                     Intent finalIntent5 = intent;
                     loadingManager.hideLoading();
-                    new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent5), Constants.ANIMATION_DELAY);
+                    context.startActivity(finalIntent5);
+                    activity.finish();
                     break;
                 } catch (JSONException e) {
                     throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR,loadingManager);
@@ -163,7 +168,8 @@ public class Utils {
                     intent = new Intent(context, UserInfoE3Activity.class);
                     Intent finalIntent6 = intent;
                     loadingManager.hideLoading();
-                    new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent6), Constants.ANIMATION_DELAY);
+                    context.startActivity(finalIntent6);
+                    activity.finish();
                     break;
                 } catch (JSONException e) {
                     throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR,loadingManager);
@@ -173,10 +179,10 @@ public class Utils {
                 try {
                     AppConfig.blindness = profileStatusDecider.second.getBoolean("blindness");
                     AppConfig.mainLanguage = languageExtractor(profileStatusDecider.second);
-                    intent = new Intent(context, UserInfoE4Activity.class);
-                    Intent finalIntent7 = intent;
-                    loadingManager.hideLoading();
-                    new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent7), Constants.ANIMATION_DELAY);
+                    //intent = new Intent(context, UserInfoE4Activity.class);
+                    //Intent finalIntent7 = intent;
+                    //loadingManager.hideLoading();
+                    //new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent7), Constants.ANIMATION_DELAY);
                     break;
                 } catch (JSONException e) {
                     throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR,loadingManager);
@@ -189,7 +195,8 @@ public class Utils {
                     intent = new Intent(context, UserAccesibility1Activity.class);
                     Intent finalIntent8 = intent;
                     loadingManager.hideLoading();
-                    new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent8), Constants.ANIMATION_DELAY);
+                    context.startActivity(finalIntent8);
+                    activity.finish();
                     break;
                 } catch (JSONException e) {
                     throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR,loadingManager);
@@ -202,7 +209,8 @@ public class Utils {
                     intent = new Intent(context, UserAccesibility2Activity.class);
                     Intent finalIntent9 = intent;
                     loadingManager.hideLoading();
-                    new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent9), Constants.ANIMATION_DELAY);
+                    context.startActivity(finalIntent9);
+                    activity.finish();
                     break;
                 } catch (JSONException e) {
                     throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR,loadingManager);
@@ -215,7 +223,8 @@ public class Utils {
                     intent = new Intent(context, UserHashCachingActivity.class);
                     Intent finalIntent10 = intent;
                     loadingManager.hideLoading();
-                    new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent10), Constants.ANIMATION_DELAY);
+                    context.startActivity(finalIntent10);
+                    activity.finish();
                     break;
                 } catch (JSONException e) {
                     throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR,loadingManager);
@@ -228,7 +237,8 @@ public class Utils {
                     intent = new Intent(context, EnvironmentReportsIActivity.class);
                     Intent finalIntent11 = intent;
                     loadingManager.hideLoading();
-                    new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent11), Constants.ANIMATION_DELAY);
+                    context.startActivity(finalIntent11);
+                    activity.finish();
                     break;
                 } catch (JSONException e) {
                     throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR,loadingManager);
@@ -238,7 +248,8 @@ public class Utils {
                 intent = new Intent(context, ConfigurationActivity.class);
                 loadingManager.hideLoading();
                 Intent finalIntent12 = intent;
-                new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent12), Constants.ANIMATION_DELAY);
+                context.startActivity(finalIntent12);
+                activity.finish();
                 break;
         }
     }
@@ -271,8 +282,6 @@ public class Utils {
             }
             AppConfig.hash_caching = profileSource.getString("hash_caching");
             AppConfig.env_reports = profileSource.getBoolean("env_reports");
-            TTSManager ttsManager = phoneMonitor.getTTSManager();
-            ttsManager.changeLanguage(AppConfig.mainLanguage, activity);
             //instantate the detector model, the captioner, the classifier, the language translater(if the langiage is difffrent than english)
             //load the classes names and vocab from files
 

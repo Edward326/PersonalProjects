@@ -58,6 +58,12 @@ public class LoadingManager(
         }
     }
 
+    fun changeText(message: String) {
+        if (initMessage) {
+            currentMessageState.value = message
+        }
+    }
+
     /**
      * Hides the loading screen with fade out animation.
      */

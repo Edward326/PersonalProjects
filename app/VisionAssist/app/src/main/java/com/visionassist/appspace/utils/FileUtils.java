@@ -50,6 +50,16 @@ public class FileUtils {
         return new File(dir, Constants.PROFILE_FILE_NAME);
     }
 
+    public static File getHashCacheFile(Context context) {
+        File dir = getProfileDirectory(context);
+        return new File(dir, Constants.HASH_CACHE_FILE_NAME);
+    }
+
+    public static File getEnvReportsFile(Context context) {
+        File dir = getProfileDirectory(context);
+        return new File(dir, Constants.ENV_REPORTS_FILE_NAME);
+    }
+
     /**
      * Check if profile directory exists
      */

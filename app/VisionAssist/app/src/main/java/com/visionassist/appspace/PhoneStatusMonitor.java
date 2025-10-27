@@ -33,7 +33,7 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
     private Context currentContext;
     private boolean errorShown = false;
     private boolean isPaused = false;
-    private boolean profileLoaded = false;
+    public boolean profileLoaded = false;
     private TTSManager ttsManager;
     private DBManager dbManager;
     @SuppressLint("StaticFieldLeak")
@@ -42,7 +42,7 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
     private PhoneStatusMonitor(Context context) {
         this.appContext = context.getApplicationContext();
         this.handler = new Handler(Looper.getMainLooper());
-        this.dbManager = new DBManager(this.appContext);
+       // this.dbManager = new DBManager(this.appContext);
         this.ttsManager = new TTSManager(this.appContext);
         setupMonitoringRunnable();
     }
@@ -330,9 +330,9 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
         Log.d(TAG, "Activity started: " + activity.getClass().getSimpleName() +
                 " (Active count: " + activeActivityCount + ")");
 
-        if (activeActivityCount == 1) {
-            startMonitoring(); // Start monitoring when the first activity starts
-        }
+        //if (activeActivityCount == 1) {
+        //    startMonitoring(); // Start monitoring when the first activity starts
+        //}
     }
 
     @Override

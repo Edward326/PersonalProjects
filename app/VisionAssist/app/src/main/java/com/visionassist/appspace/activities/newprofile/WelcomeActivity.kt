@@ -21,6 +21,7 @@ import com.visionassist.appspace.utils.Language
 import org.json.JSONObject
 
 class WelcomeActivity : AppCompatActivity() {
+    /*
     private val TAG = "WelcomeActivity"
 
     private var selectedLanguage = Language("en", "English", "US")
@@ -101,4 +102,5 @@ class WelcomeActivity : AppCompatActivity() {
             phoneMonitor.shutdownApp(errorDialog, this)
         }
     }
+     */
 }

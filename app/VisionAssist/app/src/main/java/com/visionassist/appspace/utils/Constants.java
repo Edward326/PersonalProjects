@@ -37,6 +37,8 @@ public class Constants {
     // Profile Storage Configuration - NEW
     public static final String PROFILE_FOLDER_NAME = "visionassist_data";
     public static final String PROFILE_FILE_NAME = "profile.json";
+    public static final String HASH_CACHE_FILE_NAME = "hash_cache.txt";
+    public static final String ENV_REPORTS_FILE_NAME = "env_reports.txt";
 
     // Legacy asset profile file (for backwards compatibility check)
     public static final String PROFILE_FILE = "profiles/profile.json";
@@ -74,7 +76,7 @@ public class Constants {
     public static final int STORAGE_PERMISSION_REQUEST = 102;
 
     // Time to wait before popping the permission intent
-    public static final int PERMISSION_SLEEP = 2000;
+    public static final int PERMISSION_SLEEP = 1000;
 
 
     // UI overlay for notification

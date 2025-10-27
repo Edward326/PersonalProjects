@@ -3,6 +3,9 @@ package com.visionassist.appspace.utils;
 
 import android.util.Log;
 import android.util.Pair;
+
+import com.visionassist.appspace.PhoneStatusMonitor;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 import java.io.IOException;
@@ -11,7 +14,7 @@ import java.io.InputStream;
 public class JSONValidation {
     private static final String TAG = "JSONValidation";
 
-    public static Pair<Integer, JSONObject> validateProfile(InputStream inputStream) throws IOException {
+    public static Pair<Integer, JSONObject> validateProfile(InputStream inputStream) throws IOException, JSONException {
         String profileContent;
 
         // Read the InputStream into a String
@@ -108,6 +111,13 @@ public class JSONValidation {
                 if (!jsonObject.has("env_reports"))
                     return new Pair<>(9, jsonObject);   // EnvironmentReportsIActivity
 
+                if(jsonObject.getBoolean("hash_caching"))
+                    if(!FileUtils.getHashCacheFile(PhoneStatusMonitor.getInstance().getCurrentContext()).exists())
+                        return new Pair<>(0, jsonObject);
+                if(jsonObject.getBoolean("env_reports"))
+                    if(!FileUtils.getEnvReportsFile(PhoneStatusMonitor.getInstance().getCurrentContext()).exists())
+                        return new Pair<>(0, jsonObject);
+
                 inputStream.close();
                 // All validations passed
                 return new Pair<>(0, jsonObject);
@@ -127,6 +137,13 @@ public class JSONValidation {
 
                 if (!jsonObject.has("env_reports"))
                     return new Pair<>(9, jsonObject);   // EnvironmentReportsIActivity
+
+                if(jsonObject.getBoolean("hash_caching"))
+                    if(!FileUtils.getHashCacheFile(PhoneStatusMonitor.getInstance().getCurrentContext()).exists())
+                        return new Pair<>(0, jsonObject);
+                if(jsonObject.getBoolean("env_reports"))
+                    if(!FileUtils.getEnvReportsFile(PhoneStatusMonitor.getInstance().getCurrentContext()).exists())
+                        return new Pair<>(0, jsonObject);
 
                 inputStream.close();
                 // All validations passed
@@ -161,6 +178,13 @@ public class JSONValidation {
 
         if (!jsonObject.has("env_reports"))
             return new Pair<>(9, jsonObject);   // EnvironmentReportsIActivity
+
+        if(jsonObject.getBoolean("hash_caching"))
+            if(!FileUtils.getHashCacheFile(PhoneStatusMonitor.getInstance().getCurrentContext()).exists())
+                return new Pair<>(0, jsonObject);
+        if(jsonObject.getBoolean("env_reports"))
+            if(!FileUtils.getEnvReportsFile(PhoneStatusMonitor.getInstance().getCurrentContext()).exists())
+                return new Pair<>(0, jsonObject);
 
         inputStream.close();
         // All validations passed

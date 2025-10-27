@@ -30,165 +30,162 @@ public class MainActivity extends AppCompatActivity {
     private PhoneStatusMonitor monitor = PhoneStatusMonitor.getInstance();
     private TTSManager ttsManager = monitor.getTTSManager();
     private DBManager dbManager = monitor.getDBManager();
-    private LoadingManager loadingManager;
     private BackgroundTaskExecutor backgroundExecutor = BackgroundTaskExecutor.getInstance();
+    private LoadingManager loadingManager;
+    private JSONObject profileData;
+
+    private boolean firstResume = true;
+    private boolean waitingForTTSLanguage = false;
+    private boolean profileAlreadyChecked = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // 1. Initialize views
         ImageView logoImage = findViewById(R.id.logo_image);
         ComposeView loadingBox = findViewById(R.id.loading_box);
+        logoImage.setVisibility(View.VISIBLE);
         loadingManager = new LoadingManager(loadingBox, true, this);
         loadingManager.setupLoadingBox();
-
-        logoImage.setVisibility(View.VISIBLE);
-        loadingManager.showLoading("Verifying profile, please wait");
-
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            // Check permissions first (quick, can be done on main thread)
-            PermissionChecker.checkAndRequestPermissions(this, MainActivity.class, loadingManager, false);
-
-            // Execute profile check in background
-            backgroundExecutor.executeAsync(
-                    () -> {
-                        Log.d(TAG, "Starting profile check in background");
-                        return Utils.checkProfile(this);
-                    },
-                    // Callback: Handle result
-                    new BackgroundTaskExecutor.TaskCallback<Pair<Integer, JSONObject>>() {
-                        @Override
-                        public void onSuccess(Pair<Integer, JSONObject> profileStatusDecider) throws Exception {
-                            if (profileStatusDecider.first != 0) {
-                                // Profile needs selection/configuration
-                                Utils.profileSelector(profileStatusDecider, loadingManager);
-                            } else {
-                                // Profile is valid, proceed with upload and TTS initialization
-                                handleValidProfile(profileStatusDecider.second);
-                            }
-                        }
-
-                        public void onError(Exception e) {
-                            if (e instanceof ExceptionVisionAssist) {
-                                LoadingManager ref = ((ExceptionVisionAssist) e).getLoadingManager();
-                                int errorCode = ((ExceptionVisionAssist) e).getErrorCode();
-
-                                Log.e(TAG, "Thrown special exception, error code: " + errorCode);
-
-                                ErrorDialogManager errorDialog = new ErrorDialogManager(monitor.getCurrentActivity());
-                                errorDialog.setupDialog(errorCode, String.valueOf(R.string.exit_error_en));
-                                if (ref != null) ref.hideLoading();
-                                monitor.shutdownApp(errorDialog, monitor.getCurrentContext());
-                            } else {
-                                Log.e(TAG, "Thrown exception, explanation: ", e);
-                                ErrorDialogManager errorDialog = new ErrorDialogManager(monitor.getCurrentActivity());
-                                errorDialog.setupDialog(Constants.EXCEPTION_CLASS_ERROR, String.valueOf(R.string.exit_error_en));
-                                monitor.shutdownApp(errorDialog, monitor.getCurrentContext());
-                            }
-                        }
-                    }
-            );
-        }, Constants.ANIMATION_DELAY + 1000);
     }
 
-    private void handleValidProfile(JSONObject profileData) {
-        // Execute profile upload in background
-        backgroundExecutor.executeAsync(
-                // Background task: Upload profile
-                () -> {
-                    Log.d(TAG, "Uploading profile in background");
-                    Utils.uploadProfile(profileData, loadingManager);
-                },
-                // On complete: Wait for TTS and navigate
-                this::waitForTTSAndNavigate,
-                // On error: Handle error
-                () -> {
-                }
-        );
+    @Override
+    protected void onStart() {
+        super.onStart();
+
+        if (firstResume) {
+            firstResume = false;
+            loadingManager.showLoading("Verifying permissions, please wait");
+            new Handler(Looper.getMainLooper()).postDelayed(() -> PermissionChecker.checkAndRequestPermissions(this, true), Constants.ANIMATION_DELAY + 1000);
+        } else if (waitingForTTSLanguage) {
+            // Returning from TTS settings, don't check permissions again
+            Log.d(TAG, "Returning from TTS settings, skipping permission check");
+        } else {
+            // Returning from another activity, check permissions quickly
+            new Handler(Looper.getMainLooper()).postDelayed(() -> PermissionChecker.checkAndRequestPermissions(this, true), 1000);
+        }
     }
 
-    private void waitForTTSAndNavigate() {
-        Handler writeHandler = new Handler(Looper.getMainLooper());
-
-        // Recursive Runnable for TTS retry and language check
-        Runnable ttsRetryRunnable = new Runnable() {
-            @Override
-            public void run() {
-                if (ttsManager.isReady()) {
-                    navigateToHome();
-                } else {
-                    Log.w(TAG, "TTS not ready on attempt. Retrying...");
-                    writeHandler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS);
-                }
-            }
-        };
-        writeHandler.post(ttsRetryRunnable);
-    }
-
-
-    // onResume method is needed in case of missing TTS language data
     @Override
     protected void onResume() {
         super.onResume();
 
-        if (monitor.getTTSManager() != null) {
-            monitor.getTTSManager().recheckPendingLanguage();
+        // Case 1: Returning from TTS settings
+        if (waitingForTTSLanguage) {
+            Log.d(TAG, "Returned from TTS settings, rechecking language");
+            ttsManager.recheckPendingLanguage();
+
+            // Wait for TTS and navigate
+            waitForTTSAndNavigate();
+            return; // Don't do profile check again!
         }
 
-        // Execute TTS check in background to avoid blocking UI
+        // Case 2: Profile already checked, just verify TTS is ready
+        if (profileAlreadyChecked) {
+            Log.d(TAG, "Profile already checked, waiting for TTS");
+            waitForTTSAndNavigate();
+            return;
+        }
+
+        loadingManager.changeText("Verifying profile, please wait");
         backgroundExecutor.executeAsync(
-                // Background task: Check if TTS is ready
                 () -> {
-                    Log.d(TAG, "Checking TTS status in onResume");
-                    return ttsManager.isReady();
+                    Log.d(TAG, "Starting profile check in background");
+                    return Utils.checkProfile(this);
                 },
-                // Callback: Handle TTS status
-                new BackgroundTaskExecutor.TaskCallback<Boolean>() {
+                new BackgroundTaskExecutor.TaskCallback<Pair<Integer, JSONObject>>() {
                     @Override
-                    public void onSuccess(Boolean isReady) {
-                        if (isReady) {
-                            navigateToHome();
+                    public void onSuccess(Pair<Integer, JSONObject> profileStatusDecider) throws Exception {
+                        if (profileStatusDecider.first != 0) {
+                            Utils.profileSelector(profileStatusDecider, loadingManager);
                         } else {
-                            waitForTTSInResume();
+                            profileData= profileStatusDecider.second;
+                            handleValidProfile();
                         }
                     }
 
                     @Override
                     public void onError(Exception e) {
-                        Log.e(TAG, "Error checking TTS in onResume", e);
-                        waitForTTSInResume(); // Fallback to retry mechanism
+                        handleProfileError(e);
                     }
                 }
         );
     }
 
-    private void waitForTTSInResume() {
-        Handler writeHandler = new Handler(Looper.getMainLooper());
+    private void handleValidProfile() {
+        profileAlreadyChecked = true;
+        loadingManager.changeText("Loading profile, please wait");
 
-        Runnable ttsRetryRunnable = new Runnable() {
+        // Profile loaded, now setup TTS
+        backgroundExecutor.executeAsync(
+                () -> {
+                    Log.d(TAG, "Loading profile in background");
+                    Utils.uploadProfile(profileData, loadingManager);
+                },
+                    this::setupTTSAndNavigate,
+                () -> {
+                    Log.e(TAG, "Error loading profile");
+                    handleProfileError(new Exception("Error loading profile"));
+                }
+        );
+    }
+
+    private void setupTTSAndNavigate() {
+            waitingForTTSLanguage = true;
+            ttsManager.changeLanguage(AppConfig.mainLanguage, this);
+            waitForTTSAndNavigate();
+    }
+
+    private void waitForTTSAndNavigate() {
+        Handler handler = new Handler(Looper.getMainLooper());
+        Runnable checkTTS = new Runnable() {
             @Override
             public void run() {
                 if (ttsManager.isReady()) {
+                    Log.d(TAG, "TTS is ready, navigating to home");
+                    waitingForTTSLanguage = false;
                     navigateToHome();
                 } else {
-                    Log.w(TAG, "TTS not ready in onResume. Retrying...");
-                    writeHandler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS);
+                    Log.w(TAG, "TTS not ready, retrying...");
+                    handler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS);
                 }
             }
         };
-        writeHandler.post(ttsRetryRunnable);
+        handler.post(checkTTS);
     }
 
     private void navigateToHome() {
         monitor.isProfileLoaded(true);
-        //make sync here
-        Class<?> nextActivityClass = (AppConfig.blindness)
+        //make the sync with firebase
+        //loadingManager.changeText("Loading profile, please wait");
+        //dbManager.autoSyncProfile(profileData,loadingManager);
+
+        Class<?> nextActivityClass = AppConfig.blindness
                 ? BlindHomeActivity.class
                 : HomeActivity.class;
-        Intent intent = new Intent(MainActivity.this, nextActivityClass);
+        Intent intent = new Intent(this, nextActivityClass);
         loadingManager.hideLoading();
         startActivity(intent);
+        finish();
+    }
+
+    private void handleProfileError(Exception e) {
+        if (e instanceof ExceptionVisionAssist) {
+            LoadingManager ref = ((ExceptionVisionAssist) e).getLoadingManager();
+            int errorCode = ((ExceptionVisionAssist) e).getErrorCode();
+
+            Log.e(TAG, "Thrown special exception, error code: " + errorCode);
+
+            ErrorDialogManager errorDialog = new ErrorDialogManager(monitor.getCurrentActivity());
+            errorDialog.setupDialog(errorCode, String.valueOf(R.string.exit_error_en));
+            if (ref != null) ref.hideLoading();
+            monitor.shutdownApp(errorDialog, monitor.getCurrentContext());
+        } else {
+            Log.e(TAG, "Thrown exception, explanation: ", e);
+            ErrorDialogManager errorDialog = new ErrorDialogManager(monitor.getCurrentActivity());
+            errorDialog.setupDialog(Constants.EXCEPTION_CLASS_ERROR, String.valueOf(R.string.exit_error_en));
+            monitor.shutdownApp(errorDialog, monitor.getCurrentContext());
+        }
     }
 }

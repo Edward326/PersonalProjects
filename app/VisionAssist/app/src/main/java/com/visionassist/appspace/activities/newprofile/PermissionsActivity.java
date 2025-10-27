@@ -18,18 +18,15 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.compose.ui.platform.ComposeView;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import com.visionassist.appspace.PhoneStatusMonitor;
+
 import com.visionassist.appspace.R;
-import com.visionassist.appspace.jetpack.managers.LoadingManager;
 import com.visionassist.appspace.jetpack.managers.PermissionDialogManager;
 import com.visionassist.appspace.utils.Constants;
 
 public class PermissionsActivity extends AppCompatActivity {
     private static final String TAG = "PermissionsActivity";
 
-    private PhoneStatusMonitor phoneMonitor;
     private int permissionOption;
-    private String nextActivityClassName;
     private PermissionDialogManager dialogManager;
     private PermissionDialogManager dialogManagerSettings;
 
@@ -52,26 +49,20 @@ public class PermissionsActivity extends AppCompatActivity {
                 }
         );
 
-        phoneMonitor = PhoneStatusMonitor.getInstance();
-        if (phoneMonitor != null) {
-            phoneMonitor.pauseMonitoring();
-        }
-
         setContentView(R.layout.activity_permissions);
-
         TextView titleView = findViewById(R.id.permissions_text);
         ComposeView dialogBox = findViewById(R.id.permission_dialog_box);
-        ComposeView loadingBox = findViewById(R.id.loading_box);
-        LoadingManager loadingManager = new LoadingManager(loadingBox, false, this);
-        loadingManager.setupLoadingBox();
+        titleView.setVisibility(View.VISIBLE);
         dialogManager = new PermissionDialogManager(dialogBox, false, false, this);
         dialogManagerSettings = new PermissionDialogManager(dialogBox, false, true, this);
 
         Intent intent = getIntent();
         permissionOption = intent.getIntExtra(Constants.EXTRA_PERMISSION_OPTION, 0);
-        nextActivityClassName = intent.getStringExtra(Constants.EXTRA_NEXT_ACTIVITY);
+    }
 
-        titleView.setVisibility(View.VISIBLE);
+    @Override
+    protected void onStart() {
+        super.onStart();
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             Log.d(TAG, "Permission option: " + permissionOption);
             handlePermissions();
@@ -90,7 +81,7 @@ public class PermissionsActivity extends AppCompatActivity {
                 handleStoragePermissions();
                 break;
             default:
-                navigateToNextActivity();
+                finish();
         }
     }
 
@@ -107,7 +98,7 @@ public class PermissionsActivity extends AppCompatActivity {
             if (permissionOption == 0) {
                 handleStoragePermissions();
             } else {
-                navigateToNextActivity();
+                finish();
             }
             return;
         }
@@ -133,7 +124,7 @@ public class PermissionsActivity extends AppCompatActivity {
         }
 
         if (allGranted) {
-            navigateToNextActivity();
+            finish();
             return;
         }
 
@@ -163,7 +154,7 @@ public class PermissionsActivity extends AppCompatActivity {
                 if (permissionOption == 0) {
                     handleStoragePermissions();
                 } else {
-                    navigateToNextActivity();
+                    finish();
                 }
             } else {
                 if (shouldShowRequestPermissionRationale(Manifest.permission.CAMERA)) {
@@ -175,7 +166,7 @@ public class PermissionsActivity extends AppCompatActivity {
         } else if (requestCode == Constants.STORAGE_PERMISSION_REQUEST) {
             if (allGranted) {
                 Log.d(TAG, "Storage permissions granted");
-                navigateToNextActivity();
+                finish();
             } else {
                 String[] storagePerms = getStoragePermissions();
                 if (shouldShowRequestPermissionRationale(storagePerms[0])) {
@@ -229,7 +220,7 @@ public class PermissionsActivity extends AppCompatActivity {
                 if (permissionOption == 0) {
                     handleStoragePermissions();
                 } else {
-                    navigateToNextActivity();
+                    finish();
                 }
             } else {
                 showGoToSettingsDialog("camera");
@@ -246,7 +237,7 @@ public class PermissionsActivity extends AppCompatActivity {
             }
 
             if (allGranted) {
-                navigateToNextActivity();
+                finish();
             } else {
                 showGoToSettingsDialog("storage");
             }
@@ -266,26 +257,6 @@ public class PermissionsActivity extends AppCompatActivity {
                     Manifest.permission.READ_EXTERNAL_STORAGE,
                     Manifest.permission.WRITE_EXTERNAL_STORAGE
             };
-        }
-    }
-
-    private void navigateToNextActivity() {
-        if (nextActivityClassName != null && !nextActivityClassName.isEmpty()) {
-            try {
-                if (phoneMonitor != null) {
-                    phoneMonitor.resumeMonitoring();
-                }
-                Class<?> nextActivityClass = Class.forName(nextActivityClassName);
-                Intent intent = new Intent(this, nextActivityClass);
-                startActivity(intent);
-                finish();
-            } catch (ClassNotFoundException e) {
-                Log.e(TAG, "Next activity class not found: " + nextActivityClassName, e);
-                finish();
-            }
-        } else {
-            Log.e(TAG, "Next activity class name is null or empty");
-            finish();
         }
     }
 }

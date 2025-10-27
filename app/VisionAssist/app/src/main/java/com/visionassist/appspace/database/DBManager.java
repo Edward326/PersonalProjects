@@ -7,6 +7,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
+import com.visionassist.appspace.jetpack.managers.LoadingManager;
 import com.visionassist.appspace.utils.FileUtils;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -502,12 +503,13 @@ public class DBManager {
      * Auto-sync profile based on date
      * Returns: 0 (synced or not needed), -1 (error)
      */
-    public int autoSyncProfile(JSONObject profileData) {
+    public int autoSyncProfile(JSONObject profileData, LoadingManager loadingManager) {
         try {
             if (!profileData.has("remote") || !profileData.getBoolean("remote")) {
                 Log.d(TAG, "Remote sync not enabled");
                 return DBConstants.SYNC_OK;
             }
+            loadingManager.changeText("Syncing profile, please wait");
 
             if (!hasInternetConnection()) {
                 return DBConstants.INTERNET_CONNECTION_FAILED;
@@ -590,4 +592,5 @@ public class DBManager {
             return false;
         }
     }
+    */
 }

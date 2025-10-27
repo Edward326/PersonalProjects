@@ -8,16 +8,22 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+
 import androidx.core.content.ContextCompat;
+
 import com.visionassist.appspace.PhoneStatusMonitor;
+import com.visionassist.appspace.R;
 import com.visionassist.appspace.activities.newprofile.PermissionsActivity;
-import com.visionassist.appspace.jetpack.managers.LoadingManager;
 import com.visionassist.appspace.models.ttsengine.TTSManager;
 
 public class PermissionChecker {
     private static final String TAG = "PermissionChecker";
 
-    public static void checkAndRequestPermissions(Activity activity, Class<?> nextActivityClass, LoadingManager loadingManager, boolean blindProfile) {
+
+    public static void checkAndRequestPermissions(Activity activity, boolean blindProfile) {
+        PhoneStatusMonitor phoneMonitor = PhoneStatusMonitor.getInstance();
+        phoneMonitor.pauseMonitoring();
+
         boolean cameraGranted = checkCameraPermission(activity);
         boolean storageGranted = checkStoragePermissions(activity);
 
@@ -31,6 +37,7 @@ public class PermissionChecker {
             permissionOption = 2; // File permissions not granted
         } else {
             // All permissions granted
+            phoneMonitor.resumeMonitoring();
             return;
         }
 
@@ -42,22 +49,27 @@ public class PermissionChecker {
                 @Override
                 public void run() {
                     if (ttsManager.isReady()) {
-                        ttsManager.speak(UtilsKt.load_permissionActivityWarning(activity), AppConfig.tts_pitch, AppConfig.tts_speech_rate, true,null);
+                        String speech;
+                        float pitch, rate;
+                        if (PhoneStatusMonitor.getInstance().profileLoaded) {
+                            speech = UtilsKt.load_permissionActivityWarning(activity);
+                            pitch = AppConfig.tts_pitch;
+                            rate = AppConfig.tts_speech_rate;
+                        } else {
+                            speech = String.valueOf(R.string.audio_permission_warning_en);
+                            pitch = Constants.TTS_PITCH;
+                            rate = Constants.TTS_SPEECH_RATE;
+                        }
+                        ttsManager.speak(speech, pitch, rate, false, null);
                         Handler speakHandler2 = new Handler(Looper.getMainLooper());
                         Runnable ttsRetryRunnableSpeak = new Runnable() {
                             @Override
                             public void run() {
-                                if(ttsManager.isDoneSpeaking()) {
+                                if (ttsManager.isDoneSpeaking()) {
                                     Intent intent = new Intent(activity, PermissionsActivity.class);
                                     intent.putExtra(Constants.EXTRA_PERMISSION_OPTION, permissionOption);
-                                    intent.putExtra(Constants.EXTRA_NEXT_ACTIVITY, nextActivityClass.getName());
-                                    if (loadingManager != null) {
-                                        loadingManager.hideLoading();
-                                        new Handler(Looper.getMainLooper()).postDelayed(() -> activity.startActivity(intent), Constants.ANIMATION_DELAY);
-                                    } else
-                                        activity.startActivity(intent);
-                                }
-                                else {
+                                    activity.startActivity(intent);
+                                } else {
                                     Log.e(TAG, "TTS not done speaking on attempt. Retrying...");
                                     speakHandler2.postDelayed(this, Constants.RETRY_TTS_DELAY_MS);
                                 }
@@ -74,12 +86,7 @@ public class PermissionChecker {
         } else {
             Intent intent = new Intent(activity, PermissionsActivity.class);
             intent.putExtra(Constants.EXTRA_PERMISSION_OPTION, permissionOption);
-            intent.putExtra(Constants.EXTRA_NEXT_ACTIVITY, nextActivityClass.getName());
-            if (loadingManager != null) {
-                loadingManager.hideLoading();
-                new Handler(Looper.getMainLooper()).postDelayed(() -> activity.startActivity(intent), Constants.ANIMATION_DELAY);
-            } else
-                activity.startActivity(intent);
+            activity.startActivity(intent);
         }
     }
 
@@ -92,11 +99,10 @@ public class PermissionChecker {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             // API 33+ (Android 13+): Granular media permissions
             // For reading images
-            boolean readImagesGranted = ContextCompat.checkSelfPermission(activity,
-                    Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED;
 
             // Return true if at least images permission is granted
-            return readImagesGranted;
+            return ContextCompat.checkSelfPermission(activity,
+                    Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED;
 
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             // API 30-32 (Android 11-12): Scoped storage, but still uses READ_EXTERNAL_STORAGE
