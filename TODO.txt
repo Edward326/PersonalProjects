@@ -1,7 +1,14 @@
--peste tot unde se face operatii lungi se incloduieste cu bakgroihundtaslexexcutor
+-peste tot unde se fac operatii lungi se incloduieste cu bakgroihundtaslexexcutor
 -modificat  MainActivity astfel incat sa suporte sincronizarea cu database
 -instantat PhoneStatusMonitor dbmanager
 -modificat validateProfile, profileSelector, uploadProfile
 -modificat WelcomeActivity
 -impklmenetare LoadProfileActvity/NewProfileActivity
--implementat comentariul dijn uploadProfilee
+-implementare restul de activitati de configurare
+-implementat loadAssets mainActivity
+-implementat BlindHomeActivity,HomeActivity
+
+*
+INTRO ACTIVIATATE DACA SE FOLOSSTE TTS PENTRU UI SE DA TRUE la
+o metoda care disable pentru aceea activiatate talkbacck daca e activat
+INTRO ACITIVATTE DACA NU SE FOLOSSTE TTS se lasa talkback ul
