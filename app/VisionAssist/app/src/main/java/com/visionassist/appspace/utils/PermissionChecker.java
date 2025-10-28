@@ -8,9 +8,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
-
 import androidx.core.content.ContextCompat;
-
 import com.visionassist.appspace.PhoneStatusMonitor;
 import com.visionassist.appspace.R;
 import com.visionassist.appspace.activities.newprofile.PermissionsActivity;
@@ -19,25 +17,26 @@ import com.visionassist.appspace.models.ttsengine.TTSManager;
 public class PermissionChecker {
     private static final String TAG = "PermissionChecker";
 
-
-    public static void checkAndRequestPermissions(Activity activity, boolean blindProfile) {
-        PhoneStatusMonitor phoneMonitor = PhoneStatusMonitor.getInstance();
-        phoneMonitor.pauseMonitoring();
-
+    public static void checkAndRequestPermissions(Activity activity, boolean blindProfile,Runnable onPermissionsGranted) {
         boolean cameraGranted = checkCameraPermission(activity);
+        boolean microphoneGranted = checkMicrophonePermission(activity);
         boolean storageGranted = checkStoragePermissions(activity);
 
         // Determine permission status option
         int permissionOption;
-        if (!cameraGranted && !storageGranted) {
+        if (!cameraGranted && !microphoneGranted && !storageGranted) {
             permissionOption = 0; // All permissions not granted
         } else if (!cameraGranted) {
             permissionOption = 1; // Camera permission not granted
+        } else if (!microphoneGranted) {
+            permissionOption = 2; // Microphone permission not granted
         } else if (!storageGranted) {
-            permissionOption = 2; // File permissions not granted
+            permissionOption = 3; // File permissions not granted
         } else {
             // All permissions granted
-            phoneMonitor.resumeMonitoring();
+            if (onPermissionsGranted != null) {
+                onPermissionsGranted.run();
+            }
             return;
         }
 
@@ -56,7 +55,7 @@ public class PermissionChecker {
                             pitch = AppConfig.tts_pitch;
                             rate = AppConfig.tts_speech_rate;
                         } else {
-                            speech = String.valueOf(R.string.audio_permission_warning_en);
+                            speech = activity.getString(R.string.audio_permission_warning_en);
                             pitch = Constants.TTS_PITCH;
                             rate = Constants.TTS_SPEECH_RATE;
                         }
@@ -92,6 +91,11 @@ public class PermissionChecker {
 
     private static boolean checkCameraPermission(Activity activity) {
         return ContextCompat.checkSelfPermission(activity, Manifest.permission.CAMERA)
+                == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private static boolean checkMicrophonePermission(Activity activity) {
+        return ContextCompat.checkSelfPermission(activity, Manifest.permission.RECORD_AUDIO)
                 == PackageManager.PERMISSION_GRANTED;
     }
 

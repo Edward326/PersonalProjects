@@ -40,14 +40,10 @@ public class Constants {
     public static final String HASH_CACHE_FILE_NAME = "hash_cache.txt";
     public static final String ENV_REPORTS_FILE_NAME = "env_reports.txt";
 
-    // Legacy asset profile file (for backwards compatibility check)
-    public static final String PROFILE_FILE = "profiles/profile.json";
-
     // Intent Extras
     public static final String EXTRA_IMAGE_PATH = "extra_image_path";
     public static final String EXTRA_CAPTION_TEXT = "extra_caption_text";
     public static final String EXTRA_PERMISSION_OPTION = "permission_option";
-    public static final String EXTRA_NEXT_ACTIVITY = "next_activity";
 
     // Battery and Temperature Checks
     public static final boolean APPLY_BATTERY_CHECK = true;
@@ -74,6 +70,7 @@ public class Constants {
     // Permission Request Codes
     public static final int CAMERA_PERMISSION_REQUEST = 101;
     public static final int STORAGE_PERMISSION_REQUEST = 102;
+    public static final int MICROPHONE_PERMISSION_REQUEST = 101;
 
     // Time to wait before popping the permission intent
     public static final int PERMISSION_SLEEP = 1000;
@@ -90,6 +87,16 @@ public class Constants {
     public static final int DIR_DELETE_ERROR = 1;
     public static final int JSON_PARSE_ERROR = 1;
     public static final int FILE_WRITE_ERROR = 2;
+    public static final int DETECTOR_LOAD_ERROR = 3;
+    public static final int CAPTIONER_LOAD_ERROR = 4;
+    public static final int TRANSLATER_LOAD_ERROR = 5;
+    public static final int CLASSIFIER_LOAD_ERROR = 6;
+    public static final int STT_LOAD_ERROR = 7;
+    public static final int ASSETS_ERROR = 8;
+
+    // Number of Models to load in main activity
+    public static final int MODELS_COUNT=5;
+    public static final int MODELS_OWN_ASSETS_COUNT=5;
 
     // Debug Configuration
     public static final boolean DEBUG_MODE = true;

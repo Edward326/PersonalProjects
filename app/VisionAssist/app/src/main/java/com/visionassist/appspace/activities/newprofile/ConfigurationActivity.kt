@@ -221,7 +221,7 @@ class ConfigurationActivity : ComponentActivity() {
         } catch (_: Exception) {
             val phoneMonitor = PhoneStatusMonitor.getInstance()
             val errorDialog = ErrorDialogManager(this)
-            errorDialog.setupDialog(Constants.FILE_WRITE_ERROR, getString(R.string.exit_error_en))
+            errorDialog.setupDialog(Constants.FILE_WRITE_ERROR)
             phoneMonitor.shutdownApp(errorDialog, this)
         }
     }

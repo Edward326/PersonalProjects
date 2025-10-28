@@ -3,9 +3,13 @@ package com.visionassist.appspace.jetpack.managers
 import android.content.Context
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.res.stringResource
+import com.visionassist.appspace.PhoneStatusMonitor
+import com.visionassist.appspace.R
 import com.visionassist.appspace.jetpack.design.LoadingComponent
+import com.visionassist.appspace.utils.load_loadingText
 
-public class LoadingManager(
+class LoadingManager(
     private val loadingBox: ComposeView,
     private val initMessage: Boolean = false,
     private val context: Context
@@ -22,19 +26,24 @@ public class LoadingManager(
             if (initMessage) {
                 LoadingComponent(
                     isVisible = isVisibleState.value,
-                    loadingText = currentMessageState.value,
-                    context=context
+                    loadingText = currentMessageState.value
                 )
             } else {
-                LoadingComponent(
-                    isVisible = isVisibleState.value,
-                    context=context
-                )
+                if(!PhoneStatusMonitor.getInstance().profileLoaded) {
+                    LoadingComponent(
+                        isVisible = isVisibleState.value,
+                        loadingText = stringResource(R.string.wait_en)
+                    )
+                }
+                else
+                {
+                    LoadingComponent(
+                        isVisible = isVisibleState.value,
+                        loadingText = load_loadingText(context)
+                    )
+                }
             }
         }
-        // Set the initial visibility to GONE
-        //loadingBox.visibility = View.GONE
-        //isVisibleState.value = false
     }
 
     /**
@@ -42,7 +51,6 @@ public class LoadingManager(
      */
     fun showLoading() {
         if (!initMessage) {
-            //loadingBox.visibility = View.VISIBLE
             isVisibleState.value = true
         }
     }
@@ -53,7 +61,6 @@ public class LoadingManager(
     fun showLoading(message: String) {
         if (initMessage) {
             currentMessageState.value = message
-            //loadingBox.visibility = View.VISIBLE
             isVisibleState.value = true
         }
     }
@@ -69,6 +76,5 @@ public class LoadingManager(
      */
     fun hideLoading() {
         isVisibleState.value = false
-        //loadingBox.visibility = View.GONE
     }
 }

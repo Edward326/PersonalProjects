@@ -282,15 +282,12 @@ public class Utils {
             }
             AppConfig.hash_caching = profileSource.getString("hash_caching");
             AppConfig.env_reports = profileSource.getBoolean("env_reports");
-            //instantate the detector model, the captioner, the classifier, the language translater(if the langiage is difffrent than english)
-            //load the classes names and vocab from files
-
         } catch (Exception e) {
             if(e instanceof ExceptionVisionAssist) {
                 int errorCode=((ExceptionVisionAssist) e).getErrorCode();
                 Log.e(TAG, "Thrown special exception, error code: " + errorCode);
                 ErrorDialogManager errorDialog = new ErrorDialogManager(phoneMonitor.getCurrentActivity());
-                errorDialog.setupDialog(errorCode, String.valueOf(R.string.exit_error_en));
+                errorDialog.setupDialog(errorCode);
                 if(loadingManager!=null)loadingManager.hideLoading();
                 phoneMonitor.shutdownApp(errorDialog,phoneMonitor.getCurrentContext());
             }
@@ -298,7 +295,7 @@ public class Utils {
             {
                 Log.e(TAG, "Thrown exception, explanation: ",e);
                 ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
-                errorDialog.setupDialog(Constants.JSON_PARSE_ERROR, String.valueOf(R.string.exit_error_en));
+                errorDialog.setupDialog(Constants.JSON_PARSE_ERROR);
                 phoneMonitor.shutdownApp(errorDialog, context);
             }
         }

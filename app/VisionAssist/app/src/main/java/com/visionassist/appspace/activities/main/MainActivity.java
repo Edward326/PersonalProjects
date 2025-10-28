@@ -7,6 +7,7 @@ import android.os.Looper;
 import android.util.Log;
 import android.util.Pair;
 import android.view.View;
+import android.view.accessibility.AccessibilityManager;
 import android.widget.ImageView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.compose.ui.platform.ComposeView;
@@ -29,112 +30,249 @@ public class MainActivity extends AppCompatActivity {
 
     private PhoneStatusMonitor monitor = PhoneStatusMonitor.getInstance();
     private TTSManager ttsManager = monitor.getTTSManager();
-    private DBManager dbManager = monitor.getDBManager();
     private BackgroundTaskExecutor backgroundExecutor = BackgroundTaskExecutor.getInstance();
+    private Handler handler = new Handler(Looper.getMainLooper());
     private LoadingManager loadingManager;
     private JSONObject profileData;
-
-    private boolean firstResume = true;
+    private boolean firstResume = false;
     private boolean waitingForTTSLanguage = false;
     private boolean profileAlreadyChecked = false;
+    private boolean profileAlreadyUploaded = false;
+    private boolean isNavigateToHome = false;
+    private int tasksCompleted = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
 
+        setContentView(R.layout.activity_main);
+        disableTalkBackForActivity();
         ImageView logoImage = findViewById(R.id.logo_image);
         ComposeView loadingBox = findViewById(R.id.loading_box);
         logoImage.setVisibility(View.VISIBLE);
+        monitor.checkPhoneStatus();
+
         loadingManager = new LoadingManager(loadingBox, true, this);
         loadingManager.setupLoadingBox();
-    }
 
-    @Override
-    protected void onStart() {
-        super.onStart();
-
-        if (firstResume) {
-            firstResume = false;
-            loadingManager.showLoading("Verifying permissions, please wait");
-            new Handler(Looper.getMainLooper()).postDelayed(() -> PermissionChecker.checkAndRequestPermissions(this, true), Constants.ANIMATION_DELAY + 1000);
-        } else if (waitingForTTSLanguage) {
-            // Returning from TTS settings, don't check permissions again
-            Log.d(TAG, "Returning from TTS settings, skipping permission check");
-        } else {
-            // Returning from another activity, check permissions quickly
-            new Handler(Looper.getMainLooper()).postDelayed(() -> PermissionChecker.checkAndRequestPermissions(this, true), 1000);
-        }
+        loadingManager.showLoading("Verifying permissions, please wait");
+        handler.postDelayed(() -> {
+            firstResume = true;
+            PermissionChecker.checkAndRequestPermissions(this, true, this::checkProfileTask);
+        }, Constants.ANIMATION_DELAY);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
 
-        // Case 1: Returning from TTS settings
-        if (waitingForTTSLanguage) {
+        if (isNavigateToHome) {
+            navigateToHome();
+        } else if (waitingForTTSLanguage) {
             Log.d(TAG, "Returned from TTS settings, rechecking language");
             ttsManager.recheckPendingLanguage();
-
-            // Wait for TTS and navigate
             waitForTTSAndNavigate();
-            return; // Don't do profile check again!
+        } else if (profileAlreadyUploaded) {
+            loadAssets();
+        } else if (profileAlreadyChecked) {
+            uploadProfileTask();
+        } else if (firstResume) {
+            handler.postDelayed(() -> {
+                PermissionChecker.checkAndRequestPermissions(this, true, this::checkProfileTask);
+            }, 1000);
         }
+    }
 
-        // Case 2: Profile already checked, just verify TTS is ready
-        if (profileAlreadyChecked) {
-            Log.d(TAG, "Profile already checked, waiting for TTS");
-            waitForTTSAndNavigate();
-            return;
-        }
-
+    private void checkProfileTask() {
+        firstResume = false;
         loadingManager.changeText("Verifying profile, please wait");
+        handler.postDelayed(() -> {
+            /*
+            try {
+                Pair<Integer, JSONObject> profileStatusDecider = Utils.checkProfile(this);
+                if (profileStatusDecider.first != 0) {
+                    Utils.profileSelector(profileStatusDecider, loadingManager);
+                } else {
+                    profileData = profileStatusDecider.second;
+                    uploadProfileTask();
+                }
+            } catch (Exception e) {
+                handleProfileError(e);
+            }
+            */
+        }, 1500);
+    }
+
+    private void uploadProfileTask() {
+        profileAlreadyChecked = true;
+        loadingManager.changeText("Uploading profile, please wait");
+        handler.postDelayed(() -> Utils.uploadProfile(profileData, loadingManager), 1500);
+        loadAssets();
+    }
+
+    private void loadAssets() {
+        profileAlreadyUploaded = true;
+        /*
         backgroundExecutor.executeAsync(
                 () -> {
-                    Log.d(TAG, "Starting profile check in background");
-                    return Utils.checkProfile(this);
+                    Log.d(TAG, "Load the detector");
+                    //load yolo
                 },
-                new BackgroundTaskExecutor.TaskCallback<Pair<Integer, JSONObject>>() {
+                new BackgroundTaskExecutor.TaskCallback<Integer>() {
                     @Override
-                    public void onSuccess(Pair<Integer, JSONObject> profileStatusDecider) throws Exception {
-                        if (profileStatusDecider.first != 0) {
-                            Utils.profileSelector(profileStatusDecider, loadingManager);
-                        } else {
-                            profileData= profileStatusDecider.second;
-                            handleValidProfile();
-                        }
+                    public void onSuccess(Integer result) throws Exception {
+                        if (result == -1)
+                            handleProfileError(new ExceptionVisionAssist(Constants.DETECTOR_LOAD_ERROR, loadingManager));
+                        else tasksCompleted++;
                     }
 
                     @Override
                     public void onError(Exception e) {
-                        handleProfileError(e);
+                        handleProfileError(new ExceptionVisionAssist(Constants.DETECTOR_LOAD_ERROR, loadingManager));
                     }
                 }
         );
-    }
-
-    private void handleValidProfile() {
-        profileAlreadyChecked = true;
-        loadingManager.changeText("Loading profile, please wait");
-
-        // Profile loaded, now setup TTS
         backgroundExecutor.executeAsync(
                 () -> {
-                    Log.d(TAG, "Loading profile in background");
-                    Utils.uploadProfile(profileData, loadingManager);
+                    Log.d(TAG, "Load the captioner");
+                    //load captioner
                 },
-                    this::setupTTSAndNavigate,
-                () -> {
-                    Log.e(TAG, "Error loading profile");
-                    handleProfileError(new Exception("Error loading profile"));
+                new BackgroundTaskExecutor.TaskCallback<Integer>() {
+                    @Override
+                    public void onSuccess(Integer result) throws Exception {
+                        if (result == -1)
+                            handleProfileError(new ExceptionVisionAssist(Constants.CAPTIONER_LOAD_ERROR, loadingManager));
+                        else tasksCompleted++;
+                    }
+
+                    @Override
+                    public void onError(Exception e) {
+                        handleProfileError(new ExceptionVisionAssist(Constants.CAPTIONER_LOAD_ERROR, loadingManager));
+                    }
                 }
         );
+        backgroundExecutor.executeAsync(
+                () -> {
+                    Log.d(TAG, "Load the detector");
+                    //load translater
+                },
+                new BackgroundTaskExecutor.TaskCallback<Integer>() {
+                    @Override
+                    public void onSuccess(Integer result) throws Exception {
+                        if (result == -1)
+                            handleProfileError(new ExceptionVisionAssist(Constants.TRANSLATER_LOAD_ERROR, loadingManager));
+                        else tasksCompleted++;
+                    }
+
+                    @Override
+                    public void onError(Exception e) {
+                        handleProfileError(new ExceptionVisionAssist(Constants.TRANSLATER_LOAD_ERROR, loadingManager));
+                    }
+                }
+        );
+        backgroundExecutor.executeAsync(
+                () -> {
+                    Log.d(TAG, "Load the detector");
+                    //load classifier
+                },
+                new BackgroundTaskExecutor.TaskCallback<Integer>() {
+                    @Override
+                    public void onSuccess(Integer result) throws Exception {
+                        if (result == -1)
+                            handleProfileError(new ExceptionVisionAssist(Constants.CLASSIFIER_LOAD_ERROR, loadingManager));
+                        else tasksCompleted++;
+                    }
+
+                    @Override
+                    public void onError(Exception e) {
+                        handleProfileError(new ExceptionVisionAssist(Constants.CLASSIFIER_LOAD_ERROR, loadingManager));
+                    }
+                }
+        );
+        backgroundExecutor.executeAsync(
+                () -> {
+                    Log.d(TAG, "Load the detector");
+                    //load text to speech
+                },
+                new BackgroundTaskExecutor.TaskCallback<Integer>() {
+                    @Override
+                    public void onSuccess(Integer result) throws Exception {
+                        if (result == -1)
+                            handleProfileError(new ExceptionVisionAssist(Constants.STT_LOAD_ERROR, loadingManager));
+                        else tasksCompleted++;
+                    }
+
+                    @Override
+                    public void onError(Exception e) {
+                        handleProfileError(new ExceptionVisionAssist(Constants.STT_LOAD_ERROR, loadingManager));
+                    }
+                }
+        );
+        backgroundExecutor.executeAsync(
+                () -> {
+                    Log.d(TAG, "Load the detector");
+                    //load yolo's class names
+                    // useless words
+                    // synonyms
+                    // classifier scene names
+                },
+                new BackgroundTaskExecutor.TaskCallback<Integer>() {
+                    @Override
+                    public void onSuccess(Integer result) throws Exception {
+                        if (result == -1)
+                            handleProfileError(new ExceptionVisionAssist(Constants.ASSETS_ERROR, loadingManager));
+                        else tasksCompleted += 4;
+                    }
+
+                    @Override
+                    public void onError(Exception e) {
+                        handleProfileError(new ExceptionVisionAssist(Constants.ASSETS_ERROR, loadingManager));
+                    }
+                }
+        );
+        backgroundExecutor.executeAsync(
+                () -> {
+                    Log.d(TAG, "Load the detector");
+                    //load captioner vocab
+                },
+                new BackgroundTaskExecutor.TaskCallback<Integer>() {
+                    @Override
+                    public void onSuccess(Integer result) throws Exception {
+                        if (result == -1)
+                            handleProfileError(new ExceptionVisionAssist(Constants.ASSETS_ERROR, loadingManager));
+                        else tasksCompleted++;
+                    }
+
+                    @Override
+                    public void onError(Exception e) {
+                        handleProfileError(new ExceptionVisionAssist(Constants.ASSETS_ERROR, loadingManager));
+                    }
+                }
+        );
+        */
+        receiveAndNavigate();
     }
 
-    private void setupTTSAndNavigate() {
-            waitingForTTSLanguage = true;
-            ttsManager.changeLanguage(AppConfig.mainLanguage, this);
-            waitForTTSAndNavigate();
+    private void receiveAndNavigate() {
+
+        Runnable checkLoadedAssets = new Runnable() {
+            @Override
+            public void run() {
+                if (tasksCompleted == Constants.MODELS_COUNT + Constants.MODELS_OWN_ASSETS_COUNT && ttsManager.isReady()) {
+                    setupTTSLanguage();
+                } else {
+                    Log.e(TAG, "Models not loaded yet. Retrying...");
+                    handler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS);
+                }
+            }
+        };
+        handler.post(checkLoadedAssets);
+    }
+
+    private void setupTTSLanguage() {
+        waitingForTTSLanguage = true;
+        ttsManager.changeLanguage(AppConfig.mainLanguage, this);
+        waitForTTSAndNavigate();
     }
 
     private void waitForTTSAndNavigate() {
@@ -156,8 +294,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void navigateToHome() {
+        isNavigateToHome = true;
         monitor.isProfileLoaded(true);
+
         //make the sync with firebase
+        //DBManager dbManager = monitor.getDBManager();
         //loadingManager.changeText("Loading profile, please wait");
         //dbManager.autoSyncProfile(profileData,loadingManager);
 
@@ -178,14 +319,39 @@ public class MainActivity extends AppCompatActivity {
             Log.e(TAG, "Thrown special exception, error code: " + errorCode);
 
             ErrorDialogManager errorDialog = new ErrorDialogManager(monitor.getCurrentActivity());
-            errorDialog.setupDialog(errorCode, String.valueOf(R.string.exit_error_en));
+            errorDialog.setupDialog(errorCode);
             if (ref != null) ref.hideLoading();
             monitor.shutdownApp(errorDialog, monitor.getCurrentContext());
         } else {
             Log.e(TAG, "Thrown exception, explanation: ", e);
             ErrorDialogManager errorDialog = new ErrorDialogManager(monitor.getCurrentActivity());
-            errorDialog.setupDialog(Constants.EXCEPTION_CLASS_ERROR, String.valueOf(R.string.exit_error_en));
+            errorDialog.setupDialog(Constants.EXCEPTION_CLASS_ERROR);
             monitor.shutdownApp(errorDialog, monitor.getCurrentContext());
+        }
+    }
+
+
+    private void disableTalkBackForActivity() {
+        try {
+            // Check if TalkBack is currently enabled
+            AccessibilityManager accessibilityManager =
+                    (AccessibilityManager) getSystemService(ACCESSIBILITY_SERVICE);
+
+            if (accessibilityManager == null || !accessibilityManager.isEnabled()) {
+                Log.d(TAG, "TalkBack is not active system-wide, no need to disable it for activity");
+                return;
+            }
+
+            // Get the root content view of the activity (android.R.id.content is the root container)
+            View rootView = findViewById(android.R.id.content);
+            if (rootView != null) {
+                // Set the view as not important for accessibility
+                // This prevents TalkBack from announcing content in this activity
+                rootView.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
+                Log.d(TAG, "TalkBack is active system-wide, TalkBack disabled for MainActivity");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error disabling TalkBack for activity", e);
         }
     }
 }

@@ -92,7 +92,7 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
         };
     }
 
-    private void checkPhoneStatus() {
+    public void checkPhoneStatus() {
         try {
             // Util.checkPhoneStatus returns Pair<BatteryStatus, TemperatureStatus>
             Pair<Integer, Integer> status = Utils.checkPhoneStatus(appContext);
@@ -184,7 +184,6 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
 
     private void showErrorAndShutdown(String message) {
         if (currentActivity != null && !currentActivity.isFinishing()) {
-
 
             // 1. Conditional Speaking Logic (with loop/retry)
             if (profileLoaded) {
@@ -329,7 +328,6 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
         currentContext = activity;
         Log.d(TAG, "Activity started: " + activity.getClass().getSimpleName() +
                 " (Active count: " + activeActivityCount + ")");
-
         //if (activeActivityCount == 1) {
         //    startMonitoring(); // Start monitoring when the first activity starts
         //}
@@ -353,12 +351,14 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
         Log.d(TAG, "Activity stopped: " + activity.getClass().getSimpleName() +
                 " (Active count: " + activeActivityCount + ")");
 
+        /*
         if (activeActivityCount == 0) {
             stopMonitoring(); // Stop monitoring when the last activity stops
             // Clear current references when no activities are active
             currentActivity = null;
             currentContext = null;
         }
+         */
     }
 
     @Override

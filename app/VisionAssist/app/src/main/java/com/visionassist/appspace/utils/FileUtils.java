@@ -140,7 +140,7 @@ public class FileUtils {
         } catch (Exception e) {
             Log.e(TAG, "Error deleting profile directory", e);
             ErrorDialogManager errorDialog = new ErrorDialogManager(phoneMonitor.getCurrentActivity());
-            errorDialog.setupDialog(Constants.DIR_DELETE_ERROR, String.valueOf(R.string.exit_error_en));
+            errorDialog.setupDialog(Constants.DIR_DELETE_ERROR);
             phoneMonitor.shutdownApp(errorDialog, phoneMonitor.getCurrentContext());
         }
         return false;
@@ -185,7 +185,7 @@ public class FileUtils {
         } catch (IOException e) {
                 PhoneStatusMonitor phoneMonitor = PhoneStatusMonitor.getInstance();
                 ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
-                errorDialog.setupDialog(Constants.FILE_WRITE_ERROR, String.valueOf(R.string.exit_error_en));
+                errorDialog.setupDialog(Constants.FILE_WRITE_ERROR);
                 phoneMonitor.shutdownApp(errorDialog,context);
         }
         return false;

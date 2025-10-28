@@ -2,7 +2,6 @@
 
 package com.visionassist.appspace.jetpack.design
 
-import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -33,13 +32,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.visionassist.appspace.R
 import com.visionassist.appspace.utils.Constants
-import com.visionassist.appspace.utils.load_loadingText
 import com.visionassist.appspace.utils.robotoRegular
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun LoadingComponent(
-    context: Context,
     modifier: Modifier = Modifier,
     isVisible: Boolean = true,
     loadingText: String = "_undefined_",
@@ -68,7 +65,7 @@ fun LoadingComponent(
             ) {
                 // Loading Text
                 Text(
-                    text = if((loadingText)=="_undefined_") load_loadingText(context) else loadingText,
+                    text = loadingText,
                     fontSize = 12.sp,
                     fontFamily = robotoRegular,
                     fontWeight = FontWeight.Medium,
@@ -99,7 +96,6 @@ fun LoadingComponent(
 fun LoadingComponentPreview() {
     LoadingComponent(
         isVisible = true,
-        loadingText = "Please wait",
-        context = androidx.compose.ui.platform.LocalContext.current
+        loadingText = "Please wait"
     )
 }

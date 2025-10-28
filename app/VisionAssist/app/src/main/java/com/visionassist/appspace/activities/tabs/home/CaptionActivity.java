@@ -1,3 +1,4 @@
+//butonul de camera este apasat=> verifica intai checkPhoneStatus
 package com.visionassist.appspace.activities.tabs.home;
 import android.os.Bundle;
 import android.speech.tts.TextToSpeech;

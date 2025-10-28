@@ -18,7 +18,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.compose.ui.platform.ComposeView;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-
 import com.visionassist.appspace.R;
 import com.visionassist.appspace.jetpack.managers.PermissionDialogManager;
 import com.visionassist.appspace.utils.Constants;
@@ -29,9 +28,7 @@ public class PermissionsActivity extends AppCompatActivity {
     private int permissionOption;
     private PermissionDialogManager dialogManager;
     private PermissionDialogManager dialogManagerSettings;
-
     private ActivityResultLauncher<Intent> settingsLauncher;
-
     private boolean waitingForSettingsReturn = false;
     private String currentPermissionType = "";
 
@@ -53,16 +50,11 @@ public class PermissionsActivity extends AppCompatActivity {
         TextView titleView = findViewById(R.id.permissions_text);
         ComposeView dialogBox = findViewById(R.id.permission_dialog_box);
         titleView.setVisibility(View.VISIBLE);
-        dialogManager = new PermissionDialogManager(dialogBox, false, false, this);
-        dialogManagerSettings = new PermissionDialogManager(dialogBox, false, true, this);
+        dialogManager = new PermissionDialogManager(dialogBox, false, this);
+        dialogManagerSettings = new PermissionDialogManager(dialogBox, true, this);
 
         Intent intent = getIntent();
         permissionOption = intent.getIntExtra(Constants.EXTRA_PERMISSION_OPTION, 0);
-    }
-
-    @Override
-    protected void onStart() {
-        super.onStart();
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             Log.d(TAG, "Permission option: " + permissionOption);
             handlePermissions();
@@ -77,7 +69,10 @@ public class PermissionsActivity extends AppCompatActivity {
             case 1: // Camera permission missing
                 handleCameraPermission();
                 break;
-            case 2: // Storage permissions missing
+            case 2: // Microphone permission missing
+                handleMicrophonePermission();
+                break;
+            case 3: // Storage permissions missing
                 handleStoragePermissions();
                 break;
             default:
@@ -96,7 +91,7 @@ public class PermissionsActivity extends AppCompatActivity {
                 == PackageManager.PERMISSION_GRANTED) {
 
             if (permissionOption == 0) {
-                handleStoragePermissions();
+                handleMicrophonePermission();
             } else {
                 finish();
             }
@@ -107,6 +102,27 @@ public class PermissionsActivity extends AppCompatActivity {
                 this,
                 new String[]{Manifest.permission.CAMERA},
                 Constants.CAMERA_PERMISSION_REQUEST
+        );
+    }
+
+    private void handleMicrophonePermission() {
+        currentPermissionType = "microphone";
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+                == PackageManager.PERMISSION_GRANTED) {
+
+            if (permissionOption == 0) {
+                handleStoragePermissions();
+            } else {
+                finish();
+            }
+            return;
+        }
+
+        ActivityCompat.requestPermissions(
+                this,
+                new String[]{Manifest.permission.RECORD_AUDIO},
+                Constants.MICROPHONE_PERMISSION_REQUEST
         );
     }
 
@@ -152,7 +168,7 @@ public class PermissionsActivity extends AppCompatActivity {
                 Log.d(TAG, "Camera permission granted");
 
                 if (permissionOption == 0) {
-                    handleStoragePermissions();
+                    handleMicrophonePermission();
                 } else {
                     finish();
                 }
@@ -161,6 +177,22 @@ public class PermissionsActivity extends AppCompatActivity {
                     showPermissionDeniedDialog("camera");
                 } else {
                     showGoToSettingsDialog("camera");
+                }
+            }
+        } else if (requestCode == Constants.MICROPHONE_PERMISSION_REQUEST) {
+            if (allGranted) {
+                Log.d(TAG, "Microphone permission granted");
+
+                if (permissionOption == 0) {
+                    handleStoragePermissions();
+                } else {
+                    finish();
+                }
+            } else {
+                if (shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO)) {
+                    showPermissionDeniedDialog("microphone");
+                } else {
+                    showGoToSettingsDialog("microphone");
                 }
             }
         } else if (requestCode == Constants.STORAGE_PERMISSION_REQUEST) {
@@ -185,6 +217,8 @@ public class PermissionsActivity extends AppCompatActivity {
             new Handler(Looper.getMainLooper()).post(() -> {
                 if (permType.equals("camera")) {
                     handleCameraPermission();
+                } else if (permType.equals("microphone")) {
+                    handleMicrophonePermission();
                 } else {
                     handleStoragePermissions();
                 }
@@ -214,33 +248,48 @@ public class PermissionsActivity extends AppCompatActivity {
     }
 
     private void checkPermissionAfterSettings() {
-        if (currentPermissionType.equals("camera")) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
-                    == PackageManager.PERMISSION_GRANTED) {
-                if (permissionOption == 0) {
-                    handleStoragePermissions();
+        switch (currentPermissionType) {
+            case "camera":
+                if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+                        == PackageManager.PERMISSION_GRANTED) {
+                    if (permissionOption == 0) {
+                        handleMicrophonePermission();
+                    } else {
+                        finish();
+                    }
                 } else {
+                    showGoToSettingsDialog("camera");
+                }
+                break;
+            case "microphone":
+                if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+                        == PackageManager.PERMISSION_GRANTED) {
+                    if (permissionOption == 0) {
+                        handleStoragePermissions();
+                    } else {
+                        finish();
+                    }
+                } else {
+                    showGoToSettingsDialog("microphone");
+                }
+                break;
+            case "storage":
+                String[] storagePerms = getStoragePermissions();
+                boolean allGranted = true;
+
+                for (String perm : storagePerms) {
+                    if (ContextCompat.checkSelfPermission(this, perm) != PackageManager.PERMISSION_GRANTED) {
+                        allGranted = false;
+                        break;
+                    }
+                }
+
+                if (allGranted) {
                     finish();
+                } else {
+                    showGoToSettingsDialog("storage");
                 }
-            } else {
-                showGoToSettingsDialog("camera");
-            }
-        } else if (currentPermissionType.equals("storage")) {
-            String[] storagePerms = getStoragePermissions();
-            boolean allGranted = true;
-
-            for (String perm : storagePerms) {
-                if (ContextCompat.checkSelfPermission(this, perm) != PackageManager.PERMISSION_GRANTED) {
-                    allGranted = false;
-                    break;
-                }
-            }
-
-            if (allGranted) {
-                finish();
-            } else {
-                showGoToSettingsDialog("storage");
-            }
+                break;
         }
     }
 

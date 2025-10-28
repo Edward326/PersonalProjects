@@ -39,9 +39,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.visionassist.appspace.R
 import com.visionassist.appspace.utils.Constants
-import com.visionassist.appspace.utils.load_settingsButton
-import com.visionassist.appspace.utils.load_settingsInfo
-import com.visionassist.appspace.utils.load_alwaysAllowPermDialogBox
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -49,8 +46,8 @@ fun PermissionDialog(
     context: Context,
     modifier: Modifier = Modifier,
     isVisible: Boolean = true,
-    message: String = "_undefined_",
-    buttonText: String="_undefined_",
+    message: String,
+    buttonText: String,
     onOkClick: () -> Unit = {},
 ) {
     // AnimatedVisibility with fade animation (same as LoadingBox)
@@ -95,7 +92,7 @@ fun PermissionDialog(
 
                     // Message
                     Text(
-                        text = if((message)=="_undefined_"){if((buttonText)=="settings") load_settingsInfo(context) else load_alwaysAllowPermDialogBox(context)} else message,
+                        text = message,
                         fontSize = 14.sp,
                         color = Color(0xFF49454F),
                         textAlign = TextAlign.Center,
@@ -117,7 +114,7 @@ fun PermissionDialog(
                         )
                     ) {
                         Text(
-                            text = if((buttonText)=="_undefined_") "OK" else {if((buttonText)=="settings") load_settingsButton(context) else buttonText},
+                            text = buttonText,
                             fontSize = 14.sp,
                         )
                     }
@@ -133,6 +130,7 @@ fun PermissionDialogPreview() {
     PermissionDialog(
         context = androidx.compose.ui.platform.LocalContext.current,
         message= stringResource(R.string.always_allow_en),
+        buttonText= stringResource(R.string.ok),
         onOkClick = {}
     )
 }
