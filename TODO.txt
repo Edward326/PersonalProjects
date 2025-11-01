@@ -1,14 +1,15 @@
--peste tot unde se fac operatii lungi se incloduieste cu bakgroihundtaslexexcutor
--modificat  MainActivity astfel incat sa suporte sincronizarea cu database
--instantat PhoneStatusMonitor dbmanager
--modificat validateProfile, profileSelector, uploadProfile
--modificat WelcomeActivity
+-la permisisionea de mercrofon , daca se da deny avertizeaza userul ca optiunea de find my nu o sa fie disponibla(give access-> verifica daca tre sa mearga in 
+settigns sau mai poate afisa inca odata dialogul cu allow si deschide atunci ce trebuie, dont give access-> va revenii in aplicatie,si va seta o constatnta true), in checkPermsisions prntru mic daca nu e data permsisiunea si constanta e true nu afiseaza perm cu mic dar daca e false , afiseaza permisunea cu mic 
+-inainte de a lansa fiecare permisune se lansaeza un dialog care spune de ce are nevoie de permisunie si prin apsarea ok , se lasnseaza intentul
 -impklmenetare LoadProfileActvity/NewProfileActivity
 -implementare restul de activitati de configurare
 -implementat loadAssets mainActivity
 -implementat BlindHomeActivity,HomeActivity
 
 *
-INTRO ACTIVIATATE DACA SE FOLOSSTE TTS PENTRU UI SE DA TRUE la
-o metoda care disable pentru aceea activiatate talkbacck daca e activat
-INTRO ACITIVATTE DACA NU SE FOLOSSTE TTS se lasa talkback ul
+Low eyesight->TTS OFF, poate folosii fara talkbalk sau cu
+Blindeness->TTS ON, poate folosii fara talkback sau cu 
+
+*
+In home cand se vrea find my(2x volume down press) atunci se reseteaza cinstanta pentru mic si se apealeaza checkPermission,
+dupa ce se revine, daca constnta e true, nu se face nimic, se avertiezaeza userul prin notificare, daca e false, relizeaza actiunile pentru "find my"
