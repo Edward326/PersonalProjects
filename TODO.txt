@@ -1,7 +1,3 @@
--peste tot unde se fac operatii lungi se incloduieste cu bakgroihundtaslexexcutor
--modificat  MainActivity astfel incat sa suporte sincronizarea cu database
--instantat PhoneStatusMonitor dbmanager
--modificat validateProfile, profileSelector, uploadProfile
 -modificat WelcomeActivity
 -impklmenetare LoadProfileActvity/NewProfileActivity
 -implementare restul de activitati de configurare
