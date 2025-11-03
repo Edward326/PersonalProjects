@@ -1,10 +1,8 @@
--modificat WelcomeActivity
 -impklmenetare LoadProfileActvity/NewProfileActivity
 -implementare restul de activitati de configurare
 -implementat loadAssets mainActivity
 -implementat BlindHomeActivity,HomeActivity
 
 *
-INTRO ACTIVIATATE DACA SE FOLOSSTE TTS PENTRU UI SE DA TRUE la
-o metoda care disable pentru aceea activiatate talkbacck daca e activat
-INTRO ACITIVATTE DACA NU SE FOLOSSTE TTS se lasa talkback ul
+-low eyesight: fara TTS, cu sau fara Talkback
+-blindness: cu TTS, main page, notificare evenimente, noitificarea il vorbeste TTS, apsarea butoanelor il voerbeste Talkback
