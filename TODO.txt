@@ -5,4 +5,8 @@
 
 *
 -low eyesight: fara TTS, cu sau fara Talkback
+<<<<<<< HEAD
 -blindness: cu TTS, main page, notificare evenimente, noitificarea il vorbeste TTS, apsarea butoanelor il voerbeste Talkback
+=======
+-blindness: cu TTS, main page, notificare evenimente, noitificarea il vorbeste TTS, apsarea butoanelor il voerbeste Talkback
+>>>>>>> 6168d227e27f361683844f9ffa0ce7226f3c9ed7
