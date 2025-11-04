@@ -67,7 +67,8 @@ fun BlindnessNotificationDialog(
                 shape = RoundedCornerShape(28.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = colorResource(R.color.notification_white)
-                )
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
             ) {
                 Column(
                     modifier = Modifier
@@ -87,7 +88,7 @@ fun BlindnessNotificationDialog(
                     // Message - load from resources using the utility function
                     Text(
                         text = stringResource(R.string.initial_blindness_notification),
-                        fontSize = 14.sp,
+                        fontSize = Constants.STD_FONT_SIZE.sp,
                         color = colorResource(R.color.notification_text_gray),
                         textAlign = TextAlign.Center,
                         lineHeight = 23.sp
@@ -100,7 +101,7 @@ fun BlindnessNotificationDialog(
                         onClick = onOkClick,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(96.dp),
+                            .height(Constants.STD_BUTTON_HEIGHT.dp),
                         shape = RoundedCornerShape(28.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = colorResource(R.color.notification_button_white),
@@ -109,7 +110,7 @@ fun BlindnessNotificationDialog(
                     ) {
                         Text(
                             text = "OK",
-                            fontSize = 28.sp,
+                            fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
                         )
                     }
                 }
@@ -118,7 +119,12 @@ fun BlindnessNotificationDialog(
     }
 }
 
-@Preview(name = "Warning Blindness Notification", showBackground = true, widthDp = 412, heightDp = 917)
+@Preview(
+    name = "Warning Blindness Notification",
+    showBackground = true,
+    widthDp = 412,
+    heightDp = 917
+)
 @Composable
 fun BlindnessNotificationDialogPreview() {
     BlindnessNotificationDialog(

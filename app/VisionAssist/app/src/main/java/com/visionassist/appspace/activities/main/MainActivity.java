@@ -1,11 +1,14 @@
 package com.visionassist.appspace.activities.main;
 
+import android.content.Context;
 import android.content.Intent;
+import android.media.AudioManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.util.Pair;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.accessibility.AccessibilityManager;
 import android.widget.ImageView;
@@ -23,6 +26,7 @@ import com.visionassist.appspace.utils.BackgroundTaskExecutor;
 import com.visionassist.appspace.utils.Constants;
 import com.visionassist.appspace.utils.PermissionChecker;
 import com.visionassist.appspace.utils.Utils;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 public class MainActivity extends AppCompatActivity {
@@ -30,6 +34,7 @@ public class MainActivity extends AppCompatActivity {
 
     private PhoneStatusMonitor monitor = PhoneStatusMonitor.getInstance();
     private TTSManager ttsManager = monitor.getTTSManager();
+    private AudioManager audioManager;
     private BackgroundTaskExecutor backgroundExecutor = BackgroundTaskExecutor.getInstance();
     private Handler handler = new Handler(Looper.getMainLooper());
     private LoadingManager loadingManager;
@@ -40,6 +45,7 @@ public class MainActivity extends AppCompatActivity {
     private boolean profileAlreadyUploaded = false;
     private boolean isNavigateToHome = false;
     private int tasksCompleted = 0;
+    private boolean ready = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,6 +53,14 @@ public class MainActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_main);
         disableTalkBackForActivity();
+        audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        int maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+        audioManager.setStreamVolume(
+                AudioManager.STREAM_MUSIC,  // Stream type
+                maxVolume,                   // Volume level (max)
+                0                            // Flags (0 = no UI)
+        );
+
         ImageView logoImage = findViewById(R.id.logo_image);
         ComposeView loadingBox = findViewById(R.id.loading_box);
         logoImage.setVisibility(View.VISIBLE);
@@ -77,36 +91,40 @@ public class MainActivity extends AppCompatActivity {
         } else if (profileAlreadyChecked) {
             uploadProfileTask();
         } else if (firstResume) {
-            handler.postDelayed(() -> {
-                PermissionChecker.checkAndRequestPermissions(this, true, this::checkProfileTask);
-            }, 1000);
+            handler.postDelayed(() -> PermissionChecker.checkAndRequestPermissions(this, true, this::checkProfileTask), 1000);
         }
+    }
+
+    @Override
+    protected  void onPause(){
+        super.onPause();
+
+        if(!ttsManager.isDoneSpeaking())
+            ttsManager.stopSpeaking();
     }
 
     private void checkProfileTask() {
         firstResume = false;
         loadingManager.changeText("Verifying profile, please wait");
         handler.postDelayed(() -> {
-            /*
             try {
                 Pair<Integer, JSONObject> profileStatusDecider = Utils.checkProfile(this);
                 if (profileStatusDecider.first != 0) {
                     Utils.profileSelector(profileStatusDecider, loadingManager);
                 } else {
                     profileData = profileStatusDecider.second;
-                    uploadProfileTask();
+                    //uploadProfileTask();
                 }
             } catch (Exception e) {
                 handleProfileError(e);
             }
-            */
         }, 1500);
     }
 
     private void uploadProfileTask() {
         profileAlreadyChecked = true;
         loadingManager.changeText("Uploading profile, please wait");
-        handler.postDelayed(() -> Utils.uploadProfile(profileData, loadingManager), 1500);
+        handler.postDelayed(() -> Utils.uploadProfile(profileData), 1500);
         loadAssets();
     }
 
@@ -192,7 +210,7 @@ public class MainActivity extends AppCompatActivity {
         backgroundExecutor.executeAsync(
                 () -> {
                     Log.d(TAG, "Load the detector");
-                    //load text to speech
+                    //load speech to text
                 },
                 new BackgroundTaskExecutor.TaskCallback<Integer>() {
                     @Override
@@ -254,7 +272,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void receiveAndNavigate() {
-
         Runnable checkLoadedAssets = new Runnable() {
             @Override
             public void run() {
@@ -293,15 +310,57 @@ public class MainActivity extends AppCompatActivity {
         handler.post(checkTTS);
     }
 
+    private void synchronizeProfile(DBManager dbManager) {
+        backgroundExecutor.executeAsync(
+                () -> {
+                    Log.d(TAG, "Synchronizing profile with remote database");
+                    dbManager.syncProfile(profileData);
+                    return 0;
+                },
+                new BackgroundTaskExecutor.TaskCallback<Integer>() {
+                    @Override
+                    public void onSuccess(Integer result) {
+                        ready = true;
+                    }
+
+                    @Override
+                    public void onError(Exception e) {
+                        if (e instanceof JSONException) {
+                            handleProfileError(new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR, loadingManager));
+                        }
+                        handleProfileError(e);
+                    }
+                }
+        );
+        Runnable checkSyncDone = new Runnable() {
+            @Override
+            public void run() {
+                if (ready) {
+                    navigateToHomeEnd();
+                } else {
+                    Log.e(TAG, "Models not loaded yet. Retrying...");
+                    handler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS);
+                }
+            }
+        };
+        handler.post(checkSyncDone);
+    }
+
     private void navigateToHome() {
         isNavigateToHome = true;
+        try {
+            DBManager dbManager = monitor.getDBManager();
+            if (dbManager.isRemoteProfile(profileData, loadingManager))
+                synchronizeProfile(dbManager);
+            else
+                navigateToHomeEnd();
+        } catch (ExceptionVisionAssist e) {
+            handleProfileError(e);
+        }
+    }
+
+    private void navigateToHomeEnd() {
         monitor.isProfileLoaded(true);
-
-        //make the sync with firebase
-        //DBManager dbManager = monitor.getDBManager();
-        //loadingManager.changeText("Loading profile, please wait");
-        //dbManager.autoSyncProfile(profileData,loadingManager);
-
         Class<?> nextActivityClass = AppConfig.blindness
                 ? BlindHomeActivity.class
                 : HomeActivity.class;
@@ -330,7 +389,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-
     private void disableTalkBackForActivity() {
         try {
             // Check if TalkBack is currently enabled
@@ -353,5 +411,21 @@ public class MainActivity extends AppCompatActivity {
         } catch (Exception e) {
             Log.e(TAG, "Error disabling TalkBack for activity", e);
         }
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        // Use a switch statement for key code checks
+        switch (keyCode) {
+            case KeyEvent.KEYCODE_VOLUME_DOWN:
+                Log.d(TAG, "Volume button down pressed");
+                return true;
+            case KeyEvent.KEYCODE_VOLUME_UP:
+                Log.d(TAG, "Volume button up pressed");
+                return true;
+        }
+
+        // For all other keys, call the super implementation
+        return super.onKeyDown(keyCode, event);
     }
 }

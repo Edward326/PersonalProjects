@@ -39,7 +39,7 @@ import com.visionassist.appspace.utils.robotoRegular
 fun LoadingComponent(
     modifier: Modifier = Modifier,
     isVisible: Boolean = true,
-    loadingText: String = "_undefined_",
+    loadingText: String,
 ) {
     // AnimatedVisibility with fade animation
     AnimatedVisibility(
@@ -66,7 +66,7 @@ fun LoadingComponent(
                 // Loading Text
                 Text(
                     text = loadingText,
-                    fontSize = 12.sp,
+                    fontSize = Constants.STD_FONT_SIZE.sp,
                     fontFamily = robotoRegular,
                     fontWeight = FontWeight.Medium,
                     fontStyle = FontStyle.Normal,

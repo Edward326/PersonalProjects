@@ -7,8 +7,15 @@
         android:name="android.hardware.camera"
         android:required="false" />
 
+    <uses-feature
+        android:name="android.hardware.microphone"
+        android:required="false" />
+
     <!-- Camera permission - all API levels -->
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Microphone permission - all API levels (API 24+) -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
 
     <!-- Other basic permissions -->
     <uses-permission android:name="android.permission.VIBRATE" />
@@ -48,7 +55,13 @@
             android:name=".activities.newprofile.PermissionsActivity"
             android:screenOrientation="portrait" />
 
-        <!-- Your other activities -->
+        <activity
+            android:name=".activities.newprofile.ConfigurationActivity"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".activities.newprofile.WelcomeActivity"
+            android:screenOrientation="portrait" />
 
     </application>
 </manifest>

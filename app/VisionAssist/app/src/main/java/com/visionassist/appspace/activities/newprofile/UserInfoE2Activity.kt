@@ -1,4 +1,5 @@
 package com.visionassist.appspace.activities.newprofile;
 
-public class EnvironmentReportsActivity {
+class UserInfoE2Activity {
+
 }

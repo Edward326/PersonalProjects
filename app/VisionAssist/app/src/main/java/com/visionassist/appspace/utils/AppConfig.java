@@ -6,10 +6,6 @@ public class AppConfig {
     public static boolean blindness;
     public static Language mainLanguage;
     public static String user_name;
-    public static boolean isContributor;
-    public static int age;
-    public static String visual_condition;
-    public static String email;
     public static float tts_speech_rate;
     public static float tts_pitch;
     public static String bbox_color;

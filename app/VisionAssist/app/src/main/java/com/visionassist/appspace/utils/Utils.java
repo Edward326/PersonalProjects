@@ -6,15 +6,14 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.BatteryManager;
-import android.os.Handler;
-import android.os.Looper;
 import android.util.Log;
 import android.util.Pair;
+
 import com.visionassist.appspace.ExceptionVisionAssist;
 import com.visionassist.appspace.PhoneStatusMonitor;
-import com.visionassist.appspace.R;
 import com.visionassist.appspace.activities.newprofile.ConfigurationActivity;
 import com.visionassist.appspace.activities.newprofile.EnvironmentReportsIActivity;
+import com.visionassist.appspace.activities.newprofile.LoadProfileActivity;
 import com.visionassist.appspace.activities.newprofile.UserAccesibility1Activity;
 import com.visionassist.appspace.activities.newprofile.UserAccesibility2Activity;
 import com.visionassist.appspace.activities.newprofile.UserHashCachingActivity;
@@ -23,11 +22,13 @@ import com.visionassist.appspace.activities.newprofile.UserInfoE1Activity;
 import com.visionassist.appspace.activities.newprofile.UserInfoE2Activity;
 import com.visionassist.appspace.activities.newprofile.UserInfoE3Activity;
 import com.visionassist.appspace.activities.newprofile.WelcomeActivity;
+import com.visionassist.appspace.database.DBConstants;
 import com.visionassist.appspace.jetpack.managers.ErrorDialogManager;
 import com.visionassist.appspace.jetpack.managers.LoadingManager;
-import com.visionassist.appspace.models.ttsengine.TTSManager;
+
 import org.json.JSONException;
 import org.json.JSONObject;
+
 import java.io.InputStream;
 
 public class Utils {
@@ -68,7 +69,6 @@ public class Utils {
         Context context=phoneMonitor.getCurrentContext();
 
         switch (profileStatusDecider.first) {
-
             case 1:
                     // Delete existing profile directory if it exists
                     if (FileUtils.profileDirectoryExists(context)) {
@@ -77,12 +77,11 @@ public class Utils {
                     }
 
                     // Create fresh profile structure
-                    boolean created = FileUtils.createProfileStructure(context);
+                    boolean created = FileUtils.createProfileDirFile(Constants.PROFILE_FILE_NAME);
                     if (!created) {
                         Log.e(TAG, "Failed to create profile structure");
                         // Still continue to ConfigurationActivity, let it handle the error
                     }
-
                     intent = new Intent(context, ConfigurationActivity.class);
                     Intent finalIntent = intent;
                     loadingManager.hideLoading();
@@ -90,11 +89,28 @@ public class Utils {
                     activity.finish();
                     break;
 
+            case -4:
+                try {
+                    AppConfig.blindness = profileStatusDecider.second.getBoolean("blindness");
+                    AppConfig.mainLanguage = languageExtractor(profileStatusDecider.second);
+                    FileUtils.deleteProfileDirFile(DBConstants.PROFILE_COPY_FILE);
+                    FileUtils.deleteProfileDirFile(Constants.HASH_CACHE_FILE_NAME);
+                    FileUtils.deleteProfileDirFile(Constants.ENV_REPORTS_FILE_NAME);
+                    intent = new Intent(context, LoadProfileActivity.class);
+                    Intent finalIntent1 = intent;
+                    loadingManager.hideLoading();
+                    context.startActivity(finalIntent1);
+                    activity.finish();
+                    break;
+                } catch (JSONException e) {
+                    throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR,loadingManager);
+                }
 
             case -3:
                 try {
                     AppConfig.blindness = profileStatusDecider.second.getBoolean("blindness");
-                    intent = new Intent(context, WelcomeActivity.class);
+                    AppConfig.mainLanguage = languageExtractor(profileStatusDecider.second);
+                    intent = new Intent(context, LoadProfileActivity.class);
                     Intent finalIntent1 = intent;
                     loadingManager.hideLoading();
                     context.startActivity(finalIntent1);
@@ -108,8 +124,8 @@ public class Utils {
                 try {
                     AppConfig.blindness = profileStatusDecider.second.getBoolean("blindness");
                     AppConfig.mainLanguage = languageExtractor(profileStatusDecider.second);
-                    // REMOVED: PermissionChecker.checkAndRequestPermissions call
                     intent = new Intent(context, WelcomeActivity.class);
+                    intent.putExtra(Constants.EXTRA_WELCOME_OPTION,true);
                     Intent finalIntent2 = intent;
                     loadingManager.hideLoading();
                     context.startActivity(finalIntent2);
@@ -122,8 +138,8 @@ public class Utils {
             case -1:
                 try {
                     AppConfig.blindness = profileStatusDecider.second.getBoolean("blindness");
-                    AppConfig.mainLanguage = languageExtractor(profileStatusDecider.second);
-                    intent = new Intent(context, UserInfoActivity.class);
+                    intent = new Intent(context, WelcomeActivity.class);
+                    intent.putExtra(Constants.EXTRA_WELCOME_OPTION,false);
                     Intent finalIntent3 = intent;
                     loadingManager.hideLoading();
                     context.startActivity(finalIntent3);
@@ -137,7 +153,7 @@ public class Utils {
                 try {
                     AppConfig.blindness = profileStatusDecider.second.getBoolean("blindness");
                     AppConfig.mainLanguage = languageExtractor(profileStatusDecider.second);
-                    intent = new Intent(context, UserInfoE1Activity.class);
+                    intent = new Intent(context, UserInfoActivity.class);
                     Intent finalIntent4 = intent;
                     loadingManager.hideLoading();
                     context.startActivity(finalIntent4);
@@ -151,7 +167,7 @@ public class Utils {
                 try {
                     AppConfig.blindness = profileStatusDecider.second.getBoolean("blindness");
                     AppConfig.mainLanguage = languageExtractor(profileStatusDecider.second);
-                    intent = new Intent(context, UserInfoE2Activity.class);
+                    intent = new Intent(context, UserInfoE1Activity.class);
                     Intent finalIntent5 = intent;
                     loadingManager.hideLoading();
                     context.startActivity(finalIntent5);
@@ -165,7 +181,7 @@ public class Utils {
                 try {
                     AppConfig.blindness = profileStatusDecider.second.getBoolean("blindness");
                     AppConfig.mainLanguage = languageExtractor(profileStatusDecider.second);
-                    intent = new Intent(context, UserInfoE3Activity.class);
+                    intent = new Intent(context, UserInfoE2Activity.class);
                     Intent finalIntent6 = intent;
                     loadingManager.hideLoading();
                     context.startActivity(finalIntent6);
@@ -179,10 +195,11 @@ public class Utils {
                 try {
                     AppConfig.blindness = profileStatusDecider.second.getBoolean("blindness");
                     AppConfig.mainLanguage = languageExtractor(profileStatusDecider.second);
-                    //intent = new Intent(context, UserInfoE4Activity.class);
-                    //Intent finalIntent7 = intent;
-                    //loadingManager.hideLoading();
-                    //new Handler(Looper.getMainLooper()).postDelayed(() -> context.startActivity(finalIntent7), Constants.ANIMATION_DELAY);
+                    intent = new Intent(context, UserInfoE3Activity.class);
+                    Intent finalIntent7 = intent;
+                    loadingManager.hideLoading();
+                    context.startActivity(finalIntent7);
+                    activity.finish();
                     break;
                 } catch (JSONException e) {
                     throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR,loadingManager);
@@ -254,22 +271,12 @@ public class Utils {
         }
     }
 
-    public static void uploadProfile(JSONObject profileSource,LoadingManager loadingManager) {
+    public static void uploadProfile(JSONObject profileSource) {
         try {
             AppConfig.blindness = profileSource.getBoolean("blindness");
             AppConfig.mainLanguage = languageExtractor(profileSource);
             AppConfig.user_name = profileSource.getString("user_name");
-            AppConfig.isContributor = profileSource.getBoolean("contributor");
-            if (AppConfig.isContributor) {
-                AppConfig.age = profileSource.getInt("age");
-                if (!AppConfig.blindness)
-                    AppConfig.visual_condition = profileSource.getString("visual_condition");
-                else {
-                    AppConfig.tts_pitch = (float) profileSource.getDouble("tts_pitch");
-                    AppConfig.tts_speech_rate = (float) profileSource.getDouble("tts_speed");
-                }
-                AppConfig.email = profileSource.getString("email");
-            }
+
             if (!AppConfig.blindness) {
                 AppConfig.bbox_color = profileSource.getString("bbox_color");
                 AppConfig.label_color = profileSource.getString("label_color");
@@ -280,24 +287,18 @@ public class Utils {
                 AppConfig.caption_bck_color = profileSource.getString("caption_bck_color");
                 AppConfig.haptics = profileSource.getBoolean("haptics");
             }
+            else
+            {
+                AppConfig.tts_speech_rate = (float) profileSource.getDouble("tts_speech_rate");
+                AppConfig.tts_pitch = (float) profileSource.getDouble("tts_pitch");
+            }
             AppConfig.hash_caching = profileSource.getString("hash_caching");
             AppConfig.env_reports = profileSource.getBoolean("env_reports");
         } catch (Exception e) {
-            if(e instanceof ExceptionVisionAssist) {
-                int errorCode=((ExceptionVisionAssist) e).getErrorCode();
-                Log.e(TAG, "Thrown special exception, error code: " + errorCode);
-                ErrorDialogManager errorDialog = new ErrorDialogManager(phoneMonitor.getCurrentActivity());
-                errorDialog.setupDialog(errorCode);
-                if(loadingManager!=null)loadingManager.hideLoading();
-                phoneMonitor.shutdownApp(errorDialog,phoneMonitor.getCurrentContext());
-            }
-            else
-            {
                 Log.e(TAG, "Thrown exception, explanation: ",e);
                 ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
                 errorDialog.setupDialog(Constants.JSON_PARSE_ERROR);
                 phoneMonitor.shutdownApp(errorDialog, context);
-            }
         }
     }
 

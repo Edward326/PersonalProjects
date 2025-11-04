@@ -7,14 +7,14 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.KeyEvent
-import android.view.LayoutInflater
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -22,57 +22,54 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Surface
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.platform.ComposeView
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.ContentScale.Companion.Crop
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
-import com.visionassist.appspace.jetpack.managers.BlindnessNotificationManager
+import com.visionassist.appspace.activities.newprofile.jsonCollection.ProfileFileCollection
+import com.visionassist.appspace.jetpack.design.BlindnessNotificationDialog
 import com.visionassist.appspace.jetpack.managers.ErrorDialogManager
 import com.visionassist.appspace.models.ttsengine.TTSManager
 import com.visionassist.appspace.utils.AppConfig
 import com.visionassist.appspace.utils.Constants
-import com.visionassist.appspace.utils.FileUtils
-import com.visionassist.appspace.utils.haptic_model0
+import com.visionassist.appspace.utils.robotoLight
 import com.visionassist.appspace.utils.robotoSemibold
-import org.json.JSONObject
 
 class ConfigurationActivity : ComponentActivity() {
     private val TAG = "ConfigurationActivity"
 
     private var ttsManager: TTSManager = PhoneStatusMonitor.getInstance().ttsManager
-    private lateinit var notificationManager: BlindnessNotificationManager
+    private val mainHandler = Handler(Looper.getMainLooper())
+
+    // State for notification visibility
+    private val showNotification = mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Setup notification manager
-        val notificationBox = ComposeView(this)
-        notificationManager = BlindnessNotificationManager(
-            notificationBox = notificationBox,
-            context = this,
-            onOkPressed = ::handleNotificationOk
-        )
-        notificationManager.setupNotification()
-
         setContent {
             ConfigurationScreen(
-                notificationBox = notificationBox,
+                showNotification = showNotification.value,
                 onBlindnessClick = ::handleBlindnessClick,
-                onLowEyesightClick = ::handleLowEyesightClick
+                onLowEyesightClick = ::handleLowEyesightClick,
+                onNotificationOkClick = ::handleNotificationOk
             )
         }
         speakInitialCaption()
@@ -85,12 +82,17 @@ class ConfigurationActivity : ComponentActivity() {
                 ttsManager.onVolumeDownPressed()
                 return true
             }
+
+            KeyEvent.KEYCODE_VOLUME_UP -> {
+                Log.d(TAG, "Volume button up pressed")
+                return true
+            }
         }
+
         return super.onKeyDown(keyCode, event)
     }
 
     private fun speakInitialCaption() {
-        val handler = Handler(Looper.getMainLooper())
         val retryRunnable = object : Runnable {
             override fun run() {
                 if (ttsManager.isReady) {
@@ -104,7 +106,6 @@ class ConfigurationActivity : ComponentActivity() {
                         null
                     )
 
-                    val handler2 = Handler(Looper.getMainLooper())
                     val checkSpeakingRunnable = object : Runnable {
                         override fun run() {
                             if (ttsManager.isDoneSpeaking) {
@@ -116,104 +117,72 @@ class ConfigurationActivity : ComponentActivity() {
                                     null
                                 )
                             } else {
-                                handler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS.toLong())
+                                mainHandler.postDelayed(this, 500)
                             }
                         }
                     }
-                    handler2.post(checkSpeakingRunnable)
+                    mainHandler.post(checkSpeakingRunnable)
                 } else {
                     Log.w(TAG, "TTS not ready, retrying...")
-                    handler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS.toLong())
+                    mainHandler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS.toLong())
                 }
             }
         }
-        handler.post(retryRunnable)
+        mainHandler.post(retryRunnable)
     }
 
     private fun handleBlindnessClick() {
-        // Stop any current speaking
-        ttsManager.stopSpeaking()
+        // Cancel any pending handlers
+        cancelAllHandlers()
+        showNotification.value = true
+        // Speak the notification text
+        speakNotificationWarning()
+    }
 
-        // Speak "Blindness" with vibration
-        val blindnessText = "Blindness button pressed"
-        ttsManager.speak(
-            blindnessText,
-            Constants.TTS_PITCH,
-            Constants.TTS_SPEECH_RATE,
-            false,
-            haptic_model0()
-        )
-
-        // Wait until done speaking, then show notification
-        val handler = Handler(Looper.getMainLooper())
-        val checkSpeakingRunnable = object : Runnable {
+    private fun speakNotificationWarning() {
+        val retryRunnable = object : Runnable {
             override fun run() {
-                if (ttsManager.isDoneSpeaking) {
-                    // Show blindness warning notification
-                    notificationManager.showNotification()
+                if (ttsManager.isReady) {
+                    val vw =
+                        ".This dialog box is central on the screen, please press the button OK below the dialog, to configure the profile"
+                    val warningText = getString(R.string.initial_blindness_notification) + vw
+                    ttsManager.speak(
+                        warningText,
+                        Constants.TTS_PITCH,
+                        Constants.TTS_SPEECH_RATE,
+                        true,
+                        null
+                    )
+                    Log.d(TAG, "Speaking blindness warning")
                 } else {
-                    handler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS.toLong())
+                    Log.w(TAG, "TTS not ready, retrying...")
+                    mainHandler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS.toLong())
                 }
             }
         }
-        handler.post(checkSpeakingRunnable)
+        mainHandler.post(retryRunnable)
     }
 
     private fun handleLowEyesightClick() {
-        // Stop any current speaking
-        ttsManager.stopSpeaking()
-
-        // Speak "Low eyesight" with vibration
-        val lowEyesightText = "Low eyesight button pressed"
-        ttsManager.speak(
-            lowEyesightText,
-            Constants.TTS_PITCH,
-            Constants.TTS_SPEECH_RATE,
-            false,
-            haptic_model0()
-        )
-
-        // Wait until done speaking, then write to profile and navigate
-        val handler = Handler(Looper.getMainLooper())
-        val checkSpeakingRunnable = object : Runnable {
-            override fun run() {
-                if (ttsManager.isDoneSpeaking) {
-                    writeToProfileAndNavigate(false)
-                } else {
-                    handler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS.toLong())
-                }
-            }
-        }
-        handler.post(checkSpeakingRunnable)
+        // Cancel any pending handlers
+        cancelAllHandlers()
+        writeToProfileAndNavigate(false)
     }
 
     private fun handleNotificationOk() {
-        // This is called when OK button in notification is pressed
+        Log.d(TAG, "OK button clicked in notification")
+
+        cancelAllHandlers()
+        showNotification.value = false
         // Write blindness:true to profile and navigate to WelcomeActivity
         writeToProfileAndNavigate(true)
     }
 
     private fun writeToProfileAndNavigate(blindness: Boolean) {
         try {
-            // Read existing profile
-            val profileFile = FileUtils.getProfileFile(this)
-            val jsonObject: JSONObject = if (profileFile.exists() && profileFile.length() > 0) {
-                val content = profileFile.readText()
-                JSONObject(content)
-            } else {
-                JSONObject()
-            }
-
-            // Update blindness field
-            jsonObject.put("blindness", blindness)
-            // Write back to file
-            FileUtils.writeProfileFile(this, this, jsonObject.toString())
-
-            Log.d(TAG, "ConfigurationActivity has written to the profile file")
-
+            ProfileFileCollection.configurationActivityWrite(blindness)
             // Update AppConfig
             AppConfig.blindness = blindness
-
             // Navigate to WelcomeActivity
             val intent = Intent(this, WelcomeActivity::class.java)
             startActivity(intent)
@@ -225,98 +194,160 @@ class ConfigurationActivity : ComponentActivity() {
             phoneMonitor.shutdownApp(errorDialog, this)
         }
     }
+
+    override fun onPause() {
+        super.onPause()
+        cancelAllHandlers()
+    }
+
+    private fun cancelAllHandlers() {
+        mainHandler.removeCallbacksAndMessages(null)
+        if (!ttsManager.isDoneSpeaking)
+            ttsManager.stopSpeaking()
+        Log.d(TAG, "All handlers cancelled")
+    }
 }
 
 @SuppressLint("InflateParams")
 @Composable
 fun ConfigurationScreen(
-    notificationBox: ComposeView,
+    showNotification: Boolean,
     onBlindnessClick: () -> Unit,
-    onLowEyesightClick: () -> Unit
+    onLowEyesightClick: () -> Unit,
+    onNotificationOkClick: () -> Unit
 ) {
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
-        AndroidView(
+        // Background image
+        Image(
+            painter = painterResource(R.drawable.welcome_background),
+            contentDescription = null,
             modifier = Modifier.fillMaxSize(),
-            factory = { context ->
-                LayoutInflater.from(context).inflate(R.layout.activity_configuration, null)
-            }
+            contentScale = Crop
         )
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 150.dp)
+        // Main content
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.SpaceAround
         ) {
-            // Blindness button
-            VisualProblemButton(
-                text = "Blindness",
-                iconResId = R.drawable.blindness,
-                modifier = Modifier.weight(1f),
-                onClick = onBlindnessClick
+            Spacer(modifier = Modifier.height(40.dp))
+
+            // Logo
+            Image(
+                painter = painterResource(R.drawable.vision_assist_logo),
+                contentDescription = "app logo",
+                modifier = Modifier
+                    .size(200.dp)
             )
 
-            // Low eyesight button
-            VisualProblemButton(
-                text = "Low eyesight",
-                iconResId = R.drawable.eyesight,
-                modifier = Modifier.weight(1f),
-                onClick = onLowEyesightClick
+            Spacer(modifier = Modifier.weight(0.7f))
+
+            // Welcome text
+            Text(
+                text = "Welcome to VisionAssist",
+                fontSize = 40.sp,
+                color = colorResource(R.color.std_cyan),
+                fontFamily = robotoLight,
+                letterSpacing = 6.sp,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center,
+                lineHeight = 60.sp
             )
+
+            Spacer(modifier = Modifier.height(25.dp))
+
+            // Problem text
+            Text(
+                text = "What is your\nvisual problem?",
+                fontSize = 32.sp,
+                color = colorResource(R.color.std_cyan),
+                fontFamily = robotoSemibold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            // Buttons row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                // Blindness button
+                VisualProblemButton(
+                    text = "Blindness",
+                    contentDescription = "Blindness button pressed",
+                    iconResId = R.drawable.blindness,
+                    onClick = onBlindnessClick
+                )
+
+                // Low eyesight button
+                VisualProblemButton(
+                    text = "Low eyesight",
+                    contentDescription = "Low eyesight button pressed",
+                    iconResId = R.drawable.eyesight,
+                    onClick = onLowEyesightClick
+                )
+            }
+            Spacer(modifier = Modifier.weight(1f))
         }
 
-        androidx.compose.ui.viewinterop.AndroidView(
-            factory = { notificationBox },
-            modifier = Modifier.fillMaxSize()
+        // Notification Dialog - Only shows when showNotification is true
+        // This doesn't block touches when hidden because AnimatedVisibility handles it
+        BlindnessNotificationDialog(
+            isVisible = showNotification,
+            onOkClick = onNotificationOkClick
         )
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun VisualProblemButton(
     text: String,
+    contentDescription: String,
     iconResId: Int,
-    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     Column(
-        modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = text,
-            fontSize = 14.sp, // Font mai mic
+            fontSize = Constants.STD_FONT_SIZE.sp,
             color = colorResource(R.color.std_cyan),
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(bottom = 8.dp),
             fontFamily = robotoSemibold,
         )
 
-        // 2. The Icon Button (Surface-ul)
-        Surface(
+        Button(
+            onClick = onClick,
             modifier = Modifier
-                .width(144.dp)
-                .height(86.dp)
-                .clickable(onClick = onClick),
-            shape = RoundedCornerShape(16.dp),
-            color = Color(0xFFEADDFF),
-            shadowElevation = 10.dp,
-
-            ) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter = painterResource(iconResId),
-                    contentDescription = text,
-                    colorFilter = ColorFilter.tint(Color.Black),
-                    modifier = Modifier.size(34.dp)
+                .shadow(
+                    elevation = 3.dp, shape = MaterialTheme.shapes.large
                 )
-            }
+                .width(144.dp)
+                .height(86.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFFEADDFF),        // purple background
+                contentColor = Color(0xFF6750A4)
+            )
+        ) {
+            Icon(
+                painter = painterResource(iconResId),
+                contentDescription = contentDescription,
+                tint = Color.Black,
+                modifier = Modifier.size(34.dp)
+            )
+
         }
+
     }
 }
 
@@ -324,7 +355,9 @@ fun VisualProblemButton(
 @Composable
 fun ConfigurationActivityPreview() {
     ConfigurationScreen(
-        ComposeView(LocalContext.current),
-        {},
-        {})
+        showNotification = false,
+        onBlindnessClick = {},
+        onLowEyesightClick = {},
+        onNotificationOkClick = {}
+    )
 }

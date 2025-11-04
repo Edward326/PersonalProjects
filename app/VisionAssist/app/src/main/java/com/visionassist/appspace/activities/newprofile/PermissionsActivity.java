@@ -1,5 +1,6 @@
 package com.visionassist.appspace.activities.newprofile;
 
+import static com.visionassist.appspace.utils.UtilsKt.load_permissionInfo;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -9,6 +10,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.View;
 import android.widget.TextView;
 import androidx.activity.result.ActivityResultLauncher;
@@ -18,7 +20,9 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.compose.ui.platform.ComposeView;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import com.visionassist.appspace.PhoneStatusMonitor;
 import com.visionassist.appspace.R;
+import com.visionassist.appspace.jetpack.managers.InfoNotificationManager;
 import com.visionassist.appspace.jetpack.managers.PermissionDialogManager;
 import com.visionassist.appspace.utils.Constants;
 
@@ -28,9 +32,13 @@ public class PermissionsActivity extends AppCompatActivity {
     private int permissionOption;
     private PermissionDialogManager dialogManager;
     private PermissionDialogManager dialogManagerSettings;
+    private InfoNotificationManager infoNotificationManager;
     private ActivityResultLauncher<Intent> settingsLauncher;
     private boolean waitingForSettingsReturn = false;
     private String currentPermissionType = "";
+    private boolean cameraInfoShown = false;
+    private boolean microphoneInfoShown = false;
+    private boolean storageInfoShown = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,6 +60,7 @@ public class PermissionsActivity extends AppCompatActivity {
         titleView.setVisibility(View.VISIBLE);
         dialogManager = new PermissionDialogManager(dialogBox, false, this);
         dialogManagerSettings = new PermissionDialogManager(dialogBox, true, this);
+        infoNotificationManager = new InfoNotificationManager(this);
 
         Intent intent = getIntent();
         permissionOption = intent.getIntExtra(Constants.EXTRA_PERMISSION_OPTION, 0);
@@ -98,6 +107,21 @@ public class PermissionsActivity extends AppCompatActivity {
             return;
         }
 
+        // Show info dialog before requesting permission (only once)
+        if (!cameraInfoShown) {
+            cameraInfoShown = true;
+            String message;
+            if (!PhoneStatusMonitor.getInstance().profileLoaded)
+                message = getString(R.string.camera_permission_info_en);
+            else
+                message = load_permissionInfo(PhoneStatusMonitor.getInstance().getCurrentContext(), "camera");
+            infoNotificationManager.showNotification(message, this::requestCameraPermission,false);
+        } else {
+            requestCameraPermission();
+        }
+    }
+
+    private void requestCameraPermission() {
         ActivityCompat.requestPermissions(
                 this,
                 new String[]{Manifest.permission.CAMERA},
@@ -119,6 +143,21 @@ public class PermissionsActivity extends AppCompatActivity {
             return;
         }
 
+        // Show info dialog before requesting permission (only once)
+        if (!microphoneInfoShown) {
+            microphoneInfoShown = true;
+            String message;
+            if (!PhoneStatusMonitor.getInstance().profileLoaded)
+                message = getString(R.string.microphone_permission_info_en);
+            else
+                message = load_permissionInfo(PhoneStatusMonitor.getInstance().getCurrentContext(), "microphone");
+            infoNotificationManager.showNotification(message, this::requestMicrophonePermission,false);
+        } else {
+            requestMicrophonePermission();
+        }
+    }
+
+    private void requestMicrophonePermission() {
         ActivityCompat.requestPermissions(
                 this,
                 new String[]{Manifest.permission.RECORD_AUDIO},
@@ -144,6 +183,22 @@ public class PermissionsActivity extends AppCompatActivity {
             return;
         }
 
+        // Show info dialog before requesting permission (only once)
+        if (!storageInfoShown) {
+            storageInfoShown = true;
+            String message;
+            if (!PhoneStatusMonitor.getInstance().profileLoaded)
+                message = getString(R.string.storage_permission_info_en);
+            else
+                message = load_permissionInfo(PhoneStatusMonitor.getInstance().getCurrentContext(), "storage");
+            infoNotificationManager.showNotification(message, this::requestStoragePermissions,false);
+        } else {
+            requestStoragePermissions();
+        }
+    }
+
+    private void requestStoragePermissions() {
+        String[] storagePerms = getStoragePermissions();
         ActivityCompat.requestPermissions(
                 this,
                 storagePerms,
@@ -307,5 +362,21 @@ public class PermissionsActivity extends AppCompatActivity {
                     Manifest.permission.WRITE_EXTERNAL_STORAGE
             };
         }
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        // Use a switch statement for key code checks
+        switch (keyCode) {
+            case KeyEvent.KEYCODE_VOLUME_DOWN:
+                Log.d(TAG, "Volume button down pressed");
+                return true;
+            case KeyEvent.KEYCODE_VOLUME_UP:
+                Log.d(TAG, "Volume button up pressed");
+                return true;
+        }
+
+        // For all other keys, call the super implementation
+        return super.onKeyDown(keyCode, event);
     }
 }

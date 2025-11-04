@@ -13,7 +13,6 @@ public class NetworkUtils {
             NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
             return networkInfo != null && networkInfo.isConnectedOrConnecting();
         }
-
         return false;
     }
 }

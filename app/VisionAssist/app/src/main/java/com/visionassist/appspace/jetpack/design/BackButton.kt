@@ -5,6 +5,7 @@ package com.visionassist.appspace.jetpack.design
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBackIos
@@ -18,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.visionassist.appspace.utils.Constants
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -33,12 +35,13 @@ fun BackArrowLargeFab(
             topEnd = 16.dp,
             bottomEnd = 16.dp,
             bottomStart = 16.dp
-        )
+        ),
+        modifier = Modifier.width(104.dp)
     ) {
         Icon(
             imageVector = Icons.AutoMirrored.Filled.ArrowBackIos,
-            contentDescription = "Next",
-            modifier = Modifier.size(15.dp)
+            contentDescription = "Back",
+            modifier = Modifier.size(Constants.STD_FONT_SIZE.dp),
         )
     }
 }

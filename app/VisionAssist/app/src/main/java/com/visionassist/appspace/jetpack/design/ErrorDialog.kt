@@ -33,6 +33,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.visionassist.appspace.R
+import com.visionassist.appspace.utils.Constants
 import com.visionassist.appspace.utils.load_errorText
 import com.visionassist.appspace.utils.robotoSemibold
 
@@ -61,7 +62,8 @@ fun ErrorDialog(
                 shape = RoundedCornerShape(28.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = colorResource(R.color.notification_white)
-                )
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
             ) {
                 Column(
                     modifier = Modifier
@@ -81,7 +83,7 @@ fun ErrorDialog(
                     // Message
                     Text(
                         text = if(message=="_undefined_") load_errorText(context) else message,
-                        fontSize = 14.sp,
+                        fontSize = Constants.STD_FONT_SIZE.sp,
                         color = colorResource(R.color.notification_text_gray),
                         textAlign = TextAlign.Center,
                         lineHeight = 23.sp
@@ -92,7 +94,7 @@ fun ErrorDialog(
                     // Message
                     Text(
                         text = "(Error code: $errorCode)",
-                        fontSize = 16.sp,
+                        fontSize = Constants.STD_ERROR_FONT_SIZE.sp,
                         fontFamily = robotoSemibold,
                         color = Color(0xFF000000),
                         textAlign = TextAlign.Center,

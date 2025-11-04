@@ -1,4 +1,5 @@
 package com.visionassist.appspace.activities.newprofile;
 
-public class UserInfoActivity {
+class UserInfoE3Activity {
+
 }

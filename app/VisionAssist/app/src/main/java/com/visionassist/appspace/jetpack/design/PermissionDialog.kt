@@ -72,7 +72,8 @@ fun PermissionDialog(
                 shape = RoundedCornerShape(28.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = Color(0xFFECE6F0)
-                )
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
             ) {
                 Column(
                     modifier = Modifier
@@ -93,7 +94,7 @@ fun PermissionDialog(
                     // Message
                     Text(
                         text = message,
-                        fontSize = 14.sp,
+                        fontSize = Constants.STD_FONT_SIZE.sp,
                         color = Color(0xFF49454F),
                         textAlign = TextAlign.Center,
                         lineHeight = 23.sp
@@ -106,16 +107,16 @@ fun PermissionDialog(
                         onClick = onOkClick,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(48.dp),
+                            .height(Constants.STD_BUTTON_HEIGHT.dp),
                         shape = RoundedCornerShape(28.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFF7F2FA),
-                            contentColor =colorResource(R.color.std_purple),
+                            containerColor = colorResource(R.color.notification_button_white),
+                            contentColor = colorResource(R.color.std_purple),
                         )
                     ) {
                         Text(
                             text = buttonText,
-                            fontSize = 14.sp,
+                            fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
                         )
                     }
                 }
@@ -129,8 +130,8 @@ fun PermissionDialog(
 fun PermissionDialogPreview() {
     PermissionDialog(
         context = androidx.compose.ui.platform.LocalContext.current,
-        message= stringResource(R.string.always_allow_en),
-        buttonText= stringResource(R.string.ok),
+        message = stringResource(R.string.always_allow_en),
+        buttonText = stringResource(R.string.ok),
         onOkClick = {}
     )
 }

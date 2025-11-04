@@ -7,7 +7,6 @@ import android.content.Context;
 import android.util.Log;
 
 import com.visionassist.appspace.PhoneStatusMonitor;
-import com.visionassist.appspace.R;
 import com.visionassist.appspace.jetpack.managers.ErrorDialogManager;
 
 import java.io.BufferedReader;
@@ -95,7 +94,7 @@ public class FileUtils {
      * Create profile directory and file
      * @return true if created successfully, false otherwise
      */
-    public static boolean createProfileStructure(Context context) {
+    public static boolean createProfileDirFile(String fileName) {
         try {
             // Create directory
             File dir = getProfileDirectory(context);
@@ -108,21 +107,48 @@ public class FileUtils {
             }
 
             // Create empty profile file
-            File profileFile = getProfileFile(context);
-            if (!profileFile.exists()) {
-                if (!profileFile.createNewFile()) {
-                    Log.e(TAG, "Failed to create profile file: " + profileFile.getAbsolutePath());
-                    return false;
-                }
-                Log.d(TAG, "Created profile file: " + profileFile.getAbsolutePath());
+            File file = new File(dir,fileName);
+            if (file.exists()) {
+                deleteProfileDirFile(fileName);
             }
-
+            if (!file.createNewFile()) {
+                Log.e(TAG, "Failed to create profile file: " + file.getAbsolutePath());
+                return false;
+            }
+            Log.d(TAG, "Created profile file: " + file.getAbsolutePath());
             return true;
         } catch (IOException e) {
             Log.e(TAG, "Error creating profile structure", e);
             return false;
         }
     }
+    public static boolean deleteProfileDirFile(String fileName) {
+        try {
+            // Create directory
+            File dir = getProfileDirectory(context);
+            if (!dir.exists()) {
+                Log.d(TAG, "Profile directory does not exist");
+                return false;
+            }
+
+            // Create empty profile file
+            File file = new File(dir, fileName);
+            if (!file.exists()) {
+                Log.d(TAG, "Profile file: ~" + fileName + " does not exist");
+                return false;
+            }
+            if (!file.delete()) {
+                Log.e(TAG, "Failed to delete profile file: " + file.getAbsolutePath());
+                return false;
+            }
+            return true;
+        }
+        catch (Exception e) {
+            Log.e(TAG, "Error deleting profile file", e);
+            return false;
+        }
+    }
+
 
     /**
      * Delete profile directory and all its contents
@@ -172,9 +198,14 @@ public class FileUtils {
     /**
      * Write JSON string to profile file
      */
-    public static boolean writeProfileFile(Activity activity, Context context, String jsonContent) {
+    public static boolean writeProfileFile(String jsonContent,String fileName) {
         try {
-            File profileFile = getProfileFile(context);
+            File dir=getProfileDirectory(PhoneStatusMonitor.getInstance().getCurrentContext());
+            if (!dir.exists())return false;
+
+            File profileFile = new File(dir,fileName);
+            if(!profileFile.exists())return false;
+
             try (FileOutputStream fos = new FileOutputStream(profileFile);
                  OutputStreamWriter osw = new OutputStreamWriter(fos)) {
                 osw.write(jsonContent);

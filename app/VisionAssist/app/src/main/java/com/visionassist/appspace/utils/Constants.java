@@ -1,4 +1,3 @@
-//app constants
 package com.visionassist.appspace.utils;
 
 import android.graphics.Color;
@@ -44,12 +43,13 @@ public class Constants {
     public static final String EXTRA_IMAGE_PATH = "extra_image_path";
     public static final String EXTRA_CAPTION_TEXT = "extra_caption_text";
     public static final String EXTRA_PERMISSION_OPTION = "permission_option";
+    public static final String EXTRA_WELCOME_OPTION = "welcome_option";
 
     // Battery and Temperature Checks
     public static final boolean APPLY_BATTERY_CHECK = true;
     public static final int MIN_BATTERY_LEVEL = 15;
     public static final boolean APPLY_TEMPERATURE_CHECK = true;
-    public static final int MAX_PHONE_TEMPERATURE = 40;
+    public static final int MAX_PHONE_TEMPERATURE = 45;
 
     // Monitoring settings
     public static final long WAIT_CHECK = 5000;
@@ -63,7 +63,7 @@ public class Constants {
     public static final int MAX_LANGUAGE_CHECK_ATTEMPTS = 3;
 
     // TTS Repeat Configuration
-    public static final long REPEAT_DELAY = 3000; // 5 seconds wait for volume button
+    public static final long REPEAT_DELAY = 2000; // 2 seconds wait for volume button
     public static final float LOW_SPEECH_RATE = 0.5f; // Lower pitch for repeat
     public static final float HIGH_SPEECH_RATE = 1.5f; // Lower pitch for repeat
 
@@ -77,14 +77,12 @@ public class Constants {
 
 
     // UI overlay for notification
-    public static final int ANIMATION_DELAY = 1500;
+    public static final int ANIMATION_DELAY = 500;
 
-    // Error read delay
+    // Error codes, followed by shutdown
     public static final int ERROR_READ_DELAY = 10000;
-
-    // Error codes
-    public static final int EXCEPTION_CLASS_ERROR = 0;
-    public static final int DIR_DELETE_ERROR = 1;
+    public static final int EXCEPTION_CLASS_ERROR = -1;
+    public static final int DIR_DELETE_ERROR = 0;
     public static final int JSON_PARSE_ERROR = 1;
     public static final int FILE_WRITE_ERROR = 2;
     public static final int DETECTOR_LOAD_ERROR = 3;
@@ -94,9 +92,32 @@ public class Constants {
     public static final int STT_LOAD_ERROR = 7;
     public static final int ASSETS_ERROR = 8;
 
+    // Error codes, used in load_activity
+    public static final int LOAD_PROFILE_EXCEPTION = -2;
+    public static final int LOAD_PROFILE_SUCCESS = 9;
+    public static final int LOAD_PROFILE_FILE_MISSING = 10;
+    public static final int LOAD_PROFILE_FILE_STREAMOPEN = 11;
+    public static final int LOAD_PROFILE_FILE_INVALID = 12;
+    public static final int LOAD_PROFILE_FILE_UPLOAD = 13;
+    public static final int LOAD_PROFILE_FILE_HC_UPLOAD_ERROR = 14;
+    public static final int LOAD_PROFILE_FILE_ENVR_UPLOAD_ERROR = 15;
+
+    // Success notification display time
+    public static final int SUCCESS_NOTIFICATION_DELAY = 5000;
+
+    // Intent extras for LoadProfileActivity
+    public static final String EXTRA_LOAD_OPTION = "load_option";
+
     // Number of Models to load in main activity
-    public static final int MODELS_COUNT=5;
-    public static final int MODELS_OWN_ASSETS_COUNT=5;
+    public static final int MODELS_COUNT = 5;
+    public static final int MODELS_OWN_ASSETS_COUNT = 5;
+
+    //Standard font size and button size
+    public static final int STD_FONT_SIZE = 16;
+    public static final int STD_FONT_SIZE_LW = STD_FONT_SIZE-2;
+    public static final int STD_BUTTON_FONT_SIZE = STD_FONT_SIZE+5;
+    public static final int STD_ERROR_FONT_SIZE = STD_FONT_SIZE+2;
+    public static final int STD_BUTTON_HEIGHT = 75;
 
     // Debug Configuration
     public static final boolean DEBUG_MODE = true;

@@ -7,14 +7,99 @@
 
     <!-- PermissionsActivity -->
     <string name="permissions">Permissions</string>
+    <string name="audio_permission_warning_en">Permissions are required for the app.Please select allow, to all dialogs in the next page</string>
+    <string name="audio_permission_warning_ro">Sunt necesare permisiuni pentru aplicație. Vă rugăm să selectați tot timpul, in dialogurile din urmatoarea pagina</string>
+    <string name="always_allow_en">Please allow access, for correct execution of the app</string>
+    <string name="always_allow_ro">Vă rugăm să permiteți accesul, pentru o funcționare corectă a aplicației</string>
+    <string name="settings_open_en">Please allow access from the settings page, in the Permissions section, for correct execution of the app</string>
+    <string name="settings_open_ro">Vă rugăm să permiteți accesul din pagina de setări, în secțiunea Permisiuni, pentru o funcționare corectă a aplicației</string>
+    <string name="settings_button_en">Settings</string>
+    <string name="settings_button_ro">Setări</string>
+    <string name="camera_permission_info_en">
+        The application needs camera access to help you identify objects,
+        read text, and navigate your surroundings.
+        This permission is essential for the app to function</string>
+    <string name="camera_permission_info_ro">
+        Aplicația are nevoie de acces la cameră pentru a te ajuta să identifici obiecte,
+        să citești text și să navighezi în împrejurimi.
+        Această permisiune este esențială pentru ca aplicația să funcționeze</string>
+    <string name="storage_permission_info_en">
+        The application needs storage access to save and retrieve your profile settings and preferences</string>
+    <string name="storage_permission_info_ro">
+        Aplicația are nevoie de acces la spațiul de stocare pentru a salva
+        și a recupera setările și preferințele profilului dvs</string>
+    <string name="microphone_permission_info_en">
+        The application needs microphone access to enable voice
+        commands for the \"Find My Objects\" feature</string>
+    <string name="microphone_permission_info_ro">
+        Aplicația are nevoie de acces la microfon pentru a activa comenzile vocale
+        folosite de functia \"Find My Objects\"</string>
+    <string name="microphone_denied_info_en">
+        Without microphone access, you won\'t be able to use the \"Find My Object\" feature.
+        Would you like to grant access?</string>
+    <string name="microphone_denied_info_ro">
+        Fără acces la microfon, nu veți putea utiliza funcția \"Find My Object\".
+        Doriți să acordați acces?</string>
+    <string name="give_access_en">Give Access</string>
+    <string name="dont_give_en">Don\'t Give</string>
+    <string name="give_access_ro">Permite acces</string>
+    <string name="dont_give_ro">Nu permite acces</string>
 
     <!-- ConfigurationActivity -->
     <string name="problem">What is your</string>
     <string name="problem2">visual problem?</string>
+    <string name="initial_blindness_notification">
+        For the following setup steps, please ensure that you have the TalkBack feature enabled on your device.
+    </string>
+    <string name="tutorial_speak">
+        Welcome to VissionAssist app,
+        the sound you heard is telling you that,
+        the following content that will be spoken
+        could be repeated.
+        By pressing volume down button once you will,
+        repeat the spoken sentence at a slower rate,
+        and by pressing volume down second time,
+        repeat at an higher rate.
+        After the spoken sentence the system will wait 2 seconds
+        if you wish to repeat the sentence
+    </string>
+    <string name="config_activity">
+        The current page is about deciding whether you want a low-eyesight or blindness profile.
+        In the buttom of the page there exists 2 buttons.
+        The left one is for choosing blindness profile.
+        The right one is for choosing low-eyesight profile.
+    </string>
 
-    <!-- Composable values -->
+    <!-- WelcomeActivity -->
     <string name="language_icon">Language selection icon</string>
     <string name="dropdown_arrow">Dropdown arrow</string>
+    <string name="load_profile_info_en">
+        Choose this option if you have an existing profile saved locally on your device or stored remotely in the cloud.
+    </string>
+    <string name="load_profile_info_ro">
+        Alegeți această opțiune dacă aveți un profil existent salvat local pe dispozitiv sau stocat remote în cloud.
+    </string>
+    <string name="new_profile_info_en">
+        Choose this option if you are new to the platform or want to create a fresh profile from scratch.
+    </string>
+    <string name="new_profile_info_ro">
+        Alegeți această opțiune dacă sunteți nou pe platformă sau doriți să creați un profil nou de la zero.
+    </string>
+    <string name="load_profile_en">Load profile</string>
+    <string name="load_profile_ro">Încarcă profil</string>
+    <string name="new_profile_en">New profile</string>
+    <string name="new_profile_ro">Creează profil</string>
+
+    <!-- LoadProfileActivity -->
+    <string name="network_miss_en">The device has no access to the internet, try to connect to a network and try again</string>
+    <string name="network_miss_ro">Dispozitivul nu are acces la internet, încercați să vă conectați la o rețea și încercați din nou</string>
+    <string name="account_ne_en">The email is not registered in the database</string>
+    <string name="account_ne_ro">Adresa de e-mail nu este înregistrată în baza de date</string>
+    <string name="generic_error_en">Error was encountered while fetching the profile</string>
+    <string name="generic_error_ro">A apărut o eroare la preluarea profilului</string>
+
+
+    <!-- Common values -->
     <string name="forward_arrow">Forward arrow</string>
     <string name="back_button">Back navigation button</string>
     <string name="home_button">Home navigation button</string>
@@ -28,44 +113,14 @@
     <string name="no">No</string>
     <string name="wait_en">Please wait</string>
     <string name="wait_ro">Vă rugăm așteptați</string>
-    <string name="audio_permission_warning_en">Permissions are required for the app.Please hand the device to a sighted person for setup</string>
-    <string name="audio_permission_warning_ro">Sunt necesare permisiuni pentru aplicație. Vă rugăm să înmânați dispozitivul unei persoane văzătoare pentru configurare</string>
-    <string name="always_allow_en">Please allow access, for correct execution of the app</string>
-    <string name="always_allow_ro">Vă rugăm să permiteți accesul, pentru o funcționare corectă a aplicației</string>
-    <string name="settings_open_en">Please allow access from the settings page, in the Permissions section, for correct execution of the app</string>
-    <string name="settings_open_ro">Vă rugăm să permiteți accesul din pagina de setări, în secțiunea Permisiuni, pentru o funcționare corectă a aplicației</string>
-    <string name="settings_button_en">Settings</string>
-    <string name="settings_button_ro">Setări</string>
+    <string name="verifying_en">Verifying profile, please wait</string>
+    <string name="verifying_ro">Profilul se verifică, vă rugăm așteptați</string>
     <string name="exit_error_en">A critical error has occurred and the application needs to close to protect the integrity of your data. If this happens again, contact support with the code below</string>
     <string name="exit_error_ro">A apărut o eroare critică și aplicația trebuie închisă pentru a proteja integritatea datelor dumneavoastră. Dacă se întâmplă din nou acest lucru, contactați asistența cu codul de mai jos</string>
-    <string name="initial_blindness_notification">
-        Please let a person with good eyesight to set up your profile, so the app can understand you better
-    </string>
-    <string name="tutorial_speak">
-        Welcome to VissionAssist app,
-        the sound you heard is telling you that,
-        the following content that will be spoken
-        could be repeated.
-        By pressing volume down button once you will,
-        repeat the spoken sentence at a slower rate,
-        and by pressing volume down second time,
-        repeat at an higher rate.
-        After the spoken sentence the system will wait 3 seconds
-        if you wish to repeat the sentence
-    </string>
-    <string name="config_activity">
-        The current page is about deciding whether you want a low-eyesight or blindness profile.
-        In the buttom of the page there exists 2 buttons.
-        The left one is for choosing blindness profile.
-        The right one is for choosing low-eyesight profile.
-    </string>
-
-    <!-- Shutdown Error Messages -->
     <string name="temp_error_en">Device temperature is too high.The application will shut down to prevent damage</string>
     <string name="temp_error_ro">Temperatura dispozitivului este prea mare.Aplicația se va opri pentru a preveni deteriorarea</string>
     <string name="battery_low_en">Battery level is too low.Please charge your device immediately.Application will shutdown</string>
     <string name="battery_low_ro"> Nivelul bateriei este prea scăzut.Vă rugăm să încărcați dispozitivul imediat.Aplicația se va opri</string>
     <string name="critical_warning_en">Critical Warning!</string>
     <string name="critical_warning_ro">Avertisment critic!</string>
-
 </resources>

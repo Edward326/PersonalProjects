@@ -8,6 +8,7 @@ import com.visionassist.appspace.PhoneStatusMonitor;
 
 import org.json.JSONException;
 import org.json.JSONObject;
+
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -53,56 +54,78 @@ public class JSONValidation {
             }
         }
 
-        if (!jsonObject.has("language_code")) {
-            if (!jsonObject.has("language_desc")
-                    && !jsonObject.has("language_country"))
-                return new Pair<>(-3, jsonObject);   // WelcomeActivity
-            else if (jsonObject.has("language_desc")
-                || jsonObject.has("language_country"))
-                return new Pair<>(1, jsonObject);   // ConfigurationActivity
+        if (!jsonObject.has("language_code")
+                && !jsonObject.has("language_desc")
+                && !jsonObject.has("language_country")
+                && !jsonObject.has("new_profile"))
+            return new Pair<>(-1, jsonObject);   // WelcomeActivity, language selection
+        if (jsonObject.has("language_code")
+                && jsonObject.has("language_desc")
+                && jsonObject.has("language_country")
+                && !jsonObject.has("new_profile"))
+            return new Pair<>(-2, jsonObject);   // WelcomeActivity, profile selection
+        if (jsonObject.has("language_code")
+                && jsonObject.has("language_desc")
+                && jsonObject.has("language_country")
+                && jsonObject.has("new_profile"))
+            if (!jsonObject.has("remote")) {
+                if (!jsonObject.getBoolean("new_profile"))
+                    return new Pair<>(-3, jsonObject);   // NewProfileActivity
+                else
+                    return new Pair<>(-4, jsonObject);   // LoadProfileActivity
+            }
 
+        if (!jsonObject.has("language_code")
+                || !jsonObject.has("language_desc")
+                || !jsonObject.has("language_country")
+                || !jsonObject.has("new_profile"))
+            return new Pair<>(1, jsonObject);   // ConfigurationActivity
+
+        boolean isRemote;
+        try {
+            isRemote = jsonObject.getBoolean("remote");
+        } catch (JSONException e) {
+            Log.d(TAG, "Could not parse contributor value");
+            return new Pair<>(1, null); // Error parsing contributor value
         }
-        else{
-            if (!jsonObject.has("language_desc")
-                    || !jsonObject.has("language_country"))
+
+        if (isRemote) {
+            if (!jsonObject.has("email")
+                    || !jsonObject.has("password_hash")
+                    || !jsonObject.has("last_sync_date"))
                 return new Pair<>(1, jsonObject);   // ConfigurationActivity
         }
 
-        if (!jsonObject.has("new_profile"))
-            return new Pair<>(-2, jsonObject);   // pmerissions+LoadingActivity
+        if (!jsonObject.has("user_name")
+                && !jsonObject.has("contributor"))
+            return new Pair<>(2, jsonObject);   // UserInfoActivity
 
-        if (!jsonObject.has("user_name"))
-            return new Pair<>(-1, jsonObject);   // UserInfoActivity
+        if (!jsonObject.has("user_name")
+                || !jsonObject.has("contributor"))
+            return new Pair<>(1, jsonObject);   // ConfigurationActivity
 
         boolean isContributor;
-        if (!jsonObject.has("contributor"))
-            return new Pair<>(1, jsonObject);   // ConfigurationActivity
-        else {
-            try {
-                isContributor = jsonObject.getBoolean("contributor");
-            } catch (JSONException e) {
-                Log.d(TAG, "Could not parse contributor value");
-                return new Pair<>(1, null); // Error parsing contributor value
-            }
+        try {
+            isContributor = jsonObject.getBoolean("contributor");
+        } catch (JSONException e) {
+            Log.d(TAG, "Could not parse contributor value");
+            return new Pair<>(1, null); // Error parsing contributor value
         }
 
         if (isContributor) {
             if (!jsonObject.has("age")) {
-                return new Pair<>(2, jsonObject);   //UserInfoE1Activity
+                return new Pair<>(3, jsonObject);   //UserInfoE1Activity
             }
             if (!jsonObject.has("visual_condition") && !isBlindProfile) {
-                return new Pair<>(3, jsonObject);   //UserInfoE2Activity
-            }
-            if (!jsonObject.has("email")) {
-                return new Pair<>(4, jsonObject);   //UserInfoE3Activity
+                return new Pair<>(4, jsonObject);   //UserInfoE2Activity
             }
             if (isBlindProfile) {
-                if (!jsonObject.has("tts_pitch"))
-                    if (jsonObject.has("tts_speed"))
-                        return new Pair<>(1, jsonObject);   // ConfigurationActivity
-                    else
-                        return new Pair<>(5, jsonObject);   //UserInfoE4Activity
-                if (!jsonObject.has("tts_speed"))
+                if (!jsonObject.has("tts_pitch")
+                        && !jsonObject.has("tts_speed"))
+                    return new Pair<>(5, jsonObject);   //UserInfoE3Activity
+
+                if (!jsonObject.has("tts_pitch")
+                        || !jsonObject.has("tts_speed"))
                     return new Pair<>(1, jsonObject);   // ConfigurationActivity
 
                 if (!jsonObject.has("hash_caching"))
@@ -111,12 +134,16 @@ public class JSONValidation {
                 if (!jsonObject.has("env_reports"))
                     return new Pair<>(9, jsonObject);   // EnvironmentReportsIActivity
 
-                if(jsonObject.getBoolean("hash_caching"))
-                    if(!FileUtils.getHashCacheFile(PhoneStatusMonitor.getInstance().getCurrentContext()).exists())
-                        return new Pair<>(0, jsonObject);
-                if(jsonObject.getBoolean("env_reports"))
-                    if(!FileUtils.getEnvReportsFile(PhoneStatusMonitor.getInstance().getCurrentContext()).exists())
-                        return new Pair<>(0, jsonObject);
+                if (jsonObject.getBoolean("hash_caching"))
+                    if (!FileUtils.getHashCacheFile(PhoneStatusMonitor.getInstance().getCurrentContext()).exists()) {
+                        FileUtils.createProfileDirFile(Constants.HASH_CACHE_FILE_NAME);
+                        return new Pair<>(0, jsonObject);   // ConfigurationActivity
+                    }
+                if (jsonObject.getBoolean("env_reports"))
+                    if (!FileUtils.getEnvReportsFile(PhoneStatusMonitor.getInstance().getCurrentContext()).exists()) {
+                        FileUtils.createProfileDirFile(Constants.ENV_REPORTS_FILE_NAME);
+                        return new Pair<>(0, jsonObject);   // ConfigurationActivity
+                    }
 
                 inputStream.close();
                 // All validations passed
@@ -124,12 +151,16 @@ public class JSONValidation {
             }
         } else {
             if (isBlindProfile) {
-                if (!jsonObject.has("tts_pitch"))
-                    if (jsonObject.has("tts_speed"))
-                        return new Pair<>(1, jsonObject);   // ConfigurationActivity
-                    else
-                        return new Pair<>(5, jsonObject);   //UserInfoE4Activity
-                if (!jsonObject.has("tts_speed"))
+                if (!jsonObject.has("tts_pitch")
+                        && !jsonObject.has("tts_speed"))
+                    return new Pair<>(5, jsonObject);   //UserInfoE3Activity
+
+                if (!jsonObject.has("tts_pitch")
+                        || !jsonObject.has("tts_speed"))
+                    return new Pair<>(1, jsonObject);   // ConfigurationActivity
+
+                if ((!jsonObject.has("env_reports") && jsonObject.has("hash_caching"))
+                        || (jsonObject.has("env_reports") && !jsonObject.has("hash_caching")))
                     return new Pair<>(1, jsonObject);   // ConfigurationActivity
 
                 if (!jsonObject.has("hash_caching"))
@@ -138,12 +169,20 @@ public class JSONValidation {
                 if (!jsonObject.has("env_reports"))
                     return new Pair<>(9, jsonObject);   // EnvironmentReportsIActivity
 
-                if(jsonObject.getBoolean("hash_caching"))
-                    if(!FileUtils.getHashCacheFile(PhoneStatusMonitor.getInstance().getCurrentContext()).exists())
-                        return new Pair<>(0, jsonObject);
-                if(jsonObject.getBoolean("env_reports"))
-                    if(!FileUtils.getEnvReportsFile(PhoneStatusMonitor.getInstance().getCurrentContext()).exists())
-                        return new Pair<>(0, jsonObject);
+                if (jsonObject.getBoolean("hash_caching"))
+                    if (!FileUtils.getHashCacheFile(PhoneStatusMonitor.getInstance().getCurrentContext()).exists()) {
+                        if (FileUtils.createProfileDirFile(Constants.HASH_CACHE_FILE_NAME))
+                            return new Pair<>(0, jsonObject);   // ConfigurationActivity
+                        else
+                            return new Pair<>(1, jsonObject);
+                    }
+                if (jsonObject.getBoolean("env_reports"))
+                    if (!FileUtils.getEnvReportsFile(PhoneStatusMonitor.getInstance().getCurrentContext()).exists()) {
+                        if (FileUtils.createProfileDirFile(Constants.ENV_REPORTS_FILE_NAME))
+                            return new Pair<>(0, jsonObject);   // ConfigurationActivity
+                        else
+                            return new Pair<>(1, jsonObject);
+                    }
 
                 inputStream.close();
                 // All validations passed
@@ -151,40 +190,29 @@ public class JSONValidation {
             }
         }
 
-        if (!jsonObject.has("bbox_color")) {
-            if (!jsonObject.has("label_color")
-                    && !jsonObject.has("label_bck_color"))
-                return new Pair<>(6, jsonObject);    // UserAccesibility1Activity
-            else if (jsonObject.has("label_color")
-                    || jsonObject.has("label_bck_color"))
-                return new Pair<>(1, jsonObject);   // ConfigurationActivity
-        }
-        else{
-            if (!jsonObject.has("label_color")
-                    || !jsonObject.has("label_bck_color"))
-                return new Pair<>(1, jsonObject);   // ConfigurationActivity
-        }
+        if (!jsonObject.has("bbox_color")
+                && !jsonObject.has("label_color")
+                && !jsonObject.has("label_bck_color")
+                && !jsonObject.has("bold")
+                && !jsonObject.has("show_confidence"))
+            return new Pair<>(6, jsonObject);    // UserAccesibility1Activity
 
-        if (!jsonObject.has("caption_color"))
-            if (jsonObject.has("caption_bck_color"))
-                return new Pair<>(1, jsonObject);   // ConfigurationActivity
-            else
-                return new Pair<>(7, jsonObject);   // UserAccesibility2Activity
-        if (!jsonObject.has("caption_bck_color"))
-            return new Pair<>(1, jsonObject);   // ConfigurationActivity
+        if (!jsonObject.has("bbox_color")
+                || !jsonObject.has("label_color")
+                || !jsonObject.has("label_bck_color")
+                || !jsonObject.has("bold")
+                || !jsonObject.has("show_confidence"))
+            return new Pair<>(1, jsonObject);    // ConfigurationActivity
 
-        if (!jsonObject.has("hash_caching"))
-            return new Pair<>(8, jsonObject);   // UserHashCachingActivity
+        if (!jsonObject.has("caption_color")
+                && !jsonObject.has("caption_bck_color")
+                && !jsonObject.has("haptics"))
+            return new Pair<>(7, jsonObject);    // UserAccesibility1Activity
 
-        if (!jsonObject.has("env_reports"))
-            return new Pair<>(9, jsonObject);   // EnvironmentReportsIActivity
-
-        if(jsonObject.getBoolean("hash_caching"))
-            if(!FileUtils.getHashCacheFile(PhoneStatusMonitor.getInstance().getCurrentContext()).exists())
-                return new Pair<>(0, jsonObject);
-        if(jsonObject.getBoolean("env_reports"))
-            if(!FileUtils.getEnvReportsFile(PhoneStatusMonitor.getInstance().getCurrentContext()).exists())
-                return new Pair<>(0, jsonObject);
+        if (!jsonObject.has("bbox_color")
+                || !jsonObject.has("label_color")
+                || !jsonObject.has("haptics"))
+            return new Pair<>(1, jsonObject);    // ConfigurationActivity
 
         inputStream.close();
         // All validations passed

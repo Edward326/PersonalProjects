@@ -1,5 +1,5 @@
 package com.visionassist.appspace.activities.newprofile;
 
-public class UserHashCachingActivity {
+class UserHashCachingActivity {
 
 }
