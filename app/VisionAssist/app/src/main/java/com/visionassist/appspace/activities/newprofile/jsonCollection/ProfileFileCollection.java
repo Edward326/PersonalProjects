@@ -2,14 +2,11 @@ package com.visionassist.appspace.activities.newprofile.jsonCollection;
 
 import android.content.Context;
 import android.util.Log;
-
 import com.visionassist.appspace.PhoneStatusMonitor;
 import com.visionassist.appspace.utils.Constants;
 import com.visionassist.appspace.utils.FileUtils;
 import com.visionassist.appspace.utils.Language;
-
 import org.json.JSONObject;
-
 import java.io.File;
 
 public class ProfileFileCollection {
@@ -101,7 +98,7 @@ public class ProfileFileCollection {
         }
     }
 
-    public static boolean welcomeActivityDelete(boolean deleteAll) {
+    public static boolean welcomeActivityDelete(boolean deleteNewProfile) {
         try {
             Context context = PhoneStatusMonitor.getInstance().getCurrentContext();
             File profileFile = FileUtils.getProfileFile(context);
@@ -114,9 +111,8 @@ public class ProfileFileCollection {
             String content = FileUtils.loadFileAsString(FileUtils.getProfileInputStream(context));
             JSONObject jsonObject = new JSONObject(content);
 
-            if (!deleteAll) {
-                // Delete only new_profile field
-                // Delete language data and new_profile
+            if (!deleteNewProfile) {
+                // Delete only language data
                 if (jsonObject.has("language_code")) {
                     jsonObject.remove("language_code");
                 }
@@ -126,26 +122,51 @@ public class ProfileFileCollection {
                 if (jsonObject.has("language_country")) {
                     jsonObject.remove("language_country");
                 }
-                Log.d(TAG, "WelcomeActivity: Fields deleted successfully");
+                Log.d(TAG, "WelcomeActivity: Language fields deleted successfully");
             } else {
-                // Delete language data and new_profile
-                if (jsonObject.has("language_code")) {
-                    jsonObject.remove("language_code");
-                }
-                if (jsonObject.has("language_desc")) {
-                    jsonObject.remove("language_desc");
-                }
-                if (jsonObject.has("language_country")) {
-                    jsonObject.remove("language_country");
-                }
+                // Delete new_profile field
                 if (jsonObject.has("new_profile")) {
                     jsonObject.remove("new_profile");
                 }
-                Log.d(TAG, "WelcomeActivity: Fields deleted successfully");
+                Log.d(TAG, "WelcomeActivity: new_profile field deleted successfully");
             }
             return FileUtils.writeProfileFile(jsonObject.toString(), Constants.PROFILE_FILE_NAME);
         } catch (Exception e) {
             Log.e(TAG, "WelcomeActivity: Error deleting fields", e);
+            return false;
+        }
+    }
+
+    public static boolean newProfileActivityWrite(boolean isRemote, String email, String passwordHash) {
+        try {
+            Context context = PhoneStatusMonitor.getInstance().getCurrentContext();
+            File profileFile = FileUtils.getProfileFile(context);
+
+            JSONObject jsonObject;
+            if (profileFile.exists() && profileFile.length() > 0) {
+                String content = FileUtils.loadFileAsString(FileUtils.getProfileInputStream(context));
+                jsonObject = new JSONObject(content);
+            } else {
+                jsonObject = new JSONObject();
+            }
+
+            // Write remote field
+            jsonObject.put("remote", isRemote);
+
+            if (isRemote) {
+                // Write email and password_hash for remote profiles
+                if (email != null && passwordHash != null) {
+                    jsonObject.put("email", email);
+                    jsonObject.put("password_hash", passwordHash);
+                    Log.d(TAG, "NewProfileActivity: Remote profile fields written successfully");
+                }
+            } else {
+                Log.d(TAG, "NewProfileActivity: Local profile field written successfully");
+            }
+
+            return FileUtils.writeProfileFile(jsonObject.toString(), Constants.PROFILE_FILE_NAME);
+        } catch (Exception e) {
+            Log.e(TAG, "NewProfileActivity: Error writing fields", e);
             return false;
         }
     }

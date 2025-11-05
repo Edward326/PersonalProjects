@@ -92,7 +92,7 @@ public class Constants {
     public static final int STT_LOAD_ERROR = 7;
     public static final int ASSETS_ERROR = 8;
 
-    // Error codes, used in load_activity
+    // Error codes, used in load_profile_activity
     public static final int LOAD_PROFILE_EXCEPTION = -2;
     public static final int LOAD_PROFILE_SUCCESS = 9;
     public static final int LOAD_PROFILE_FILE_MISSING = 10;
@@ -101,6 +101,10 @@ public class Constants {
     public static final int LOAD_PROFILE_FILE_UPLOAD = 13;
     public static final int LOAD_PROFILE_FILE_HC_UPLOAD_ERROR = 14;
     public static final int LOAD_PROFILE_FILE_ENVR_UPLOAD_ERROR = 15;
+
+    // Error codes, used in new_profile_activity
+    public static final int CREATE_PROFILE_EXCEPTION = -3;
+    public static final int CREATE_PROFILE_SUCCESS = 16;
 
     // Success notification display time
     public static final int SUCCESS_NOTIFICATION_DELAY = 5000;

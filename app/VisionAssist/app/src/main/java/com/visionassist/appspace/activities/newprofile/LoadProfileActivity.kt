@@ -1,15 +1,3 @@
-/*
-Exec flow:
-    -main thread:launch async task
-        -thread1:check for profile.json existence->open stream to it->run validateProfile
-                    ->copy the profile.json->copy the aux files
-                    ->uploadProfile->loadModels
-        -main thread: changeLanguage of TTS(+handle return from settings)->set task finished
-        -main thread: check check if the task is finished
-            if it is not valid, display the notification error message, and return to the main page
-            if its valid exit code, display the notification success message, after 5 sec
-             setProfileLoaded, and navigate
- */
 package com.visionassist.appspace.activities.newprofile
 
 import android.annotation.SuppressLint
@@ -213,7 +201,7 @@ class LoadProfileActivity : ComponentActivity() {
 
         // Navigate back to WelcomeActivity with language selection section
         val intent = Intent(this, WelcomeActivity::class.java)
-        intent.putExtra(Constants.EXTRA_WELCOME_OPTION, false) // Language selection
+        intent.putExtra(Constants.EXTRA_WELCOME_OPTION, true) // Profile selection
         startActivity(intent)
         finish()
     }
@@ -1613,3 +1601,15 @@ fun LoadProfileActivityPreview() {
         onNotificationOk = {}
     )
 }
+/*
+Exec flow:
+    -main thread:launch async task
+        -thread1:check for profile.json existence->open stream to it->run validateProfile
+                    ->copy the profile.json->copy the aux files
+                    ->uploadProfile->loadModels
+        -main thread: changeLanguage of TTS(+handle return from settings)->set task finished
+        -main thread: check check if the task is finished
+            if it is not valid, display the notification error message, and return to the main page
+            if its valid exit code, display the notification success message, after 5 sec
+             setProfileLoaded, and navigate
+ */

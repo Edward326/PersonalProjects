@@ -97,7 +97,7 @@ public class DBManager {
 
         if (!hasInternetConnection()) {
             status = DBConstants.INTERNET_CONNECTION_FAILED;
-            return DBConstants.INTERNET_CONNECTION_FAILED;
+            return status;
         }
 
         try {
@@ -134,17 +134,17 @@ public class DBManager {
             latch.await();
 
             if (success.get()) {
-                status = DBConstants.ACCOUNT_CREATION_FAILED;
-                return DBConstants.ACCOUNT_CREATED;
+                status = DBConstants.ACCOUNT_CREATED;
+                return status;
             } else {
                 status = DBConstants.ACCOUNT_CREATION_FAILED;
-                return DBConstants.ACCOUNT_CREATION_FAILED;
+                return status;
             }
 
         } catch (Exception e) {
             Log.e(TAG, "Error in createAccount", e);
             status = DBConstants.ACCOUNT_CREATION_FAILED;
-            return DBConstants.ACCOUNT_CREATION_FAILED;
+            return status;
         }
     }
 
