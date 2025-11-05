@@ -1,12 +1,7 @@
--impklmenetare LoadProfileActvity/NewProfileActivity
 -implementare restul de activitati de configurare
--implementat loadAssets mainActivity
--implementat BlindHomeActivity,HomeActivity
+-implementat loadAssets(varianta java->utils.java si kt->utils.kt)
+-implementat core-ul aplicatiei(HomeActivity,BlindHomeActivity si celelalte activitati)
 
 *
 -low eyesight: fara TTS, cu sau fara Talkback
-<<<<<<< HEAD
 -blindness: cu TTS, main page, notificare evenimente, noitificarea il vorbeste TTS, apsarea butoanelor il voerbeste Talkback
-=======
--blindness: cu TTS, main page, notificare evenimente, noitificarea il vorbeste TTS, apsarea butoanelor il voerbeste Talkback
->>>>>>> 6168d227e27f361683844f9ffa0ce7226f3c9ed7
