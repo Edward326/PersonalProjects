@@ -4,6 +4,7 @@ package com.visionassist.appspace.jetpack.design
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -38,7 +39,7 @@ fun NextArrowLargeFab(
             bottomEnd = 16.dp,
             bottomStart = 16.dp
         ),
-        modifier = Modifier.width(104.dp)
+        modifier = Modifier.width(110.dp).height(60.dp)
     ) {
         Icon(
             imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,

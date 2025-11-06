@@ -111,7 +111,7 @@ public class DBManager {
                         // Create user document in Firestore
                         Map<String, Object> userData = new HashMap<>();
                         userData.put(DBConstants.FIREBASE_EMAIL_FIELD, email);
-                        userData.put(DBConstants.FIREBASE_PASSWORD_FIELD, hashPassword(password));
+                        userData.put(DBConstants.FIREBASE_PASSWORD_FIELD, password);
 
                         firebaseDb.collection(DBConstants.FIREBASE_USERS_COLLECTION)
                                 .document(email)
@@ -135,11 +135,10 @@ public class DBManager {
 
             if (success.get()) {
                 status = DBConstants.ACCOUNT_CREATED;
-                return status;
             } else {
                 status = DBConstants.ACCOUNT_CREATION_FAILED;
-                return status;
             }
+            return status;
 
         } catch (Exception e) {
             Log.e(TAG, "Error in createAccount", e);
@@ -452,7 +451,7 @@ public class DBManager {
                     .addOnSuccessListener(documentSnapshot -> {
                         if (documentSnapshot.exists()) {
                             String storedPasswordHash = documentSnapshot.getString(DBConstants.FIREBASE_PASSWORD_FIELD);
-                            isCorrect[0] = BCrypt.checkpw(password, storedPasswordHash);
+                            isCorrect[0] = password.equals(storedPasswordHash);
                         }
                         latch.countDown();
                     })
@@ -505,7 +504,7 @@ public class DBManager {
         return map;
     }
 
-    public String hashPassword(String plainPassword) {
+    public static String hashPassword(String plainPassword) {
         return BCrypt.hashpw(plainPassword, BCrypt.gensalt(12));
     }
 

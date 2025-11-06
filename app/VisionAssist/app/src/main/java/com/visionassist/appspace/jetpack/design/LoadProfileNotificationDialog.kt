@@ -57,7 +57,8 @@ fun LoadProfileNotificationDialog(
     onRetryClick: () -> Unit = {},
     onCreateAccountClick: () -> Unit = {},
     onLoadLocalClick: () -> Unit = {},
-    onOkClick: () -> Unit = {}
+    onOkClick: () -> Unit = {},
+    newprofile:Boolean=false
 ) {
     AnimatedVisibility(
         visible = isVisible,
@@ -92,23 +93,25 @@ fun LoadProfileNotificationDialog(
                         LoadProfileActivity.NotificationType.SUCCESS -> {
                             Icon(
                                 imageVector = Icons.Filled.CheckCircle,
-                                contentDescription = if(AppConfig.mainLanguage.code=="en")"Success" else "Succes",
+                                contentDescription = if (AppConfig.mainLanguage.code == "en") "Success" else "Succes",
                                 modifier = Modifier.size(24.dp),
                                 tint = Color(0xFF4CAF50) // Green
                             )
                         }
+
                         LoadProfileActivity.NotificationType.ERROR -> {
                             Icon(
                                 imageVector = Icons.Filled.Error,
-                                contentDescription = if(AppConfig.mainLanguage.code=="en")"Error" else "Eroare",
+                                contentDescription = if (AppConfig.mainLanguage.code == "en") "Error" else "Eroare",
                                 modifier = Modifier.size(24.dp),
                                 tint = colorResource(R.color.error_red)
                             )
                         }
+
                         LoadProfileActivity.NotificationType.NO_INTERNET -> {
                             Icon(
                                 imageVector = Icons.Filled.SignalCellularConnectedNoInternet0Bar,
-                                contentDescription = if(AppConfig.mainLanguage.code=="en")"Warning" else "Atenționare",
+                                contentDescription = if (AppConfig.mainLanguage.code == "en") "Warning" else "Atenționare",
                                 modifier = Modifier.size(24.dp),
                                 tint = Color(0xFFFF9800) // Orange
                             )
@@ -122,7 +125,12 @@ fun LoadProfileNotificationDialog(
                             append(parts[0])
 
                             if (parts.size > 1) {
-                                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold, fontSize = Constants.STD_ERROR_FONT_SIZE.sp)) {
+                                withStyle(
+                                    style = SpanStyle(
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = Constants.STD_ERROR_FONT_SIZE.sp
+                                    )
+                                ) {
                                     append(parts[1])
                                 }
                             }
@@ -156,7 +164,7 @@ fun LoadProfileNotificationDialog(
                                     )
                                 ) {
                                     Text(
-                                        text = if(AppConfig.mainLanguage.code=="en") "Retry" else "Reîncearcă",
+                                        text = if (AppConfig.mainLanguage.code == "en") "Retry" else "Reîncearcă",
                                         fontSize = Constants.STD_BUTTON_FONT_SIZE.sp
                                     )
                                 }
@@ -178,7 +186,7 @@ fun LoadProfileNotificationDialog(
                                         )
                                     ) {
                                         Text(
-                                            text = if(AppConfig.mainLanguage.code=="en") "Create account" else "Creează cont",
+                                            text = if (AppConfig.mainLanguage.code == "en") "Create account" else "Creează cont",
                                             fontSize = Constants.STD_BUTTON_FONT_SIZE.sp
                                         )
                                     }
@@ -195,7 +203,7 @@ fun LoadProfileNotificationDialog(
                                         )
                                     ) {
                                         Text(
-                                            text = if(AppConfig.mainLanguage.code=="en") "Load local" else "Încarcă local",
+                                            text = if (AppConfig.mainLanguage.code == "en") "Load local" else "Încarcă local",
                                             fontSize = Constants.STD_BUTTON_FONT_SIZE.sp
                                         )
                                     }
@@ -221,7 +229,7 @@ fun LoadProfileNotificationDialog(
                                     )
                                 ) {
                                     Text(
-                                        text = if(AppConfig.mainLanguage.code=="en")"Retry" else "Reîncearcă",
+                                        text = if (AppConfig.mainLanguage.code == "en") "Retry" else "Reîncearcă",
                                         fontSize = Constants.STD_BUTTON_FONT_SIZE.sp
                                     )
                                 }
@@ -238,8 +246,12 @@ fun LoadProfileNotificationDialog(
                                     )
                                 ) {
                                     Text(
-                                        text = if(AppConfig.mainLanguage.code=="en")"Create account" else "Creează cont",
-                                        fontSize = Constants.STD_BUTTON_FONT_SIZE.sp
+                                        text = if (!newprofile) {
+                                            if (AppConfig.mainLanguage.code == "en") "Create account" else "Creează cont"
+                                        } else {
+                                            if (AppConfig.mainLanguage.code == "en") "Load local" else "Încarcă local"
+                                        },
+                                    fontSize = Constants.STD_BUTTON_FONT_SIZE.sp
                                     )
                                 }
                             }
@@ -278,7 +290,12 @@ fun LoadProfileSuccessPreview() {
     )
 }
 
-@Preview(name = "Error Notification - 2 Buttons", showBackground = true, widthDp = 412, heightDp = 917)
+@Preview(
+    name = "Error Notification - 2 Buttons",
+    showBackground = true,
+    widthDp = 412,
+    heightDp = 917
+)
 @Composable
 fun LoadProfileErrorPreview() {
     LoadProfileNotificationDialog(
@@ -291,7 +308,12 @@ fun LoadProfileErrorPreview() {
     )
 }
 
-@Preview(name = "Error Notification - 3 Buttons", showBackground = true, widthDp = 412, heightDp = 917)
+@Preview(
+    name = "Error Notification - 3 Buttons",
+    showBackground = true,
+    widthDp = 412,
+    heightDp = 917
+)
 @Composable
 fun LoadProfileError3ButtonsPreview() {
     LoadProfileNotificationDialog(

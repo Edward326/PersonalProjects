@@ -98,6 +98,13 @@
     <string name="generic_error_en">Error was encountered while fetching the profile</string>
     <string name="generic_error_ro">A apărut o eroare la preluarea profilului</string>
 
+    <!-- NewProfileActivity -->
+    <string name="create_account_en">Creating account, please wait</string>
+    <string name="create_account_ro">Contul se creează, vă rugăm așteptați</string>
+    <string name="created_account_en">Account created successfully</string>
+    <string name="created_account_ro">Cont creeat cu succes</string>
+
+
 
     <!-- Common values -->
     <string name="forward_arrow">Forward arrow</string>

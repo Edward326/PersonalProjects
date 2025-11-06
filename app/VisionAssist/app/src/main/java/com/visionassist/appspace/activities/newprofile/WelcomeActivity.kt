@@ -15,6 +15,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -50,6 +51,7 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.visionassist.appspace.PhoneStatusMonitor
@@ -202,9 +204,11 @@ fun WelcomeScreen(
     onShowLoadProfileInfo: () -> Unit,
     onShowNewProfileInfo: () -> Unit
 ) {
-    Box(
+    BoxWithConstraints(
         modifier = Modifier.fillMaxSize()
     ) {
+        val screenHeight = maxHeight
+        val screenWidth=maxWidth
         // Background gradient image
         Image(
             painter = painterResource(id = R.drawable.welcome_background),
@@ -219,16 +223,16 @@ fun WelcomeScreen(
                 if (targetState == Section.PROFILE_SELECTION) {
                     // Sliding to profile selection (right to left)
                     slideInHorizontally(
-                        initialOffsetX = { fullWidth -> fullWidth }, animationSpec = tween(500)
+                        initialOffsetX = { fullWidth -> fullWidth }, animationSpec = tween(Constants.ANIMATION_DELAY)
                     ) togetherWith slideOutHorizontally(
-                        targetOffsetX = { fullWidth -> -fullWidth }, animationSpec = tween(500)
+                        targetOffsetX = { fullWidth -> -fullWidth }, animationSpec = tween(Constants.ANIMATION_DELAY)
                     )
                 } else {
                     // Sliding back to language selection (left to right)
                     slideInHorizontally(
-                        initialOffsetX = { fullWidth -> -fullWidth }, animationSpec = tween(500)
+                        initialOffsetX = { fullWidth -> -fullWidth }, animationSpec = tween(Constants.ANIMATION_DELAY)
                     ) togetherWith slideOutHorizontally(
-                        targetOffsetX = { fullWidth -> fullWidth }, animationSpec = tween(500)
+                        targetOffsetX = { fullWidth -> fullWidth }, animationSpec = tween(Constants.ANIMATION_DELAY)
                     )
                 }
             }, label = "section_animation"
@@ -248,20 +252,21 @@ fun WelcomeScreen(
             }
         }
 
+        val bottomSpace=screenHeight * 0.10f
         if (currentSection == Section.LANGUAGE) {
             // Navigation Buttons (not animated, always visible at bottom)
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 88.dp),
-                horizontalArrangement = Arrangement.spacedBy(25.dp),
+                    .padding(bottom = bottomSpace),
+                horizontalArrangement = Arrangement.spacedBy(screenWidth*0.08f),
             ) {
                 BackArrowLargeFab(
                     onClick = onLanguageBackPressed
                 )
 
                 NextArrowLargeFab(
-                    onClick = onLanguageNextPressed
+                    onClick = onLanguageNextPressed,
                 )
             }
         } else {
@@ -269,7 +274,7 @@ fun WelcomeScreen(
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 88.dp)
+                    .padding(bottom = bottomSpace)
             ) {
                 BackArrowLargeFab(
                     onClick = onProfileSelectionBackPressed
@@ -284,30 +289,30 @@ fun LanguageSelectionSection(
     selectedLanguage: Language,
     onLanguageSelected: (Language) -> Unit
 ) {
-    Box(
+    BoxWithConstraints(
         modifier = Modifier.fillMaxSize()
     ) {
+        val screenHeight = maxHeight
         // Animated content (Title + Language Selector)
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.SpaceAround,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.weight(1.6f))
+            Box(modifier = Modifier.height(screenHeight * Constants.STD_SUBTITLE_MARGIN_TOP))
 
             // Title
             Text(
-                text = "What language would you prefer?",
+                text = "What language would\nyou prefer?",
                 fontSize = 32.sp,
                 color = colorResource(R.color.std_cyan),
                 fontFamily = robotoSemibold,
                 textAlign = TextAlign.Center,
-                lineHeight = 36.sp
+                lineHeight = 36.sp,
+                modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Box(modifier = Modifier.height(screenHeight * Constants.STD_SUBTITLE_BODY_MARGIN_TOP))
 
             // Language Selector
             LanguageSelector(
@@ -317,7 +322,7 @@ fun LanguageSelectionSection(
                     Log.d("WelcomeActivity", "Language selected: ${language.name}")
                 })
 
-            Spacer(modifier = Modifier.weight(1f))
+            Box(modifier = Modifier.height(screenHeight * 0.33f))
         }
     }
 }
@@ -337,16 +342,17 @@ fun ProfileSelectionSection(
         false
     )
 ) {
-    Box(
+    BoxWithConstraints(
         modifier = Modifier.fillMaxSize()
     ) {
+        val screenHeight = maxHeight
         // Animated content (Profile buttons)
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Spacer(modifier = Modifier.weight(1.3f))
+            Box(modifier = Modifier.height(screenHeight * 0.4f))
 
             // Load Profile Button
             Row(
@@ -357,7 +363,8 @@ fun ProfileSelectionSection(
                 ProfileButton(
                     text = loadProfileText,
                     icon = Icons.Filled.ArrowCircleDown,
-                    onClick = onLoadProfileClicked
+                    onClick = onLoadProfileClicked,
+                    screenHeight=screenHeight
                 )
 
                 InfoIconButton(
@@ -365,7 +372,7 @@ fun ProfileSelectionSection(
                 )
             }
 
-            Spacer(modifier = Modifier.height(70.dp))
+            Box(modifier = Modifier.height(screenHeight * 0.1f))
 
             // New Profile Button
             Row(
@@ -376,7 +383,8 @@ fun ProfileSelectionSection(
                 ProfileButton(
                     text = newProfileText,
                     icon = Icons.Filled.AddCircleOutline,
-                    onClick = onNewProfileClicked
+                    onClick = onNewProfileClicked,
+                    screenHeight=screenHeight
                 )
 
                 InfoIconButton(
@@ -384,7 +392,7 @@ fun ProfileSelectionSection(
                 )
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            Box(modifier = Modifier.height(screenHeight * 0.4f))
         }
     }
 }
@@ -392,7 +400,8 @@ fun ProfileSelectionSection(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ProfileButton(
-    text: String, icon: ImageVector, onClick: () -> Unit
+    text: String, icon: ImageVector, onClick: () -> Unit,
+    screenHeight: Dp
 ) {
     Button(
         onClick = onClick,
@@ -401,7 +410,7 @@ fun ProfileButton(
                 elevation = 3.dp, shape = MaterialTheme.shapes.extraExtraLarge
             )
             .fillMaxWidth(0.75f)
-            .height(Constants.STD_BUTTON_HEIGHT.dp),
+            .height(screenHeight * 0.093f),
         shape = RoundedCornerShape(100.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = colorResource(R.color.notification_button_white),

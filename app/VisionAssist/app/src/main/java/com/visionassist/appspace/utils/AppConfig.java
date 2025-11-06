@@ -4,7 +4,7 @@ package com.visionassist.appspace.utils;
 public class AppConfig {
 
     public static boolean blindness;
-    public static Language mainLanguage;
+    public static Language mainLanguage=new Language("en", "English","US");
     public static String user_name;
     public static float tts_speech_rate;
     public static float tts_pitch;

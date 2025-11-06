@@ -12,6 +12,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -39,6 +40,7 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.visionassist.appspace.PhoneStatusMonitor
@@ -216,9 +218,11 @@ fun ConfigurationScreen(
     onLowEyesightClick: () -> Unit,
     onNotificationOkClick: () -> Unit
 ) {
-    Box(
+    BoxWithConstraints(
         modifier = Modifier.fillMaxSize()
     ) {
+        val screenHeight = maxHeight
+        val screenWidth=maxWidth
         // Background image
         Image(
             painter = painterResource(R.drawable.welcome_background),
@@ -232,17 +236,17 @@ fun ConfigurationScreen(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.SpaceAround
         ) {
-            Spacer(modifier = Modifier.height(40.dp))
+            Box(modifier = Modifier.height(screenHeight * 0.045f))
 
             // Logo
             Image(
                 painter = painterResource(R.drawable.vision_assist_logo),
                 contentDescription = "app logo",
                 modifier = Modifier
-                    .size(200.dp)
+                    .size(screenWidth*0.47f)
             )
 
-            Spacer(modifier = Modifier.weight(0.7f))
+            Box(modifier = Modifier.height(screenHeight * 0.1f))
 
             // Welcome text
             Text(
@@ -256,7 +260,7 @@ fun ConfigurationScreen(
                 lineHeight = 60.sp
             )
 
-            Spacer(modifier = Modifier.height(25.dp))
+            Box(modifier = Modifier.height(screenHeight * Constants.STD_TITLE_SUBTITLE_MARGIN_TOP))
 
             // Problem text
             Text(
@@ -268,7 +272,7 @@ fun ConfigurationScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.weight(1f))
+            Box(modifier = Modifier.height(screenHeight * 0.07f))
 
             // Buttons row
             Row(
@@ -282,7 +286,9 @@ fun ConfigurationScreen(
                     text = "Blindness",
                     contentDescription = "Blindness button pressed",
                     iconResId = R.drawable.blindness,
-                    onClick = onBlindnessClick
+                    onClick = onBlindnessClick,
+                    screenWidth=screenWidth,
+                    screenHeight=screenHeight
                 )
 
                 // Low eyesight button
@@ -290,10 +296,12 @@ fun ConfigurationScreen(
                     text = "Low eyesight",
                     contentDescription = "Low eyesight button pressed",
                     iconResId = R.drawable.eyesight,
-                    onClick = onLowEyesightClick
+                    onClick = onLowEyesightClick,
+                    screenWidth=screenWidth,
+                    screenHeight=screenHeight
                 )
             }
-            Spacer(modifier = Modifier.weight(1f))
+            Box(modifier = Modifier.height(screenHeight * 0.21f))
         }
 
         // Notification Dialog - Only shows when showNotification is true
@@ -311,7 +319,9 @@ fun VisualProblemButton(
     text: String,
     contentDescription: String,
     iconResId: Int,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    screenWidth: Dp,
+    screenHeight: Dp
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
@@ -331,8 +341,8 @@ fun VisualProblemButton(
                 .shadow(
                     elevation = 3.dp, shape = MaterialTheme.shapes.large
                 )
-                .width(144.dp)
-                .height(86.dp),
+                .width(screenWidth * 0.35f)
+                .height(screenHeight * 0.093f),
             shape = RoundedCornerShape(16.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color(0xFFEADDFF),        // purple background

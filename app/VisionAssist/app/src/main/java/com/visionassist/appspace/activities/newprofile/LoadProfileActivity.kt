@@ -22,6 +22,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -64,6 +65,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.visionassist.appspace.PhoneStatusMonitor
@@ -122,8 +124,8 @@ class LoadProfileActivity : ComponentActivity() {
     private val showPasswordError = mutableStateOf(false)
 
     // Loading status members
-    private var loadStatus = Constants.LOAD_PROFILE_SUCCESS
-    private var loginStatus = Constants.LOAD_PROFILE_SUCCESS
+    private var loadStatus = DBConstants.STATUS_INITIALIZED
+    private var loginStatus = DBConstants.STATUS_INITIALIZED
     private var finishedLoading = false
     private var assetLoadError = -494
 
@@ -474,7 +476,7 @@ class LoadProfileActivity : ComponentActivity() {
                 }
             }
         }
-        mainHandler.postDelayed(checkRunnable, 1000)
+        mainHandler.post(checkRunnable)
     }
 
     private fun handleLoginResult() {
@@ -1075,7 +1077,8 @@ fun LoadProfileScreen(
     onNotificationLoadLocal: () -> Unit,
     onNotificationOk: () -> Unit
 ) {
-    Box(modifier = Modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val screenHeight = maxHeight
         // Background image
         Image(
             painter = painterResource(R.drawable.welcome_background),
@@ -1089,11 +1092,11 @@ fun LoadProfileScreen(
             visible = showProfileSelection,
             enter = slideInHorizontally(
                 initialOffsetX = { -it },
-                animationSpec = tween(durationMillis = 500)
+                animationSpec = tween(durationMillis = Constants.ANIMATION_DELAY)
             ),
             exit = slideOutHorizontally(
                 targetOffsetX = { -it },
-                animationSpec = tween(durationMillis = 500)
+                animationSpec = tween(durationMillis = Constants.ANIMATION_DELAY)
             )
         ) {
             ProfileSelectionSection(
@@ -1107,11 +1110,11 @@ fun LoadProfileScreen(
             visible = showLoginSection,
             enter = slideInHorizontally(
                 initialOffsetX = { it },
-                animationSpec = tween(durationMillis = 500)
+                animationSpec = tween(durationMillis = Constants.ANIMATION_DELAY)
             ),
             exit = slideOutHorizontally(
                 targetOffsetX = { it },
-                animationSpec = tween(durationMillis = 500)
+                animationSpec = tween(durationMillis = Constants.ANIMATION_DELAY)
             )
         ) {
             LoginSection(
@@ -1146,12 +1149,13 @@ fun LoadProfileScreen(
             onOkClick = onNotificationOk
         )
 
+        val bottomSpace=screenHeight * 0.10f
         // Back button for Profile Selection (only visible in that section)
         if (showProfileSelection) {
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 88.dp)
+                    .padding(bottom = bottomSpace)
             ) {
                 BackArrowLargeFab(onClick = onBackClickProfileSelection)
             }
@@ -1164,18 +1168,20 @@ fun ProfileSelectionSection(
     onLocallyClick: () -> Unit,
     onHaveAccountClick: () -> Unit
 ) {
-    Box(
+    BoxWithConstraints(
         modifier = Modifier.fillMaxSize()
     ) {
+        val screenHeight = maxHeight
+        val screenWidth=maxWidth
         Column(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.SpaceAround
         ) {
-            Spacer(modifier = Modifier.weight(1.6f))
+            Box(modifier = Modifier.height(screenHeight * Constants.STD_SUBTITLE_MARGIN_TOP))
 
             // Title
             Text(
-                text = "How would you want\nto load the profile?",
+                text = if(AppConfig.mainLanguage.code=="en")"How would you want\nto load the profile?" else "Cum ați vrea\nsă încărcați profilul?",
                 fontSize = 32.sp,
                 color = colorResource(R.color.std_cyan),
                 fontFamily = robotoSemibold,
@@ -1184,7 +1190,7 @@ fun ProfileSelectionSection(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Box(modifier = Modifier.height(screenHeight * Constants.STD_SUBTITLE_BODY_MARGIN_TOP))
 
             // Buttons row
             Row(
@@ -1193,21 +1199,26 @@ fun ProfileSelectionSection(
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 ProfileLoadButton(
-                    text = "Have an account",
-                    contentDescription = "Have an account button",
+                    text = if(AppConfig.mainLanguage.code=="en")"Have an account" else "Am un cont",
+                    contentDescription = if(AppConfig.mainLanguage.code=="en")"Have an account button" else "Buton am un cont",
                     imageVector = Icons.Filled.AccountCircle, // Replace with actual icon
-                    onClick = onHaveAccountClick
+                    onClick = onHaveAccountClick,
+                    screenWidth=screenWidth,
+                    screenHeight=screenHeight
+
                 )
 
                 ProfileLoadButton(
-                    text = "Locally",
-                    contentDescription = "Load locally button",
+                    text = if(AppConfig.mainLanguage.code=="en")"Local profile" else "Profil local",
+                    contentDescription = if(AppConfig.mainLanguage.code=="en")"Local profile button" else "Buton profil local",
                     imageVector = Icons.Filled.CloudOff, // Replace with actual icon
-                    onClick = onLocallyClick
+                    onClick = onLocallyClick,
+                    screenWidth=screenWidth,
+                    screenHeight=screenHeight
                 )
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            Box(modifier = Modifier.height(screenHeight * 0.24f))
         }
     }
 }
@@ -1218,7 +1229,9 @@ fun ProfileLoadButton(
     text: String,
     contentDescription: String,
     imageVector: ImageVector,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    screenWidth: Dp,
+    screenHeight: Dp
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
@@ -1229,8 +1242,8 @@ fun ProfileLoadButton(
                 .shadow(
                     elevation = 3.dp, shape = MaterialTheme.shapes.large
                 )
-                .width(144.dp)
-                .height(86.dp),
+                .width(screenWidth * 0.35f)
+                .height(screenHeight * 0.093f),
             shape = RoundedCornerShape(16.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color(0xFFEADDFF),        // purple background
@@ -1269,15 +1282,17 @@ fun LoginSection(
     onBackClick: () -> Unit,
     onDoneClick: () -> Unit
 ) {
-    Box(
+    BoxWithConstraints(
         modifier = Modifier.fillMaxSize()
     ) {
+        val screenHeight = maxHeight
+
         Column(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.SpaceAround,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.weight(3.7f))
+            Box(modifier = Modifier.height(screenHeight * Constants.STD_TITLE_MARGIN_TOP))
 
             // Title
             Text(
@@ -1291,7 +1306,7 @@ fun LoginSection(
                 lineHeight = 60.sp
             )
 
-            Spacer(modifier = Modifier.height(30.dp))
+            Box(modifier = Modifier.height(screenHeight * Constants.STD_TITLE_SUBTITLE_MARGIN_TOP))
 
             // Logo in circle
             Box(
@@ -1310,13 +1325,13 @@ fun LoginSection(
                 )
             }
 
-            Spacer(modifier = Modifier.weight(0.1f))
+            Box(modifier = Modifier.height(screenHeight * 0.01f))
 
             // Login Card
             Card(
                 modifier = Modifier
                     .fillMaxWidth(0.8f)
-                    .height(266.dp),
+                    .height(screenHeight*0.29f),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = colorResource(R.color.notification_white)
@@ -1391,7 +1406,7 @@ fun LoginSection(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "Password",
+                                    text = if(AppConfig.mainLanguage.code=="en")"Password" else "Parolă",
                                     fontSize = Constants.STD_FONT_SIZE.sp,
                                     color = colorResource(R.color.std_cyan),
                                     fontFamily = robotoSemibold
@@ -1450,7 +1465,7 @@ fun LoginSection(
                             modifier = Modifier.align(Alignment.CenterHorizontally)
                         ) {
                             Text(
-                                text = "Forgot password?",
+                                text = if(AppConfig.mainLanguage.code=="en")"Forgot password?" else "Ați uitat parola?",
                                 fontSize = Constants.STD_FONT_SIZE_LW.sp,
                                 color = colorResource(R.color.std_cyan)
                             )

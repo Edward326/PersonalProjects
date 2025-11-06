@@ -38,6 +38,23 @@ fun load_loadingVerifying(context: Context): String {
         else -> context.getString(R.string.verifying_en)
     }
 }
+
+fun load_creatingAccount(context: Context): String {
+    return when (AppConfig.mainLanguage.code) {
+        "en" -> context.getString(R.string.create_account_en)
+        "ro" -> context.getString(R.string.create_account_ro)
+        else -> context.getString(R.string.create_account_en)
+    }
+}
+
+fun load_createdAccount(context: Context): String {
+    return when (AppConfig.mainLanguage.code) {
+        "en" -> context.getString(R.string.created_account_en)
+        "ro" -> context.getString(R.string.created_account_ro)
+        else -> context.getString(R.string.created_account_en)
+    }
+}
+
 fun load_tempErrorText(context: Context, codeLanguage: String): String {
     return when (codeLanguage) {
         "en" -> context.getString(R.string.temp_error_en)

@@ -116,12 +116,18 @@ public class Constants {
     public static final int MODELS_COUNT = 5;
     public static final int MODELS_OWN_ASSETS_COUNT = 5;
 
-    //Standard font size and button size
+    // Standard font size and button size
     public static final int STD_FONT_SIZE = 16;
-    public static final int STD_FONT_SIZE_LW = STD_FONT_SIZE-2;
-    public static final int STD_BUTTON_FONT_SIZE = STD_FONT_SIZE+5;
-    public static final int STD_ERROR_FONT_SIZE = STD_FONT_SIZE+2;
+    public static final int STD_FONT_SIZE_LW = STD_FONT_SIZE - 2;
+    public static final int STD_BUTTON_FONT_SIZE = STD_FONT_SIZE + 5;
+    public static final int STD_ERROR_FONT_SIZE = STD_FONT_SIZE + 2;
     public static final int STD_BUTTON_HEIGHT = 75;
+
+    // Standard screen weighters
+    public static final float STD_TITLE_MARGIN_TOP=0.372f;
+    public static final float STD_SUBTITLE_MARGIN_TOP=0.51f;
+    public static final float STD_TITLE_SUBTITLE_MARGIN_TOP=0.035f;
+    public static final float STD_SUBTITLE_BODY_MARGIN_TOP=0.04f;
 
     // Debug Configuration
     public static final boolean DEBUG_MODE = true;

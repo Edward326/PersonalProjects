@@ -5,7 +5,6 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
@@ -17,6 +16,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -34,12 +35,14 @@ import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -47,7 +50,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.colorResource
@@ -60,54 +62,55 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
+import com.visionassist.appspace.activities.newprofile.LoadProfileActivity.NotificationType
 import com.visionassist.appspace.activities.newprofile.jsonCollection.ProfileFileCollection
 import com.visionassist.appspace.database.DBConstants
+import com.visionassist.appspace.database.DBManager
 import com.visionassist.appspace.database.NetworkUtils
+import com.visionassist.appspace.jetpack.design.BackArrowLargeFab
+import com.visionassist.appspace.jetpack.design.LoadProfileNotificationDialog
 import com.visionassist.appspace.jetpack.design.LoadingComponent
-import com.visionassist.appspace.jetpack.design.NavigationButtons
-import com.visionassist.appspace.jetpack.managers.InfoNotificationManager
-import com.visionassist.appspace.models.ttsengine.TTSManager
+import com.visionassist.appspace.jetpack.design.NextArrowLargeFab
+import com.visionassist.appspace.utils.AppConfig
 import com.visionassist.appspace.utils.BackgroundTaskExecutor
 import com.visionassist.appspace.utils.Constants
-import com.visionassist.appspace.utils.load_loadingVerifying
+import com.visionassist.appspace.utils.load_createdAccount
+import com.visionassist.appspace.utils.load_creatingAccount
+import com.visionassist.appspace.utils.load_noInternet
 import com.visionassist.appspace.utils.robotoLight
 import com.visionassist.appspace.utils.robotoRegular
 import com.visionassist.appspace.utils.robotoSemibold
-import java.security.MessageDigest
 
 class NewProfileActivity : ComponentActivity() {
     private val TAG = "NewProfileActivity"
 
-    private var ttsManager: TTSManager = PhoneStatusMonitor.getInstance().ttsManager
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val backgroundExecutor: BackgroundTaskExecutor = BackgroundTaskExecutor.getInstance()
 
     // State management
     private val showRegisterSection = mutableStateOf(false)
     private val switchEnabled = mutableStateOf(true)
     private val switchChecked = mutableStateOf(false)
 
-    // Email and Password states
+    private val showNotification = mutableStateOf(false)
+    private val notificationMessage = mutableStateOf("")
+    private val notificationType = mutableStateOf(NotificationType.SUCCESS)
+    private val showTwoButtons = mutableStateOf(false)
+
+    private val showLoading = mutableStateOf(false)
+    private val loadingText = mutableStateOf("")
+
     private val emailInput = mutableStateOf("")
     private val passwordInput = mutableStateOf("")
     private val showEmailError = mutableStateOf(false)
     private val showPasswordError = mutableStateOf(false)
 
-    // Loading states
-    private val showLoading = mutableStateOf(false)
-    private val loadingText = mutableStateOf("")
-
-    // Registration status
+    // Registration status members
     private var registerStatus = DBConstants.STATUS_INITIALIZED
     private var finishedRegistering = false
 
-    // Managers
-    private lateinit var infoNotificationManager: InfoNotificationManager
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Initialize info notification manager
-        infoNotificationManager = InfoNotificationManager(this)
 
         setContent {
             NewProfileScreen(
@@ -120,255 +123,243 @@ class NewProfileActivity : ComponentActivity() {
                 showPasswordError = showPasswordError.value,
                 showLoading = showLoading.value,
                 loadingText = loadingText.value,
+                showNotification = showNotification.value,
+                notificationMessage = notificationMessage.value,
+                notificationType = notificationType.value,
+                showTwoButtons = showTwoButtons.value,
                 onSwitchChanged = ::handleSwitchChanged,
-                onEmailChange = ::handleEmailChange,
-                onPasswordChange = ::handlePasswordChange,
+                onEmailChange = { emailInput.value = it; showEmailError.value = false },
+                onPasswordChange = { passwordInput.value = it; showPasswordError.value = false },
                 onBackFromProfileSelection = ::handleBackFromProfileSelection,
                 onNextFromProfileSelection = ::handleNextFromProfileSelection,
                 onBackFromRegister = ::handleBackFromRegister,
-                onDoneFromRegister = ::handleDoneFromRegister
+                onDoneFromRegister = ::handleDoneFromRegister,
+                onNotificationOk = ::hideNotification,
+                onNotificationRetry = ::handleNotificationRetry,
+                onNotificationLogin = ::handleNotificationLogin,
             )
         }
     }
 
     private fun handleSwitchChanged(checked: Boolean) {
         if (checked) {
-            // Check network connectivity
             if (!NetworkUtils.isNetworkConnected(this)) {
-                // Show network error notification
-                val message = "The device has no access to the internet, try to connect to a network and try again"
-                infoNotificationManager.showNotification(message, Runnable {
-                    // Reset switch
-                    switchChecked.value = false
-                }, true)
+                showNoInternetNotification()
+                switchChecked.value = false
             } else {
-                // Network available, slide to register section
                 switchChecked.value = true
                 showRegisterSection.value = true
             }
         }
     }
 
-    private fun handleEmailChange(newEmail: String) {
-        emailInput.value = newEmail
-        showEmailError.value = false
-    }
-
-    private fun handlePasswordChange(newPassword: String) {
-        passwordInput.value = newPassword
-        showPasswordError.value = false
-    }
-
     private fun handleBackFromProfileSelection() {
-        // Delete language and new_profile data
         ProfileFileCollection.welcomeActivityDelete(true)
-
-        // Navigate back to WelcomeActivity with profile selection section
         val intent = Intent(this, WelcomeActivity::class.java)
-        intent.putExtra(Constants.EXTRA_WELCOME_OPTION, false) // Profile selection
+        intent.putExtra(Constants.EXTRA_WELCOME_OPTION, false)
         startActivity(intent)
         finish()
     }
 
     private fun handleNextFromProfileSelection() {
-        cancelAllHandlers()
-        // Write to profile with remote = false
         ProfileFileCollection.newProfileActivityWrite(false, null, null)
-
-        // Navigate to UserInfoActivity
         val intent = Intent(this, UserInfoActivity::class.java)
         startActivity(intent)
         finish()
     }
 
     private fun handleBackFromRegister() {
-        // Slide back to profile selection section
-        showRegisterSection.value = false
         switchChecked.value = false
+        showRegisterSection.value = false
     }
 
     private fun handleDoneFromRegister() {
-        // Validate fields
         val email = emailInput.value.trim()
         val password = passwordInput.value.trim()
 
+        // Validate fields
         if (email.isEmpty() || email == "example@gmail.com") {
             showEmailError.value = true
-            return
         }
 
         if (password.isEmpty()) {
             showPasswordError.value = true
+        }
+
+        if (showEmailError.value || showPasswordError.value) {
             return
         }
 
-        // Start registration process
-        startRegistration(email, password)
-    }
-
-    private fun startRegistration(email: String, password: String) {
         // Show loading
-        if (PhoneStatusMonitor.getInstance().profileLoaded) {
-            loadingText.value = load_loadingVerifying(this)
-        } else {
-            loadingText.value = "Creating account..."
-        }
+        loadingText.value = load_creatingAccount(this)
         showLoading.value = true
 
-        // Reset registration status
+        // Reset states
         finishedRegistering = false
-        registerStatus = DBConstants.STATUS_INITIALIZED
+        registerStatus = DBConstants.ACCOUNT_CREATED
 
-        // Hash the password
-        val passwordHash = hashPassword(password)
-
-        // Execute in background
-        BackgroundTaskExecutor.getInstance().executeAsync(
-            object : BackgroundTaskExecutor.BackgroundTask<Int> {
-                override fun execute(): Int {
-                    val dbManager = PhoneStatusMonitor.getInstance().dbManager
-
-                    // Check if account exists
-                    val accountExists = dbManager.verifyAccount(email, passwordHash)
-
-                    if (accountExists == DBConstants.EMAIL_NOT_FOUND) {
-                        // Validate email format
-                        val emailValidation = dbManager.validateEmail(email)
-                        if (emailValidation == DBConstants.EMAIL_VALID) {
-                            // Create account
-                            val createResult = dbManager.createAccount(email, passwordHash)
-                            return if (createResult == DBConstants.ACCOUNT_CREATED) {
-                                Constants.CREATE_PROFILE_SUCCESS
-                            } else {
-                                createResult
-                            }
-                        } else {
-                            return emailValidation
-                        }
-                    } else if (accountExists == DBConstants.SYNC_OK) {
-                        // Account already exists
-                        return DBConstants.SYNC_OK
-                    } else {
-                        return accountExists
-                    }
-                }
-            },
+        // Launch async task
+        backgroundExecutor.executeAsync(
+            { performRegistration(email, password) },
             object : BackgroundTaskExecutor.TaskCallback<Int> {
                 override fun onSuccess(result: Int) {
                     registerStatus = result
                     finishedRegistering = true
-                    handleRegistrationResult(email, passwordHash)
                 }
 
                 override fun onError(e: Exception) {
-                    Log.e(TAG, "Registration error", e)
+                    Log.e(TAG, "Error during registration", e)
                     registerStatus = DBConstants.GENERIC_ERROR
                     finishedRegistering = true
-                    handleRegistrationResult(email, passwordHash)
                 }
             }
         )
 
-        // Wait for registration to complete
-        mainHandler.post(object : Runnable {
-            override fun run() {
-                if (finishedRegistering) {
-                    Log.d(TAG, "Registration finished with status: $registerStatus")
-                } else {
-                    mainHandler.postDelayed(this, 100)
-                }
-            }
-        })
+        // Wait for completion
+        waitForRegistrationCompletion()
     }
 
-    private fun handleRegistrationResult(email: String, passwordHash: String) {
-        showLoading.value = false
+    private fun performRegistration(email: String, password: String): Int {
+        try {
+            val dbManager = PhoneStatusMonitor.getInstance().dbManager
 
+            // Check if account exists
+            val accountExists = dbManager.verifyAccount(email, password)
+
+            if (accountExists == DBConstants.EMAIL_NOT_FOUND) {
+                // Validate email format
+                val emailValidation = dbManager.validateEmail(email)
+                return if (emailValidation == DBConstants.EMAIL_VALID) {
+                    // Create account
+                    dbManager.createAccount(email, password)
+                } else
+                    emailValidation
+            } else
+                return accountExists
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception in performRegistration", e)
+            return DBConstants.GENERIC_ERROR
+        }
+    }
+
+    private fun waitForRegistrationCompletion() {
+        val checkRunnable = object : Runnable {
+            override fun run() {
+                if (finishedRegistering) {
+                    showLoading.value = false
+                    handleRegistrationResult()
+                } else {
+                    mainHandler.postDelayed(this, 1000)
+                }
+            }
+        }
+        mainHandler.post(checkRunnable)
+    }
+
+    private fun handleRegistrationResult() {
         when (registerStatus) {
-            DBConstants.INTERNET_CONNECTION_FAILED -> {
-                val message = "The device has no access to the internet, try to connect to a network and try again"
-                infoNotificationManager.showNotification(message, Runnable {
-                    showRegisterSection.value = false
-                    switchChecked.value = false
-                }, false)
-            }
+            DBConstants.ACCOUNT_CREATED -> {
+                notificationType.value = NotificationType.SUCCESS
+                notificationMessage.value = load_createdAccount(this)
+                showTwoButtons.value = false
+                showNotification.value = true
 
-            DBConstants.SYNC_OK -> {
-                // Email already exists
-                val message = "Email already exists"
-                infoNotificationManager.showNotificationTwoButtons(
-                    message,
-                    "Retry",
-                    "Login",
-                    Runnable {
-                        // Just close notification
-                    },
-                    Runnable {
-                        // Navigate to LoadProfileActivity
-                        ProfileFileCollection.welcomeActivityWrite(true, null, true)
-                        val intent = Intent(this, LoadProfileActivity::class.java)
-                        startActivity(intent)
-                        finish()
-                    }
-                )
-            }
-
-            DBConstants.EMAIL_INVALID -> {
-                val message = "Invalid mail address"
-                infoNotificationManager.showNotification(message, Runnable {}, true)
-            }
-
-            DBConstants.ACCOUNT_CREATION_FAILED, DBConstants.GENERIC_ERROR -> {
-                val message = "Error was encountered while creating the profile"
-                infoNotificationManager.showNotificationTwoButtons(
-                    message,
-                    "Retry",
-                    "Try local",
-                    Runnable {
-                        // Just close notification
-                    },
-                    Runnable {
-                        // Navigate to NewProfileActivity (local)
-                        ProfileFileCollection.welcomeActivityWrite(true, null, false)
-                        val intent = Intent(this, NewProfileActivity::class.java)
-                        startActivity(intent)
-                        finish()
-                    }
-                )
-            }
-
-            Constants.CREATE_PROFILE_SUCCESS -> {
-                // Show success notification
-                val message = "Account created successfully"
-                infoNotificationManager.showNotification(message, Runnable {}, true)
-
-                // Wait 5 seconds then navigate
+                // Navigate after 5 seconds
                 mainHandler.postDelayed({
-                    infoNotificationManager.hideNotification()
-                    // Write profile with remote = true
+                    val email = emailInput.value.trim()
+                    val password = passwordInput.value.trim()
+                    val passwordHash = DBManager.hashPassword(password)
+
                     ProfileFileCollection.newProfileActivityWrite(true, email, passwordHash)
-                    // Navigate to UserInfoActivity
                     val intent = Intent(this, UserInfoActivity::class.java)
                     startActivity(intent)
                     finish()
                 }, Constants.SUCCESS_NOTIFICATION_DELAY.toLong())
             }
+
+            DBConstants.INTERNET_CONNECTION_FAILED -> {
+                showNoInternetNotification()
+            }
+
+            DBConstants.SYNC_OK,DBConstants.PASSWORD_INCORRECT
+                 -> {
+                showEmailExistsNotification()
+            }
+
+            DBConstants.EMAIL_INVALID -> {
+                showInvalidEmailNotification()
+            }
+
+            DBConstants.ACCOUNT_CREATION_FAILED,
+            DBConstants.GENERIC_ERROR -> {
+                showCreationErrorNotification()
+            }
+
+            else -> {
+                showCreationErrorNotification()
+            }
         }
     }
 
-    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        when (keyCode) {
-            KeyEvent.KEYCODE_VOLUME_DOWN -> {
-                Log.d(TAG, "Volume button down for repeat pressed")
-                ttsManager.onVolumeDownPressed()
-                return true
-            }
-            KeyEvent.KEYCODE_VOLUME_UP -> {
-                Log.d(TAG, "Volume button up pressed")
-                return true
-            }
+    private fun showNoInternetNotification() {
+        notificationType.value = NotificationType.NO_INTERNET
+        notificationMessage.value = load_noInternet(this)
+        showTwoButtons.value = false
+        showNotification.value = true
+    }
+
+    private fun showEmailExistsNotification() {
+        notificationType.value = NotificationType.ERROR
+        notificationMessage.value = if(AppConfig.mainLanguage.code=="en")
+            "Email already exists"
+        else
+            ("Email-ul deja există")
+        showTwoButtons.value = true
+        showNotification.value = true
+    }
+
+    private fun showInvalidEmailNotification() {
+        notificationType.value = NotificationType.ERROR
+        notificationMessage.value = if(AppConfig.mainLanguage.code=="en")
+            "Invalid mail address"
+        else
+            ("Email-ul este invalid")
+        showTwoButtons.value = false
+        showNotification.value = true
+    }
+
+    private fun showCreationErrorNotification() {
+        notificationType.value = NotificationType.ERROR
+        notificationMessage.value = if(AppConfig.mainLanguage.code=="en")
+            "Error was encountered while creating the profile"
+        else
+            ("A apărut o eroare la crearea profilului")
+        showTwoButtons.value = true
+        showNotification.value = true
+    }
+
+    private fun hideNotification() {
+        showNotification.value = false
+
+        // If we're showing internet error and in register section, navigate to first section
+        if (notificationType.value == NotificationType.NO_INTERNET && showRegisterSection.value) {
+            showRegisterSection.value = false
+            mainHandler.postDelayed({
+                switchChecked.value = false
+            }, 100)
         }
-        return super.onKeyDown(keyCode, event)
+    }
+
+    private fun handleNotificationRetry() {
+        hideNotification()
+    }
+
+    private fun handleNotificationLogin() {
+        hideNotification()
+        ProfileFileCollection.welcomeActivityWrite(true, null, false)
+        val intent = Intent(this, LoadProfileActivity::class.java)
+        startActivity(intent)
+        finish()
     }
 }
 
@@ -383,15 +374,25 @@ fun NewProfileScreen(
     showPasswordError: Boolean,
     showLoading: Boolean,
     loadingText: String,
+    showNotification: Boolean,
+    notificationMessage: String,
+    notificationType: NotificationType,
+    showTwoButtons: Boolean,
     onSwitchChanged: (Boolean) -> Unit,
     onEmailChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     onBackFromProfileSelection: () -> Unit,
     onNextFromProfileSelection: () -> Unit,
     onBackFromRegister: () -> Unit,
-    onDoneFromRegister: () -> Unit
+    onDoneFromRegister: () -> Unit,
+    onNotificationOk: () -> Unit,
+    onNotificationRetry: () -> Unit,
+    onNotificationLogin: () -> Unit,
 ) {
-    Box(modifier = Modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val screenHeight = maxHeight
+        val screenWidth = maxWidth
+
         // Background image
         Image(
             painter = painterResource(R.drawable.welcome_background),
@@ -415,9 +416,7 @@ fun NewProfileScreen(
             ProfileSelectionSection(
                 switchEnabled = switchEnabled,
                 switchChecked = switchChecked,
-                onSwitchChanged = onSwitchChanged,
-                onBackClick = onBackFromProfileSelection,
-                onNextClick = onNextFromProfileSelection
+                onSwitchChanged = onSwitchChanged
             )
         }
 
@@ -449,112 +448,148 @@ fun NewProfileScreen(
             isVisible = showLoading,
             loadingText = loadingText
         )
+
+        // Notification Dialog
+        LoadProfileNotificationDialog(
+            isVisible = showNotification,
+            message = notificationMessage,
+            type = notificationType,
+            showTwoButtons = showTwoButtons,
+            onOkClick = onNotificationOk,
+            onRetryClick = onNotificationRetry,
+            onCreateAccountClick = onNotificationLogin,
+            newprofile = true
+        )
+
+        val bottomSpace=screenHeight * 0.10f
+        // Navigation Buttons (only for ProfileSelectionSection)
+        if (!showRegisterSection) {
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = bottomSpace),
+                horizontalArrangement = Arrangement.spacedBy(screenWidth*0.08f)
+            ) {
+                BackArrowLargeFab(
+                    onClick = onBackFromProfileSelection
+                )
+
+                NextArrowLargeFab(
+                    onClick = onNextFromProfileSelection
+                )
+            }
+        }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileSelectionSection(
     switchEnabled: Boolean,
     switchChecked: Boolean,
-    onSwitchChanged: (Boolean) -> Unit,
-    onBackClick: () -> Unit,
-    onNextClick: () -> Unit
+    onSwitchChanged: (Boolean) -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceBetween
+    BoxWithConstraints(
+        modifier = Modifier.fillMaxSize()
     ) {
-        Spacer(modifier = Modifier.height(40.dp))
-
-        // Logo
-        Image(
-            painter = painterResource(R.drawable.vision_assist_logo),
-            contentDescription = "app logo",
-            modifier = Modifier.size(200.dp)
-        )
-
-        Spacer(modifier = Modifier.weight(0.5f))
-
-        // Title text
-        Text(
-            text = "Would you want\nto sync the profile?",
-            fontSize = 32.sp,
-            color = colorResource(R.color.std_cyan),
-            fontFamily = robotoSemibold,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-            lineHeight = 40.sp
-        )
-
-        Spacer(modifier = Modifier.height(40.dp))
-
-        // Switch row
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
+        val screenHeight = maxHeight
+        val screenWidth=maxWidth
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.SpaceAround
         ) {
-            // No option
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(
-                    imageVector = Icons.Filled.CloudOff,
-                    contentDescription = "No sync",
-                    modifier = Modifier.size(40.dp),
-                    tint = if (!switchChecked) colorResource(R.color.std_cyan) else Color.Gray
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "No",
-                    fontSize = Constants.STD_FONT_SIZE.sp,
-                    color = if (!switchChecked) colorResource(R.color.std_cyan) else Color.Gray,
-                    fontFamily = robotoSemibold
-                )
-            }
+            Box(modifier = Modifier.height(screenHeight * Constants.STD_SUBTITLE_MARGIN_TOP))
 
-            // Switch
-            Switch(
-                checked = switchChecked,
-                onCheckedChange = onSwitchChanged,
-                enabled = switchEnabled,
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = colorResource(R.color.std_purple),
-                    checkedTrackColor = colorResource(R.color.std_cyan).copy(alpha = 0.5f),
-                    uncheckedThumbColor = Color.Gray,
-                    uncheckedTrackColor = Color.LightGray
-                )
+            // Title text
+            Text(
+                text = if(AppConfig.mainLanguage.code=="en")
+                    "Would you want\nto sync the profile?"
+                else
+                    "Ați dori\n sincronizarea profilului?"
+                ,
+                fontSize = 32.sp,
+                color = colorResource(R.color.std_cyan),
+                fontFamily = robotoSemibold,
+                textAlign = TextAlign.Center,
+                lineHeight = 36.sp,
+                modifier = Modifier.fillMaxWidth()
             )
 
-            // Yes option
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(
-                    imageVector = Icons.Filled.CloudSync,
-                    contentDescription = "Sync",
-                    modifier = Modifier.size(40.dp),
-                    tint = if (switchChecked) colorResource(R.color.std_cyan) else Color.Gray
+            Box(modifier = Modifier.height(screenHeight * Constants.STD_SUBTITLE_BODY_MARGIN_TOP))
+
+            // Switch row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // No option
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = if(AppConfig.mainLanguage.code=="en")
+                            "No"
+                        else
+                            "Nu",
+                        fontSize = Constants.STD_FONT_SIZE.sp,
+                        color = colorResource(R.color.std_cyan),
+                        fontFamily = robotoSemibold
+                    )
+                    Icon(
+                        imageVector = Icons.Filled.CloudOff,
+                        contentDescription = if(AppConfig.mainLanguage.code=="en")
+                            "No sync icon"
+                        else
+                            "Iconiță fără sincronizare",
+                        modifier = Modifier.size(45.dp),
+                        tint = Color.Black
+                    )
+                }
+
+                // Switch (wider)
+                Switch(
+                    checked = switchChecked,
+                    onCheckedChange = onSwitchChanged,
+                    enabled = switchEnabled,
+                    modifier = Modifier.size(screenWidth*0.05f),
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = colorResource(R.color.std_cyan),
+                        checkedTrackColor = colorResource(R.color.std_cyan).copy(alpha = 0.5f),
+                        uncheckedThumbColor = Color.Gray,
+                        uncheckedTrackColor = Color.LightGray
+                    )
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Yes",
-                    fontSize = Constants.STD_FONT_SIZE.sp,
-                    color = if (switchChecked) colorResource(R.color.std_cyan) else Color.Gray,
-                    fontFamily = robotoSemibold
-                )
+
+                // Yes option
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.AccountCircle,
+                        contentDescription = if(AppConfig.mainLanguage.code=="en")
+                            "Sync"
+                        else
+                            "Iconiță cu sincronizare",
+                        modifier = Modifier.size(40.dp),
+                        tint = Color.Black
+                    )
+                    Text(
+                        text = if(AppConfig.mainLanguage.code=="en")
+                            "Yes"
+                        else
+                            "Da",
+                        fontSize = Constants.STD_FONT_SIZE.sp,
+                        color = colorResource(R.color.std_cyan),
+                        fontFamily = robotoSemibold
+                    )
+                }
             }
+
+            Box(modifier = Modifier.height(screenHeight * 0.33f))
         }
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        // Navigation buttons
-        NavigationButtons(
-            onBackClick = onBackClick,
-            onNextClick = onNextClick
-        )
-
-        Spacer(modifier = Modifier.height(40.dp))
     }
 }
 
@@ -570,235 +605,265 @@ fun RegisterSection(
     onBackClick: () -> Unit,
     onDoneClick: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceBetween
+    BoxWithConstraints(
+        modifier = Modifier.fillMaxSize()
     ) {
-        Spacer(modifier = Modifier.height(80.dp))
+        val screenHeight = maxHeight
 
-        // Title
-        Text(
-            text = "Account",
-            fontSize = 40.sp,
-            color = colorResource(R.color.std_cyan),
-            fontFamily = robotoLight,
-            letterSpacing = 6.sp,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // Account icon
-        Icon(
-            imageVector = Icons.Filled.AccountCircle,
-            contentDescription = "Account",
-            modifier = Modifier.size(60.dp),
-            tint = colorResource(R.color.std_cyan)
-        )
-
-        Spacer(modifier = Modifier.weight(0.5f))
-
-        // Card with email and password - matching LoadProfileActivity design
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(300.dp),
-            shape = RoundedCornerShape(16.dp),
-            shadowElevation = 4.dp,
-            color = colorResource(R.color.notification_white)
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.SpaceAround,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Row(modifier = Modifier.fillMaxSize()) {
-                // Left section - Email and Password inputs (0.75 width)
-                Column(
-                    modifier = Modifier
-                        .weight(0.75f)
-                        .fillMaxHeight()
-                        .padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+            Box(modifier = Modifier.height(screenHeight * Constants.STD_TITLE_MARGIN_TOP))
+
+            // Title
+            Text(
+                text = "VisionAssist\nAccount",
+                fontSize = 40.sp,
+                color = colorResource(R.color.std_cyan),
+                fontFamily = robotoLight,
+                letterSpacing = 6.sp,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center,
+                lineHeight = 60.sp
+            )
+
+            Box(modifier = Modifier.height(screenHeight * Constants.STD_TITLE_SUBTITLE_MARGIN_TOP))
+
+            // Logo in circle
+            Box(
+                modifier = Modifier
+                    .size(60.dp)
+                    .background(
+                        color = colorResource(R.color.std_cyan),
+                        shape = RoundedCornerShape(55)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.vision_assist_logo),
+                    contentDescription = "VisionAssist Logo",
+                    modifier = Modifier.size(60.dp)
+                )
+            }
+
+            Box(modifier = Modifier.height(screenHeight * 0.01f))
+
+            // Login Card
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth(0.8f)
+                    .height(screenHeight*0.29f),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = colorResource(R.color.notification_white)
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    // Email field
-                    Text(
-                        text = "Email",
-                        fontSize = Constants.STD_FONT_SIZE.sp,
-                        color = if (showEmailError) colorResource(R.color.error_red)
-                        else colorResource(R.color.notification_text_gray),
-                        fontFamily = robotoSemibold
-                    )
-
-                    BasicTextField(
-                        value = emailInput,
-                        onValueChange = onEmailChange,
+                    // Left section - Email and Password fields (0.7 width)
+                    Column(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .shadow(
-                                elevation = 2.dp,
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                            .background(
-                                color = Color.White,
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                            .border(
-                                width = 1.dp,
-                                color = if (showEmailError)
-                                    colorResource(R.color.error_red)
-                                else
-                                    Color.LightGray,
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                            .padding(12.dp),
-                        textStyle = TextStyle(
-                            fontSize = Constants.STD_FONT_SIZE_LW.sp,
-                            color = colorResource(R.color.std_cyan),
-                            fontFamily = robotoRegular,
-                            letterSpacing = 1.sp
-                        ),
-                        singleLine = true,
-                        decorationBox = { innerTextField ->
-                            if (emailInput.isEmpty()) {
-                                Text(
-                                    text = "example@gmail.com",
-                                    fontSize = Constants.STD_FONT_SIZE_LW.sp,
-                                    color = Color.Gray
-                                )
-                            }
-                            innerTextField()
-                        }
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Password field
-                    Text(
-                        text = "Password",
-                        fontSize = Constants.STD_FONT_SIZE.sp,
-                        color = if (showPasswordError) colorResource(R.color.error_red)
-                        else colorResource(R.color.notification_text_gray),
-                        fontFamily = robotoSemibold
-                    )
-
-                    BasicTextField(
-                        value = passwordInput,
-                        onValueChange = onPasswordChange,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .shadow(
-                                elevation = 2.dp,
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                            .background(
-                                color = Color.White,
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                            .border(
-                                width = 1.dp,
-                                color = if (showPasswordError)
-                                    colorResource(R.color.error_red)
-                                else
-                                    Color.LightGray,
-                                shape = RoundedCornerShape(8.dp)
-                            )
-                            .padding(12.dp),
-                        textStyle = TextStyle(
-                            fontSize = Constants.STD_FONT_SIZE_LW.sp,
-                            color = colorResource(R.color.std_cyan),
-                            fontFamily = robotoRegular,
-                            letterSpacing = 1.sp
-                        ),
-                        visualTransformation = PasswordVisualTransformation(),
-                        singleLine = true
-                    )
-                }
-
-                // Right section - Back and Done buttons (0.25 width)
-                Column(
-                    modifier = Modifier
-                        .weight(0.25f)
-                        .fillMaxHeight()
-                ) {
-                    // Back Button (top half)
-                    Button(
-                        onClick = onBackClick,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(0.5f),
-                        shape = RoundedCornerShape(
-                            topStart = 0.dp,
-                            topEnd = 16.dp,
-                            bottomEnd = 0.dp,
-                            bottomStart = 0.dp
-                        ),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = colorResource(R.color.notification_button_white),
-                            contentColor = colorResource(R.color.std_cyan)
-                        )
+                            .weight(0.75f)
+                            .padding(top = 30.dp, start = 20.dp, end = 20.dp),
+                        verticalArrangement = Arrangement.spacedBy(30.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            modifier = Modifier.size(26.dp)
-                        )
+                        // Email Field
+                        Column {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Email",
+                                    fontSize = Constants.STD_FONT_SIZE.sp,
+                                    color = colorResource(R.color.std_cyan),
+                                    fontFamily = robotoSemibold
+                                )
+                                if (showEmailError) {
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Icon(
+                                        imageVector = Icons.Filled.Error,
+                                        contentDescription = "Email error",
+                                        tint = colorResource(R.color.error_red),
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            BasicTextField(
+                                value = emailInput,
+                                onValueChange = onEmailChange,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(
+                                        color = Color.White,
+                                        shape = RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp)
+                                    )
+                                    .border(
+                                        width = 1.dp,
+                                        color = if (showEmailError)
+                                            colorResource(R.color.error_red)
+                                        else
+                                            Color.LightGray,
+                                        shape = RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp)
+                                    )
+                                    .padding(12.dp),
+                                textStyle = TextStyle(
+                                    fontSize = Constants.STD_FONT_SIZE_LW.sp,
+                                    color = colorResource(R.color.std_cyan),
+                                    fontFamily = robotoRegular,
+                                    letterSpacing = 1.sp
+                                ),
+                                singleLine = true
+                            )
+                        }
+
+                        // Password Field
+                        Column {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = if(AppConfig.mainLanguage.code=="en")"Password" else "Parolă",
+                                    fontSize = Constants.STD_FONT_SIZE.sp,
+                                    color = colorResource(R.color.std_cyan),
+                                    fontFamily = robotoSemibold
+                                )
+                                if (showPasswordError) {
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Icon(
+                                        imageVector = Icons.Filled.Error,
+                                        contentDescription = "Password error",
+                                        tint = colorResource(R.color.error_red),
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            BasicTextField(
+                                value = passwordInput,
+                                onValueChange = onPasswordChange,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(
+                                        color = Color.White,
+                                        shape = RoundedCornerShape(
+                                            bottomStart = 10.dp,
+                                            bottomEnd = 10.dp
+                                        )
+                                    )
+                                    .border(
+                                        width = 1.dp,
+                                        color = if (showPasswordError)
+                                            colorResource(R.color.error_red)
+                                        else
+                                            Color.LightGray,
+                                        shape = RoundedCornerShape(
+                                            bottomStart = 10.dp,
+                                            bottomEnd = 10.dp
+                                        )
+                                    )
+                                    .padding(12.dp),
+                                textStyle = TextStyle(
+                                    fontSize = Constants.STD_FONT_SIZE_LW.sp,
+                                    color = colorResource(R.color.std_cyan),
+                                    fontFamily = robotoRegular,
+                                    letterSpacing = 1.sp
+                                ),
+                                visualTransformation = PasswordVisualTransformation(),
+                                singleLine = true
+                            )
+                        }
                     }
 
-                    // Done Button (bottom half)
-                    Button(
-                        onClick = onDoneClick,
+                    // Right section - Back and Done buttons (0.3 width)
+                    Column(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(0.5f),
-                        shape = RoundedCornerShape(
-                            topStart = 0.dp,
-                            topEnd = 0.dp,
-                            bottomEnd = 16.dp,
-                            bottomStart = 0.dp
-                        ),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = colorResource(R.color.std_cyan),
-                            contentColor = colorResource(R.color.notification_button_white)
-                        )
+                            .weight(0.25f)
+                            .fillMaxHeight()
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = "Done",
-                            modifier = Modifier.size(24.dp)
-                        )
+                        // Back Button (top half)
+                        Button(
+                            onClick = onBackClick,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(0.5f),
+                            shape = RoundedCornerShape(
+                                topStart = 0.dp,
+                                topEnd = 16.dp,
+                                bottomEnd = 0.dp,
+                                bottomStart = 0.dp
+                            ),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = colorResource(R.color.notification_button_white),
+                                contentColor = colorResource(R.color.std_cyan)
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                modifier = Modifier.size(26.dp)
+                            )
+                        }
+
+                        // Done Button (bottom half)
+                        Button(
+                            onClick = onDoneClick,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(0.5f),
+                            shape = RoundedCornerShape(
+                                topStart = 0.dp,
+                                topEnd = 0.dp,
+                                bottomEnd = 16.dp,
+                                bottomStart = 0.dp
+                            ),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = colorResource(R.color.std_cyan),
+                                contentColor = colorResource(R.color.notification_button_white)
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = "Done",
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
                 }
             }
+            Spacer(modifier = Modifier.weight(1f))
         }
-
-        Spacer(modifier = Modifier.weight(1f))
-        Spacer(modifier = Modifier.height(40.dp))
     }
 }
 
-@Preview(name = "New Profile Activity", showBackground = true, widthDp = 412, heightDp = 917)
+@Preview(name = "New Profile Activity/CreateProfileScreenSection", showBackground = true, widthDp = 412, heightDp = 917)
 @Composable
-fun NewProfileActivityPreview() {
-    NewProfileScreen(
-        showRegisterSection = false,
-        switchEnabled = true,
-        switchChecked = false,
-        emailInput = "",
-        passwordInput = "",
-        showEmailError = false,
-        showPasswordError = false,
-        showLoading = false,
-        loadingText = "",
-        onSwitchChanged = {},
-        onEmailChange = {},
-        onPasswordChange = {},
-        onBackFromProfileSelection = {},
-        onNextFromProfileSelection = {},
-        onBackFromRegister = {},
-        onDoneFromRegister = {}
-    )
+fun ProfileSelectionSectionPreview() {
+    MaterialTheme {
+        Image(
+            painter = painterResource(id = R.drawable.welcome_background),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+
+        ProfileSelectionSection(
+            switchEnabled = true,
+            switchChecked = false,
+            onSwitchChanged = {}
+        )
+    }
 }
 
-@Preview(name = "Register Section", showBackground = true, widthDp = 412, heightDp = 917)
+@Preview(name = "New Profile Activity/RegisterSection", showBackground = true, widthDp = 412, heightDp = 917)
 @Composable
 fun RegisterSectionPreview() {
     MaterialTheme {
@@ -810,7 +875,7 @@ fun RegisterSectionPreview() {
         )
 
         RegisterSection(
-            emailInput = "",
+            emailInput = "example@gmail.com",
             passwordInput = "",
             showEmailError = false,
             showPasswordError = false,
@@ -818,6 +883,38 @@ fun RegisterSectionPreview() {
             onPasswordChange = {},
             onBackClick = {},
             onDoneClick = {}
+        )
+    }
+}
+
+@Preview(name = "New Profile Activity", showBackground = true, widthDp = 412, heightDp = 917)
+@Composable
+fun NewProfileActivityPreview() {
+    MaterialTheme {
+        NewProfileScreen(
+            showRegisterSection = false,
+            switchEnabled = true,
+            switchChecked = false,
+            emailInput = "example@gmail.com",
+            passwordInput = "",
+            showEmailError = false,
+            showPasswordError = false,
+            showLoading = false,
+            loadingText = "",
+            showNotification = false,
+            notificationMessage = "",
+            notificationType = NotificationType.SUCCESS,
+            showTwoButtons = false,
+            onSwitchChanged = {},
+            onEmailChange = {},
+            onPasswordChange = {},
+            onBackFromProfileSelection = {},
+            onNextFromProfileSelection = {},
+            onBackFromRegister = {},
+            onDoneFromRegister = {},
+            onNotificationOk = {},
+            onNotificationRetry = {},
+            onNotificationLogin = {},
         )
     }
 }
