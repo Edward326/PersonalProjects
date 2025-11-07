@@ -146,14 +146,14 @@ fun load_micDeniedInfo(context: Context): String {
 }
 
 fun load_micDeniedInfoButtons(context: Context, case: Boolean): String {
-    if (case) {
-        return when (AppConfig.mainLanguage.code) {
+    return if (case) {
+        when (AppConfig.mainLanguage.code) {
             "en" -> context.getString(R.string.give_access_en)
             "ro" -> context.getString(R.string.give_access_ro)
             else -> context.getString(R.string.give_access_en)
         }
     } else {
-        return when (AppConfig.mainLanguage.code) {
+        when (AppConfig.mainLanguage.code) {
             "en" -> context.getString(R.string.dont_give_en)
             "ro" -> context.getString(R.string.dont_give_ro)
             else -> context.getString(R.string.dont_give_en)
@@ -190,14 +190,14 @@ fun haptic_model0(): LongArray {
 }
 
 fun load_profileSelectionButton(context: Context, case: Boolean): String {
-    if (case) {
-        return when (AppConfig.mainLanguage.code) {
+    return if (case) {
+        when (AppConfig.mainLanguage.code) {
             "en" -> context.getString(R.string.load_profile_en)
             "ro" -> context.getString(R.string.load_profile_ro)
             else -> context.getString(R.string.load_profile_en)
         }
     } else {
-        return when (AppConfig.mainLanguage.code) {
+        when (AppConfig.mainLanguage.code) {
             "en" -> context.getString(R.string.new_profile_en)
             "ro" -> context.getString(R.string.new_profile_ro)
             else -> context.getString(R.string.new_profile_en)
@@ -245,10 +245,106 @@ fun load_accountNE(context: Context): String {
     }
 }
 
-fun load_genericError(context: Context): String {
+fun load_genericErrorLoad(context: Context): String {
     return when (AppConfig.mainLanguage.code) {
         "en" -> context.getString(R.string.generic_error_en)
         "ro" -> context.getString(R.string.generic_error_ro)
         else -> context.getString(R.string.generic_error_en)
+    }
+}
+
+fun load_passChangedSuccess(context: Context,emailInput: String): String {
+    return when (AppConfig.mainLanguage.code) {
+        "en" -> "Password change request sent to\n${emailInput}"
+        "ro" -> "Cerere de schimbare a parolei trimisă către\n${emailInput}"
+        else -> "Password change request sent to\n${emailInput}"
+    }
+}
+
+fun load_profileImportedSuccess(context: Context): String {
+    return  when (AppConfig.mainLanguage.code) {
+        "en" -> "Profile imported successfully"
+        "ro" -> "Profilul a fost importat cu succes"
+        else -> "Profile imported successfully"
+    }
+}
+
+fun load_emailAlreadyExists(context: Context): String {
+    return  when (AppConfig.mainLanguage.code) {
+        "en" -> context.getString(R.string.already_exists_account_en)
+        "ro" -> context.getString(R.string.already_exists_account_ro)
+        else -> context.getString(R.string.already_exists_account_en)
+    }
+}
+
+fun load_invalidEmail(context: Context): String {
+    return  when (AppConfig.mainLanguage.code) {
+        "en" -> context.getString(R.string.invalid_email_en)
+        "ro" -> context.getString(R.string.invalid_email_ro)
+        else -> context.getString(R.string.invalid_email_en)
+    }
+}
+
+fun load_genericErrorNew(context: Context): String {
+    return  when (AppConfig.mainLanguage.code) {
+        "en" -> context.getString(R.string.generic_error2_en)
+        "ro" -> context.getString(R.string.generic_error2_ro)
+        else -> context.getString(R.string.generic_error2_en)
+    }
+}
+
+fun load_invalidCombination(context: Context): String {
+    return  when (AppConfig.mainLanguage.code) {
+        "en" -> context.getString(R.string.invalid_chars_en)
+        "ro" -> context.getString(R.string.invalid_chars_ro)
+        else -> context.getString(R.string.invalid_chars_en)
+    }
+}
+
+fun load_contributeResearch(context: Context): String {
+    return  when (AppConfig.mainLanguage.code) {
+        "en" -> context.getString(R.string.contribute_en)
+        "ro" -> context.getString(R.string.contribute_ro)
+        else -> context.getString(R.string.contribute_en)
+    }
+}
+
+fun load_whatsYourName(context: Context): String {
+    return  when (AppConfig.mainLanguage.code) {
+        "en" -> context.getString(R.string.hello_en)
+        "ro" -> context.getString(R.string.hello_ro)
+        else -> context.getString(R.string.hello_en)
+    }
+}
+
+fun load_howOldAreYou(context: Context): String {
+    return  when (AppConfig.mainLanguage.code) {
+        "en" -> context.getString(R.string.old_en)
+        "ro" -> context.getString(R.string.old_ro)
+        else -> context.getString(R.string.old_en)
+    }
+}
+
+fun load_whatTypeOfVision(context: Context): String {
+    return  when (AppConfig.mainLanguage.code) {
+        "en" -> context.getString(R.string.visual_condition_en)
+        "ro" -> context.getString(R.string.visual_condition_ro)
+        else -> context.getString(R.string.visual_condition_en)
+    }
+}
+
+fun load_agreeButton(context: Context): String {
+    return when (AppConfig.mainLanguage.code) {
+        "en" -> "Agree"
+        "ro" -> "De acord"
+        else -> "Agree"
+    }
+}
+
+fun load_disagreeButton(context: Context): String {
+    return when (AppConfig.mainLanguage.code) {
+        "en" -> "Disagree"
+        "ro" -> "Nu sunt de acord"
+        else -> "Disagree"
     }
 }

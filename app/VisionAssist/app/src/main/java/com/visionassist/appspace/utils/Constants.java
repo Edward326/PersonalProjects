@@ -44,6 +44,7 @@ public class Constants {
     public static final String EXTRA_CAPTION_TEXT = "extra_caption_text";
     public static final String EXTRA_PERMISSION_OPTION = "permission_option";
     public static final String EXTRA_WELCOME_OPTION = "welcome_option";
+    public static final String EXTRA_USERINFO_OPTION = "userinfo_option";
 
     // Battery and Temperature Checks
     public static final boolean APPLY_BATTERY_CHECK = true;
@@ -126,8 +127,10 @@ public class Constants {
     // Standard screen weighters
     public static final float STD_TITLE_MARGIN_TOP=0.372f;
     public static final float STD_SUBTITLE_MARGIN_TOP=0.51f;
-    public static final float STD_TITLE_SUBTITLE_MARGIN_TOP=0.035f;
+    public static final float STD_SUBTITLE2_MARGIN_TOP=0.48f;
+    public static final float STD_TITLE_SUBTITLE_MARGIN_TOP=0.045f;
     public static final float STD_SUBTITLE_BODY_MARGIN_TOP=0.04f;
+    public static final float STD_NAV_MARGIN_BOTTOM=0.10f;
 
     // Debug Configuration
     public static final boolean DEBUG_MODE = true;

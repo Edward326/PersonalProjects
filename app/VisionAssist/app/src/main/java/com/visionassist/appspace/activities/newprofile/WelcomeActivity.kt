@@ -159,6 +159,7 @@ class WelcomeActivity : ComponentActivity() {
 
         // Navigate to next activity (UserInfoActivity or similar)
         val intent = Intent(this, UserInfoActivity::class.java)
+        intent.putExtra(Constants.EXTRA_USERINFO_OPTION, 1)
         startActivity(intent)
         finish()
     }
@@ -166,13 +167,19 @@ class WelcomeActivity : ComponentActivity() {
     private fun showLoadProfileInfo() {
         Log.d(TAG, "Show Load Profile info")
         val message = load_loadProfileText(this)
-        loadProfileInfoManager.showNotification(message,{},true)
+        loadProfileInfoManager.showNotification(
+            message,{
+                loadProfileInfoManager.hideNotification()
+            },"OK")
     }
 
     private fun showNewProfileInfo() {
         Log.d(TAG, "Show New Profile info")
         val message = load_newProfileText(this)
-        newProfileInfoManager.showNotification(message,{},true)
+        loadProfileInfoManager.showNotification(
+            message,{
+                loadProfileInfoManager.hideNotification()
+            },"OK")
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
@@ -252,7 +259,7 @@ fun WelcomeScreen(
             }
         }
 
-        val bottomSpace=screenHeight * 0.10f
+        val bottomSpace=screenHeight * Constants.STD_NAV_MARGIN_BOTTOM
         if (currentSection == Section.LANGUAGE) {
             // Navigation Buttons (not animated, always visible at bottom)
             Row(

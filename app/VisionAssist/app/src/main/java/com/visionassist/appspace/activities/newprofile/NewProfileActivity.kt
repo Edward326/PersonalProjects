@@ -34,7 +34,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CloudOff
-import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -68,7 +67,7 @@ import com.visionassist.appspace.database.DBConstants
 import com.visionassist.appspace.database.DBManager
 import com.visionassist.appspace.database.NetworkUtils
 import com.visionassist.appspace.jetpack.design.BackArrowLargeFab
-import com.visionassist.appspace.jetpack.design.LoadProfileNotificationDialog
+import com.visionassist.appspace.jetpack.design.NotificationDialog
 import com.visionassist.appspace.jetpack.design.LoadingComponent
 import com.visionassist.appspace.jetpack.design.NextArrowLargeFab
 import com.visionassist.appspace.utils.AppConfig
@@ -76,6 +75,9 @@ import com.visionassist.appspace.utils.BackgroundTaskExecutor
 import com.visionassist.appspace.utils.Constants
 import com.visionassist.appspace.utils.load_createdAccount
 import com.visionassist.appspace.utils.load_creatingAccount
+import com.visionassist.appspace.utils.load_emailAlreadyExists
+import com.visionassist.appspace.utils.load_genericErrorNew
+import com.visionassist.appspace.utils.load_invalidEmail
 import com.visionassist.appspace.utils.load_noInternet
 import com.visionassist.appspace.utils.robotoLight
 import com.visionassist.appspace.utils.robotoRegular
@@ -89,17 +91,21 @@ class NewProfileActivity : ComponentActivity() {
 
     // State management
     private val showRegisterSection = mutableStateOf(false)
-    private val switchEnabled = mutableStateOf(true)
     private val switchChecked = mutableStateOf(false)
-
     private val showNotification = mutableStateOf(false)
-    private val notificationMessage = mutableStateOf("")
     private val notificationType = mutableStateOf(NotificationType.SUCCESS)
+    private val notificationMessage = mutableStateOf("")
+    private val showOneButton = mutableStateOf(false)
     private val showTwoButtons = mutableStateOf(false)
-
+    private val showThreeButtons = mutableStateOf(false)
+    private val firstButtonLabel = mutableStateOf("OK")
+    private val secondButtonLabel = mutableStateOf("Cancel")
+    private val thirdButtonLabel = mutableStateOf("Cancel")
+    private val firstButtonClick = mutableStateOf({})
+    private val secondButtonClick = mutableStateOf({})
+    private val thirdButtonClick = mutableStateOf({})
     private val showLoading = mutableStateOf(false)
     private val loadingText = mutableStateOf("")
-
     private val emailInput = mutableStateOf("")
     private val passwordInput = mutableStateOf("")
     private val showEmailError = mutableStateOf(false)
@@ -115,7 +121,6 @@ class NewProfileActivity : ComponentActivity() {
         setContent {
             NewProfileScreen(
                 showRegisterSection = showRegisterSection.value,
-                switchEnabled = switchEnabled.value,
                 switchChecked = switchChecked.value,
                 emailInput = emailInput.value,
                 passwordInput = passwordInput.value,
@@ -124,9 +129,17 @@ class NewProfileActivity : ComponentActivity() {
                 showLoading = showLoading.value,
                 loadingText = loadingText.value,
                 showNotification = showNotification.value,
-                notificationMessage = notificationMessage.value,
                 notificationType = notificationType.value,
+                notificationMessage = notificationMessage.value,
+                showOneButton = showOneButton.value,
                 showTwoButtons = showTwoButtons.value,
+                showThreeButtons = showThreeButtons.value,
+                firstButtonLabel = firstButtonLabel.value,
+                secondButtonLabel = secondButtonLabel.value,
+                thirdButtonLabel = thirdButtonLabel.value,
+                firstButtonClick = firstButtonClick.value,
+                secondButtonClick = secondButtonClick.value,
+                thirdButtonClick = thirdButtonClick.value,
                 onSwitchChanged = ::handleSwitchChanged,
                 onEmailChange = { emailInput.value = it; showEmailError.value = false },
                 onPasswordChange = { passwordInput.value = it; showPasswordError.value = false },
@@ -134,9 +147,6 @@ class NewProfileActivity : ComponentActivity() {
                 onNextFromProfileSelection = ::handleNextFromProfileSelection,
                 onBackFromRegister = ::handleBackFromRegister,
                 onDoneFromRegister = ::handleDoneFromRegister,
-                onNotificationOk = ::hideNotification,
-                onNotificationRetry = ::handleNotificationRetry,
-                onNotificationLogin = ::handleNotificationLogin,
             )
         }
     }
@@ -147,8 +157,8 @@ class NewProfileActivity : ComponentActivity() {
                 showNoInternetNotification()
                 switchChecked.value = false
             } else {
-                switchChecked.value = true
                 showRegisterSection.value = true
+                switchChecked.value = true
             }
         }
     }
@@ -259,10 +269,7 @@ class NewProfileActivity : ComponentActivity() {
     private fun handleRegistrationResult() {
         when (registerStatus) {
             DBConstants.ACCOUNT_CREATED -> {
-                notificationType.value = NotificationType.SUCCESS
-                notificationMessage.value = load_createdAccount(this)
-                showTwoButtons.value = false
-                showNotification.value = true
+                showSuccessNotification(load_createdAccount(this))
 
                 // Navigate after 5 seconds
                 mainHandler.postDelayed({
@@ -281,8 +288,8 @@ class NewProfileActivity : ComponentActivity() {
                 showNoInternetNotification()
             }
 
-            DBConstants.SYNC_OK,DBConstants.PASSWORD_INCORRECT
-                 -> {
+            DBConstants.SYNC_OK, DBConstants.PASSWORD_INCORRECT
+                -> {
                 showEmailExistsNotification()
             }
 
@@ -301,57 +308,74 @@ class NewProfileActivity : ComponentActivity() {
         }
     }
 
+    private fun showSuccessNotification(message: String) {
+        notificationType.value = NotificationType.SUCCESS
+        notificationMessage.value = message
+        showOneButton.value = false
+        showTwoButtons.value = false
+        showThreeButtons.value = false
+        showNotification.value = true
+    }
+
     private fun showNoInternetNotification() {
         notificationType.value = NotificationType.NO_INTERNET
         notificationMessage.value = load_noInternet(this)
+        showOneButton.value = true
         showTwoButtons.value = false
+        showThreeButtons.value = false
+        firstButtonLabel.value = "OK"
+        firstButtonClick.value = { hideNotification() }
         showNotification.value = true
     }
 
     private fun showEmailExistsNotification() {
         notificationType.value = NotificationType.ERROR
-        notificationMessage.value = if(AppConfig.mainLanguage.code=="en")
-            "Email already exists"
-        else
-            ("Email-ul deja există")
+        notificationMessage.value = load_emailAlreadyExists(this)
+        showOneButton.value = false
         showTwoButtons.value = true
+        showThreeButtons.value = false
+        firstButtonLabel.value = if (AppConfig.mainLanguage.code == "en") "Retry" else "Reîncearcă"
+        firstButtonClick.value = { hideNotification() }
+        secondButtonLabel.value =
+            if (AppConfig.mainLanguage.code == "en") "Login" else "Autentificare"
+        firstButtonClick.value = { handleNotificationLogin()}
         showNotification.value = true
     }
 
     private fun showInvalidEmailNotification() {
         notificationType.value = NotificationType.ERROR
-        notificationMessage.value = if(AppConfig.mainLanguage.code=="en")
-            "Invalid mail address"
-        else
-            ("Email-ul este invalid")
+        notificationMessage.value = load_invalidEmail(this)
+        showOneButton.value = true
         showTwoButtons.value = false
+        showThreeButtons.value = false
+        firstButtonLabel.value = "OK"
+        firstButtonClick.value = { hideNotification() }
         showNotification.value = true
     }
 
     private fun showCreationErrorNotification() {
         notificationType.value = NotificationType.ERROR
-        notificationMessage.value = if(AppConfig.mainLanguage.code=="en")
-            "Error was encountered while creating the profile"
-        else
-            ("A apărut o eroare la crearea profilului")
+        notificationMessage.value = load_genericErrorNew(this)
+        showOneButton.value = false
         showTwoButtons.value = true
+        showThreeButtons.value = false
+        firstButtonLabel.value = if (AppConfig.mainLanguage.code == "en") "Retry" else "Reîncearcă"
+        firstButtonClick.value = { hideNotification() }
+        secondButtonLabel.value =
+            if (AppConfig.mainLanguage.code == "en") "Try local" else "Continuați local"
+        firstButtonClick.value = { handleNextFromProfileSelection() }
         showNotification.value = true
     }
 
     private fun hideNotification() {
         showNotification.value = false
 
-        // If we're showing internet error and in register section, navigate to first section
+        // If we're showing internet error and in login section, navigate to first section
         if (notificationType.value == NotificationType.NO_INTERNET && showRegisterSection.value) {
-            showRegisterSection.value = false
             mainHandler.postDelayed({
-                switchChecked.value = false
+                showRegisterSection.value = false
             }, 100)
         }
-    }
-
-    private fun handleNotificationRetry() {
-        hideNotification()
     }
 
     private fun handleNotificationLogin() {
@@ -366,7 +390,6 @@ class NewProfileActivity : ComponentActivity() {
 @Composable
 fun NewProfileScreen(
     showRegisterSection: Boolean,
-    switchEnabled: Boolean,
     switchChecked: Boolean,
     emailInput: String,
     passwordInput: String,
@@ -375,9 +398,17 @@ fun NewProfileScreen(
     showLoading: Boolean,
     loadingText: String,
     showNotification: Boolean,
-    notificationMessage: String,
     notificationType: NotificationType,
+    notificationMessage: String,
+    showOneButton: Boolean,
     showTwoButtons: Boolean,
+    showThreeButtons: Boolean,
+    firstButtonLabel: String,
+    secondButtonLabel: String,
+    thirdButtonLabel: String,
+    firstButtonClick: () -> Unit,
+    secondButtonClick: () -> Unit,
+    thirdButtonClick: () -> Unit,
     onSwitchChanged: (Boolean) -> Unit,
     onEmailChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
@@ -385,9 +416,6 @@ fun NewProfileScreen(
     onNextFromProfileSelection: () -> Unit,
     onBackFromRegister: () -> Unit,
     onDoneFromRegister: () -> Unit,
-    onNotificationOk: () -> Unit,
-    onNotificationRetry: () -> Unit,
-    onNotificationLogin: () -> Unit,
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val screenHeight = maxHeight
@@ -414,7 +442,6 @@ fun NewProfileScreen(
             )
         ) {
             ProfileSelectionSection(
-                switchEnabled = switchEnabled,
                 switchChecked = switchChecked,
                 onSwitchChanged = onSwitchChanged
             )
@@ -450,25 +477,29 @@ fun NewProfileScreen(
         )
 
         // Notification Dialog
-        LoadProfileNotificationDialog(
+        NotificationDialog(
             isVisible = showNotification,
-            message = notificationMessage,
             type = notificationType,
+            message = notificationMessage,
+            showOneButton = showOneButton,
             showTwoButtons = showTwoButtons,
-            onOkClick = onNotificationOk,
-            onRetryClick = onNotificationRetry,
-            onCreateAccountClick = onNotificationLogin,
-            newprofile = true
+            showThreeButtons = showThreeButtons,
+            firstButtonLabel = firstButtonLabel,
+            secondButtonLabel = secondButtonLabel,
+            thirdButtonLabel = thirdButtonLabel,
+            firstButtonClick = firstButtonClick,
+            secondButtonClick = secondButtonClick,
+            thirdButtonClick = thirdButtonClick
         )
 
-        val bottomSpace=screenHeight * 0.10f
+        val bottomSpace=screenHeight * Constants.STD_NAV_MARGIN_BOTTOM
         // Navigation Buttons (only for ProfileSelectionSection)
         if (!showRegisterSection) {
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = bottomSpace),
-                horizontalArrangement = Arrangement.spacedBy(screenWidth*0.08f)
+                horizontalArrangement = Arrangement.spacedBy(screenWidth * 0.08f)
             ) {
                 BackArrowLargeFab(
                     onClick = onBackFromProfileSelection
@@ -484,7 +515,6 @@ fun NewProfileScreen(
 
 @Composable
 fun ProfileSelectionSection(
-    switchEnabled: Boolean,
     switchChecked: Boolean,
     onSwitchChanged: (Boolean) -> Unit
 ) {
@@ -492,7 +522,7 @@ fun ProfileSelectionSection(
         modifier = Modifier.fillMaxSize()
     ) {
         val screenHeight = maxHeight
-        val screenWidth=maxWidth
+        val screenWidth = maxWidth
         Column(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.SpaceAround
@@ -501,11 +531,10 @@ fun ProfileSelectionSection(
 
             // Title text
             Text(
-                text = if(AppConfig.mainLanguage.code=="en")
+                text = if (AppConfig.mainLanguage.code == "en")
                     "Would you want\nto sync the profile?"
                 else
-                    "Ați dori\n sincronizarea profilului?"
-                ,
+                    "Ați dori\n sincronizarea profilului?",
                 fontSize = 32.sp,
                 color = colorResource(R.color.std_cyan),
                 fontFamily = robotoSemibold,
@@ -529,7 +558,7 @@ fun ProfileSelectionSection(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = if(AppConfig.mainLanguage.code=="en")
+                        text = if (AppConfig.mainLanguage.code == "en")
                             "No"
                         else
                             "Nu",
@@ -539,7 +568,7 @@ fun ProfileSelectionSection(
                     )
                     Icon(
                         imageVector = Icons.Filled.CloudOff,
-                        contentDescription = if(AppConfig.mainLanguage.code=="en")
+                        contentDescription = if (AppConfig.mainLanguage.code == "en")
                             "No sync icon"
                         else
                             "Iconiță fără sincronizare",
@@ -552,8 +581,8 @@ fun ProfileSelectionSection(
                 Switch(
                     checked = switchChecked,
                     onCheckedChange = onSwitchChanged,
-                    enabled = switchEnabled,
-                    modifier = Modifier.size(screenWidth*0.05f),
+                    enabled = true,
+                    modifier = Modifier.size(screenWidth * 0.05f),
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = colorResource(R.color.std_cyan),
                         checkedTrackColor = colorResource(R.color.std_cyan).copy(alpha = 0.5f),
@@ -569,7 +598,7 @@ fun ProfileSelectionSection(
                 ) {
                     Icon(
                         imageVector = Icons.Filled.AccountCircle,
-                        contentDescription = if(AppConfig.mainLanguage.code=="en")
+                        contentDescription = if (AppConfig.mainLanguage.code == "en")
                             "Sync"
                         else
                             "Iconiță cu sincronizare",
@@ -577,7 +606,7 @@ fun ProfileSelectionSection(
                         tint = Color.Black
                     )
                     Text(
-                        text = if(AppConfig.mainLanguage.code=="en")
+                        text = if (AppConfig.mainLanguage.code == "en")
                             "Yes"
                         else
                             "Da",
@@ -654,7 +683,7 @@ fun RegisterSection(
             Card(
                 modifier = Modifier
                     .fillMaxWidth(0.8f)
-                    .height(screenHeight*0.29f),
+                    .height(screenHeight * 0.29f),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = colorResource(R.color.notification_white)
@@ -702,7 +731,7 @@ fun RegisterSection(
                                     .fillMaxWidth()
                                     .background(
                                         color = Color.White,
-                                        shape = RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp)
+                                        shape = RoundedCornerShape(10.dp)
                                     )
                                     .border(
                                         width = 1.dp,
@@ -710,7 +739,7 @@ fun RegisterSection(
                                             colorResource(R.color.error_red)
                                         else
                                             Color.LightGray,
-                                        shape = RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp)
+                                        shape = RoundedCornerShape(10.dp)
                                     )
                                     .padding(12.dp),
                                 textStyle = TextStyle(
@@ -729,7 +758,7 @@ fun RegisterSection(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = if(AppConfig.mainLanguage.code=="en")"Password" else "Parolă",
+                                    text = if (AppConfig.mainLanguage.code == "en") "Password" else "Parolă",
                                     fontSize = Constants.STD_FONT_SIZE.sp,
                                     color = colorResource(R.color.std_cyan),
                                     fontFamily = robotoSemibold
@@ -754,21 +783,15 @@ fun RegisterSection(
                                     .fillMaxWidth()
                                     .background(
                                         color = Color.White,
-                                        shape = RoundedCornerShape(
-                                            bottomStart = 10.dp,
-                                            bottomEnd = 10.dp
-                                        )
+                                        shape = RoundedCornerShape(10.dp)
                                     )
                                     .border(
                                         width = 1.dp,
-                                        color = if (showPasswordError)
+                                        color = if (showEmailError)
                                             colorResource(R.color.error_red)
                                         else
                                             Color.LightGray,
-                                        shape = RoundedCornerShape(
-                                            bottomStart = 10.dp,
-                                            bottomEnd = 10.dp
-                                        )
+                                        shape = RoundedCornerShape(10.dp)
                                     )
                                     .padding(12.dp),
                                 textStyle = TextStyle(
@@ -844,7 +867,12 @@ fun RegisterSection(
     }
 }
 
-@Preview(name = "New Profile Activity/CreateProfileScreenSection", showBackground = true, widthDp = 412, heightDp = 917)
+@Preview(
+    name = "New Profile Activity/CreateProfileScreenSection",
+    showBackground = true,
+    widthDp = 412,
+    heightDp = 917
+)
 @Composable
 fun ProfileSelectionSectionPreview() {
     MaterialTheme {
@@ -856,14 +884,18 @@ fun ProfileSelectionSectionPreview() {
         )
 
         ProfileSelectionSection(
-            switchEnabled = true,
             switchChecked = false,
             onSwitchChanged = {}
         )
     }
 }
 
-@Preview(name = "New Profile Activity/RegisterSection", showBackground = true, widthDp = 412, heightDp = 917)
+@Preview(
+    name = "New Profile Activity/RegisterSection",
+    showBackground = true,
+    widthDp = 412,
+    heightDp = 917
+)
 @Composable
 fun RegisterSectionPreview() {
     MaterialTheme {
@@ -893,7 +925,6 @@ fun NewProfileActivityPreview() {
     MaterialTheme {
         NewProfileScreen(
             showRegisterSection = false,
-            switchEnabled = true,
             switchChecked = false,
             emailInput = "example@gmail.com",
             passwordInput = "",
@@ -904,7 +935,15 @@ fun NewProfileActivityPreview() {
             showNotification = false,
             notificationMessage = "",
             notificationType = NotificationType.SUCCESS,
+            showOneButton = true,
             showTwoButtons = false,
+            showThreeButtons = false,
+            firstButtonLabel = "OK",
+            secondButtonLabel = "",
+            thirdButtonLabel = "",
+            firstButtonClick = {},
+            secondButtonClick = {},
+            thirdButtonClick = {},
             onSwitchChanged = {},
             onEmailChange = {},
             onPasswordChange = {},
@@ -912,9 +951,6 @@ fun NewProfileActivityPreview() {
             onNextFromProfileSelection = {},
             onBackFromRegister = {},
             onDoneFromRegister = {},
-            onNotificationOk = {},
-            onNotificationRetry = {},
-            onNotificationLogin = {},
         )
     }
 }

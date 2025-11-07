@@ -8,7 +8,6 @@ import android.content.IntentFilter;
 import android.os.BatteryManager;
 import android.util.Log;
 import android.util.Pair;
-
 import com.visionassist.appspace.ExceptionVisionAssist;
 import com.visionassist.appspace.PhoneStatusMonitor;
 import com.visionassist.appspace.activities.newprofile.ConfigurationActivity;
@@ -18,17 +17,13 @@ import com.visionassist.appspace.activities.newprofile.UserAccesibility1Activity
 import com.visionassist.appspace.activities.newprofile.UserAccesibility2Activity;
 import com.visionassist.appspace.activities.newprofile.UserHashCachingActivity;
 import com.visionassist.appspace.activities.newprofile.UserInfoActivity;
-import com.visionassist.appspace.activities.newprofile.UserInfoE1Activity;
-import com.visionassist.appspace.activities.newprofile.UserInfoE2Activity;
 import com.visionassist.appspace.activities.newprofile.UserInfoE3Activity;
 import com.visionassist.appspace.activities.newprofile.WelcomeActivity;
 import com.visionassist.appspace.database.DBConstants;
 import com.visionassist.appspace.jetpack.managers.ErrorDialogManager;
 import com.visionassist.appspace.jetpack.managers.LoadingManager;
-
 import org.json.JSONException;
 import org.json.JSONObject;
-
 import java.io.InputStream;
 
 public class Utils {
@@ -154,6 +149,7 @@ public class Utils {
                     AppConfig.blindness = profileStatusDecider.second.getBoolean("blindness");
                     AppConfig.mainLanguage = languageExtractor(profileStatusDecider.second);
                     intent = new Intent(context, UserInfoActivity.class);
+                    intent.putExtra(Constants.EXTRA_USERINFO_OPTION,1);
                     Intent finalIntent4 = intent;
                     loadingManager.hideLoading();
                     context.startActivity(finalIntent4);
@@ -167,7 +163,8 @@ public class Utils {
                 try {
                     AppConfig.blindness = profileStatusDecider.second.getBoolean("blindness");
                     AppConfig.mainLanguage = languageExtractor(profileStatusDecider.second);
-                    intent = new Intent(context, UserInfoE1Activity.class);
+                    intent = new Intent(context, UserInfoActivity.class);
+                    intent.putExtra(Constants.EXTRA_USERINFO_OPTION,2);
                     Intent finalIntent5 = intent;
                     loadingManager.hideLoading();
                     context.startActivity(finalIntent5);
@@ -181,7 +178,8 @@ public class Utils {
                 try {
                     AppConfig.blindness = profileStatusDecider.second.getBoolean("blindness");
                     AppConfig.mainLanguage = languageExtractor(profileStatusDecider.second);
-                    intent = new Intent(context, UserInfoE2Activity.class);
+                    intent = new Intent(context, UserInfoActivity.class);
+                    intent.putExtra(Constants.EXTRA_USERINFO_OPTION,3);
                     Intent finalIntent6 = intent;
                     loadingManager.hideLoading();
                     context.startActivity(finalIntent6);

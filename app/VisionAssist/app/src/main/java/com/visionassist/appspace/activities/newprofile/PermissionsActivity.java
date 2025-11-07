@@ -115,7 +115,12 @@ public class PermissionsActivity extends AppCompatActivity {
                 message = getString(R.string.camera_permission_info_en);
             else
                 message = load_permissionInfo(PhoneStatusMonitor.getInstance().getCurrentContext(), "camera");
-            infoNotificationManager.showNotification(message, this::requestCameraPermission,false);
+            infoNotificationManager.showNotification(message,
+                    ()->{
+                        infoNotificationManager.hideNotification();
+                        requestCameraPermission();
+                    },
+                    "OK");
         } else {
             requestCameraPermission();
         }
@@ -151,7 +156,12 @@ public class PermissionsActivity extends AppCompatActivity {
                 message = getString(R.string.microphone_permission_info_en);
             else
                 message = load_permissionInfo(PhoneStatusMonitor.getInstance().getCurrentContext(), "microphone");
-            infoNotificationManager.showNotification(message, this::requestMicrophonePermission,false);
+            infoNotificationManager.showNotification(message,
+                    ()->{
+                        infoNotificationManager.hideNotification();
+                        requestMicrophonePermission();
+                    },
+                    "OK");
         } else {
             requestMicrophonePermission();
         }
@@ -191,7 +201,12 @@ public class PermissionsActivity extends AppCompatActivity {
                 message = getString(R.string.storage_permission_info_en);
             else
                 message = load_permissionInfo(PhoneStatusMonitor.getInstance().getCurrentContext(), "storage");
-            infoNotificationManager.showNotification(message, this::requestStoragePermissions,false);
+            infoNotificationManager.showNotification(message,
+                    ()->{
+                        infoNotificationManager.hideNotification();
+                        requestStoragePermissions();
+                    },
+                    "OK");
         } else {
             requestStoragePermissions();
         }

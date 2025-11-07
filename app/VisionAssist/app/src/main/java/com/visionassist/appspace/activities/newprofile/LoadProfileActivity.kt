@@ -51,7 +51,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -77,7 +76,7 @@ import com.visionassist.appspace.activities.newprofile.jsonCollection.ProfileFil
 import com.visionassist.appspace.database.DBConstants
 import com.visionassist.appspace.database.NetworkUtils
 import com.visionassist.appspace.jetpack.design.BackArrowLargeFab
-import com.visionassist.appspace.jetpack.design.LoadProfileNotificationDialog
+import com.visionassist.appspace.jetpack.design.NotificationDialog
 import com.visionassist.appspace.jetpack.design.LoadingComponent
 import com.visionassist.appspace.jetpack.managers.InfoNotificationManager
 import com.visionassist.appspace.models.ttsengine.TTSManager
@@ -89,11 +88,13 @@ import com.visionassist.appspace.utils.JSONValidation
 import com.visionassist.appspace.utils.Utils
 import com.visionassist.appspace.utils.load_accountNE
 import com.visionassist.appspace.utils.load_errorLocalLoadProfileActivity
-import com.visionassist.appspace.utils.load_genericError
+import com.visionassist.appspace.utils.load_genericErrorLoad
 import com.visionassist.appspace.utils.load_infoLoadProfileActivity
 import com.visionassist.appspace.utils.load_loadingText
 import com.visionassist.appspace.utils.load_loadingVerifying
 import com.visionassist.appspace.utils.load_noInternet
+import com.visionassist.appspace.utils.load_passChangedSuccess
+import com.visionassist.appspace.utils.load_profileImportedSuccess
 import com.visionassist.appspace.utils.load_successLocalLoadProfileActivity
 import com.visionassist.appspace.utils.robotoLight
 import com.visionassist.appspace.utils.robotoRegular
@@ -110,12 +111,18 @@ class LoadProfileActivity : ComponentActivity() {
 
     // State management
     private val showProfileSelection = mutableStateOf(true)
-    private val showLoginSection = mutableStateOf(false)
     private val showNotification = mutableStateOf(false)
-    private val notificationMessage = mutableStateOf("")
     private val notificationType = mutableStateOf(NotificationType.SUCCESS)
-    private val notificationErrorCode = mutableIntStateOf(0)
+    private val notificationMessage = mutableStateOf("")
+    private val showOneButton = mutableStateOf(false)
     private val showTwoButtons = mutableStateOf(false)
+    private val showThreeButtons = mutableStateOf(false)
+    private val firstButtonLabel = mutableStateOf("OK")
+    private val secondButtonLabel = mutableStateOf("Cancel")
+    private val thirdButtonLabel = mutableStateOf("Cancel")
+    private val firstButtonClick = mutableStateOf({})
+    private val secondButtonClick = mutableStateOf({})
+    private val thirdButtonClick = mutableStateOf({})
     private val showLoading = mutableStateOf(false)
     private val loadingText = mutableStateOf("")
     private val emailInput = mutableStateOf("example@gmail.com")
@@ -146,9 +153,6 @@ class LoadProfileActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Initialize info notification manager
-        infoNotificationManager = InfoNotificationManager(this)
-
         // Register folder picker
         folderPickerLauncher = registerForActivityResult(
             ActivityResultContracts.OpenDocumentTree()
@@ -161,11 +165,18 @@ class LoadProfileActivity : ComponentActivity() {
         setContent {
             LoadProfileScreen(
                 showProfileSelection = showProfileSelection.value,
-                showLoginSection = showLoginSection.value,
                 showNotification = showNotification.value,
-                notificationMessage = notificationMessage.value,
                 notificationType = notificationType.value,
+                notificationMessage = notificationMessage.value,
+                showOneButton = showOneButton.value,
                 showTwoButtons = showTwoButtons.value,
+                showThreeButtons = showThreeButtons.value,
+                firstButtonLabel = firstButtonLabel.value,
+                secondButtonLabel = secondButtonLabel.value,
+                thirdButtonLabel = thirdButtonLabel.value,
+                firstButtonClick = firstButtonClick.value,
+                secondButtonClick = secondButtonClick.value,
+                thirdButtonClick = thirdButtonClick.value,
                 showLoading = showLoading.value,
                 loadingText = loadingText.value,
                 emailInput = emailInput.value,
@@ -179,11 +190,7 @@ class LoadProfileActivity : ComponentActivity() {
                 onHaveAccountClick = ::handleHaveAccountClick,
                 onForgotPasswordClick = ::handleForgotPassword,
                 onBackClickLoginSection = ::handleBackFromLoginSection,
-                onLoginDoneClick = ::handleLoginDone,
-                onNotificationRetry = ::handleNotificationRetry,
-                onNotificationCreateAccount = ::handleCreateAccount,
-                onNotificationLoadLocal = ::handleLoadLocalFromError,
-                onNotificationOk = ::hideNotification
+                onLoginDoneClick = ::handleLoginDone
             )
         }
     }
@@ -210,7 +217,6 @@ class LoadProfileActivity : ComponentActivity() {
 
     private fun handleBackFromLoginSection() {
         showNotification.value = false
-        showLoginSection.value = false
         mainHandler.postDelayed({
             showProfileSelection.value = true
         }, 100)
@@ -218,10 +224,11 @@ class LoadProfileActivity : ComponentActivity() {
 
     private fun handleLocallyClick() {
         val message = load_infoLoadProfileActivity(this)
+        val butOpt = if (AppConfig.mainLanguage.code == "en") "Files" else "Fișiere"
         infoNotificationManager.showNotification(message, {
-            // Launch folder picker
+            infoNotificationManager.hideNotification()
             folderPickerLauncher.launch(null)
-        }, false)
+        }, butOpt)
     }
 
     private fun handleHaveAccountClick() {
@@ -232,30 +239,16 @@ class LoadProfileActivity : ComponentActivity() {
         }
         // Slide to login section
         showProfileSelection.value = false
-        mainHandler.postDelayed({
-            showLoginSection.value = true
-        }, 100)
-    }
-
-    private fun handleNotificationRetry() {
-        hideNotification()
     }
 
     private fun handleCreateAccount() {
         Log.d(TAG, "Navigate to create account")
 
         hideNotification()
-
         ProfileFileCollection.welcomeActivityWrite(true, null, false)
-
         val intent = Intent(this, NewProfileActivity::class.java)
         startActivity(intent)
         finish()
-    }
-
-    private fun handleLoadLocalFromError() {
-        hideNotification()
-        handleLocallyClick()
     }
 
     private fun handleForgotPassword() {
@@ -326,18 +319,12 @@ class LoadProfileActivity : ComponentActivity() {
         when (loginStatus) {
             DBConstants.PASSWORD_RESET_SENT -> {
                 // Show success notification
-                notificationType.value = NotificationType.SUCCESS
-                if (AppConfig.mainLanguage.code == "en")
-                    notificationMessage.value = "Password change request sent to\n${emailInput.value}"
-                else
-                    notificationMessage.value = "Cerere de schimbare a parolei trimisă către\n${emailInput.value}"
-                showTwoButtons.value = false
-                showNotification.value = true
+                showSuccessNotification(load_passChangedSuccess(this,emailInput.value))
 
                 // Hide after 5 seconds
                 mainHandler.postDelayed({
                     hideNotification()
-                }, 5000)
+                }, Constants.SUCCESS_NOTIFICATION_DELAY.toLong())
             }
 
             DBConstants.INTERNET_CONNECTION_FAILED -> {
@@ -352,7 +339,7 @@ class LoadProfileActivity : ComponentActivity() {
 
             else -> {
                 // Generic error
-                showLoginErrorNotification(load_genericError(this))
+                showLoginErrorNotification(load_genericErrorLoad(this))
             }
         }
     }
@@ -482,15 +469,7 @@ class LoadProfileActivity : ComponentActivity() {
     private fun handleLoginResult() {
         when (loginStatus) {
             Constants.LOAD_PROFILE_SUCCESS -> {
-                // Show success notification (no error code)
-                notificationType.value = NotificationType.SUCCESS
-                notificationMessage.value = when(AppConfig.mainLanguage.code) {
-                    "en" -> "Profile imported successfully"
-                    "ro" -> "Profilul a fost importat cu succes"
-                    else -> "Profile imported successfully"
-                }
-                showTwoButtons.value = false
-                showNotification.value = true
+                showSuccessNotification(load_profileImportedSuccess(this))
 
                 // Navigate after 5 seconds
                 mainHandler.postDelayed({
@@ -509,7 +488,6 @@ class LoadProfileActivity : ComponentActivity() {
 
             DBConstants.INTERNET_CONNECTION_FAILED -> {
                 showNoInternetNotification()
-                // Navigate to first section when OK pressed
             }
 
             DBConstants.EMAIL_NOT_FOUND -> {
@@ -518,23 +496,29 @@ class LoadProfileActivity : ComponentActivity() {
 
             DBConstants.PASSWORD_INCORRECT -> {
                 notificationType.value = NotificationType.ERROR
-                notificationMessage.value = when(AppConfig.mainLanguage.code) {
+                notificationMessage.value = when (AppConfig.mainLanguage.code) {
                     "en" -> "Incorrect password"
                     "ro" -> "Parola incorectă"
                     else -> "Incorrect password"
                 }
-                showTwoButtons.value = false  // Only OK button
+                showOneButton.value = true
+                showTwoButtons.value = false
+                showThreeButtons.value = false
+                firstButtonLabel.value = "OK"
+                firstButtonClick.value = {
+                    hideNotification()
+                }
                 showNotification.value = true
             }
 
             DBConstants.DATA_FETCH_ERROR,
             DBConstants.DATA_WRITE_ERROR -> {
-                showLoginErrorNotification(load_genericError(this))
+                showLoginErrorNotification(load_genericErrorLoad(this))
             }
 
             else -> {
                 // Other errors (asset loading errors, etc.)
-                showLoginErrorNotification(load_genericError(this))
+                showLoginErrorNotification(load_genericErrorLoad(this))
             }
         }
     }
@@ -967,7 +951,7 @@ class LoadProfileActivity : ComponentActivity() {
             Constants.LOAD_PROFILE_FILE_ENVR_UPLOAD_ERROR,
             Constants.LOAD_PROFILE_FILE_HC_UPLOAD_ERROR
                 -> {
-                showSuccessNotification()
+                showSuccessNotification(load_successLocalLoadProfileActivity(this, loadStatus))
 
                 // Navigate to home after delay
                 mainHandler.postDelayed({
@@ -989,34 +973,59 @@ class LoadProfileActivity : ComponentActivity() {
         }
     }
 
-    private fun showSuccessNotification() {
+    private fun showSuccessNotification(message: String) {
         notificationType.value = NotificationType.SUCCESS
-        notificationMessage.value = load_successLocalLoadProfileActivity(this, loadStatus)
-        notificationErrorCode.intValue = loadStatus
+        notificationMessage.value = message
+        showOneButton.value = false
         showTwoButtons.value = false
+        showThreeButtons.value = false
         showNotification.value = true
     }
 
     private fun showErrorNotification(errorCode: Int) {
         notificationType.value = NotificationType.ERROR
         notificationMessage.value = load_errorLocalLoadProfileActivity(this, errorCode)
-        notificationErrorCode.intValue = errorCode
+        showOneButton.value = false
         showTwoButtons.value = true
+        showThreeButtons.value = false
+        firstButtonLabel.value = if (AppConfig.mainLanguage.code == "en") "Retry" else "Reîncearcă"
+        firstButtonClick.value = { hideNotification() }
+        secondButtonLabel.value =
+            if (AppConfig.mainLanguage.code == "en") "Create account" else "Creează cont"
+        firstButtonClick.value = { handleCreateAccount() }
         showNotification.value = true
     }
 
     private fun showNoInternetNotification() {
         notificationType.value = NotificationType.NO_INTERNET
         notificationMessage.value = load_noInternet(this)
-        notificationErrorCode.intValue = 0
+        showOneButton.value = true
         showTwoButtons.value = false
+        showThreeButtons.value = false
+        firstButtonLabel.value = "OK"
+        firstButtonClick.value = { hideNotification() }
         showNotification.value = true
     }
 
     private fun showLoginErrorNotification(message: String) {
         notificationType.value = NotificationType.ERROR
         notificationMessage.value = message
-        showTwoButtons.value = true
+        showOneButton.value = false
+        showTwoButtons.value = false
+        showThreeButtons.value = true
+        firstButtonLabel.value = if (AppConfig.mainLanguage.code == "en") "Retry" else "Reîncearcă"
+        firstButtonClick.value = { hideNotification() }
+        secondButtonLabel.value =
+            if (AppConfig.mainLanguage.code == "en") "Create account" else "Creează cont"
+        firstButtonClick.value = { handleCreateAccount() }
+        thirdButtonLabel.value =
+            if (AppConfig.mainLanguage.code == "en") "Load local" else "Încarcă local"
+        thirdButtonClick.value = {
+            hideNotification()
+            mainHandler.postDelayed({
+                handleLocallyClick()
+            }, 100)
+        }
         showNotification.value = true
     }
 
@@ -1024,14 +1033,12 @@ class LoadProfileActivity : ComponentActivity() {
         showNotification.value = false
 
         // If we're showing internet error and in login section, navigate to first section
-        if (notificationType.value == NotificationType.NO_INTERNET && showLoginSection.value) {
-            showLoginSection.value = false
+        if (notificationType.value == NotificationType.NO_INTERNET && !showProfileSelection.value) {
             mainHandler.postDelayed({
                 showProfileSelection.value = true
             }, 100)
         }
     }
-
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         when (keyCode) {
@@ -1053,11 +1060,18 @@ class LoadProfileActivity : ComponentActivity() {
 @Composable
 fun LoadProfileScreen(
     showProfileSelection: Boolean,
-    showLoginSection: Boolean,
     showNotification: Boolean,
-    notificationMessage: String,
     notificationType: NotificationType,
+    notificationMessage: String,
+    showOneButton: Boolean,
     showTwoButtons: Boolean,
+    showThreeButtons: Boolean,
+    firstButtonLabel: String,
+    secondButtonLabel: String,
+    thirdButtonLabel: String,
+    firstButtonClick: () -> Unit,
+    secondButtonClick: () -> Unit,
+    thirdButtonClick: () -> Unit,
     showLoading: Boolean,
     loadingText: String,
     emailInput: String,
@@ -1071,11 +1085,7 @@ fun LoadProfileScreen(
     onHaveAccountClick: () -> Unit,
     onForgotPasswordClick: () -> Unit,
     onBackClickLoginSection: () -> Unit,
-    onLoginDoneClick: () -> Unit,
-    onNotificationRetry: () -> Unit,
-    onNotificationCreateAccount: () -> Unit,
-    onNotificationLoadLocal: () -> Unit,
-    onNotificationOk: () -> Unit
+    onLoginDoneClick: () -> Unit
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val screenHeight = maxHeight
@@ -1107,7 +1117,7 @@ fun LoadProfileScreen(
 
         // Login Section
         AnimatedVisibility(
-            visible = showLoginSection,
+            visible = !showProfileSelection,
             enter = slideInHorizontally(
                 initialOffsetX = { it },
                 animationSpec = tween(durationMillis = Constants.ANIMATION_DELAY)
@@ -1137,19 +1147,22 @@ fun LoadProfileScreen(
         )
 
         // Notification Dialog
-        LoadProfileNotificationDialog(
+        NotificationDialog(
             isVisible = showNotification,
-            message = notificationMessage,
             type = notificationType,
+            message = notificationMessage,
+            showOneButton = showOneButton,
             showTwoButtons = showTwoButtons,
-            showThreeButtons = (notificationType == NotificationType.ERROR && showTwoButtons),
-            onRetryClick = onNotificationRetry,
-            onCreateAccountClick = onNotificationCreateAccount,
-            onLoadLocalClick = onNotificationLoadLocal,
-            onOkClick = onNotificationOk
+            showThreeButtons = showThreeButtons,
+            firstButtonLabel = firstButtonLabel,
+            secondButtonLabel = secondButtonLabel,
+            thirdButtonLabel = thirdButtonLabel,
+            firstButtonClick = firstButtonClick,
+            secondButtonClick = secondButtonClick,
+            thirdButtonClick = thirdButtonClick
         )
 
-        val bottomSpace=screenHeight * 0.10f
+        val bottomSpace=screenHeight * Constants.STD_NAV_MARGIN_BOTTOM
         // Back button for Profile Selection (only visible in that section)
         if (showProfileSelection) {
             Box(
@@ -1172,7 +1185,7 @@ fun ProfileSelectionSection(
         modifier = Modifier.fillMaxSize()
     ) {
         val screenHeight = maxHeight
-        val screenWidth=maxWidth
+        val screenWidth = maxWidth
         Column(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.SpaceAround
@@ -1181,7 +1194,7 @@ fun ProfileSelectionSection(
 
             // Title
             Text(
-                text = if(AppConfig.mainLanguage.code=="en")"How would you want\nto load the profile?" else "Cum ați vrea\nsă încărcați profilul?",
+                text = if (AppConfig.mainLanguage.code == "en") "How would you want\nto load the profile?" else "Cum ați vrea\nsă încărcați profilul?",
                 fontSize = 32.sp,
                 color = colorResource(R.color.std_cyan),
                 fontFamily = robotoSemibold,
@@ -1199,22 +1212,22 @@ fun ProfileSelectionSection(
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 ProfileLoadButton(
-                    text = if(AppConfig.mainLanguage.code=="en")"Have an account" else "Am un cont",
-                    contentDescription = if(AppConfig.mainLanguage.code=="en")"Have an account button" else "Buton am un cont",
+                    text = if (AppConfig.mainLanguage.code == "en") "Have an account" else "Am un cont",
+                    contentDescription = if (AppConfig.mainLanguage.code == "en") "Have an account button" else "Buton am un cont",
                     imageVector = Icons.Filled.AccountCircle, // Replace with actual icon
                     onClick = onHaveAccountClick,
-                    screenWidth=screenWidth,
-                    screenHeight=screenHeight
+                    screenWidth = screenWidth,
+                    screenHeight = screenHeight
 
                 )
 
                 ProfileLoadButton(
-                    text = if(AppConfig.mainLanguage.code=="en")"Local profile" else "Profil local",
-                    contentDescription = if(AppConfig.mainLanguage.code=="en")"Local profile button" else "Buton profil local",
+                    text = if (AppConfig.mainLanguage.code == "en") "Local profile" else "Profil local",
+                    contentDescription = if (AppConfig.mainLanguage.code == "en") "Local profile button" else "Buton profil local",
                     imageVector = Icons.Filled.CloudOff, // Replace with actual icon
                     onClick = onLocallyClick,
-                    screenWidth=screenWidth,
-                    screenHeight=screenHeight
+                    screenWidth = screenWidth,
+                    screenHeight = screenHeight
                 )
             }
 
@@ -1331,7 +1344,7 @@ fun LoginSection(
             Card(
                 modifier = Modifier
                     .fillMaxWidth(0.8f)
-                    .height(screenHeight*0.29f),
+                    .height(screenHeight * 0.29f),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = colorResource(R.color.notification_white)
@@ -1379,7 +1392,7 @@ fun LoginSection(
                                     .fillMaxWidth()
                                     .background(
                                         color = Color.White,
-                                        shape = RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp)
+                                        shape = RoundedCornerShape(10.dp)
                                     )
                                     .border(
                                         width = 1.dp,
@@ -1387,7 +1400,7 @@ fun LoginSection(
                                             colorResource(R.color.error_red)
                                         else
                                             Color.LightGray,
-                                        shape = RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp)
+                                        shape = RoundedCornerShape(10.dp)
                                     )
                                     .padding(12.dp),
                                 textStyle = TextStyle(
@@ -1406,7 +1419,7 @@ fun LoginSection(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = if(AppConfig.mainLanguage.code=="en")"Password" else "Parolă",
+                                    text = if (AppConfig.mainLanguage.code == "en") "Password" else "Parolă",
                                     fontSize = Constants.STD_FONT_SIZE.sp,
                                     color = colorResource(R.color.std_cyan),
                                     fontFamily = robotoSemibold
@@ -1431,21 +1444,15 @@ fun LoginSection(
                                     .fillMaxWidth()
                                     .background(
                                         color = Color.White,
-                                        shape = RoundedCornerShape(
-                                            bottomStart = 10.dp,
-                                            bottomEnd = 10.dp
-                                        )
+                                        shape = RoundedCornerShape(10.dp)
                                     )
                                     .border(
                                         width = 1.dp,
-                                        color = if (showPasswordError)
+                                        color = if (showEmailError)
                                             colorResource(R.color.error_red)
                                         else
                                             Color.LightGray,
-                                        shape = RoundedCornerShape(
-                                            bottomStart = 10.dp,
-                                            bottomEnd = 10.dp
-                                        )
+                                        shape = RoundedCornerShape(10.dp)
                                     )
                                     .padding(12.dp),
                                 textStyle = TextStyle(
@@ -1465,7 +1472,7 @@ fun LoginSection(
                             modifier = Modifier.align(Alignment.CenterHorizontally)
                         ) {
                             Text(
-                                text = if(AppConfig.mainLanguage.code=="en")"Forgot password?" else "Ați uitat parola?",
+                                text = if (AppConfig.mainLanguage.code == "en") "Forgot password?" else "Ați uitat parola?",
                                 fontSize = Constants.STD_FONT_SIZE_LW.sp,
                                 color = colorResource(R.color.std_cyan)
                             )
@@ -1591,12 +1598,19 @@ fun LoadProfileActivity2Preview() {
 fun LoadProfileActivityPreview() {
     LoadProfileScreen(
         showProfileSelection = true,
-        showLoginSection = false,
         showNotification = false,
         notificationMessage = "",
         notificationType = NotificationType.SUCCESS,
+        showOneButton = true,
         showTwoButtons = false,
+        showThreeButtons = false,
         showLoading = false,
+        firstButtonLabel = "OK",
+        secondButtonLabel = "",
+        thirdButtonLabel = "",
+        firstButtonClick = {},
+        secondButtonClick = {},
+        thirdButtonClick = {},
         loadingText = "",
         emailInput = "example@gmail.com",
         passwordInput = "",
@@ -1610,10 +1624,6 @@ fun LoadProfileActivityPreview() {
         onForgotPasswordClick = {},
         onBackClickLoginSection = {},
         onLoginDoneClick = {},
-        onNotificationRetry = {},
-        onNotificationCreateAccount = {},
-        onNotificationLoadLocal = {},
-        onNotificationOk = {}
     )
 }
 /*

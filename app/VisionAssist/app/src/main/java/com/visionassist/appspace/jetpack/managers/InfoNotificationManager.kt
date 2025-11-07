@@ -24,17 +24,14 @@ class InfoNotificationManager(
      * Show the info notification with a single OK button
      * Compatible with Java Runnable (void return type)
      */
-    fun showNotification(message: String, onOkClick: Runnable, justHide: Boolean) {
+    fun showNotification(
+        message: String, onOkClick: Runnable, firstButtonLabel: String
+    ) {
         messageState.value = message
         twoButtonsState.value = false
-        firstButtonLabelState.value = "OK"
-        onFirstButtonClickAction = if (justHide) {
-            { hideNotification() }
-        } else {
-            {
-                hideNotification()
+        firstButtonLabelState.value = firstButtonLabel
+        onFirstButtonClickAction = {
                 onOkClick.run()
-            }
         }
 
         // Lazy initialization of ComposeView
@@ -61,11 +58,9 @@ class InfoNotificationManager(
         firstButtonLabelState.value = firstButtonLabel
         secondButtonLabelState.value = secondButtonLabel
         onFirstButtonClickAction = {
-            hideNotification()
             onFirstButtonClick.run()
         }
         onSecondButtonClickAction = {
-            hideNotification()
             onSecondButtonClick.run()
         }
 

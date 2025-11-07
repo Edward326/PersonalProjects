@@ -171,6 +171,92 @@ public class ProfileFileCollection {
         }
     }
 
+    public static boolean writeUserInfoActivity(int opt, boolean isContributor, String name, int age, String problem) {
+        try {
+            Context context = PhoneStatusMonitor.getInstance().getCurrentContext();
+            File profileFile = FileUtils.getProfileFile(context);
+
+            JSONObject jsonObject;
+            if (profileFile.exists() && profileFile.length() > 0) {
+                String content = FileUtils.loadFileAsString(FileUtils.getProfileInputStream(context));
+                jsonObject = new JSONObject(content);
+            } else {
+                jsonObject = new JSONObject();
+            }
+
+            switch (opt) {
+                case 0: // Write name and contributor
+                    jsonObject.put("user_name", name);
+                    jsonObject.put("contributor", isContributor);
+                    Log.d(TAG, "UserInfoActivity: Name and contributor fields written successfully");
+                    break;
+                case 1: // Write age
+                    jsonObject.put("age", age);
+                    Log.d(TAG, "UserInfoActivity: Age field written successfully");
+                    break;
+                case 2: // Write visual condition
+                    jsonObject.put("visual_condition", problem);
+                    Log.d(TAG, "UserInfoActivity: Visual condition field written successfully");
+                    break;
+                default:
+                    Log.e(TAG, "UserInfoActivity: Invalid option: " + opt);
+                    return false;
+            }
+
+            return FileUtils.writeProfileFile(jsonObject.toString(), Constants.PROFILE_FILE_NAME);
+        } catch (Exception e) {
+            Log.e(TAG, "UserInfoActivity: Error writing fields", e);
+            return false;
+        }
+    }
+
+    public static boolean deleteUserInfoActivity(int opt) {
+        try {
+            Context context = PhoneStatusMonitor.getInstance().getCurrentContext();
+            File profileFile = FileUtils.getProfileFile(context);
+
+            if (!profileFile.exists() || profileFile.length() == 0) {
+                Log.d(TAG, "UserInfoActivity: Profile file doesn't exist, nothing to delete");
+                return true;
+            }
+
+            String content = FileUtils.loadFileAsString(FileUtils.getProfileInputStream(context));
+            JSONObject jsonObject = new JSONObject(content);
+
+            switch (opt) {
+                case 0: // Delete name and contributor
+                    if (jsonObject.has("user_name")) {
+                        jsonObject.remove("user_name");
+                    }
+                    if (jsonObject.has("contributor")) {
+                        jsonObject.remove("contributor");
+                    }
+                    Log.d(TAG, "UserInfoActivity: Name and contributor fields deleted successfully");
+                    break;
+                case 1: // Delete age
+                    if (jsonObject.has("age")) {
+                        jsonObject.remove("age");
+                    }
+                    Log.d(TAG, "UserInfoActivity: Age field deleted successfully");
+                    break;
+                case 2: // Delete visual condition
+                    if (jsonObject.has("visual_condition")) {
+                        jsonObject.remove("visual_condition");
+                    }
+                    Log.d(TAG, "UserInfoActivity: Visual condition field deleted successfully");
+                    break;
+                default:
+                    Log.e(TAG, "UserInfoActivity: Invalid option: " + opt);
+                    return false;
+            }
+
+            return FileUtils.writeProfileFile(jsonObject.toString(), Constants.PROFILE_FILE_NAME);
+        } catch (Exception e) {
+            Log.e(TAG, "UserInfoActivity: Error deleting fields", e);
+            return false;
+        }
+    }
+
     public static boolean writeProfile(JSONObject jsonObject) {
         try {
             if (jsonObject == null) {
