@@ -6,6 +6,7 @@ public class AppConfig {
     public static boolean blindness;
     public static Language mainLanguage=new Language("en", "English","US");
     public static String user_name;
+    public static boolean isContributor;
     public static float tts_speech_rate;
     public static float tts_pitch;
     public static String bbox_color;

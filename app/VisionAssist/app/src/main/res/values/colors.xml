@@ -2,7 +2,7 @@
 <resources>
     <!-- Primary Colors -->
     <color name="purple_primary">#6B5CE7</color>
-    <color name="purple_light">#9C8CFF</color>
+    <color name="purple_light">#809C8CFF</color>
     <color name="purple_dark">#5A4FCF</color>
     <color name="std_cyan">#6096BA</color>
     <color name="std_purple">#6750A4</color>

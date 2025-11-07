@@ -64,7 +64,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.visionassist.appspace.PhoneStatusMonitor
@@ -76,8 +75,8 @@ import com.visionassist.appspace.activities.newprofile.jsonCollection.ProfileFil
 import com.visionassist.appspace.database.DBConstants
 import com.visionassist.appspace.database.NetworkUtils
 import com.visionassist.appspace.jetpack.design.BackArrowLargeFab
-import com.visionassist.appspace.jetpack.design.NotificationDialog
 import com.visionassist.appspace.jetpack.design.LoadingComponent
+import com.visionassist.appspace.jetpack.design.NotificationDialog
 import com.visionassist.appspace.jetpack.managers.InfoNotificationManager
 import com.visionassist.appspace.models.ttsengine.TTSManager
 import com.visionassist.appspace.utils.AppConfig
@@ -206,7 +205,7 @@ class LoadProfileActivity : ComponentActivity() {
 
     private fun handleBackFromProfileSelection() {
         // Delete language and new_profile data
-        ProfileFileCollection.welcomeActivityDelete(true)
+        ProfileFileCollection.deleteWelcomeActivity(true)
 
         // Navigate back to WelcomeActivity with language selection section
         val intent = Intent(this, WelcomeActivity::class.java)
@@ -245,7 +244,7 @@ class LoadProfileActivity : ComponentActivity() {
         Log.d(TAG, "Navigate to create account")
 
         hideNotification()
-        ProfileFileCollection.welcomeActivityWrite(true, null, false)
+        ProfileFileCollection.writeWelcomeActivity(true, null, false)
         val intent = Intent(this, NewProfileActivity::class.java)
         startActivity(intent)
         finish()
@@ -909,9 +908,12 @@ class LoadProfileActivity : ComponentActivity() {
     }
 
     private fun setTTSLanguage() {
-        waitingForTTSLanguage = true
-        ttsManager.changeLanguage(AppConfig.mainLanguage, this)
-        waitForTTSAndNavigate()
+        if (AppConfig.mainLanguage.code != ttsManager.currentLocale.language) {
+            waitingForTTSLanguage = true
+            ttsManager.changeLanguage(AppConfig.mainLanguage, this)
+            waitForTTSAndNavigate()
+        }else
+            finishedLoading=true
     }
 
     private fun waitForTTSAndNavigate() {
@@ -1185,7 +1187,6 @@ fun ProfileSelectionSection(
         modifier = Modifier.fillMaxSize()
     ) {
         val screenHeight = maxHeight
-        val screenWidth = maxWidth
         Column(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.SpaceAround
@@ -1195,7 +1196,7 @@ fun ProfileSelectionSection(
             // Title
             Text(
                 text = if (AppConfig.mainLanguage.code == "en") "How would you want\nto load the profile?" else "Cum ați vrea\nsă încărcați profilul?",
-                fontSize = 32.sp,
+                fontSize = Constants.STD_SUBTITLE_SIZE.sp,
                 color = colorResource(R.color.std_cyan),
                 fontFamily = robotoSemibold,
                 textAlign = TextAlign.Center,
@@ -1215,19 +1216,14 @@ fun ProfileSelectionSection(
                     text = if (AppConfig.mainLanguage.code == "en") "Have an account" else "Am un cont",
                     contentDescription = if (AppConfig.mainLanguage.code == "en") "Have an account button" else "Buton am un cont",
                     imageVector = Icons.Filled.AccountCircle, // Replace with actual icon
-                    onClick = onHaveAccountClick,
-                    screenWidth = screenWidth,
-                    screenHeight = screenHeight
-
+                    onClick = onHaveAccountClick
                 )
 
                 ProfileLoadButton(
                     text = if (AppConfig.mainLanguage.code == "en") "Local profile" else "Profil local",
                     contentDescription = if (AppConfig.mainLanguage.code == "en") "Local profile button" else "Buton profil local",
                     imageVector = Icons.Filled.CloudOff, // Replace with actual icon
-                    onClick = onLocallyClick,
-                    screenWidth = screenWidth,
-                    screenHeight = screenHeight
+                    onClick = onLocallyClick
                 )
             }
 
@@ -1243,8 +1239,6 @@ fun ProfileLoadButton(
     contentDescription: String,
     imageVector: ImageVector,
     onClick: () -> Unit,
-    screenWidth: Dp,
-    screenHeight: Dp
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
@@ -1255,8 +1249,8 @@ fun ProfileLoadButton(
                 .shadow(
                     elevation = 3.dp, shape = MaterialTheme.shapes.large
                 )
-                .width(screenWidth * 0.35f)
-                .height(screenHeight * 0.093f),
+                .width(144.dp)
+                .height(Constants.STD_BUTTON_PAGE_HEIGHT.dp),
             shape = RoundedCornerShape(16.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color(0xFFEADDFF),        // purple background
@@ -1310,7 +1304,7 @@ fun LoginSection(
             // Title
             Text(
                 text = "VisionAssist\nAccount",
-                fontSize = 40.sp,
+                fontSize = Constants.STD_TITLE_SIZE.sp,
                 color = colorResource(R.color.std_cyan),
                 fontFamily = robotoLight,
                 letterSpacing = 6.sp,
@@ -1324,7 +1318,7 @@ fun LoginSection(
             // Logo in circle
             Box(
                 modifier = Modifier
-                    .size(60.dp)
+                    .size(55.dp)
                     .background(
                         color = colorResource(R.color.std_cyan),
                         shape = RoundedCornerShape(55)
@@ -1334,7 +1328,7 @@ fun LoginSection(
                 Image(
                     painter = painterResource(R.drawable.vision_assist_logo),
                     contentDescription = "VisionAssist Logo",
-                    modifier = Modifier.size(60.dp)
+                    modifier = Modifier.size(55.dp)
                 )
             }
 
@@ -1344,7 +1338,7 @@ fun LoginSection(
             Card(
                 modifier = Modifier
                     .fillMaxWidth(0.8f)
-                    .height(screenHeight * 0.29f),
+                    .height(Constants.STD_LOGINCARD_WIDTH.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = colorResource(R.color.notification_white)

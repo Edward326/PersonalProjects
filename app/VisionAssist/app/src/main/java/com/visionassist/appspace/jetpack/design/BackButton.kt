@@ -37,12 +37,12 @@ fun BackArrowLargeFab(
             bottomEnd = 16.dp,
             bottomStart = 16.dp
         ),
-        modifier = Modifier.width(110.dp).height(60.dp)
+        modifier = Modifier.width(Constants.NAV_BUTTONS_WIDTH.dp).height(Constants.NAV_BUTTONS_HEIGHT.dp)
     ) {
         Icon(
             imageVector = Icons.AutoMirrored.Filled.ArrowBackIos,
             contentDescription = "Back",
-            modifier = Modifier.size(Constants.STD_FONT_SIZE.dp),
+            modifier = Modifier.size(Constants.STD_SLIDER_INFO_SIZE.dp)
         )
     }
 }

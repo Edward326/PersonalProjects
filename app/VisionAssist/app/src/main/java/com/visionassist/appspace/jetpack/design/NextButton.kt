@@ -20,7 +20,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.visionassist.appspace.R
 import com.visionassist.appspace.utils.Constants
 
@@ -39,12 +38,12 @@ fun NextArrowLargeFab(
             bottomEnd = 16.dp,
             bottomStart = 16.dp
         ),
-        modifier = Modifier.width(110.dp).height(60.dp)
+        modifier = Modifier.width(Constants.NAV_BUTTONS_WIDTH.dp).height(Constants.NAV_BUTTONS_HEIGHT.dp)
     ) {
         Icon(
             imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
             contentDescription = "Next",
-            modifier = Modifier.size(Constants.STD_FONT_SIZE.dp)
+            modifier = Modifier.size(Constants.STD_SLIDER_INFO_SIZE.dp)
         )
     }
 }

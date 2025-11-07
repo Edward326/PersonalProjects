@@ -2,8 +2,6 @@ package com.visionassist.appspace.activities.newprofile
 
 import android.content.Intent
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
 import android.view.KeyEvent
 import androidx.activity.ComponentActivity
@@ -31,8 +29,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableIntStateOf
@@ -49,15 +45,21 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
 import com.visionassist.appspace.activities.newprofile.LoadProfileActivity.NotificationType
 import com.visionassist.appspace.activities.newprofile.jsonCollection.ProfileFileCollection
 import com.visionassist.appspace.jetpack.design.BackArrowLargeFab
+import com.visionassist.appspace.jetpack.design.CustomSlider
 import com.visionassist.appspace.jetpack.design.NextArrowLargeFab
 import com.visionassist.appspace.jetpack.design.NotificationDialog
+import com.visionassist.appspace.jetpack.design.ThumbStyle
 import com.visionassist.appspace.jetpack.managers.InfoNotificationManager
+import com.visionassist.appspace.models.ttsengine.TTSManager
 import com.visionassist.appspace.utils.AppConfig
 import com.visionassist.appspace.utils.Constants
+import com.visionassist.appspace.utils.haptic_model0
+import com.visionassist.appspace.utils.load_aboutSubtitle
 import com.visionassist.appspace.utils.load_agreeButton
 import com.visionassist.appspace.utils.load_contributeResearch
 import com.visionassist.appspace.utils.load_disagreeButton
@@ -65,15 +67,13 @@ import com.visionassist.appspace.utils.load_howOldAreYou
 import com.visionassist.appspace.utils.load_invalidCombination
 import com.visionassist.appspace.utils.load_whatTypeOfVision
 import com.visionassist.appspace.utils.load_whatsYourName
-import com.visionassist.appspace.utils.robotoLight
+import com.visionassist.appspace.utils.robotoExtraBold
 import com.visionassist.appspace.utils.robotoRegular
 import com.visionassist.appspace.utils.robotoSemibold
 import java.util.regex.Pattern
 
 class UserInfoActivity : ComponentActivity() {
     private val TAG = "UserInfoActivity"
-
-    private val mainHandler = Handler(Looper.getMainLooper())
 
     // Section management
     private val currentSection = mutableIntStateOf(1) // 1=name, 2=age, 3=vision
@@ -105,6 +105,7 @@ class UserInfoActivity : ComponentActivity() {
 
     // Info notification manager
     private lateinit var infoNotificationManager: InfoNotificationManager
+    private var ttsManager: TTSManager = PhoneStatusMonitor.getInstance().ttsManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -152,6 +153,16 @@ class UserInfoActivity : ComponentActivity() {
 
     private fun handleAgeChange(newAge: Int) {
         ageValue.intValue = newAge
+        if(AppConfig.blindness) {
+            ttsManager.stopSpeaking()
+            ttsManager.speak(
+                newAge.toString(),
+                Constants.TTS_PITCH,
+                Constants.TTS_SPEECH_RATE,
+                false,
+                haptic_model0()
+            )
+        }
     }
 
     private fun handleVisionChange(newVision: String) {
@@ -234,6 +245,7 @@ class UserInfoActivity : ComponentActivity() {
         ProfileFileCollection.writeUserInfoActivity(2, false, "", 0, vision)
 
         val intent = Intent(this, UserAccesibility1Activity::class.java)
+        intent.putExtra(Constants.EXTRA_USERINFO_OPTION, 1)
         startActivity(intent)
         finish()
     }
@@ -260,19 +272,23 @@ class UserInfoActivity : ComponentActivity() {
     }
 
     private fun handleAgreeClick() {
+        AppConfig.isContributor = true
         ProfileFileCollection.writeUserInfoActivity(0, true, nameInput.value.trim(), 0, "")
         navigateToSection2()
     }
 
     private fun handleDisagreeClick() {
+        AppConfig.isContributor = false
         ProfileFileCollection.writeUserInfoActivity(0, false, nameInput.value.trim(), 0, "")
 
         if (AppConfig.blindness) {
             val intent = Intent(this, UserInfoE3Activity::class.java)
+            intent.putExtra(Constants.EXTRA_HCACHING_OPTION,1)
             startActivity(intent)
             finish()
         } else {
             val intent = Intent(this, UserAccesibility1Activity::class.java)
+            intent.putExtra(Constants.EXTRA_USERINFO_OPTION,1)
             startActivity(intent)
             finish()
         }
@@ -298,6 +314,13 @@ class UserInfoActivity : ComponentActivity() {
             }
         }
         return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        if (!ttsManager.isDoneSpeaking) {
+            ttsManager.stopSpeaking()
+        }
     }
 }
 
@@ -448,7 +471,7 @@ fun NameSection(
 
         Text(
             text = load_whatsYourName(androidx.compose.ui.platform.LocalContext.current),
-            fontSize = 32.sp,
+            fontSize = Constants.STD_SUBTITLE_SIZE.sp,
             color = colorResource(R.color.std_cyan),
             fontFamily = robotoSemibold,
             textAlign = TextAlign.Center,
@@ -486,9 +509,9 @@ fun NameSection(
                             Color.LightGray,
                         shape = RoundedCornerShape(10.dp)
                     )
-                    .padding(10.dp),
+                    .padding(8.dp),
                 textStyle = TextStyle(
-                    fontSize = Constants.STD_FONT_SIZE.sp,
+                    fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
                     color = colorResource(R.color.std_cyan),
                     fontFamily = robotoRegular,
                     letterSpacing = 1.sp
@@ -524,8 +547,8 @@ fun AgeSection(
         Box(modifier = Modifier.height(screenHeight * Constants.STD_SUBTITLE2_MARGIN_TOP))
 
         Text(
-            text = "A little about yourself",
-            fontSize = 32.sp,
+            text = load_aboutSubtitle(androidx.compose.ui.platform.LocalContext.current),
+            fontSize = Constants.STD_SUBTITLE_SIZE.sp,
             color = colorResource(R.color.std_cyan),
             fontFamily = robotoSemibold,
             textAlign = TextAlign.Start,
@@ -539,9 +562,9 @@ fun AgeSection(
         // "How old are you?" text
         Text(
             text = load_howOldAreYou(androidx.compose.ui.platform.LocalContext.current),
-            fontSize = Constants.STD_FONT_SIZE.sp,
+            fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
             color = colorResource(R.color.std_cyan),
-            fontFamily = robotoLight,
+            fontFamily = robotoExtraBold,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
         )
@@ -553,26 +576,28 @@ fun AgeSection(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Slider(
+            CustomSlider(
                 value = ageValue.toFloat(),
                 onValueChange = { onAgeChange(it.toInt()) },
                 valueRange = 0f..100f,
-                modifier = Modifier
-                    .fillMaxWidth(0.8f)
-                    .padding(horizontal = 16.dp),
-                colors = SliderDefaults.colors(
-                    thumbColor = colorResource(R.color.std_purple),
-                    activeTrackColor = colorResource(R.color.std_cyan),
-                    inactiveTrackColor = Color.LightGray
-                )
+                steps = 0,
+                thumbStyle = ThumbStyle.BAR,  // ROUND, BAR, or DOUBLE_BAR
+                thumbColor = colorResource(R.color.std_purple),
+                thumbWidth = 8.dp,
+                thumbHeight = 55.dp,
+                trackHeight = 20.dp,
+                activeTrackColor = Color.White,
+                inactiveTrackColor = Color.White,
+                trackShadow = 5.dp,
+                modifier = Modifier.fillMaxWidth(0.75f)
             )
 
             Box(modifier = Modifier.height(screenHeight * 0.012f))
 
             Text(
                 text = ageValue.toString(),
-                fontSize = 24.sp,
-                color = colorResource(R.color.std_cyan),
+                fontSize = Constants.STD_SLIDER_INFO_SIZE.sp,
+                color = colorResource(R.color.std_purple),
                 fontFamily = robotoSemibold
             )
         }
@@ -594,8 +619,8 @@ fun VisionSection(
         Box(modifier = Modifier.height(screenHeight * Constants.STD_SUBTITLE2_MARGIN_TOP))
 
         Text(
-            text = "A little about yourself",
-            fontSize = 32.sp,
+            text = load_aboutSubtitle(androidx.compose.ui.platform.LocalContext.current),
+            fontSize = Constants.STD_SUBTITLE_SIZE.sp,
             color = colorResource(R.color.std_cyan),
             fontFamily = robotoSemibold,
             textAlign = TextAlign.Start,
@@ -609,9 +634,9 @@ fun VisionSection(
         // "What type of vision difficulty" text
         Text(
             text = load_whatTypeOfVision(androidx.compose.ui.platform.LocalContext.current),
-            fontSize = Constants.STD_FONT_SIZE.sp,
+            fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
             color = colorResource(R.color.std_cyan),
-            fontFamily = robotoLight,
+            fontFamily = robotoExtraBold,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
         )
@@ -646,9 +671,9 @@ fun VisionSection(
                             Color.LightGray,
                         shape = RoundedCornerShape(10.dp)
                     )
-                    .padding(10.dp),
+                    .padding(8.dp),
                 textStyle = TextStyle(
-                    fontSize = Constants.STD_FONT_SIZE.sp,
+                    fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
                     color = colorResource(R.color.std_cyan),
                     fontFamily = robotoRegular,
                     letterSpacing = 1.sp
@@ -677,7 +702,7 @@ fun UserInfoNameSectionPreview() {
         currentSection = 1,
         nameInput = "Eduard",
         showNameError = false,
-        ageValue = 56,
+        ageValue = 55,
         visionInput = "Myopia",
         showVisionError = false,
         showNotification = false,
@@ -707,7 +732,7 @@ fun UserInfoAgeSectionPreview() {
         currentSection = 2,
         nameInput = "Eduard",
         showNameError = false,
-        ageValue = 56,
+        ageValue = 55,
         visionInput = "Myopia",
         showVisionError = false,
         showNotification = false,
@@ -737,7 +762,7 @@ fun UserInfoVisionSectionPreview() {
         currentSection = 3,
         nameInput = "Eduard",
         showNameError = false,
-        ageValue = 56,
+        ageValue = 55,
         visionInput = "Myopia",
         showVisionError = false,
         showNotification = false,

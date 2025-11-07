@@ -181,7 +181,7 @@ class ConfigurationActivity : ComponentActivity() {
 
     private fun writeToProfileAndNavigate(blindness: Boolean) {
         try {
-            ProfileFileCollection.configurationActivityWrite(blindness)
+            ProfileFileCollection.writeConfigurationActivity(blindness)
             // Update AppConfig
             AppConfig.blindness = blindness
             // Navigate to WelcomeActivity
@@ -242,7 +242,7 @@ fun ConfigurationScreen(
                 painter = painterResource(R.drawable.vision_assist_logo),
                 contentDescription = "app logo",
                 modifier = Modifier
-                    .size(screenWidth*0.47f)
+                    .size(Constants.LOGO_SIZE.dp)
             )
 
             Box(modifier = Modifier.height(screenHeight * 0.1f))
@@ -250,7 +250,7 @@ fun ConfigurationScreen(
             // Welcome text
             Text(
                 text = "Welcome to VisionAssist",
-                fontSize = 40.sp,
+                fontSize = Constants.STD_TITLE_SIZE.sp,
                 color = colorResource(R.color.std_cyan),
                 fontFamily = robotoLight,
                 letterSpacing = 6.sp,
@@ -264,7 +264,7 @@ fun ConfigurationScreen(
             // Problem text
             Text(
                 text = "What is your\nvisual problem?",
-                fontSize = 32.sp,
+                fontSize = Constants.STD_SUBTITLE_SIZE.sp,
                 color = colorResource(R.color.std_cyan),
                 fontFamily = robotoSemibold,
                 textAlign = TextAlign.Center,
@@ -340,8 +340,8 @@ fun VisualProblemButton(
                 .shadow(
                     elevation = 3.dp, shape = MaterialTheme.shapes.large
                 )
-                .width(screenWidth * 0.35f)
-                .height(screenHeight * 0.093f),
+                .width(144.dp)
+                .height(Constants.STD_BUTTON_PAGE_HEIGHT.dp),
             shape = RoundedCornerShape(16.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color(0xFFEADDFF),        // purple background

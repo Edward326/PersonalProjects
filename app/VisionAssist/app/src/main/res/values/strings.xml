@@ -128,7 +128,14 @@
     <string name="old_ro">Câți ani aveți?</string>
     <string name="visual_condition_en">What type of vision difficulty do you have?</string>
     <string name="visual_condition_ro">Ce tip de deficiență de vedere aveți?</string>
+    <string name="about_en">A little about yourself</string>
+    <string name="about_ro">Puțin despre tine</string>
 
+    <!-- UserInfoE3Activity -->
+    <string name="tts_pitch_en">Pitch of assistant</string>
+    <string name="tts_pitch_ro">Ton asistent</string>
+    <string name="tts_speed_en">Speed of assistant</string>
+    <string name="tts_speed_ro">Viteza asistentului</string>
 
     <!-- Common values -->
     <string name="forward_arrow">Forward arrow</string>

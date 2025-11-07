@@ -12,7 +12,7 @@ import java.io.File;
 public class ProfileFileCollection {
     private static final String TAG = "ProfileJsonManager";
 
-    public static boolean configurationActivityWrite(boolean blindness) {
+    public static boolean writeConfigurationActivity(boolean blindness) {
         try {
             Context context = PhoneStatusMonitor.getInstance().getCurrentContext();
             File profileFile = FileUtils.getProfileFile(context);
@@ -36,7 +36,7 @@ public class ProfileFileCollection {
         }
     }
 
-    public static boolean configurationActivityDelete() {
+    public static boolean deleteConfigurationActivity() {
         try {
             Context context = PhoneStatusMonitor.getInstance().getCurrentContext();
             File profileFile = FileUtils.getProfileFile(context);
@@ -63,7 +63,7 @@ public class ProfileFileCollection {
         }
     }
 
-    public static boolean welcomeActivityWrite(boolean writeNewProfile, Language language, Boolean newProfileValue) {
+    public static boolean writeWelcomeActivity(boolean writeNewProfile, Language language, Boolean newProfileValue) {
         try {
             Context context = PhoneStatusMonitor.getInstance().getCurrentContext();
             File profileFile = FileUtils.getProfileFile(context);
@@ -98,7 +98,7 @@ public class ProfileFileCollection {
         }
     }
 
-    public static boolean welcomeActivityDelete(boolean deleteNewProfile) {
+    public static boolean deleteWelcomeActivity(boolean deleteNewProfile) {
         try {
             Context context = PhoneStatusMonitor.getInstance().getCurrentContext();
             File profileFile = FileUtils.getProfileFile(context);
@@ -137,7 +137,7 @@ public class ProfileFileCollection {
         }
     }
 
-    public static boolean newProfileActivityWrite(boolean isRemote, String email, String passwordHash) {
+    public static boolean writeNewProfileActivity(boolean isRemote, String email, String passwordHash) {
         try {
             Context context = PhoneStatusMonitor.getInstance().getCurrentContext();
             File profileFile = FileUtils.getProfileFile(context);
@@ -253,6 +253,58 @@ public class ProfileFileCollection {
             return FileUtils.writeProfileFile(jsonObject.toString(), Constants.PROFILE_FILE_NAME);
         } catch (Exception e) {
             Log.e(TAG, "UserInfoActivity: Error deleting fields", e);
+            return false;
+        }
+    }
+
+    public static boolean writeUserInfoE3Activity(float pitch, float speed) {
+        try {
+            Context context = PhoneStatusMonitor.getInstance().getCurrentContext();
+            File profileFile = FileUtils.getProfileFile(context);
+
+            JSONObject jsonObject;
+            if (profileFile.exists() && profileFile.length() > 0) {
+                String content = FileUtils.loadFileAsString(FileUtils.getProfileInputStream(context));
+                jsonObject = new JSONObject(content);
+            } else {
+                jsonObject = new JSONObject();
+            }
+
+            jsonObject.put("tts_pitch", pitch);
+            jsonObject.put("tts_speed", speed);
+            boolean success = FileUtils.writeProfileFile(jsonObject.toString(), Constants.PROFILE_FILE_NAME);
+            if (success)
+                Log.d(TAG, "ConfigurationActivity: Fields written successfully");
+            return success;
+        } catch (Exception e) {
+            Log.e(TAG, "ConfigurationActivity: Error writing fields", e);
+            return false;
+        }
+    }
+
+    public static boolean deleteUserInfoE3Activity() {
+        try {
+            Context context = PhoneStatusMonitor.getInstance().getCurrentContext();
+            File profileFile = FileUtils.getProfileFile(context);
+
+            if (!profileFile.exists() || profileFile.length() == 0) {
+                Log.d(TAG, "ConfigurationActivity: Profile file doesn't exist, nothing to delete");
+                return true;
+            }
+
+            String content = FileUtils.loadFileAsString(FileUtils.getProfileInputStream(context));
+            JSONObject jsonObject = new JSONObject(content);
+
+            if (jsonObject.has("tts_pitch") && jsonObject.has("tts_speed")) {
+                jsonObject.remove("tts_pitch");jsonObject.remove("tts_speed");
+                boolean success = FileUtils.writeProfileFile(jsonObject.toString(), Constants.PROFILE_FILE_NAME);
+                if (success) {
+                    Log.d(TAG, "ConfigurationActivity: Fields deleted successfully");
+                }
+            }
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "ConfigurationActivity: Error deleting fields", e);
             return false;
         }
     }

@@ -45,6 +45,8 @@ public class Constants {
     public static final String EXTRA_PERMISSION_OPTION = "permission_option";
     public static final String EXTRA_WELCOME_OPTION = "welcome_option";
     public static final String EXTRA_USERINFO_OPTION = "userinfo_option";
+    public static final String EXTRA_USERACC_OPTION = "useracc_option";
+    public static final String EXTRA_HCACHING_OPTION = "hcaching_option";
 
     // Battery and Temperature Checks
     public static final boolean APPLY_BATTERY_CHECK = true;
@@ -103,26 +105,29 @@ public class Constants {
     public static final int LOAD_PROFILE_FILE_HC_UPLOAD_ERROR = 14;
     public static final int LOAD_PROFILE_FILE_ENVR_UPLOAD_ERROR = 15;
 
-    // Error codes, used in new_profile_activity
-    public static final int CREATE_PROFILE_EXCEPTION = -3;
-    public static final int CREATE_PROFILE_SUCCESS = 16;
-
     // Success notification display time
     public static final int SUCCESS_NOTIFICATION_DELAY = 5000;
-
-    // Intent extras for LoadProfileActivity
-    public static final String EXTRA_LOAD_OPTION = "load_option";
 
     // Number of Models to load in main activity
     public static final int MODELS_COUNT = 5;
     public static final int MODELS_OWN_ASSETS_COUNT = 5;
 
     // Standard font size and button size
-    public static final int STD_FONT_SIZE = 16;
+    public static final int LOGO_SIZE = 200;
+    public static final int STD_TITLE_SIZE = 40;
+    public static final int STD_SUBTITLE_SIZE = 32;
+
+    public static final int STD_FONT_SIZE = 14;
     public static final int STD_FONT_SIZE_LW = STD_FONT_SIZE - 2;
-    public static final int STD_BUTTON_FONT_SIZE = STD_FONT_SIZE + 5;
+    public static final int STD_BUTTON_FONT_SIZE = STD_FONT_SIZE + 2;
     public static final int STD_ERROR_FONT_SIZE = STD_FONT_SIZE + 2;
-    public static final int STD_BUTTON_HEIGHT = 75;
+    public static final int STD_SLIDER_INFO_SIZE = 23;
+    public static final int STD_BUTTON_HEIGHT = 58;
+    public static final int STD_BUTTON_PAGE_HEIGHT = 86;
+    public static final int STD_INFO_BUTTON_SIZE = 35;
+    public static final int STD_LOGINCARD_WIDTH = 265;
+    public static final int NAV_BUTTONS_WIDTH = 110;
+    public static final int NAV_BUTTONS_HEIGHT = 70;
 
     // Standard screen weighters
     public static final float STD_TITLE_MARGIN_TOP=0.372f;

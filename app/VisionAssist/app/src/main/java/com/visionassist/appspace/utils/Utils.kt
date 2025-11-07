@@ -6,9 +6,9 @@ import androidx.compose.ui.text.font.FontFamily
 import com.visionassist.appspace.R
 
 data class Language(
-    val code: String,
-    val name: String,
-    val country: String
+    var code: String,
+    var name: String,
+    var country: String
 )
 
 val robotoRegular = FontFamily(
@@ -21,6 +21,10 @@ val robotoSemibold = FontFamily(
 
 val robotoLight = FontFamily(
     Font(R.font.roboto_light_ttf)
+)
+
+val robotoExtraBold = FontFamily(
+    Font(R.font.roboto_extrabold)
 )
 
 fun load_loadingText(context: Context): String {
@@ -346,5 +350,29 @@ fun load_disagreeButton(context: Context): String {
         "en" -> "Disagree"
         "ro" -> "Nu sunt de acord"
         else -> "Disagree"
+    }
+}
+
+fun load_aboutSubtitle(context: Context): String {
+    return  when (AppConfig.mainLanguage.code) {
+        "en" -> context.getString(R.string.about_en)
+        "ro" -> context.getString(R.string.about_ro)
+        else -> context.getString(R.string.about_en)
+    }
+}
+
+fun load_pitchSpeed(context: Context,case: Boolean): String {
+    return if (case) {
+        when (AppConfig.mainLanguage.code) {
+            "en" -> context.getString(R.string.tts_pitch_en)
+            "ro" -> context.getString(R.string.tts_pitch_ro)
+            else -> context.getString(R.string.tts_pitch_en)
+        }
+    } else {
+        when (AppConfig.mainLanguage.code) {
+            "en" -> context.getString(R.string.tts_speed_en)
+            "ro" -> context.getString(R.string.tts_speed_ro)
+            else -> context.getString(R.string.tts_speed_en)
+        }
     }
 }

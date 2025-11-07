@@ -83,6 +83,7 @@ fun LanguageSelector(
 
     Box{
         SplitButtonLayout(
+            spacing=2.dp,
             modifier = Modifier.shadow(
                 elevation = 3.dp,
                 shape = MaterialTheme.shapes.extraLargeIncreased

@@ -149,28 +149,26 @@ public class TTSManager implements TextToSpeech.OnInitListener {
             return;
         }
 
-        currentActivity.runOnUiThread(() -> {
-            new AlertDialog.Builder(currentActivity)
-                    .setTitle("Language Data Required")
-                    .setMessage("The " + language.getName() + " language is not installed on your device." +
-                            "Please download it from TTS settings." +
-                            "After downloading, return to this app and the language will be automatically checked.")
-                    .setCancelable(false)
-                    .setPositiveButton("Settings", (dialog, which) -> {
-                        waitingForSettings = true;
-                        openTTSSettings();
-                        // Don't check immediately - wait for onResume() callback
-                    })
-                    .setNegativeButton("Use default("+Locale.getDefault().getLanguage()+")", (dialog, which) -> {
-                        // User chose to use default language
-                        tts.setLanguage(Locale.getDefault());
-                        isInitialized = true;
-                        pendingLanguage = null;
-                        waitingForSettings = false;
-                        Log.d(TAG, "User chose default language");
-                    })
-                    .show();
-        });
+        currentActivity.runOnUiThread(() -> new AlertDialog.Builder(currentActivity)
+                .setTitle("Language Data Required")
+                .setMessage("The " + language.getName() + " language is not installed on your device." +
+                        "Please download it from TTS settings." +
+                        "After downloading, return to this app and the language will be automatically checked.")
+                .setCancelable(false)
+                .setPositiveButton("Settings", (dialog, which) -> {
+                    waitingForSettings = true;
+                    openTTSSettings();
+                    // Don't check immediately - wait for onResume() callback
+                })
+                .setNegativeButton("Use default("+Locale.getDefault().getLanguage()+")", (dialog, which) -> {
+                    // User chose to use default language
+                    tts.setLanguage(Locale.getDefault());
+                    isInitialized = true;
+                    pendingLanguage = null;
+                    waitingForSettings = false;
+                    Log.d(TAG, "User chose default language");
+                })
+                .show());
     }
 
     /**
@@ -216,16 +214,14 @@ public class TTSManager implements TextToSpeech.OnInitListener {
                 showLanguageInstallDialog(pendingLanguage);
             } else {
                 // Max attempts reached, use default
-                Log.e(TAG, "Max attempts reached. Using default language.");
+                Log.e(TAG, "Max attempts reached.The app will be set to your language, but the TTS will use the default language.");
                 if (currentActivity != null && !currentActivity.isFinishing()) {
-                    currentActivity.runOnUiThread(() -> {
-                        new AlertDialog.Builder(currentActivity)
-                                .setTitle("Language Unavailable")
-                                .setMessage("Could not install " + pendingLanguage.getName() +
-                                        ".Using default("+Locale.getDefault().getLanguage()+") language instead.")
-                                .setPositiveButton("OK", null)
-                                .show();
-                    });
+                    currentActivity.runOnUiThread(() -> new AlertDialog.Builder(currentActivity)
+                            .setTitle("Language Unavailable")
+                            .setMessage("Could not install " + pendingLanguage.getName() +
+                                    ".Using default("+Locale.getDefault().getLanguage()+") language instead.")
+                            .setPositiveButton("OK", null)
+                            .show());
                 }
                 tts.setLanguage(Locale.getDefault());
                 isInitialized = true;

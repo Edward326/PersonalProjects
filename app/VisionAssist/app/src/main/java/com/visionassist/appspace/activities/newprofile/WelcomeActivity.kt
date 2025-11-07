@@ -3,6 +3,8 @@ package com.visionassist.appspace.activities.newprofile
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.KeyEvent
 import androidx.activity.ComponentActivity
@@ -51,7 +53,6 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.visionassist.appspace.PhoneStatusMonitor
@@ -60,8 +61,10 @@ import com.visionassist.appspace.activities.newprofile.WelcomeActivity.Section
 import com.visionassist.appspace.activities.newprofile.jsonCollection.ProfileFileCollection
 import com.visionassist.appspace.jetpack.design.BackArrowLargeFab
 import com.visionassist.appspace.jetpack.design.LanguageSelector
+import com.visionassist.appspace.jetpack.design.LoadingComponent
 import com.visionassist.appspace.jetpack.design.NextArrowLargeFab
 import com.visionassist.appspace.jetpack.managers.InfoNotificationManager
+import com.visionassist.appspace.models.ttsengine.TTSManager
 import com.visionassist.appspace.utils.AppConfig
 import com.visionassist.appspace.utils.Constants
 import com.visionassist.appspace.utils.Language
@@ -77,8 +80,12 @@ class WelcomeActivity : ComponentActivity() {
     private var currentSection by mutableStateOf(Section.LANGUAGE)
     private var selectedLanguage by mutableStateOf(Language("en", "English", "US"))
     private var startWithProfileSelection = false
+    private val showLoading = mutableStateOf(false)
+    private val loadingText = mutableStateOf("")
     private lateinit var loadProfileInfoManager: InfoNotificationManager
     private lateinit var newProfileInfoManager: InfoNotificationManager
+    private var ttsManager: TTSManager = PhoneStatusMonitor.getInstance().ttsManager
+    private var waitingForTTSLanguage = false
 
     enum class Section {
         LANGUAGE, PROFILE_SELECTION
@@ -101,6 +108,8 @@ class WelcomeActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 WelcomeScreen(
+                    showLoading = showLoading.value,
+                    loadingText = loadingText.value,
                     selectedLanguage = selectedLanguage,
                     currentSection = currentSection,
                     onLanguageSelected = { language -> selectedLanguage = language },
@@ -117,34 +126,76 @@ class WelcomeActivity : ComponentActivity() {
     }
 
     private fun onLanguageBackPressed() {
-        ProfileFileCollection.configurationActivityDelete()
+        ProfileFileCollection.deleteConfigurationActivity()
         Log.d(TAG, "Language section: Back pressed")
         val intent = Intent(this, ConfigurationActivity::class.java)
         startActivity(intent)
         finish()
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Handle return from TTS language installation
+        if (waitingForTTSLanguage) {
+            ttsManager.recheckPendingLanguage()
+            waitForTTSAndNavigate()
+        }
+    }
+
+    private fun setTTSLanguage() {
+        waitingForTTSLanguage = true
+        ttsManager.changeLanguage(AppConfig.mainLanguage, this)
+        waitForTTSAndNavigate()
+    }
+
+    private fun waitForTTSAndNavigate() {
+        waitingForTTSLanguage = false
+        loadingText.value =
+            if (selectedLanguage.code == "en") "TTS model is configuring, please wait"
+            else
+                "Modelul TTS se configurează, vă rugăm așteptați"
+        showLoading.value = true
+        val handler = Handler(Looper.getMainLooper())
+        val checkTTS: Runnable = object : Runnable {
+            override fun run() {
+                if (ttsManager.isReady) {
+                    Log.d(TAG, "TTS is ready, navigating to home")
+                    onLanguageNextPressedNavigate(true)
+                } else {
+                    Log.w(TAG, "TTS not ready, retrying...")
+                    handler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS.toLong())
+                }
+            }
+        }
+        handler.postDelayed(checkTTS, Constants.ANIMATION_DELAY.toLong() + 1000)
+    }
+
     private fun onLanguageNextPressed() {
+        if (selectedLanguage.code != ttsManager.currentLocale.language)
+            setTTSLanguage()
+        else
+            onLanguageNextPressedNavigate(false)
+    }
+
+    private fun onLanguageNextPressedNavigate(isLoadingActive: Boolean) {
+        if (isLoadingActive) showLoading.value = false
         Log.d(TAG, "Language section: Next pressed, selected language: ${selectedLanguage.name}")
-        // Animate to profile selection section
-        currentSection = Section.PROFILE_SELECTION
-        // Write language to profile
-        ProfileFileCollection.welcomeActivityWrite(false,selectedLanguage,null)
-        // Upload to AppConfig
+        ProfileFileCollection.writeWelcomeActivity(false, selectedLanguage, null)
         AppConfig.mainLanguage = selectedLanguage
+        currentSection = Section.PROFILE_SELECTION
     }
 
     private fun onProfileSelectionBackPressed() {
         Log.d(TAG, "Profile selection: Back pressed")
         // Animate back to language section
+        ProfileFileCollection.deleteWelcomeActivity(false)
         currentSection = Section.LANGUAGE
-        ProfileFileCollection.welcomeActivityDelete(false)
     }
 
     private fun onLoadProfileClicked() {
         Log.d(TAG, "Load Profile clicked")
 
-        ProfileFileCollection.welcomeActivityWrite(true,null,false)
+        ProfileFileCollection.writeWelcomeActivity(true, null, false)
 
         // Navigate to LoadProfileActivity
         val intent = Intent(this, LoadProfileActivity::class.java)
@@ -155,7 +206,7 @@ class WelcomeActivity : ComponentActivity() {
     private fun onNewProfileClicked() {
         Log.d(TAG, "New Profile clicked")
 
-        ProfileFileCollection.welcomeActivityWrite(true,null,true)
+        ProfileFileCollection.writeWelcomeActivity(true, null, true)
 
         // Navigate to next activity (UserInfoActivity or similar)
         val intent = Intent(this, UserInfoActivity::class.java)
@@ -168,18 +219,20 @@ class WelcomeActivity : ComponentActivity() {
         Log.d(TAG, "Show Load Profile info")
         val message = load_loadProfileText(this)
         loadProfileInfoManager.showNotification(
-            message,{
+            message, {
                 loadProfileInfoManager.hideNotification()
-            },"OK")
+            }, "OK"
+        )
     }
 
     private fun showNewProfileInfo() {
         Log.d(TAG, "Show New Profile info")
         val message = load_newProfileText(this)
         loadProfileInfoManager.showNotification(
-            message,{
+            message, {
                 loadProfileInfoManager.hideNotification()
-            },"OK")
+            }, "OK"
+        )
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
@@ -200,6 +253,8 @@ class WelcomeActivity : ComponentActivity() {
 
 @Composable
 fun WelcomeScreen(
+    showLoading: Boolean,
+    loadingText: String,
     selectedLanguage: Language,
     currentSection: Section,
     onLanguageSelected: (Language) -> Unit,
@@ -215,7 +270,7 @@ fun WelcomeScreen(
         modifier = Modifier.fillMaxSize()
     ) {
         val screenHeight = maxHeight
-        val screenWidth=maxWidth
+        val screenWidth = maxWidth
         // Background gradient image
         Image(
             painter = painterResource(id = R.drawable.welcome_background),
@@ -230,16 +285,20 @@ fun WelcomeScreen(
                 if (targetState == Section.PROFILE_SELECTION) {
                     // Sliding to profile selection (right to left)
                     slideInHorizontally(
-                        initialOffsetX = { fullWidth -> fullWidth }, animationSpec = tween(Constants.ANIMATION_DELAY)
+                        initialOffsetX = { fullWidth -> fullWidth },
+                        animationSpec = tween(Constants.ANIMATION_DELAY)
                     ) togetherWith slideOutHorizontally(
-                        targetOffsetX = { fullWidth -> -fullWidth }, animationSpec = tween(Constants.ANIMATION_DELAY)
+                        targetOffsetX = { fullWidth -> -fullWidth },
+                        animationSpec = tween(Constants.ANIMATION_DELAY)
                     )
                 } else {
                     // Sliding back to language selection (left to right)
                     slideInHorizontally(
-                        initialOffsetX = { fullWidth -> -fullWidth }, animationSpec = tween(Constants.ANIMATION_DELAY)
+                        initialOffsetX = { fullWidth -> -fullWidth },
+                        animationSpec = tween(Constants.ANIMATION_DELAY)
                     ) togetherWith slideOutHorizontally(
-                        targetOffsetX = { fullWidth -> fullWidth }, animationSpec = tween(Constants.ANIMATION_DELAY)
+                        targetOffsetX = { fullWidth -> fullWidth },
+                        animationSpec = tween(Constants.ANIMATION_DELAY)
                     )
                 }
             }, label = "section_animation"
@@ -259,14 +318,19 @@ fun WelcomeScreen(
             }
         }
 
-        val bottomSpace=screenHeight * Constants.STD_NAV_MARGIN_BOTTOM
+        LoadingComponent(
+            isVisible = showLoading,
+            loadingText = loadingText
+        )
+
+        val bottomSpace = screenHeight * Constants.STD_NAV_MARGIN_BOTTOM
         if (currentSection == Section.LANGUAGE) {
             // Navigation Buttons (not animated, always visible at bottom)
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = bottomSpace),
-                horizontalArrangement = Arrangement.spacedBy(screenWidth*0.08f),
+                horizontalArrangement = Arrangement.spacedBy(screenWidth * 0.08f),
             ) {
                 BackArrowLargeFab(
                     onClick = onLanguageBackPressed
@@ -311,7 +375,7 @@ fun LanguageSelectionSection(
             // Title
             Text(
                 text = "What language would\nyou prefer?",
-                fontSize = 32.sp,
+                fontSize = Constants.STD_SUBTITLE_SIZE.sp,
                 color = colorResource(R.color.std_cyan),
                 fontFamily = robotoSemibold,
                 textAlign = TextAlign.Center,
@@ -370,8 +434,7 @@ fun ProfileSelectionSection(
                 ProfileButton(
                     text = loadProfileText,
                     icon = Icons.Filled.ArrowCircleDown,
-                    onClick = onLoadProfileClicked,
-                    screenHeight=screenHeight
+                    onClick = onLoadProfileClicked
                 )
 
                 InfoIconButton(
@@ -390,8 +453,7 @@ fun ProfileSelectionSection(
                 ProfileButton(
                     text = newProfileText,
                     icon = Icons.Filled.AddCircleOutline,
-                    onClick = onNewProfileClicked,
-                    screenHeight=screenHeight
+                    onClick = onNewProfileClicked
                 )
 
                 InfoIconButton(
@@ -408,7 +470,6 @@ fun ProfileSelectionSection(
 @Composable
 fun ProfileButton(
     text: String, icon: ImageVector, onClick: () -> Unit,
-    screenHeight: Dp
 ) {
     Button(
         onClick = onClick,
@@ -417,7 +478,7 @@ fun ProfileButton(
                 elevation = 3.dp, shape = MaterialTheme.shapes.extraExtraLarge
             )
             .fillMaxWidth(0.75f)
-            .height(screenHeight * 0.093f),
+            .height(Constants.STD_BUTTON_PAGE_HEIGHT.dp),
         shape = RoundedCornerShape(100.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = colorResource(R.color.notification_button_white),
@@ -434,7 +495,7 @@ fun ProfileButton(
         Spacer(modifier = Modifier.width(12.dp))
 
         Text(
-            text = text, fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
+            text = text, fontSize = 20.sp,
             fontFamily = robotoRegular
         )
     }
@@ -448,7 +509,7 @@ fun InfoIconButton(onClick: () -> Unit) {
         Icon(
             imageVector = Icons.Filled.Info,
             contentDescription = "Information",
-            modifier = Modifier.size(35.dp),
+            modifier = Modifier.size(Constants.STD_INFO_BUTTON_SIZE.dp),
             tint = colorResource(R.color.std_purple)
         )
     }
@@ -505,6 +566,8 @@ fun WelcomeActivityPreview() {
         var currentSection by mutableStateOf(Section.LANGUAGE)
         var selectedLanguage by mutableStateOf(Language("en", "English", "US"))
         WelcomeScreen(
+            showLoading = false,
+            loadingText = "",
             selectedLanguage = selectedLanguage,
             currentSection = currentSection,
             onLanguageSelected = {},

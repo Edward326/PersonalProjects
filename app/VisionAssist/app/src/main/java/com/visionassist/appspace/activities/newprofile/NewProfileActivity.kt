@@ -67,9 +67,9 @@ import com.visionassist.appspace.database.DBConstants
 import com.visionassist.appspace.database.DBManager
 import com.visionassist.appspace.database.NetworkUtils
 import com.visionassist.appspace.jetpack.design.BackArrowLargeFab
-import com.visionassist.appspace.jetpack.design.NotificationDialog
 import com.visionassist.appspace.jetpack.design.LoadingComponent
 import com.visionassist.appspace.jetpack.design.NextArrowLargeFab
+import com.visionassist.appspace.jetpack.design.NotificationDialog
 import com.visionassist.appspace.utils.AppConfig
 import com.visionassist.appspace.utils.BackgroundTaskExecutor
 import com.visionassist.appspace.utils.Constants
@@ -164,7 +164,7 @@ class NewProfileActivity : ComponentActivity() {
     }
 
     private fun handleBackFromProfileSelection() {
-        ProfileFileCollection.welcomeActivityDelete(true)
+        ProfileFileCollection.deleteWelcomeActivity(true)
         val intent = Intent(this, WelcomeActivity::class.java)
         intent.putExtra(Constants.EXTRA_WELCOME_OPTION, false)
         startActivity(intent)
@@ -172,7 +172,7 @@ class NewProfileActivity : ComponentActivity() {
     }
 
     private fun handleNextFromProfileSelection() {
-        ProfileFileCollection.newProfileActivityWrite(false, null, null)
+        ProfileFileCollection.writeNewProfileActivity(false, null, null)
         val intent = Intent(this, UserInfoActivity::class.java)
         startActivity(intent)
         finish()
@@ -277,7 +277,7 @@ class NewProfileActivity : ComponentActivity() {
                     val password = passwordInput.value.trim()
                     val passwordHash = DBManager.hashPassword(password)
 
-                    ProfileFileCollection.newProfileActivityWrite(true, email, passwordHash)
+                    ProfileFileCollection.writeNewProfileActivity(true, email, passwordHash)
                     val intent = Intent(this, UserInfoActivity::class.java)
                     startActivity(intent)
                     finish()
@@ -380,7 +380,7 @@ class NewProfileActivity : ComponentActivity() {
 
     private fun handleNotificationLogin() {
         hideNotification()
-        ProfileFileCollection.welcomeActivityWrite(true, null, false)
+        ProfileFileCollection.writeWelcomeActivity(true, null, false)
         val intent = Intent(this, LoadProfileActivity::class.java)
         startActivity(intent)
         finish()
@@ -522,7 +522,6 @@ fun ProfileSelectionSection(
         modifier = Modifier.fillMaxSize()
     ) {
         val screenHeight = maxHeight
-        val screenWidth = maxWidth
         Column(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.SpaceAround
@@ -535,7 +534,7 @@ fun ProfileSelectionSection(
                     "Would you want\nto sync the profile?"
                 else
                     "Ați dori\n sincronizarea profilului?",
-                fontSize = 32.sp,
+                fontSize = Constants.STD_SUBTITLE_SIZE.sp,
                 color = colorResource(R.color.std_cyan),
                 fontFamily = robotoSemibold,
                 textAlign = TextAlign.Center,
@@ -582,7 +581,7 @@ fun ProfileSelectionSection(
                     checked = switchChecked,
                     onCheckedChange = onSwitchChanged,
                     enabled = true,
-                    modifier = Modifier.size(screenWidth * 0.05f),
+                    modifier = Modifier.size(20.dp),
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = colorResource(R.color.std_cyan),
                         checkedTrackColor = colorResource(R.color.std_cyan).copy(alpha = 0.5f),
@@ -649,7 +648,7 @@ fun RegisterSection(
             // Title
             Text(
                 text = "VisionAssist\nAccount",
-                fontSize = 40.sp,
+                fontSize = Constants.STD_TITLE_SIZE.sp,
                 color = colorResource(R.color.std_cyan),
                 fontFamily = robotoLight,
                 letterSpacing = 6.sp,
@@ -663,7 +662,7 @@ fun RegisterSection(
             // Logo in circle
             Box(
                 modifier = Modifier
-                    .size(60.dp)
+                    .size(55.dp)
                     .background(
                         color = colorResource(R.color.std_cyan),
                         shape = RoundedCornerShape(55)
@@ -673,7 +672,7 @@ fun RegisterSection(
                 Image(
                     painter = painterResource(R.drawable.vision_assist_logo),
                     contentDescription = "VisionAssist Logo",
-                    modifier = Modifier.size(60.dp)
+                    modifier = Modifier.size(55.dp)
                 )
             }
 
@@ -683,7 +682,7 @@ fun RegisterSection(
             Card(
                 modifier = Modifier
                     .fillMaxWidth(0.8f)
-                    .height(screenHeight * 0.29f),
+                    .height(Constants.STD_LOGINCARD_WIDTH.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = colorResource(R.color.notification_white)
