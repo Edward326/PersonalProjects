@@ -47,18 +47,20 @@ import com.visionassist.appspace.utils.AppConfig
 import com.visionassist.appspace.utils.Constants
 
 @Composable
-fun LoadProfileNotificationDialog(
+fun NotificationDialog(
     modifier: Modifier = Modifier,
     isVisible: Boolean = false,
-    message: String,
     type: LoadProfileActivity.NotificationType,
+    message: String,
+    showOneButton: Boolean=true,
     showTwoButtons: Boolean = false,
     showThreeButtons: Boolean = false,
-    onRetryClick: () -> Unit = {},
-    onCreateAccountClick: () -> Unit = {},
-    onLoadLocalClick: () -> Unit = {},
-    onOkClick: () -> Unit = {},
-    newprofile:Boolean=false
+    firstButtonLabel: String = "OK",
+    secondButtonLabel: String = "OK",
+    thirdButtonLabel: String = "OK",
+    firstButtonClick: () -> Unit = {},
+    secondButtonClick: () -> Unit = {},
+    thirdButtonClick: () -> Unit = {},
 ) {
     AnimatedVisibility(
         visible = isVisible,
@@ -145,7 +147,7 @@ fun LoadProfileNotificationDialog(
 
                     // Buttons based on configuration
                     when {
-                        // THREE BUTTONS: Retry (full width) + Create account + Load local (row)
+                        // THREE BUTTONS
                         showThreeButtons -> {
                             Column(
                                 modifier = Modifier.fillMaxWidth(),
@@ -153,7 +155,7 @@ fun LoadProfileNotificationDialog(
                             ) {
                                 // Retry button (full width)
                                 Button(
-                                    onClick = onRetryClick,
+                                    onClick = firstButtonClick,
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .height(Constants.STD_BUTTON_HEIGHT.dp),
@@ -164,7 +166,7 @@ fun LoadProfileNotificationDialog(
                                     )
                                 ) {
                                     Text(
-                                        text = if (AppConfig.mainLanguage.code == "en") "Retry" else "Reîncearcă",
+                                        text = firstButtonLabel,
                                         fontSize = Constants.STD_BUTTON_FONT_SIZE.sp
                                     )
                                 }
@@ -175,7 +177,7 @@ fun LoadProfileNotificationDialog(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     Button(
-                                        onClick = onCreateAccountClick,
+                                        onClick = secondButtonClick,
                                         modifier = Modifier
                                             .weight(1f)
                                             .height(Constants.STD_BUTTON_HEIGHT.dp),
@@ -186,13 +188,13 @@ fun LoadProfileNotificationDialog(
                                         )
                                     ) {
                                         Text(
-                                            text = if (AppConfig.mainLanguage.code == "en") "Create account" else "Creează cont",
+                                            text = secondButtonLabel,
                                             fontSize = Constants.STD_BUTTON_FONT_SIZE.sp
                                         )
                                     }
 
                                     Button(
-                                        onClick = onLoadLocalClick,
+                                        onClick = thirdButtonClick,
                                         modifier = Modifier
                                             .weight(1f)
                                             .height(Constants.STD_BUTTON_HEIGHT.dp),
@@ -203,7 +205,7 @@ fun LoadProfileNotificationDialog(
                                         )
                                     ) {
                                         Text(
-                                            text = if (AppConfig.mainLanguage.code == "en") "Load local" else "Încarcă local",
+                                            text = thirdButtonLabel,
                                             fontSize = Constants.STD_BUTTON_FONT_SIZE.sp
                                         )
                                     }
@@ -218,7 +220,7 @@ fun LoadProfileNotificationDialog(
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 Button(
-                                    onClick = onRetryClick,
+                                    onClick = firstButtonClick,
                                     modifier = Modifier
                                         .weight(1f)
                                         .height(Constants.STD_BUTTON_HEIGHT.dp),
@@ -229,13 +231,13 @@ fun LoadProfileNotificationDialog(
                                     )
                                 ) {
                                     Text(
-                                        text = if (AppConfig.mainLanguage.code == "en") "Retry" else "Reîncearcă",
+                                        text = firstButtonLabel,
                                         fontSize = Constants.STD_BUTTON_FONT_SIZE.sp
                                     )
                                 }
 
                                 Button(
-                                    onClick = onCreateAccountClick,
+                                    onClick = secondButtonClick,
                                     modifier = Modifier
                                         .weight(1f)
                                         .height(Constants.STD_BUTTON_HEIGHT.dp),
@@ -246,21 +248,17 @@ fun LoadProfileNotificationDialog(
                                     )
                                 ) {
                                     Text(
-                                        text = if (!newprofile) {
-                                            if (AppConfig.mainLanguage.code == "en") "Create account" else "Creează cont"
-                                        } else {
-                                            if (AppConfig.mainLanguage.code == "en") "Load local" else "Încarcă local"
-                                        },
-                                    fontSize = Constants.STD_BUTTON_FONT_SIZE.sp
+                                        text = secondButtonLabel,
+                                        fontSize = Constants.STD_BUTTON_FONT_SIZE.sp
                                     )
                                 }
                             }
                         }
 
                         // ONE BUTTON: OK only
-                        else -> {
+                        showOneButton -> {
                             Button(
-                                onClick = onOkClick,
+                                onClick = firstButtonClick,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(Constants.STD_BUTTON_HEIGHT.dp),
@@ -270,7 +268,7 @@ fun LoadProfileNotificationDialog(
                                     contentColor = colorResource(R.color.std_purple)
                                 )
                             ) {
-                                Text(text = "OK", fontSize = Constants.STD_BUTTON_FONT_SIZE.sp)
+                                Text(text = firstButtonLabel, fontSize = Constants.STD_BUTTON_FONT_SIZE.sp)
                             }
                         }
                     }
@@ -283,10 +281,12 @@ fun LoadProfileNotificationDialog(
 @Preview(name = "Success Notification", showBackground = true, widthDp = 412, heightDp = 917)
 @Composable
 fun LoadProfileSuccessPreview() {
-    LoadProfileNotificationDialog(
+    NotificationDialog(
         isVisible = true,
         message = "Profile imported successfully\n\n@(Exit code: 0)",
-        type = LoadProfileActivity.NotificationType.SUCCESS
+        type = LoadProfileActivity.NotificationType.SUCCESS,
+        firstButtonLabel = "OK",
+        firstButtonClick = {}
     )
 }
 
@@ -298,13 +298,15 @@ fun LoadProfileSuccessPreview() {
 )
 @Composable
 fun LoadProfileErrorPreview() {
-    LoadProfileNotificationDialog(
+    NotificationDialog(
         isVisible = true,
         message = "Error was encountered while fetching the profile\n\n@(Error code: 9)",
         type = LoadProfileActivity.NotificationType.ERROR,
         showTwoButtons = true,
-        onRetryClick = {},
-        onCreateAccountClick = {}
+        firstButtonLabel = "Retry",
+        firstButtonClick = {},
+        secondButtonLabel = "Create account",
+        secondButtonClick = {},
     )
 }
 
@@ -316,24 +318,28 @@ fun LoadProfileErrorPreview() {
 )
 @Composable
 fun LoadProfileError3ButtonsPreview() {
-    LoadProfileNotificationDialog(
+    NotificationDialog(
         isVisible = true,
         message = "The email is not registered in the database",
         type = LoadProfileActivity.NotificationType.ERROR,
         showThreeButtons = true,
-        onRetryClick = {},
-        onCreateAccountClick = {},
-        onLoadLocalClick = {}
+        firstButtonLabel = "Retry",
+        firstButtonClick = {},
+        secondButtonLabel = "Create account",
+        secondButtonClick = {},
+        thirdButtonLabel = "Load local",
+        thirdButtonClick ={}
     )
 }
 
 @Preview(name = "No Internet Notification", showBackground = true, widthDp = 412, heightDp = 917)
 @Composable
 fun LoadProfileNoInternetPreview() {
-    LoadProfileNotificationDialog(
+    NotificationDialog(
         isVisible = true,
         message = "The device has no access to the internet, try to connect to a network and try again",
         type = LoadProfileActivity.NotificationType.NO_INTERNET,
-        onOkClick = {}
+        firstButtonLabel = "OK",
+        firstButtonClick = {}
     )
 }
