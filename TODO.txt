@@ -1,6 +1,12 @@
--implementare restul de activitati de configurare
--implementat loadAssets(varianta java->utils.java si kt->utils.kt)
--implementat core-ul aplicatiei(HomeActivity,BlindHomeActivity si celelalte activitati)
+-implementare UserAcc1,HashCaching+testare(load->local/remote new->local/remote)
+
+-gasit cu claude modelele pentru: classifier,translater, STT
+-implmentat codul pentru a le xporta in onnx sau pt si sa fie quantized/pruned
+-creearea cklaselor ce vor realiza inferenta pentru fieacare model
+-creeat loadAssets(varianta java->in utils.java si kt->in utils.kt)
+-creeat apel catre loadAssets, in mainactivity/loadprofile(local,have an account)
+
+-implementat core-ul aplicatiei(HomeActivity,BlindHomeActivity, activitati pentru caption/detection, EnvirotmentsReports, Settings)
 
 *
 -low eyesight: fara TTS, cu sau fara Talkback
