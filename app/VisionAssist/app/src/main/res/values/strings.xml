@@ -137,6 +137,19 @@
     <string name="tts_speed_en">Speed of assistant</string>
     <string name="tts_speed_ro">Viteza asistentului</string>
 
+    <!-- UserAccessibility1Activity -->
+    <!-- BoundingBox Info -->
+    <string name="bbox_info_en">In this page you can select the color of bounding boxes, text background and text for detection activity.\nBoxes can be of various sizes, in e.g 20x20, 40x40, 80x80</string>
+    <string name="bbox_info_ro">În această pagină poți selecta culoarea casetelor de delimitare, fundalul textului și textul pentru activitatea de detecție.\nCasetele pot avea diferite dimensiuni, de exemplu 20x20, 40x40, 80x80</string>
+    <!-- Caption Info -->
+    <string name="caption_info_en">In this page you can select the color of text background and text for caption activity</string>
+    <string name="caption_info_ro">În această pagină poți selecta culoarea fundalului textului și a textului pentru activitatea de subtitrare</string>
+    <!-- UI Size Info -->
+    <string name="ui_size_info_en">UI style and size@\n\nWe inform you that, the general size of the user interface(buttons, text) will be your phone\'s default.\nAlthough with this settings, you can still manually resize the outputs of the AI models:\nwidth of boxes and sizes of labels and text</string>
+    <string name="ui_size_info_ro">Stil și dimensiune UI@\n\nVă informăm că, dimensiunea generală a interfeței utilizatorului(butoane, text) va fi cea implicită a telefonului dvs.\nDeși cu aceste setări, puteți totuși redimensiona manual rezultatele modelelor AI:\nlățimea casetelor și dimensiunile etichetelor și textului</string>
+    <string name="std_caption">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce odio sed tellus eleifend tempor</string>
+
+
     <!-- Common values -->
     <string name="forward_arrow">Forward arrow</string>
     <string name="back_button">Back navigation button</string>

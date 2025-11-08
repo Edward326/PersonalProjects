@@ -309,6 +309,124 @@ public class ProfileFileCollection {
         }
     }
 
+    public static boolean writeUserAccessibility1BoundingBox(
+            String bboxColor,
+            String labelColor,
+            String labelBckColor,
+            boolean bold,
+            boolean showConfidence
+    ) {
+        try {
+            Context context = PhoneStatusMonitor.getInstance().getCurrentContext();
+            File profileFile = FileUtils.getProfileFile(context);
+
+            JSONObject jsonObject;
+            if (profileFile.exists() && profileFile.length() > 0) {
+                String content = FileUtils.loadFileAsString(FileUtils.getProfileInputStream(context));
+                jsonObject = new JSONObject(content);
+            } else {
+                jsonObject = new JSONObject();
+            }
+
+            jsonObject.put("bbox_color", bboxColor);
+            jsonObject.put("label_color", labelColor);
+            jsonObject.put("label_bck_color", labelBckColor);
+            jsonObject.put("bold", bold);
+            jsonObject.put("show_confidence", showConfidence);
+
+            boolean success = FileUtils.writeProfileFile(jsonObject.toString(), Constants.PROFILE_FILE_NAME);
+            if (success)
+                Log.d(TAG, "UserAccessibility1BoundingBox: Fields written successfully");
+            return success;
+        } catch (Exception e) {
+            Log.e(TAG, "UserAccessibility1BoundingBox: Error writing fields", e);
+            return false;
+        }
+    }
+
+    public static boolean writeUserAccessibility1Caption(
+            String captionColor,
+            String captionBckColor,
+            boolean haptics
+    ) {
+        try {
+            Context context = PhoneStatusMonitor.getInstance().getCurrentContext();
+            File profileFile = FileUtils.getProfileFile(context);
+
+            JSONObject jsonObject;
+            if (profileFile.exists() && profileFile.length() > 0) {
+                String content = FileUtils.loadFileAsString(FileUtils.getProfileInputStream(context));
+                jsonObject = new JSONObject(content);
+            } else {
+                jsonObject = new JSONObject();
+            }
+
+            jsonObject.put("caption_color", captionColor);
+            jsonObject.put("caption_bck_color", captionBckColor);
+            jsonObject.put("haptics", haptics);
+
+            boolean success = FileUtils.writeProfileFile(jsonObject.toString(), Constants.PROFILE_FILE_NAME);
+            if (success)
+                Log.d(TAG, "UserAccessibility1Caption: Fields written successfully");
+            return success;
+        } catch (Exception e) {
+            Log.e(TAG, "UserAccessibility1Caption: Error writing fields", e);
+            return false;
+        }
+    }
+
+    public static boolean deleteUserAccessibility1Activity(boolean deleteCaption) {
+        try {
+            Context context = PhoneStatusMonitor.getInstance().getCurrentContext();
+            File profileFile = FileUtils.getProfileFile(context);
+
+            if (!profileFile.exists() || profileFile.length() == 0) {
+                Log.d(TAG, "UserAccessibility1: Profile file doesn't exist, nothing to delete");
+                return true;
+            }
+
+            String content = FileUtils.loadFileAsString(FileUtils.getProfileInputStream(context));
+            JSONObject jsonObject = new JSONObject(content);
+
+            if (!deleteCaption) {
+                // Delete BoundingBox fields
+                if (jsonObject.has("bbox_color")) {
+                    jsonObject.remove("bbox_color");
+                }
+                if (jsonObject.has("label_color")) {
+                    jsonObject.remove("label_color");
+                }
+                if (jsonObject.has("label_bck_color")) {
+                    jsonObject.remove("label_bck_color");
+                }
+                if (jsonObject.has("bold")) {
+                    jsonObject.remove("bold");
+                }
+                if (jsonObject.has("show_confidence")) {
+                    jsonObject.remove("show_confidence");
+                }
+                Log.d(TAG, "UserAccessibility1: BoundingBox fields deleted successfully");
+            } else {
+                // Delete Caption fields
+                if (jsonObject.has("caption_color")) {
+                    jsonObject.remove("caption_color");
+                }
+                if (jsonObject.has("caption_bck_color")) {
+                    jsonObject.remove("caption_bck_color");
+                }
+                if (jsonObject.has("haptics")) {
+                    jsonObject.remove("haptics");
+                }
+                Log.d(TAG, "UserAccessibility1: Caption fields deleted successfully");
+            }
+
+            return FileUtils.writeProfileFile(jsonObject.toString(), Constants.PROFILE_FILE_NAME);
+        } catch (Exception e) {
+            Log.e(TAG, "UserAccessibility1: Error deleting fields", e);
+            return false;
+        }
+    }
+
     public static boolean writeProfile(JSONObject jsonObject) {
         try {
             if (jsonObject == null) {

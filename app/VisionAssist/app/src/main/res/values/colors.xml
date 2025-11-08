@@ -11,6 +11,7 @@
     <color name="error_red">#B3261E</color>
     <color name="notification_text_gray">#49454F</color>
     <color name="notification_button_white">#F7F2FA</color>
+    <color name="slider_green">#2E6F40</color>
 
     <!-- Background Colors -->
     <color name="background_gradient_start">#E8E3FF</color>

@@ -376,3 +376,27 @@ fun load_pitchSpeed(context: Context,case: Boolean): String {
         }
     }
 }
+
+fun load_infoBB(context: Context): String {
+    return  when (AppConfig.mainLanguage.code) {
+        "en" -> context.getString(R.string.bbox_info_en)
+        "ro" -> context.getString(R.string.bbox_info_ro)
+        else -> context.getString(R.string.bbox_info_en)
+    }
+}
+
+fun load_infoCaption(context: Context, case: Boolean): String {
+    return if (!case) {
+        when (AppConfig.mainLanguage.code) {
+            "en" -> context.getString(R.string.caption_info_en)
+            "ro" -> context.getString(R.string.caption_info_ro)
+            else -> context.getString(R.string.caption_info_en)
+        }
+    } else {
+        when (AppConfig.mainLanguage.code) {
+            "en" -> context.getString(R.string.ui_size_info_en)
+            "ro" -> context.getString(R.string.ui_size_info_ro)
+            else -> context.getString(R.string.ui_size_info_en)
+        }
+    }
+}

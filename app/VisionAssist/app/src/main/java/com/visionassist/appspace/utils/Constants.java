@@ -137,6 +137,9 @@ public class Constants {
     public static final float STD_SUBTITLE_BODY_MARGIN_TOP=0.04f;
     public static final float STD_NAV_MARGIN_BOTTOM=0.10f;
 
+    // UserAccessibility1Activity params
+    public static final int SLIDER_UPDATE_DELAY = 2000;
+
     // Debug Configuration
     public static final boolean DEBUG_MODE = true;
 }

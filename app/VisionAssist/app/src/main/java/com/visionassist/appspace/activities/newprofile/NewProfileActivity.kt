@@ -583,8 +583,8 @@ fun ProfileSelectionSection(
                     enabled = true,
                     modifier = Modifier.size(20.dp),
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor = colorResource(R.color.std_cyan),
-                        checkedTrackColor = colorResource(R.color.std_cyan).copy(alpha = 0.5f),
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = colorResource(R.color.std_purple),
                         uncheckedThumbColor = Color.Gray,
                         uncheckedTrackColor = Color.LightGray
                     )

@@ -12,7 +12,7 @@ import com.visionassist.appspace.ExceptionVisionAssist;
 import com.visionassist.appspace.PhoneStatusMonitor;
 import com.visionassist.appspace.activities.newprofile.ConfigurationActivity;
 import com.visionassist.appspace.activities.newprofile.LoadProfileActivity;
-import com.visionassist.appspace.activities.newprofile.UserAccesibility1Activity;
+import com.visionassist.appspace.activities.newprofile.UserAccessibility1Activity;
 import com.visionassist.appspace.activities.newprofile.UserHashCachingActivity;
 import com.visionassist.appspace.activities.newprofile.UserInfoActivity;
 import com.visionassist.appspace.activities.newprofile.UserInfoE3Activity;
@@ -205,7 +205,7 @@ public class Utils {
                 try {
                     AppConfig.blindness = profileStatusDecider.second.getBoolean("blindness");
                     AppConfig.mainLanguage = languageExtractor(profileStatusDecider.second);
-                    intent = new Intent(context, UserAccesibility1Activity.class);
+                    intent = new Intent(context, UserAccessibility1Activity.class);
                     intent.putExtra(Constants.EXTRA_USERACC_OPTION,1);
                     Intent finalIntent8 = intent;
                     loadingManager.hideLoading();
@@ -220,7 +220,7 @@ public class Utils {
                 try {
                     AppConfig.blindness = profileStatusDecider.second.getBoolean("blindness");
                     AppConfig.mainLanguage = languageExtractor(profileStatusDecider.second);
-                    intent = new Intent(context, UserAccesibility1Activity.class);
+                    intent = new Intent(context, UserAccessibility1Activity.class);
                     intent.putExtra(Constants.EXTRA_USERACC_OPTION,2);
                     Intent finalIntent9 = intent;
                     loadingManager.hideLoading();

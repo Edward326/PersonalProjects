@@ -244,7 +244,7 @@ class UserInfoActivity : ComponentActivity() {
         // Write vision condition and navigate
         ProfileFileCollection.writeUserInfoActivity(2, false, "", 0, vision)
 
-        val intent = Intent(this, UserAccesibility1Activity::class.java)
+        val intent = Intent(this, UserAccessibility1Activity::class.java)
         intent.putExtra(Constants.EXTRA_USERINFO_OPTION, 1)
         startActivity(intent)
         finish()
@@ -287,7 +287,7 @@ class UserInfoActivity : ComponentActivity() {
             startActivity(intent)
             finish()
         } else {
-            val intent = Intent(this, UserAccesibility1Activity::class.java)
+            val intent = Intent(this, UserAccessibility1Activity::class.java)
             intent.putExtra(Constants.EXTRA_USERINFO_OPTION,1)
             startActivity(intent)
             finish()
