@@ -1,4 +1,4 @@
--implementare UserAcc1,HashCaching+testare(load->local/remote new->local/remote)
+-testare(load->local/remote new->local/remote)
 
 -gasit cu claude modelele pentru: classifier,translater, STT
 -implmentat codul pentru a le xporta in onnx sau pt si sa fie quantized/pruned
