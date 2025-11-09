@@ -78,15 +78,14 @@ import com.visionassist.appspace.utils.AppConfig
 import com.visionassist.appspace.utils.Constants
 import com.visionassist.appspace.utils.load_infoBB
 import com.visionassist.appspace.utils.load_infoCaption
-import com.visionassist.appspace.utils.robotoRegular
 import com.visionassist.appspace.utils.robotoSemibold
 import kotlin.math.roundToInt
 
 class UserAccessibility1Activity : ComponentActivity() {
     private val TAG = "UserAccessibility1Activity"
 
-    // Current section (0 = BoundingBox, 1 = Caption)
-    private val currentSection = mutableIntStateOf(0)
+    // Current section (1 = BoundingBox, 2 = Caption)
+    private val currentSection = mutableIntStateOf(1)
 
     // BoundingBox section states
     private val bboxRedValue = mutableFloatStateOf(100f)
@@ -131,6 +130,8 @@ class UserAccessibility1Activity : ComponentActivity() {
 
         // Initialize info notification manager
         infoNotificationManager = InfoNotificationManager(this)
+
+        currentSection.intValue=intent.getIntExtra(Constants.EXTRA_USERACC_OPTION, 1)
 
         // Load initial preview
         updateBoundingBoxPreview()
@@ -378,7 +379,7 @@ class UserAccessibility1Activity : ComponentActivity() {
     }
 
     private fun handleInfoClick() {
-        if (currentSection.intValue == 0) {
+        if (currentSection.intValue == 1) {
             // BoundingBox section info
             val message = load_infoBB(this)
 
@@ -416,10 +417,10 @@ class UserAccessibility1Activity : ComponentActivity() {
     }
 
     private fun handleBackClick() {
-        if (currentSection.intValue == 1) {
+        if (currentSection.intValue == 2) {
             // From Caption section, go back to BoundingBox section
             ProfileFileCollection.deleteUserAccessibility1Activity(false)
-            currentSection.intValue = 0
+            currentSection.intValue = 1
         } else {
             // From BoundingBox section, go back to previous activity
             if (AppConfig.isContributor) {
@@ -439,7 +440,7 @@ class UserAccessibility1Activity : ComponentActivity() {
     }
 
     private fun handleNextClick() {
-        if (currentSection.intValue == 0) {
+        if (currentSection.intValue == 1) {
             // Save BoundingBox section
             val bboxColorHex = String.format(
                 "#%02X%02X%02X",
@@ -478,7 +479,7 @@ class UserAccessibility1Activity : ComponentActivity() {
             AppConfig.show_confidence = showConfidence.value
 
             // Move to Caption section
-            currentSection.intValue = 1
+            currentSection.intValue = 2
         } else {
             // Save Caption section
             val captionTextColorHex = String.format(
@@ -611,7 +612,7 @@ fun UserAccessibility1Screen(
             label = "section_transition"
         ) { section ->
             when (section) {
-                0 -> BoundingBoxSection(
+                1 -> BoundingBoxSection(
                     screenHeight = screenHeight,
                     bboxRedValue = bboxRedValue,
                     bboxGreenValue = bboxGreenValue,
@@ -639,7 +640,7 @@ fun UserAccessibility1Screen(
                     onInfoClick = onInfoClick
                 )
 
-                1 -> CaptionSection(
+                2 -> CaptionSection(
                     screenHeight = screenHeight,
                     captionTextRedValue = captionTextRedValue,
                     captionTextGreenValue = captionTextGreenValue,
@@ -1220,7 +1221,7 @@ fun UserAccessibility1BoundingBoxPreview() {
     canvas.drawColor(android.graphics.Color.BLACK)
 
     UserAccessibility1Screen(
-        currentSection = 0,
+        currentSection = 1,
         bboxRedValue = 100f,
         bboxGreenValue = 9f,
         bboxBlueValue = 50f,
@@ -1273,7 +1274,7 @@ fun UserAccessibility1BoundingBoxPreview() {
 @Composable
 fun UserAccessibility1CaptionPreview() {
     UserAccessibility1Screen(
-        currentSection = 1,
+        currentSection = 2,
         bboxRedValue = 100f,
         bboxGreenValue = 0f,
         bboxBlueValue = 0f,

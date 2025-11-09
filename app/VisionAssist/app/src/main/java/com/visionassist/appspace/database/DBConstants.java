@@ -12,7 +12,6 @@ public class DBConstants {
     public static final int STATUS_ERROR_DATABASE = 97;
 
     // ==================== OPERATION RESULTS ====================
-    public static final int SYNCING = -1;
     public static final int SYNC_NOT_NEEDED = 0;
     public static final int SYNC_OK = 1;
     public static final int SYNC_ERROR = -1;
@@ -20,7 +19,6 @@ public class DBConstants {
     // Account Operations
     public static final int ACCOUNT_CREATED = 0;
     public static final int ACCOUNT_CREATION_FAILED = -1;
-    public static final int ACCOUNT_NOT_FOUND = -1;
 
     // Email Operations
     public static final int EMAIL_VALID = 0;
@@ -32,7 +30,6 @@ public class DBConstants {
     public static final int PASSWORD_RESET_SENT = 0;
 
     // Data Operations
-    public static final int DATA_SYNCED = 0;
     public static final int DATA_FETCH_ERROR = -1;
     public static final int DATA_WRITE_ERROR = -1;
 

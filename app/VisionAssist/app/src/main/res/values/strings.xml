@@ -149,6 +149,18 @@
     <string name="ui_size_info_ro">Stil și dimensiune UI@\n\nVă informăm că, dimensiunea generală a interfeței utilizatorului(butoane, text) va fi cea implicită a telefonului dvs.\nDeși cu aceste setări, puteți totuși redimensiona manual rezultatele modelelor AI:\nlățimea casetelor și dimensiunile etichetelor și textului</string>
     <string name="std_caption">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce odio sed tellus eleifend tempor</string>
 
+    <!-- UserHashCachingActivity -->
+    <string name="hash_cache_title_en">Use\nHash Caching?</string>
+    <string name="hash_cache_title_ro">Foloseşti\nHash Caching?</string>
+    <string name="hash_cache_info_first_en">Hash Caching@To save you time, the app can remember similar photos you\'ve already taken. If you capture the same scene again, it reuses the old description instead of processing it again. This makes the app much faster</string>
+    <string name="hash_cache_info_first_ro">Hash Caching@Pentru a vă economisi timp, aplicaţia poate reţine fotografiile similare pe care le-aţi făcut deja. Dacă capturaţi aceeaşi scenă din nou, reutilizează descrierea veche în loc să o proceseze din nou. Acest lucru face aplicaţia mult mai rapidă</string>
+    <string name="hash_cache_info_second_en">Hash Caching@Light:\n-will use less storage, but inference may be slower\n\nHeavy:\n-will use more storage, but inference will be fast</string>
+    <string name="hash_cache_info_second_ro">Hash Caching@Light:\n-va folosi mai puţin spaţiu, dar inferenţa poate fi mai lentă\n\nHeavy:\n-va folosi mai mult spaţiu, dar inferenţa va fi rapidă</string>
+    <string name="env_reports_title_en">Enable Environment\nReports?</string>
+    <string name="env_reports_title_ro">Activează rapoartele\nde mediu?</string>
+    <string name="env_reports_info_en">Environment reports@The application will use another model when making detections, to help identify the main scene, in order to record the objects found in that environment.\n\nThis will make statistics about objects encountered in every scene\n\nDisadvantages:\n-inference may be slower because of an added model</string>
+    <string name="env_reports_info_ro">Rapoarte de mediu@Aplicaţia va folosi un alt model la efectuarea detectărilor, pentru a ajuta la identificarea scenei principale, în scopul de a înregistra obiectele găsite în acel mediu.\n\nAcest lucru va crea o statistică despre obiectele întâlnite în fiecare scenă\n\nDezavantaje:\n-inferenţa poate fi mai lentă din cauza unui model adăugat</string>
+
 
     <!-- Common values -->
     <string name="forward_arrow">Forward arrow</string>
@@ -174,4 +186,6 @@
     <string name="battery_low_ro"> Nivelul bateriei este prea scăzut.Vă rugăm să încărcați dispozitivul imediat.Aplicația se va opri</string>
     <string name="critical_warning_en">Critical Warning!</string>
     <string name="critical_warning_ro">Avertisment critic!</string>
+    <string name="uploading_loading_en">Uploading profile, please wait</string>
+    <string name="uploading_loading_ro">Profilul se încarcă, vă rugăm așteptați</string>
 </resources>

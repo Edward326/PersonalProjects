@@ -1,5 +1,7 @@
 package com.visionassist.appspace.database;
 
+import static org.mindrot.jbcrypt.BCrypt.checkpw;
+
 import android.content.Context;
 import android.util.Log;
 import android.util.Pair;
@@ -92,42 +94,35 @@ public class DBManager {
         }
     }
 
-    public int createAccount(String email, String password) {
+    public Pair<String,Integer> createAccount(String email, String password) {
         Log.d(TAG, "Creating account for: " + email);
+        String hashedPassword = hashPassword(password);
+        Log.d(TAG, "Password hashed successfully");
 
         if (!hasInternetConnection()) {
             status = DBConstants.INTERNET_CONNECTION_FAILED;
-            return status;
+            return new Pair<>(hashedPassword, status);
         }
 
         try {
             CountDownLatch latch = new CountDownLatch(1);
             AtomicBoolean success = new AtomicBoolean(false);
 
-            firebaseAuth.createUserWithEmailAndPassword(email, password)
-                    .addOnSuccessListener(authResult -> {
-                        Log.d(TAG, "Firebase Auth account created successfully");
+            // Create user document in Firestore with encrypted password
+            Map<String, Object> userData = new HashMap<>();
+            userData.put(DBConstants.FIREBASE_EMAIL_FIELD, email);
+            userData.put(DBConstants.FIREBASE_PASSWORD_FIELD, hashedPassword); // Store hashed password
 
-                        // Create user document in Firestore
-                        Map<String, Object> userData = new HashMap<>();
-                        userData.put(DBConstants.FIREBASE_EMAIL_FIELD, email);
-                        userData.put(DBConstants.FIREBASE_PASSWORD_FIELD, password);
-
-                        firebaseDb.collection(DBConstants.FIREBASE_USERS_COLLECTION)
-                                .document(email)
-                                .set(userData)
-                                .addOnSuccessListener(aVoid -> {
-                                    Log.d(TAG, "User document created in Firestore");
-                                    success.set(true);
-                                    latch.countDown();
-                                })
-                                .addOnFailureListener(e -> {
-                                    Log.e(TAG, "Error creating user document", e);
-                                    latch.countDown();
-                                });
+            firebaseDb.collection(DBConstants.FIREBASE_USERS_COLLECTION)
+                    .document(email) // Use email as document ID
+                    .set(userData)
+                    .addOnSuccessListener(aVoid -> {
+                        Log.d(TAG, "User account created successfully in Firestore");
+                        success.set(true);
+                        latch.countDown();
                     })
                     .addOnFailureListener(e -> {
-                        Log.e(TAG, "Error creating Firebase Auth account", e);
+                        Log.e(TAG, "Error creating user account in Firestore", e);
                         latch.countDown();
                     });
 
@@ -138,12 +133,11 @@ public class DBManager {
             } else {
                 status = DBConstants.ACCOUNT_CREATION_FAILED;
             }
-            return status;
-
+            return new Pair<>(hashedPassword, status);
         } catch (Exception e) {
             Log.e(TAG, "Error in createAccount", e);
             status = DBConstants.ACCOUNT_CREATION_FAILED;
-            return status;
+            return null;
         }
     }
 
@@ -451,7 +445,7 @@ public class DBManager {
                     .addOnSuccessListener(documentSnapshot -> {
                         if (documentSnapshot.exists()) {
                             String storedPasswordHash = documentSnapshot.getString(DBConstants.FIREBASE_PASSWORD_FIELD);
-                            isCorrect[0] = password.equals(storedPasswordHash);
+                            isCorrect[0] =checkpw (password,storedPasswordHash);
                         }
                         latch.countDown();
                     })

@@ -43,6 +43,14 @@ fun load_loadingVerifying(context: Context): String {
     }
 }
 
+fun load_loadingUploading(context: Context): String {
+    return when (AppConfig.mainLanguage.code) {
+        "en" -> context.getString(R.string.uploading_loading_en)
+        "ro" -> context.getString(R.string.uploading_loading_ro)
+        else -> context.getString(R.string.uploading_loading_en)
+    }
+}
+
 fun load_creatingAccount(context: Context): String {
     return when (AppConfig.mainLanguage.code) {
         "en" -> context.getString(R.string.create_account_en)
@@ -139,30 +147,6 @@ fun load_permissionInfo(context: Context, case: String): String {
             }
     }
     return "none"
-}
-
-fun load_micDeniedInfo(context: Context): String {
-    return when (AppConfig.mainLanguage.code) {
-        "en" -> context.getString(R.string.microphone_denied_info_en)
-        "ro" -> context.getString(R.string.microphone_denied_info_ro)
-        else -> context.getString(R.string.microphone_denied_info_en)
-    }
-}
-
-fun load_micDeniedInfoButtons(context: Context, case: Boolean): String {
-    return if (case) {
-        when (AppConfig.mainLanguage.code) {
-            "en" -> context.getString(R.string.give_access_en)
-            "ro" -> context.getString(R.string.give_access_ro)
-            else -> context.getString(R.string.give_access_en)
-        }
-    } else {
-        when (AppConfig.mainLanguage.code) {
-            "en" -> context.getString(R.string.dont_give_en)
-            "ro" -> context.getString(R.string.dont_give_ro)
-            else -> context.getString(R.string.dont_give_en)
-        }
-    }
 }
 
 fun load_loadProfileText(context: Context): String {
@@ -398,5 +382,45 @@ fun load_infoCaption(context: Context, case: Boolean): String {
             "ro" -> context.getString(R.string.ui_size_info_ro)
             else -> context.getString(R.string.ui_size_info_en)
         }
+    }
+}
+
+fun load_hashCacheTitle(context: Context): String {
+    return when (AppConfig.mainLanguage.code) {
+        "en" -> context.getString(R.string.hash_cache_title_en)
+        "ro" -> context.getString(R.string.hash_cache_title_ro)
+        else -> context.getString(R.string.hash_cache_title_en)
+    }
+}
+
+fun load_hashCacheInfoFirst(context: Context): String {
+    return when (AppConfig.mainLanguage.code) {
+        "en" -> context.getString(R.string.hash_cache_info_first_en)
+        "ro" -> context.getString(R.string.hash_cache_info_first_ro)
+        else -> context.getString(R.string.hash_cache_info_first_en)
+    }
+}
+
+fun load_hashCacheInfoSecond(context: Context): String {
+    return when (AppConfig.mainLanguage.code) {
+        "en" -> context.getString(R.string.hash_cache_info_second_en)
+        "ro" -> context.getString(R.string.hash_cache_info_second_ro)
+        else -> context.getString(R.string.hash_cache_info_second_en)
+    }
+}
+
+fun load_envReportsTitle(context: Context): String {
+    return when (AppConfig.mainLanguage.code) {
+        "en" -> context.getString(R.string.env_reports_title_en)
+        "ro" -> context.getString(R.string.env_reports_title_ro)
+        else -> context.getString(R.string.env_reports_title_en)
+    }
+}
+
+fun load_envReportsInfo(context: Context): String {
+    return when (AppConfig.mainLanguage.code) {
+        "en" -> context.getString(R.string.env_reports_info_en)
+        "ro" -> context.getString(R.string.env_reports_info_ro)
+        else -> context.getString(R.string.env_reports_info_en)
     }
 }

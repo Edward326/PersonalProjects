@@ -64,7 +64,6 @@ import com.visionassist.appspace.R
 import com.visionassist.appspace.activities.newprofile.LoadProfileActivity.NotificationType
 import com.visionassist.appspace.activities.newprofile.jsonCollection.ProfileFileCollection
 import com.visionassist.appspace.database.DBConstants
-import com.visionassist.appspace.database.DBManager
 import com.visionassist.appspace.database.NetworkUtils
 import com.visionassist.appspace.jetpack.design.BackArrowLargeFab
 import com.visionassist.appspace.jetpack.design.LoadingComponent
@@ -114,6 +113,7 @@ class NewProfileActivity : ComponentActivity() {
     // Registration status members
     private var registerStatus = DBConstants.STATUS_INITIALIZED
     private var finishedRegistering = false
+    private var passwordHash = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -239,11 +239,13 @@ class NewProfileActivity : ComponentActivity() {
             if (accountExists == DBConstants.EMAIL_NOT_FOUND) {
                 // Validate email format
                 val emailValidation = dbManager.validateEmail(email)
-                return if (emailValidation == DBConstants.EMAIL_VALID) {
+                if (emailValidation == DBConstants.EMAIL_VALID) {
                     // Create account
-                    dbManager.createAccount(email, password)
+                    val ret=dbManager.createAccount(email, password)
+                    passwordHash=ret.first
+                    return ret.second
                 } else
-                    emailValidation
+                    return emailValidation
             } else
                 return accountExists
         } catch (e: Exception) {
@@ -274,11 +276,10 @@ class NewProfileActivity : ComponentActivity() {
                 // Navigate after 5 seconds
                 mainHandler.postDelayed({
                     val email = emailInput.value.trim()
-                    val password = passwordInput.value.trim()
-                    val passwordHash = DBManager.hashPassword(password)
 
                     ProfileFileCollection.writeNewProfileActivity(true, email, passwordHash)
                     val intent = Intent(this, UserInfoActivity::class.java)
+                    intent.putExtra(Constants.EXTRA_USERINFO_OPTION, 1)
                     startActivity(intent)
                     finish()
                 }, Constants.SUCCESS_NOTIFICATION_DELAY.toLong())

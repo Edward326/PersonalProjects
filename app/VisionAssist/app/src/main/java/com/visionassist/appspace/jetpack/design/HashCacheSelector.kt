@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.OfflineBolt
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -47,8 +47,6 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -57,42 +55,40 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.visionassist.appspace.R
 import com.visionassist.appspace.utils.Constants
-import com.visionassist.appspace.utils.Language
-
-val robotoMedium = FontFamily(
-    Font(R.font.roboto_medium_ttf, weight = FontWeight.Medium)
-)
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun LanguageSelector(
-    selectedLanguage: Language = Language("en", "English","US"),
-    availableLanguages: List<Language> = listOf(
-        Language("en", "English","US"),
-        Language("ro", "Română","RO"),
+fun HashCacheSelector(
+    selectedOption: String = "Don't use",
+    availableOptions: List<String> = listOf(
+        "Don't use",
+        "Light",
+        "Heavy"
     ),
-    onLanguageSelected: (Language) -> Unit
+    onOptionSelected: (String) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
-    var currentLanguage by remember { mutableStateOf(selectedLanguage) }
+    var currentOption by remember { mutableStateOf(selectedOption) }
     var buttonWidth by remember { mutableIntStateOf(0) }
 
     val density = LocalDensity.current
 
-    Box{
+    Box {
         SplitButtonLayout(
-            spacing=2.dp,
-            modifier = Modifier.shadow(
-                elevation = 3.dp,
-                shape = MaterialTheme.shapes.extraLargeIncreased
-            ).onGloballyPositioned { coordinates ->
-                buttonWidth = coordinates.size.width
-            },
+            spacing = 2.dp,
+            modifier = Modifier
+                .shadow(
+                    elevation = 3.dp,
+                    shape = MaterialTheme.shapes.extraLargeIncreased
+                )
+                .onGloballyPositioned { coordinates ->
+                    buttonWidth = coordinates.size.width
+                },
             leadingButton = {
                 SplitButtonDefaults.LeadingButton(
                     enabled = false, // Leading button is not clickable
                     onClick = {
-                        // Leading button does nothing - as you specified
+                        // Leading button does nothing
                     },
                     colors = ButtonDefaults.buttonColors(
                         disabledContainerColor = Color(0xFFF7F2FA),
@@ -100,13 +96,14 @@ fun LanguageSelector(
                     )
                 ) {
                     Icon(
-                        Icons.Filled.Language,
+                        Icons.Filled.OfflineBolt,
                         modifier = Modifier.size(SplitButtonDefaults.LeadingIconSize),
-                        contentDescription = "Language",
+                        contentDescription = "Hash Cache",
                         tint = colorResource(R.color.std_cyan)
                     )
                     Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                    Text(currentLanguage.name,
+                    Text(
+                        currentOption,
                         fontSize = Constants.STD_FONT_SIZE.sp,
                         fontFamily = robotoMedium,
                         fontWeight = FontWeight.Medium,
@@ -116,7 +113,7 @@ fun LanguageSelector(
                 }
             },
             trailingButton = {
-                val description = "Language Options"
+                val description = "Hash Cache Options"
                 TooltipBox(
                     positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
                         TooltipAnchorPosition.Above
@@ -160,7 +157,7 @@ fun LanguageSelector(
         )
 
         // Calculate offset to align dropdown with trailing button
-        val trailingButtonWidth = with(density) { 48.dp.toPx() } // Approximate trailing button width
+        val trailingButtonWidth = with(density) { 48.dp.toPx() }
         val offsetX = with(density) {
             (buttonWidth - trailingButtonWidth).toDp()
         }
@@ -169,22 +166,22 @@ fun LanguageSelector(
             expanded = expanded,
             onDismissRequest = { expanded = false },
             modifier = Modifier.wrapContentSize(),
-            offset = DpOffset(x = offsetX, y = 0.dp) // Align with trailing button + small gap
+            offset = DpOffset(x = offsetX, y = 0.dp)
         ) {
-            availableLanguages.forEach { language ->
+            availableOptions.forEach { option ->
                 DropdownMenuItem(
                     text = {
                         Row(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = language.name,
-                                color = if (language.code == currentLanguage.code)
+                                text = option,
+                                color = if (option == currentOption)
                                     Color(0xFF6750A4)
                                 else
                                     Color(0xFF1C1B1F),
                                 fontFamily = robotoMedium,
-                                fontWeight = if (language.code == currentLanguage.code)
+                                fontWeight = if (option == currentOption)
                                     FontWeight.SemiBold
                                 else
                                     FontWeight.Normal
@@ -192,9 +189,9 @@ fun LanguageSelector(
                         }
                     },
                     onClick = {
-                        currentLanguage = language
+                        currentOption = option
                         expanded = false
-                        onLanguageSelected(language)
+                        onOptionSelected(option)
                     }
                 )
             }
@@ -202,18 +199,17 @@ fun LanguageSelector(
     }
 }
 
-// Preview function for real-time design updates
 @Preview(showBackground = true, widthDp = 412, heightDp = 917)
 @Composable
-fun LanguageSelectorPreview() {
+fun HashCacheSelectorPreview() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp),
         contentAlignment = Alignment.Center
     ) {
-        LanguageSelector(
-            onLanguageSelected = {}
+        HashCacheSelector(
+            onOptionSelected = {}
         )
     }
 }

@@ -296,7 +296,8 @@ public class ProfileFileCollection {
             JSONObject jsonObject = new JSONObject(content);
 
             if (jsonObject.has("tts_pitch") && jsonObject.has("tts_speed")) {
-                jsonObject.remove("tts_pitch");jsonObject.remove("tts_speed");
+                jsonObject.remove("tts_pitch");
+                jsonObject.remove("tts_speed");
                 boolean success = FileUtils.writeProfileFile(jsonObject.toString(), Constants.PROFILE_FILE_NAME);
                 if (success) {
                     Log.d(TAG, "ConfigurationActivity: Fields deleted successfully");
@@ -423,6 +424,64 @@ public class ProfileFileCollection {
             return FileUtils.writeProfileFile(jsonObject.toString(), Constants.PROFILE_FILE_NAME);
         } catch (Exception e) {
             Log.e(TAG, "UserAccessibility1: Error deleting fields", e);
+            return false;
+        }
+    }
+
+    public static boolean writeUserHashCachingActivity(String value, boolean isEnvReports) {
+        try {
+            Context context = PhoneStatusMonitor.getInstance().getCurrentContext();
+            File profileFile = FileUtils.getProfileFile(context);
+
+            JSONObject jsonObject;
+            if (profileFile.exists() && profileFile.length() > 0) {
+                String content = FileUtils.loadFileAsString(FileUtils.getProfileInputStream(context));
+                jsonObject = new JSONObject(content);
+            } else {
+                jsonObject = new JSONObject();
+            }
+
+            // Add the appropriate field
+            if (isEnvReports) {
+                jsonObject.put("env_reports", Boolean.parseBoolean(value));
+            } else {
+                jsonObject.put("hash_caching", value);
+            }
+
+            // Write back to file
+            boolean success = FileUtils.writeProfileFile(jsonObject.toString(), Constants.PROFILE_FILE_NAME);
+            if (success)
+                Log.d(TAG, "UserHashCachingActivity: Fields written successfully");
+            return success;
+        } catch (Exception e) {
+            Log.e(TAG, "UserHashCachingActivity: Error writing fields", e);
+            return false;
+        }
+    }
+
+    public static boolean deleteUserHashCachingActivity() {
+        try {
+            Context context = PhoneStatusMonitor.getInstance().getCurrentContext();
+            File profileFile = FileUtils.getProfileFile(context);
+
+            if (!profileFile.exists() || profileFile.length() == 0) {
+                Log.d(TAG, "UserHashCachingActivity: Profile file doesn't exist, nothing to delete");
+                return true;
+            }
+
+            String content = FileUtils.loadFileAsString(FileUtils.getProfileInputStream(context));
+            JSONObject jsonObject = new JSONObject(content);
+
+            if (jsonObject.has("hash_caching")) {
+                jsonObject.remove("hash_caching");
+                boolean success = FileUtils.writeProfileFile(jsonObject.toString(), Constants.PROFILE_FILE_NAME);
+                if (success) {
+                    Log.d(TAG, "UserHashCachingActivity: Fields deleted successfully");
+                }
+            }
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "UserHashCachingActivity: Error deleting fields", e);
             return false;
         }
     }
