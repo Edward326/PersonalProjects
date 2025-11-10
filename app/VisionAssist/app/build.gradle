@@ -106,6 +106,7 @@ dependencies {
     implementation libs.firebase.auth
     implementation libs.material3
     implementation libs.foundation.layout
+    implementation libs.documentfile
     annotationProcessor 'com.github.bumptech.glide:compiler:4.16.0'
 
     // Permissions
