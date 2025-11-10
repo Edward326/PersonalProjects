@@ -1,3 +1,5 @@
+@file:Suppress("COMPOSE_APPLIER_CALL_MISMATCH")
+
 package com.visionassist.appspace.activities.newprofile
 
 import android.annotation.SuppressLint
@@ -39,7 +41,6 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.visionassist.appspace.PhoneStatusMonitor
@@ -221,7 +222,6 @@ fun ConfigurationScreen(
         modifier = Modifier.fillMaxSize()
     ) {
         val screenHeight = maxHeight
-        val screenWidth=maxWidth
         // Background image
         Image(
             painter = painterResource(R.drawable.welcome_background),
@@ -285,9 +285,7 @@ fun ConfigurationScreen(
                     text = "Blindness",
                     contentDescription = "Blindness button pressed",
                     iconResId = R.drawable.blindness,
-                    onClick = onBlindnessClick,
-                    screenWidth=screenWidth,
-                    screenHeight=screenHeight
+                    onClick = onBlindnessClick
                 )
 
                 // Low eyesight button
@@ -295,9 +293,7 @@ fun ConfigurationScreen(
                     text = "Low eyesight",
                     contentDescription = "Low eyesight button pressed",
                     iconResId = R.drawable.eyesight,
-                    onClick = onLowEyesightClick,
-                    screenWidth=screenWidth,
-                    screenHeight=screenHeight
+                    onClick = onLowEyesightClick
                 )
             }
             Box(modifier = Modifier.height(screenHeight * 0.21f))
@@ -319,8 +315,6 @@ fun VisualProblemButton(
     contentDescription: String,
     iconResId: Int,
     onClick: () -> Unit,
-    screenWidth: Dp,
-    screenHeight: Dp
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally

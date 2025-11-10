@@ -1,3 +1,5 @@
+@file:Suppress("COMPOSE_APPLIER_CALL_MISMATCH")
+
 package com.visionassist.appspace.activities.newprofile
 
 import android.content.Intent
