@@ -1,3 +1,5 @@
+@file:Suppress("COMPOSE_APPLIER_CALL_MISMATCH")
+
 package com.visionassist.appspace.activities.newprofile
 
 import android.annotation.SuppressLint
@@ -572,8 +574,8 @@ fun WelcomeActivityPreview() {
             currentSection = currentSection,
             onLanguageSelected = {},
             onLanguageBackPressed = {},
-            onLanguageNextPressed = { currentSection = Section.PROFILE_SELECTION },
-            onProfileSelectionBackPressed = { currentSection = Section.LANGUAGE },
+            onLanguageNextPressed = {},
+            onProfileSelectionBackPressed = {},
             onLoadProfileClicked = {},
             onNewProfileClicked = {},
             onShowLoadProfileInfo = {},
