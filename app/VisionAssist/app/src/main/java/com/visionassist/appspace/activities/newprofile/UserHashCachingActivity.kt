@@ -129,6 +129,7 @@ class UserHashCachingActivity : ComponentActivity() {
 
     // Section 1 Handlers
     private fun handleHashCacheOptionSelected(option: String) {
+        AppConfig.hash_caching = option
         hashCacheOption.value = option
         Log.d(TAG, "Hash cache option selected: $option")
     }
@@ -158,6 +159,7 @@ class UserHashCachingActivity : ComponentActivity() {
 
     // Section 2 Handlers
     private fun handleEnvReportsToggle(enabled: Boolean) {
+        AppConfig.env_reports=enabled
         envReportsEnabled.value = enabled
         Log.d(TAG, "Environment reports enabled: $enabled")
     }
@@ -217,7 +219,6 @@ class UserHashCachingActivity : ComponentActivity() {
 
                     // Write hash_caching to profile
                     ProfileFileCollection.writeUserHashCachingActivity(option, false)
-                    AppConfig.hash_caching = option
 
                     // Start loading assets immediately
                     startLoadingAssets()
@@ -286,7 +287,7 @@ class UserHashCachingActivity : ComponentActivity() {
                     return@BackgroundTask dbManager.status
                 }
 
-                return@BackgroundTask 0 // Success
+                return@BackgroundTask DBConstants.SYNC_OK
             },
             object : BackgroundTaskExecutor.TaskCallback<Int> {
                 override fun onSuccess(result: Int) {
@@ -340,7 +341,7 @@ class UserHashCachingActivity : ComponentActivity() {
                 // Continue waiting
                 waitForAssetLoading()
             }
-        }, 500)
+        }, Constants.LOAD_CHECK_DELAY_MS.toLong())
     }
 
     private fun loadAllAssets(): Boolean {
@@ -734,7 +735,7 @@ fun Section1Content(
             verticalAlignment = Alignment.Bottom
         ) {
             HashCacheSelector(
-                selectedOption = hashCacheOption,
+                selectedOption = if(AppConfig.hash_caching!=null)AppConfig.hash_caching else hashCacheOption,
                 availableOptions = listOf("Don't use", "Light", "Heavy"),
                 onOptionSelected = onHashCacheOptionSelected
             )
@@ -787,7 +788,7 @@ fun Section2Content(
             )
 
             Switch(
-                checked = envReportsEnabled,
+                checked = if(AppConfig.env_reports) true else envReportsEnabled,
                 onCheckedChange = onEnvReportsToggle,
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = Color.White,

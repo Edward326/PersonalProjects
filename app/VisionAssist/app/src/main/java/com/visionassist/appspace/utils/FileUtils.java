@@ -80,6 +80,28 @@ public class FileUtils {
     }
 
     /**
+     * Get InputStream for hashcache file from internal storage
+     */
+    public static InputStream getHashCacheInputStream(Context context) throws IOException {
+        File hcFile = getHashCacheFile(context);
+        if (!hcFile.exists()) {
+            throw new IOException("Profile file does not exist: " + hcFile.getAbsolutePath());
+        }
+        return new FileInputStream(hcFile);
+    }
+
+    /**
+     * Get InputStream for env file from internal storage
+     */
+    public static InputStream getEnvReportsInputStream(Context context) throws IOException {
+        File envFile = getEnvReportsFile(context);
+        if (!envFile.exists()) {
+            throw new IOException("Profile file does not exist: " + envFile.getAbsolutePath());
+        }
+        return new FileInputStream(envFile);
+    }
+
+    /**
      * Get InputStream for profile file from internal storage
      */
     public static InputStream getProfileInputStream(Context context) throws IOException {

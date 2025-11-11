@@ -3,9 +3,12 @@ package com.visionassist.appspace.utils;
 
 import android.util.Log;
 import android.util.Pair;
+
 import com.visionassist.appspace.PhoneStatusMonitor;
+
 import org.json.JSONException;
 import org.json.JSONObject;
+
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -118,11 +121,11 @@ public class JSONValidation {
             }
             if (isBlindProfile) {
                 if (!jsonObject.has("tts_pitch")
-                        && !jsonObject.has("tts_speed"))
+                        && !jsonObject.has("tts_speech_rate"))
                     return new Pair<>(5, jsonObject);   //UserInfoE3Activity
 
                 if (!jsonObject.has("tts_pitch")
-                        || !jsonObject.has("tts_speed"))
+                        || !jsonObject.has("tts_speech_rate"))
                     return new Pair<>(1, jsonObject);   // ConfigurationActivity
 
                 if (!jsonObject.has("hash_caching"))
@@ -131,16 +134,14 @@ public class JSONValidation {
                 if (!jsonObject.has("env_reports"))
                     return new Pair<>(9, jsonObject);   // EnvironmentReportsIActivity
 
-                if (jsonObject.getString("hash_caching").equals("heavy") || jsonObject.getString("hash_caching").equals("light"))
-                    if (!FileUtils.getHashCacheFile(PhoneStatusMonitor.getInstance().getCurrentContext()).exists()) {
-                        FileUtils.createProfileDirFile(Constants.HASH_CACHE_FILE_NAME);
+                if (jsonObject.getString("hash_caching").equals("heavy") || jsonObject.getString("hash_caching").equals("light")) {
+                    if (!FileUtils.createProfileDirFile(Constants.HASH_CACHE_FILE_NAME))
                         return new Pair<>(0, jsonObject);   // ConfigurationActivity
-                    }
-                if (jsonObject.getBoolean("env_reports"))
-                    if (!FileUtils.getEnvReportsFile(PhoneStatusMonitor.getInstance().getCurrentContext()).exists()) {
-                        FileUtils.createProfileDirFile(Constants.ENV_REPORTS_FILE_NAME);
+                }
+                if (jsonObject.getBoolean("env_reports")) {
+                    if (!FileUtils.createProfileDirFile(Constants.ENV_REPORTS_FILE_NAME))
                         return new Pair<>(0, jsonObject);   // ConfigurationActivity
-                    }
+                }
 
                 inputStream.close();
                 // All validations passed
@@ -149,11 +150,11 @@ public class JSONValidation {
         } else {
             if (isBlindProfile) {
                 if (!jsonObject.has("tts_pitch")
-                        && !jsonObject.has("tts_speed"))
+                        && !jsonObject.has("tts_speech_rate"))
                     return new Pair<>(5, jsonObject);   //UserInfoE3Activity
 
                 if (!jsonObject.has("tts_pitch")
-                        || !jsonObject.has("tts_speed"))
+                        || !jsonObject.has("tts_speech_rate"))
                     return new Pair<>(1, jsonObject);   // ConfigurationActivity
 
                 if ((!jsonObject.has("env_reports") && jsonObject.has("hash_caching"))
@@ -206,10 +207,31 @@ public class JSONValidation {
                 && !jsonObject.has("haptics"))
             return new Pair<>(7, jsonObject);    // UserAccesibility1Activity
 
-        if (!jsonObject.has("bbox_color")
-                || !jsonObject.has("label_color")
+        if (!jsonObject.has("caption_color")
+                || !jsonObject.has("caption_bck_color")
                 || !jsonObject.has("haptics"))
-            return new Pair<>(1, jsonObject);    // ConfigurationActivity
+            return new Pair<>(7, jsonObject);    // UserAccesibility1Activity
+
+        if (!jsonObject.has("hash_caching"))
+            return new Pair<>(8, jsonObject);   // UserHashCachingActivity
+
+        if (!jsonObject.has("env_reports"))
+            return new Pair<>(9, jsonObject);   // EnvironmentReportsIActivity
+
+        if (jsonObject.getString("hash_caching").equals("heavy") || jsonObject.getString("hash_caching").equals("light"))
+            if (!FileUtils.getHashCacheFile(PhoneStatusMonitor.getInstance().getCurrentContext()).exists()) {
+                if (FileUtils.createProfileDirFile(Constants.HASH_CACHE_FILE_NAME))
+                    return new Pair<>(0, jsonObject);   // ConfigurationActivity
+                else
+                    return new Pair<>(1, jsonObject);
+            }
+        if (jsonObject.getBoolean("env_reports"))
+            if (!FileUtils.getEnvReportsFile(PhoneStatusMonitor.getInstance().getCurrentContext()).exists()) {
+                if (FileUtils.createProfileDirFile(Constants.ENV_REPORTS_FILE_NAME))
+                    return new Pair<>(0, jsonObject);   // ConfigurationActivity
+                else
+                    return new Pair<>(1, jsonObject);
+            }
 
         inputStream.close();
         // All validations passed

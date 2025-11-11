@@ -117,8 +117,10 @@ class UserInfoActivity : ComponentActivity() {
         infoNotificationManager = InfoNotificationManager(this)
 
         // Get section from intent extras
-        val sectionParam = intent.getIntExtra("section", 1)
+        val sectionParam = intent.getIntExtra(Constants.EXTRA_USERINFO_OPTION, 1)
         currentSection.intValue = sectionParam
+
+        if(AppConfig.user_name!=null)fieldTextInteraction.value=true
 
         setContent {
             UserInfoScreen(
@@ -150,12 +152,14 @@ class UserInfoActivity : ComponentActivity() {
     }
 
     private fun handleNameChange(newName: String) {
+        AppConfig.user_name=newName
         nameInput.value = newName
         showNameError.value = false
         fieldTextInteraction.value=true
     }
 
     private fun handleAgeChange(newAge: Int) {
+        AppConfig.age=newAge
         ageValue.intValue = newAge
         if(AppConfig.blindness) {
             ttsManager.stopSpeaking()
@@ -170,6 +174,7 @@ class UserInfoActivity : ComponentActivity() {
     }
 
     private fun handleVisionChange(newVision: String) {
+        AppConfig.visual_condition=newVision
         visionInput.value = newVision
         showVisionError.value = false
         fieldTextInteraction.value=true
@@ -216,6 +221,7 @@ class UserInfoActivity : ComponentActivity() {
 
         fieldTextInteraction.value=false
         // Show contribution dialog
+
         showContributionDialog()
     }
 
@@ -279,12 +285,14 @@ class UserInfoActivity : ComponentActivity() {
     }
 
     private fun handleAgreeClick() {
+        infoNotificationManager.hideNotification()
         AppConfig.isContributor = true
         ProfileFileCollection.writeUserInfoActivity(0, true, nameInput.value.trim(), 0, "")
         navigateToSection2()
     }
 
     private fun handleDisagreeClick() {
+        infoNotificationManager.hideNotification()
         AppConfig.isContributor = false
         ProfileFileCollection.writeUserInfoActivity(0, false, nameInput.value.trim(), 0, "")
 
@@ -496,7 +504,7 @@ fun NameSection(
             horizontalArrangement = Arrangement.Center
         ) {
             BasicTextField(
-                value = nameInput,
+                value = if(AppConfig.user_name!=null) AppConfig.user_name else nameInput,
                 onValueChange = onNameChange,
                 modifier = Modifier
                     .fillMaxWidth(0.4f)
@@ -584,7 +592,7 @@ fun AgeSection(
             modifier = Modifier.fillMaxWidth()
         ) {
             CustomSlider(
-                value = ageValue.toFloat(),
+                value = if(AppConfig.age!=0)AppConfig.age.toFloat() else ageValue.toFloat(),
                 onValueChange = { onAgeChange(it.toInt()) },
                 valueRange = 0f..100f,
                 steps = 0,
@@ -602,7 +610,7 @@ fun AgeSection(
             Box(modifier = Modifier.height(screenHeight * 0.012f))
 
             Text(
-                text = ageValue.toString(),
+                text = if(AppConfig.age!=0)AppConfig.age.toString() else ageValue.toString(),
                 fontSize = Constants.STD_SLIDER_INFO_SIZE.sp,
                 color = colorResource(R.color.std_purple),
                 fontFamily = robotoSemibold
@@ -658,7 +666,7 @@ fun VisionSection(
             horizontalArrangement = Arrangement.Center
         ) {
             BasicTextField(
-                value = visionInput,
+                value = if(AppConfig.visual_condition!=null)AppConfig.visual_condition else visionInput,
                 onValueChange = onVisionChange,
                 modifier = Modifier
                     .fillMaxWidth(0.6f)

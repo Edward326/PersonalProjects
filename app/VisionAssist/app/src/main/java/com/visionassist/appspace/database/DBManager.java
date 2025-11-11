@@ -5,14 +5,17 @@ import static org.mindrot.jbcrypt.BCrypt.checkpw;
 import android.content.Context;
 import android.util.Log;
 import android.util.Pair;
+
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.visionassist.appspace.ExceptionVisionAssist;
 import com.visionassist.appspace.jetpack.managers.LoadingManager;
 import com.visionassist.appspace.utils.Constants;
 import com.visionassist.appspace.utils.FileUtils;
+
 import org.json.JSONException;
 import org.json.JSONObject;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -24,6 +27,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
+
 import org.mindrot.jbcrypt.BCrypt;
 
 public class DBManager {
@@ -78,10 +82,6 @@ public class DBManager {
     public int validateEmail(String email) {
         Log.d(TAG, "Validating email: " + email);
 
-        if (!hasInternetConnection()) {
-            return DBConstants.INTERNET_CONNECTION_FAILED;
-        }
-
         try {
             if (!isValidEmailFormat(email)) {
                 return DBConstants.EMAIL_INVALID;
@@ -94,7 +94,7 @@ public class DBManager {
         }
     }
 
-    public Pair<String,Integer> createAccount(String email, String password) {
+    public Pair<String, Integer> createAccount(String email, String password) {
         Log.d(TAG, "Creating account for: " + email);
         String hashedPassword = hashPassword(password);
         Log.d(TAG, "Password hashed successfully");
@@ -154,23 +154,7 @@ public class DBManager {
                 return DBConstants.EMAIL_NOT_FOUND;
             }
 
-            CountDownLatch latch = new CountDownLatch(1);
-            AtomicBoolean success = new AtomicBoolean(false);
-
-            firebaseAuth.sendPasswordResetEmail(email)
-                    .addOnSuccessListener(aVoid -> {
-                        Log.d(TAG, "Password reset email sent");
-                        success.set(true);
-                        latch.countDown();
-                    })
-                    .addOnFailureListener(e -> {
-                        Log.e(TAG, "Error sending reset email", e);
-                        latch.countDown();
-                    });
-
-            latch.await();
-            return success.get() ? DBConstants.PASSWORD_RESET_SENT : DBConstants.GENERIC_ERROR;
-
+            return DBConstants.EMAIL_VALID;
         } catch (Exception e) {
             Log.e(TAG, "Error in resetPassword", e);
             status = DBConstants.GENERIC_ERROR;
@@ -190,7 +174,7 @@ public class DBManager {
             // Convert JSONObject to Map for Firestore
             Map<String, Object> profileMap = jsonToMap(profileData);
 
-            // Push to Firestore: users/{email}/profile/main
+            // Push to Firestore: users/{email}/
             CountDownLatch latch = new CountDownLatch(1);
             AtomicBoolean success = new AtomicBoolean(false);
 
@@ -249,7 +233,6 @@ public class DBManager {
                 return new Pair<>(status, null);
             }
 
-            Log.d(TAG, "Profile written to profile_copy.json");
             // Step 2: Create empty files for hash_cache and env_reports if enabled
             boolean hashCacheEnabled = profileData.optString("hash_caching", "none").equals("heavy")
                     || profileData.optString("hash_caching", "none").equals("light");
@@ -283,12 +266,18 @@ public class DBManager {
                     return new Pair<>(status, null);
                 }
                 Log.d(TAG, "Profile successfully copied to profile.json");
-                profileCopyFile.delete();
+                if(profileCopyFile.delete())
+                    Log.d(TAG, "Deletion failed of profile.json");
+                else
+                    Log.d(TAG, "Deletion successfully of profile.json");
                 status = DBConstants.SYNC_OK;
                 return new Pair<>(status, profileData);
             } else {
                 Log.e(TAG, "Failed to create required files, aborting profile replacement");
-                profileCopyFile.delete();
+                if(profileCopyFile.delete())
+                    Log.d(TAG, "Deletion failed of profile.json");
+                else
+                    Log.d(TAG, "Deletion successfully of profile.json");
                 status = DBConstants.DATA_WRITE_ERROR;
                 return new Pair<>(status, null);
             }
@@ -445,7 +434,7 @@ public class DBManager {
                     .addOnSuccessListener(documentSnapshot -> {
                         if (documentSnapshot.exists()) {
                             String storedPasswordHash = documentSnapshot.getString(DBConstants.FIREBASE_PASSWORD_FIELD);
-                            isCorrect[0] =checkpw (password,storedPasswordHash);
+                            isCorrect[0] = checkpw(password, storedPasswordHash);
                         }
                         latch.countDown();
                     })
@@ -503,7 +492,7 @@ public class DBManager {
     }
 
     private boolean isValidEmailFormat(String email) {
-        return email != null && email.contains("@") && email.contains(".");
+        return email != null && email.matches(".+@.+\\..+");
     }
 
     public int getStatus() {

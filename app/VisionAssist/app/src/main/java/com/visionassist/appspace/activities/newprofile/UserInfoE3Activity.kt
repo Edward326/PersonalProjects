@@ -74,6 +74,7 @@ class UserInfoE3Activity : ComponentActivity() {
 
     @SuppressLint("DefaultLocale")
     private fun handlePitchChange(newPitch: Float) {
+        AppConfig.tts_pitch = newPitch
         pitchValue.floatValue = newPitch
         ttsManager.stopSpeaking()
         // Speak the current pitch with current settings
@@ -86,6 +87,7 @@ class UserInfoE3Activity : ComponentActivity() {
 
     @SuppressLint("DefaultLocale")
     private fun handleSpeedChange(newSpeed: Float) {
+        AppConfig.tts_speech_rate = newSpeed
         speedValue.floatValue = newSpeed
 
         ttsManager.stopSpeaking()
@@ -102,14 +104,14 @@ class UserInfoE3Activity : ComponentActivity() {
         if (AppConfig.isContributor) {
             ProfileFileCollection.deleteUserInfoActivity(1)
             val intent = Intent(this, UserInfoActivity::class.java)
-            intent.putExtra(Constants.EXTRA_USERINFO_OPTION, 1)
+            intent.putExtra(Constants.EXTRA_USERINFO_OPTION, 2)
             startActivity(intent)
             finish()
         }
         else {
             ProfileFileCollection.deleteUserInfoActivity(0)
             val intent = Intent(this, UserInfoActivity::class.java)
-            intent.putExtra(Constants.EXTRA_USERINFO_OPTION, 0)
+            intent.putExtra(Constants.EXTRA_USERINFO_OPTION, 1)
             startActivity(intent)
             finish()
         }
@@ -118,10 +120,6 @@ class UserInfoE3Activity : ComponentActivity() {
     private fun handleNextClick() {
         // Write TTS pitch and speed to profile
         ProfileFileCollection.writeUserInfoE3Activity(pitchValue.floatValue, speedValue.floatValue)
-
-        // Update AppConfig
-        AppConfig.tts_pitch = pitchValue.floatValue
-        AppConfig.tts_speech_rate = speedValue.floatValue
 
         // Navigate to UserHashCachingActivity
         val intent = Intent(this, UserHashCachingActivity::class.java)
@@ -198,7 +196,7 @@ fun UserInfoE3Screen(
 
             // Pitch Slider
             CustomSlider(
-                value = pitchValue,
+                value = if(AppConfig.tts_pitch!=0.0f)AppConfig.tts_pitch else pitchValue,
                 onValueChange = onPitchChange,
                 valueRange = 0f..2f,
                 steps = 8,  // 8 stops
@@ -221,7 +219,7 @@ fun UserInfoE3Screen(
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = String.format("%.2f", pitchValue),
+                text = String.format("%.2f", if(AppConfig.tts_pitch!=0.0f)AppConfig.tts_pitch else pitchValue),
                 fontSize = Constants.STD_SLIDER_INFO_SIZE.sp,
                 color = colorResource(R.color.std_purple),
                 fontFamily = robotoSemibold
@@ -243,7 +241,7 @@ fun UserInfoE3Screen(
 
             // Speed Slider
             CustomSlider(
-                value = speedValue,
+                value = if(AppConfig.tts_speech_rate!=0.0f)AppConfig.tts_speech_rate else speedValue,
                 onValueChange = onSpeedChange,
                 valueRange = 0f..2f,
                 steps = 8,  // 8 stops
@@ -263,7 +261,7 @@ fun UserInfoE3Screen(
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = String.format("%.2f", speedValue),
+                text = String.format("%.2f", if(AppConfig.tts_speech_rate!=0.0f)AppConfig.tts_speech_rate else speedValue),
                 fontSize = Constants.STD_SLIDER_INFO_SIZE.sp,
                 color = colorResource(R.color.std_purple),
                 fontFamily = robotoSemibold

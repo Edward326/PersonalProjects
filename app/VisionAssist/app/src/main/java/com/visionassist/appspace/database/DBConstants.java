@@ -2,36 +2,32 @@ package com.visionassist.appspace.database;
 
 public class DBConstants {
     // ==================== FILE NAMES ====================
-    private static final String PROFILE_COPY_FILENAME = "profile_copy.json";
+    public static final String PROFILE_COPY_FILE = "profile_copy.json";
 
     // ==================== STATUS CODES ====================
-    public static final int STATUS_ERROR = -1;
     public static final int STATUS_INITIALIZED = 0;
-    public static final int STATUS_SYNCED = 1;
-    public static final int STATUS_ERROR_NETWORK = 98;
-    public static final int STATUS_ERROR_DATABASE = 97;
 
     // ==================== OPERATION RESULTS ====================
-    public static final int SYNC_NOT_NEEDED = 0;
+    public static final int SYNC_NOT_NEEDED = 1000;
     public static final int SYNC_OK = 1;
     public static final int SYNC_ERROR = -1;
 
     // Account Operations
-    public static final int ACCOUNT_CREATED = 0;
-    public static final int ACCOUNT_CREATION_FAILED = -1;
+    public static final int ACCOUNT_CREATED = 9999;
+    public static final int ACCOUNT_CREATION_FAILED = -9999;
 
     // Email Operations
-    public static final int EMAIL_VALID = 0;
-    public static final int EMAIL_INVALID = -1;
-    public static final int EMAIL_NOT_FOUND = -1;
+    public static final int EMAIL_VALID = 5555;
+    public static final int EMAIL_INVALID = -5555;
+    public static final int EMAIL_NOT_FOUND = -8888;
 
     // Password Operations
-    public static final int PASSWORD_INCORRECT = -1;
-    public static final int PASSWORD_RESET_SENT = 0;
+    public static final int PASSWORD_INCORRECT = -7777;
+    public static final int PASSWORD_RESET_SENT = 7777;
 
     // Data Operations
-    public static final int DATA_FETCH_ERROR = -1;
-    public static final int DATA_WRITE_ERROR = -1;
+    public static final int DATA_FETCH_ERROR = -6666;
+    public static final int DATA_WRITE_ERROR = -5555;
 
     // Network
     public static final int INTERNET_CONNECTION_FAILED = 99;
@@ -50,13 +46,5 @@ public class DBConstants {
     // ==================== FIREBASE FIELD NAMES ====================
     public static final String FIREBASE_EMAIL_FIELD = "email";
     public static final String FIREBASE_PASSWORD_FIELD = "password_hash";
-    public static final String FIREBASE_PROFILE_FIELD = "profile";
     public static final String FIREBASE_LAST_SYNC_FIELD = "last_sync_date";
-    public static final String FIREBASE_HASH_CACHE_ENABLED = "hash_caching";
-    public static final String FIREBASE_ENV_REPORTS_ENABLED = "env_reports";
-
-    // ==================== LOCAL FILE NAMES ====================
-    public static final String PROFILE_COPY_FILE = "profile_copy.json";
-    public static final String HASH_CACHE_FILE = "hash_cache.txt";
-    public static final String ENV_REPORTS_FILE = "env_reports.txt";
 }

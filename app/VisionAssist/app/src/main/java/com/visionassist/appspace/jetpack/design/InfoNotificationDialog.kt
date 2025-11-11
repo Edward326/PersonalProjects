@@ -5,6 +5,7 @@ package com.visionassist.appspace.jetpack.design
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -63,13 +64,17 @@ fun InfoNotificationDialog(
         enter = fadeIn(
             initialAlpha = 0f,
             animationSpec = tween(durationMillis = Constants.ANIMATION_DELAY)
+        ),
+        exit = fadeOut(
+            targetAlpha = 0f,
+            animationSpec = tween(durationMillis = 0)  // ← Instant exit, no glitch!
         )
     ) {
         // Full screen overlay with semi-transparent background
         Box(
             modifier = modifier
                 .fillMaxSize()
-                .background(Color.Gray.copy(alpha = 0.5f)),
+                .background(Color.Gray.copy(alpha = Constants.BACKGROUND_OPACITY)),
             contentAlignment = Alignment.Center
         ) {
             // Dialog Card
@@ -99,7 +104,7 @@ fun InfoNotificationDialog(
                     // Message Text
                     Text(
                         text = buildAnnotatedString {
-                            val parts = message.split("@")
+                            val parts = message.split("~")
 
                             when {
                                 parts.size==1 -> {
@@ -113,7 +118,7 @@ fun InfoNotificationDialog(
                                     }
                                 }
                                 parts.size > 1 -> {
-                                    // Format: Title@Content
+                                    // Format: Title~Content
                                     withStyle(
                                         style = SpanStyle(
                                             fontWeight = FontWeight.Bold,
@@ -215,7 +220,7 @@ fun InfoNotificationDialog(
 fun InfoNotificationDialogPreview() {
     InfoNotificationDialog(
         isVisible = true,
-        message = "Hello?@This is sample information text that explains what this option does in the application.",
+        message = "Hello?~This is sample information text that explains what this option does in the application.",
         onFirstButtonClick = {}
     )
 }

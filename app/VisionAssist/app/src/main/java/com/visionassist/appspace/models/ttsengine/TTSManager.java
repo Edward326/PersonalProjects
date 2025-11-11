@@ -199,7 +199,7 @@ public class TTSManager implements TextToSpeech.OnInitListener {
 
         currentActivity.runOnUiThread(() -> new AlertDialog.Builder(currentActivity)
                 .setTitle("Language Data Required")
-                .setMessage("The " + language.getName() + " language is not installed on your device." +
+                .setMessage("The \"" + language.getName() + "\" language is not installed on your device." +
                         "Please download it from TTS settings." +
                         "After downloading, return to this app and the language will be automatically checked.")
                 .setCancelable(false)
@@ -247,19 +247,22 @@ public class TTSManager implements TextToSpeech.OnInitListener {
                 showLanguageInstallDialog(pendingLanguage);
             } else {
                 // Max attempts reached, use default
-                Log.e(TAG, "Max attempts reached.The app will be set to your language, but the TTS will use the default language.");
+                Log.e(TAG, "Max attempts reached.");
                 if (currentActivity != null && !currentActivity.isFinishing()) {
                     currentActivity.runOnUiThread(() -> new AlertDialog.Builder(currentActivity)
                             .setTitle("Language Unavailable")
-                            .setMessage("Could not install " + pendingLanguage.getName() +
-                                    ".Using default("+Locale.getDefault().getLanguage()+") language instead.")
-                            .setPositiveButton("OK", null)
+                            .setMessage("Could not set TTS to " + pendingLanguage.getName() +
+                                    ".Using default("+Locale.getDefault().getLanguage()+") language instead.The app UI will be set to your language, but the TTS will use the default language.")
+                            .setPositiveButton("OK", (dialog, which) -> {
+                                tts.setLanguage(Locale.getDefault());
+                                isInitialized = true;
+                                pendingLanguage = null;
+                                languageCheckAttempts = 0;
+                                // Don't check immediately - wait for onResume() callback
+                            })
                             .show());
                 }
-                tts.setLanguage(Locale.getDefault());
-                isInitialized = true;
-                pendingLanguage = null;
-                languageCheckAttempts = 0;
+
             }
         }
     }

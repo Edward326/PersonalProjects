@@ -87,6 +87,7 @@ class WelcomeActivity : ComponentActivity() {
     private lateinit var loadProfileInfoManager: InfoNotificationManager
     private lateinit var newProfileInfoManager: InfoNotificationManager
     private var ttsManager: TTSManager = PhoneStatusMonitor.getInstance().ttsManager
+    private val ttsHandler = Handler(Looper.getMainLooper())
     private var waitingForTTSLanguage = false
 
     enum class Section {
@@ -139,8 +140,9 @@ class WelcomeActivity : ComponentActivity() {
         super.onResume()
         // Handle return from TTS language installation
         if (waitingForTTSLanguage) {
+            ttsHandler.removeCallbacksAndMessages(null)
             ttsManager.recheckPendingLanguage()
-            waitForTTSAndNavigate()
+            waitForTTSAndNavigate(true)
         }
     }
 
@@ -155,27 +157,26 @@ class WelcomeActivity : ComponentActivity() {
             override fun run() {
                 waitingForTTSLanguage = true
                 ttsManager.changeLanguage(selectedLanguage, this@WelcomeActivity)
-                waitForTTSAndNavigate()
+                waitForTTSAndNavigate(true)
             }
         }
         handler.postDelayed(checkTTS, Constants.ANIMATION_DELAY.toLong()+1000)
     }
 
-    private fun waitForTTSAndNavigate() {
-        val handler = Handler(Looper.getMainLooper())
+    private fun waitForTTSAndNavigate(wait: Boolean) {
         val checkTTS: Runnable = object : Runnable {
             override fun run() {
                 if (ttsManager.isReady) {
                     Log.d(TAG, "TTS is ready, navigating to home")
                     waitingForTTSLanguage = false
-                    onLanguageNextPressedNavigate(true)
+                    onLanguageNextPressedNavigate(wait)
                 } else {
                     Log.w(TAG, "TTS not ready, retrying...")
-                    handler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS.toLong())
+                    ttsHandler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS.toLong())
                 }
             }
         }
-        handler.post(checkTTS)
+        ttsHandler.post(checkTTS)
     }
 
     private fun onLanguageNextPressed() {
@@ -184,7 +185,7 @@ class WelcomeActivity : ComponentActivity() {
             setTTSLanguage()
         }else {
             Log.d(TAG, "TTS is already init, navigating to 2nd section")
-            onLanguageNextPressedNavigate(false)
+            waitForTTSAndNavigate(false)
         }
     }
 
@@ -397,7 +398,7 @@ fun LanguageSelectionSection(
 
             // Language Selector
             LanguageSelector(
-                selectedLanguage = selectedLanguage,
+                selectedLanguage = if(AppConfig.mainLanguage!=null) AppConfig.mainLanguage else selectedLanguage,
                 onLanguageSelected = { language ->
                     onLanguageSelected(language)
                     Log.d("WelcomeActivity", "Language selected: ${language.code}")

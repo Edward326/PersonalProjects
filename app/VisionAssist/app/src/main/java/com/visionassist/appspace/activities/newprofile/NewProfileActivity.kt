@@ -112,6 +112,7 @@ class NewProfileActivity : ComponentActivity() {
     private val passwordInput = mutableStateOf("")
     private val showEmailError = mutableStateOf(false)
     private val showPasswordError = mutableStateOf(false)
+    private val fieldTextInteraction = mutableStateOf(false)
 
     // Registration status members
     private var registerStatus = DBConstants.STATUS_INITIALIZED
@@ -144,7 +145,7 @@ class NewProfileActivity : ComponentActivity() {
                 secondButtonClick = secondButtonClick.value,
                 thirdButtonClick = thirdButtonClick.value,
                 onSwitchChanged = ::handleSwitchChanged,
-                onEmailChange = { emailInput.value = it; showEmailError.value = false },
+                onEmailChange = { emailInput.value = it; showEmailError.value = false; fieldTextInteraction.value=true },
                 onPasswordChange = { passwordInput.value = it; showPasswordError.value = false },
                 onBackFromProfileSelection = ::handleBackFromProfileSelection,
                 onNextFromProfileSelection = ::handleNextFromProfileSelection,
@@ -182,6 +183,7 @@ class NewProfileActivity : ComponentActivity() {
     }
 
     private fun handleBackFromRegister() {
+        fieldTextInteraction.value=false
         switchChecked.value = false
         showRegisterSection.value = false
     }
@@ -191,7 +193,7 @@ class NewProfileActivity : ComponentActivity() {
         val password = passwordInput.value.trim()
 
         // Validate fields
-        if (email.isEmpty() || email == "example@gmail.com") {
+        if (email.isEmpty() || !fieldTextInteraction.value) {
             showEmailError.value = true
         }
 
@@ -261,10 +263,12 @@ class NewProfileActivity : ComponentActivity() {
         val checkRunnable = object : Runnable {
             override fun run() {
                 if (finishedRegistering) {
+                    Log.i(TAG,"Registration task finished")
                     showLoading.value = false
                     handleRegistrationResult()
                 } else {
-                    mainHandler.postDelayed(this, 1000)
+                    Log.i(TAG,"Registration task isn't finished")
+                    mainHandler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS.toLong())
                 }
             }
         }
@@ -729,7 +733,7 @@ fun RegisterSection(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "Email",
+                                    text = "New Email",
                                     fontSize = Constants.STD_FONT_SIZE.sp,
                                     color = colorResource(R.color.std_cyan),
                                     fontFamily = robotoSemibold
@@ -781,7 +785,7 @@ fun RegisterSection(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = if (AppConfig.mainLanguage.code == "en") "Password" else "Parolă",
+                                    text = if (AppConfig.mainLanguage.code == "en") "New Password" else "Parolă nouă",
                                     fontSize = Constants.STD_FONT_SIZE.sp,
                                     color = colorResource(R.color.std_cyan),
                                     fontFamily = robotoSemibold

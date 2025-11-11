@@ -13,6 +13,7 @@ import com.visionassist.appspace.ExceptionVisionAssist;
 import com.visionassist.appspace.PhoneStatusMonitor;
 import com.visionassist.appspace.activities.newprofile.ConfigurationActivity;
 import com.visionassist.appspace.activities.newprofile.LoadProfileActivity;
+import com.visionassist.appspace.activities.newprofile.NewProfileActivity;
 import com.visionassist.appspace.activities.newprofile.UserAccessibility1Activity;
 import com.visionassist.appspace.activities.newprofile.UserHashCachingActivity;
 import com.visionassist.appspace.activities.newprofile.UserInfoActivity;
@@ -106,7 +107,7 @@ public class Utils {
                 try {
                     AppConfig.blindness = profileStatusDecider.second.getBoolean("blindness");
                     AppConfig.mainLanguage = languageExtractor(profileStatusDecider.second);
-                    intent = new Intent(context, LoadProfileActivity.class);
+                    intent = new Intent(context, NewProfileActivity.class);
                     Intent finalIntent1 = intent;
                     loadingManager.hideLoading();
                     context.startActivity(finalIntent1);
@@ -294,7 +295,8 @@ public class Utils {
                 AppConfig.tts_pitch = (float) profileSource.getDouble("tts_pitch");
             }
             AppConfig.hash_caching = profileSource.getString("hash_caching");
-            AppConfig.env_reports = profileSource.getBoolean("env_reports");
+            if (!AppConfig.blindness)
+                AppConfig.env_reports = profileSource.getBoolean("env_reports");
             if (afterUploadProfile != null)
                 afterUploadProfile.run();
         } catch (Exception e) {

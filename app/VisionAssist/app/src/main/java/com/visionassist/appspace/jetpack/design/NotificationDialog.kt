@@ -5,6 +5,7 @@ package com.visionassist.appspace.jetpack.design
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -70,12 +71,16 @@ fun NotificationDialog(
         enter = fadeIn(
             initialAlpha = 0f,
             animationSpec = tween(durationMillis = Constants.ANIMATION_DELAY)
+        ),
+        exit = fadeOut(
+            targetAlpha = 0f,
+            animationSpec = tween(durationMillis = 0)  // ← Instant exit, no glitch!
         )
     ) {
         Box(
             modifier = modifier
                 .fillMaxSize()
-                .background(Color.Gray.copy(alpha = 0.5f)),
+                .background(Color.Gray.copy(alpha = Constants.BACKGROUND_OPACITY)),
             contentAlignment = Alignment.Center
         ) {
             Card(
@@ -126,7 +131,7 @@ fun NotificationDialog(
                     // Message with bold formatting for codes
                     Text(
                         text = buildAnnotatedString {
-                            val parts = message.split("@")
+                            val parts = message.split("~")
                             withStyle(
                                 style = SpanStyle(
                                     fontSize = Constants.STD_FONT_SIZE.sp
@@ -293,7 +298,7 @@ fun NotificationDialog(
 fun LoadProfileSuccessPreview() {
     NotificationDialog(
         isVisible = true,
-        message = "Profile imported successfully\n\n@(Exit code: 0)",
+        message = "Profile imported successfully\n\n~(Exit code: 0)",
         type = LoadProfileActivity.NotificationType.SUCCESS,
         firstButtonLabel = "OK",
         firstButtonClick = {}
@@ -310,7 +315,7 @@ fun LoadProfileSuccessPreview() {
 fun LoadProfileErrorPreview() {
     NotificationDialog(
         isVisible = true,
-        message = "Error was encountered while fetching the profile\n\n@(Error code: 9)",
+        message = "Error was encountered while fetching the profile\n\n~(Error code: 9)",
         type = LoadProfileActivity.NotificationType.ERROR,
         showTwoButtons = true,
         firstButtonLabel = "Retry",

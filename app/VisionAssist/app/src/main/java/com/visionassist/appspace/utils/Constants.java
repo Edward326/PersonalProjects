@@ -63,6 +63,7 @@ public class Constants {
     // Shutdown delay after showing error (in milliseconds)
     public static final int SHUTDOWN_DELAY_MS = 10000;
     public static final int RETRY_TTS_DELAY_MS = 1000;
+    public static final int LOAD_CHECK_DELAY_MS = 1000;
     public static final int MAX_LANGUAGE_CHECK_ATTEMPTS = 3;
 
     // TTS Repeat Configuration
@@ -81,6 +82,7 @@ public class Constants {
 
     // UI overlay for notification
     public static final int ANIMATION_DELAY = 500;
+    public static final float BACKGROUND_OPACITY = 0.5f;
 
     // Error codes, followed by shutdown
     public static final int ERROR_READ_DELAY = 10000;

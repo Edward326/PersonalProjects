@@ -109,6 +109,7 @@ class LoadProfileActivity : ComponentActivity() {
 
     private var ttsManager: TTSManager = PhoneStatusMonitor.getInstance().ttsManager
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val ttsHandler = Handler(Looper.getMainLooper())
     private val backgroundExecutor: BackgroundTaskExecutor = BackgroundTaskExecutor.getInstance()
 
     // State management
@@ -131,6 +132,7 @@ class LoadProfileActivity : ComponentActivity() {
     private val passwordInput = mutableStateOf("")
     private val showEmailError = mutableStateOf(false)
     private val showPasswordError = mutableStateOf(false)
+    private val fieldTextInteraction = mutableStateOf(false)
 
     // Loading status members
     private var loadStatus = DBConstants.STATUS_INITIALIZED
@@ -185,7 +187,7 @@ class LoadProfileActivity : ComponentActivity() {
                 passwordInput = passwordInput.value,
                 showEmailError = showEmailError.value,
                 showPasswordError = showPasswordError.value,
-                onEmailChange = { emailInput.value = it; showEmailError.value = false },
+                onEmailChange = { emailInput.value = it; showEmailError.value = false; fieldTextInteraction.value=true },
                 onPasswordChange = { passwordInput.value = it; showPasswordError.value = false },
                 onBackClickProfileSelection = ::handleBackFromProfileSelection,
                 onLocallyClick = ::handleLocallyClick,
@@ -201,6 +203,7 @@ class LoadProfileActivity : ComponentActivity() {
         super.onResume()
         // Handle return from TTS language installation
         if (waitingForTTSLanguage) {
+            ttsHandler.removeCallbacksAndMessages(null)
             ttsManager.recheckPendingLanguage()
             waitForTTSAndNavigate()
         }
@@ -218,6 +221,7 @@ class LoadProfileActivity : ComponentActivity() {
     }
 
     private fun handleBackFromLoginSection() {
+        fieldTextInteraction.value=false
         showNotification.value = false
         mainHandler.postDelayed({
             showProfileSelection.value = true
@@ -239,6 +243,9 @@ class LoadProfileActivity : ComponentActivity() {
             showNoInternetNotification()
             return
         }
+
+        showPasswordError.value=false
+        showEmailError.value=false
         // Slide to login section
         showProfileSelection.value = false
     }
@@ -256,7 +263,7 @@ class LoadProfileActivity : ComponentActivity() {
     private fun handleForgotPassword() {
         val email = emailInput.value
 
-        if (email.isEmpty() || email == "example@gmail.com") {
+        if (email.isEmpty() || !fieldTextInteraction.value) {
             showEmailError.value = true
             return
         }
@@ -307,10 +314,12 @@ class LoadProfileActivity : ComponentActivity() {
         val checkRunnable = object : Runnable {
             override fun run() {
                 if (finishedLoading) {
+                    Log.i(TAG,"Load finished, password forgot task")
                     showLoading.value = false
                     handleForgotPasswordResult()
                 } else {
-                    mainHandler.postDelayed(this, 1000)
+                    Log.i(TAG,"Password forgot task isn't finished")
+                    mainHandler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS.toLong())
                 }
             }
         }
@@ -319,9 +328,9 @@ class LoadProfileActivity : ComponentActivity() {
 
     private fun handleForgotPasswordResult() {
         when (loginStatus) {
-            DBConstants.PASSWORD_RESET_SENT -> {
+            DBConstants.EMAIL_VALID -> {
                 // Show success notification
-                showSuccessNotification(load_passChangedSuccess(this,emailInput.value))
+                showSuccessNotification(load_passChangedSuccess(this, emailInput.value))
 
                 // Hide after 5 seconds
                 mainHandler.postDelayed({
@@ -355,7 +364,7 @@ class LoadProfileActivity : ComponentActivity() {
         showPasswordError.value = false
 
         // Validate fields
-        if (email.isEmpty() || email == "example@gmail.com") {
+        if (email.isEmpty() || !fieldTextInteraction.value) {
             showEmailError.value = true
         }
         if (password.isEmpty()) {
@@ -383,7 +392,7 @@ class LoadProfileActivity : ComponentActivity() {
                 override fun onSuccess(result: Int) {
                     loginStatus = result
 
-                    if (result == Constants.LOAD_PROFILE_SUCCESS) {
+                    if (result == DBConstants.SYNC_OK) {
                         // Setup TTS on main thread
                         setTTSLanguage()
                     } else {
@@ -430,7 +439,7 @@ class LoadProfileActivity : ComponentActivity() {
             profileJson.put("last_sync_date", currentDate)
 
             // Write to profile file
-            if (!ProfileFileCollection.clearProfile()) {
+            if (!FileUtils.createProfileDirFile(Constants.PROFILE_FILE_NAME)) {
                 return Constants.LOAD_PROFILE_FILE_UPLOAD
             }
 
@@ -439,15 +448,14 @@ class LoadProfileActivity : ComponentActivity() {
             }
 
             // Upload profile to AppConfig
-            Utils.uploadProfile(profileJson,null)
+            Utils.uploadProfile(profileJson, null)
 
             // Load assets
             if (!loadAllAssets()) {
                 return assetLoadError  // Return specific asset error
             }
 
-            return Constants.LOAD_PROFILE_SUCCESS
-
+            return DBConstants.SYNC_OK
         } catch (e: Exception) {
             Log.e(TAG, "Exception in performLogin", e)
             return DBConstants.GENERIC_ERROR
@@ -458,10 +466,12 @@ class LoadProfileActivity : ComponentActivity() {
         val checkRunnable = object : Runnable {
             override fun run() {
                 if (finishedLoading) {
+                    Log.i(TAG,"Load finished, login task")
                     showLoading.value = false
                     handleLoginResult()
                 } else {
-                    mainHandler.postDelayed(this, 1000)
+                    Log.i(TAG,"Login task isn't finished")
+                    mainHandler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS.toLong())
                 }
             }
         }
@@ -470,7 +480,7 @@ class LoadProfileActivity : ComponentActivity() {
 
     private fun handleLoginResult() {
         when (loginStatus) {
-            Constants.LOAD_PROFILE_SUCCESS -> {
+            DBConstants.SYNC_OK -> {
                 showSuccessNotification(load_profileImportedSuccess(this))
 
                 // Navigate after 5 seconds
@@ -574,7 +584,7 @@ class LoadProfileActivity : ComponentActivity() {
     private fun performProfileLoad(uri: Uri): Int {
         try {
             // Step 1: Check if profile.json exists in selected folder
-            val profileFile = findProfileFileInFolder(uri)
+            val profileFile = findProfileFileInFolder(uri, Constants.PROFILE_FILE_NAME)
             if (profileFile == null) {
                 Log.e(TAG, "Profile file not found in selected folder")
                 return Constants.LOAD_PROFILE_FILE_MISSING
@@ -606,7 +616,7 @@ class LoadProfileActivity : ComponentActivity() {
                 ?: return Constants.LOAD_PROFILE_FILE_INVALID
 
             // Step 4: Clear existing profile and write new one
-            if (!ProfileFileCollection.clearProfile()) {
+            if (!FileUtils.createProfileDirFile(Constants.PROFILE_FILE_NAME)) {
                 return Constants.LOAD_PROFILE_FILE_UPLOAD
             }
 
@@ -615,30 +625,31 @@ class LoadProfileActivity : ComponentActivity() {
             }
 
             // Step 5: Handle hash caching if enabled
-            if (profileJson.getBoolean("hash_caching")) {
-                val hashCacheFile = findFileInFolder(uri, Constants.HASH_CACHE_FILE_NAME)
-                if (hashCacheFile != null && hashCacheFile.exists()) {
+            if (profileJson.getString("hash_caching") == "heavy" || profileJson.getString("hash_caching") == "light") {
+                val hashCacheFile = findProfileFileInFolder(uri, Constants.HASH_CACHE_FILE_NAME)
+                if (hashCacheFile != null) {
                     if (!copyFileToAppDirectory(hashCacheFile, Constants.HASH_CACHE_FILE_NAME)) {
                         // Clear hash cache on error
-                        FileUtils.deleteProfileDirFile(Constants.HASH_CACHE_FILE_NAME)
-                        FileUtils.createProfileDirFile(Constants.HASH_CACHE_FILE_NAME)
+                        if (!FileUtils.createProfileDirFile(Constants.HASH_CACHE_FILE_NAME))
+                            return Constants.LOAD_PROFILE_FILE_UPLOAD
                         return Constants.LOAD_PROFILE_FILE_HC_UPLOAD_ERROR
                     }
                 }
             }
             if (profileJson.getBoolean("env_reports")) {
-                val hashCacheFile = findFileInFolder(uri, Constants.ENV_REPORTS_FILE_NAME)
-                if (hashCacheFile != null && hashCacheFile.exists()) {
+                val hashCacheFile = findProfileFileInFolder(uri, Constants.ENV_REPORTS_FILE_NAME)
+                if (hashCacheFile != null) {
                     if (!copyFileToAppDirectory(hashCacheFile, Constants.ENV_REPORTS_FILE_NAME)) {
                         // Clear hash cache on error
-                        FileUtils.createProfileDirFile(Constants.ENV_REPORTS_FILE_NAME)
+                        if(!FileUtils.createProfileDirFile(Constants.ENV_REPORTS_FILE_NAME))
+                            return Constants.LOAD_PROFILE_FILE_UPLOAD
                         return Constants.LOAD_PROFILE_FILE_ENVR_UPLOAD_ERROR
                     }
                 }
             }
 
             // Step 6: Upload phase
-            Utils.uploadProfile(profileJson,null)
+            Utils.uploadProfile(profileJson, null)
             if (!loadAllAssets()) {
                 return assetLoadError
             }
@@ -649,7 +660,7 @@ class LoadProfileActivity : ComponentActivity() {
         }
     }
 
-    private fun findProfileFileInFolder(uri: Uri): Uri? {
+    private fun findProfileFileInFolder(uri: Uri,fileName: String): Uri? {
         try {
             // Use DocumentFile to work with content:// URIs
             val folder = DocumentFile.fromTreeUri(this, uri)
@@ -660,45 +671,41 @@ class LoadProfileActivity : ComponentActivity() {
             }
 
             // Find profile.json in the folder
-            val profileFile = folder.findFile(Constants.PROFILE_FILE_NAME)
+            val profileFile = folder.findFile(fileName)
 
             if (profileFile != null && profileFile.exists() && profileFile.isFile) {
-                Log.d(TAG, "Found profile file: ${profileFile.uri}")
+                Log.d(TAG, "Found file \"${fileName}\" in folder: \"${folder.uri}\"")
                 return profileFile.uri
             } else {
-                Log.e(TAG, "Profile file not found in folder")
+                Log.d(TAG, "File \"${fileName}\" not found in folder: \"${folder.uri}\"")
                 return null
             }
 
         } catch (e: Exception) {
-            Log.e(TAG, "Error finding profile file", e)
+            Log.e(TAG, "Error finding file \"${fileName}\"", e)
             return null
         }
     }
 
-    private fun findFileInFolder(uri: Uri, fileName: String): File? {
-        try {
-            val folderPath = uri.path ?: return null
-            val folder = File(folderPath)
-
-            if (!folder.exists() || !folder.isDirectory) {
-                return null
-            }
-
-            val file = File(folder, fileName)
-            return if (file.exists()) file else null
-
-        } catch (e: Exception) {
-            Log.e(TAG, "Error finding file: $fileName", e)
-            return null
-        }
-    }
-
-    private fun copyFileToAppDirectory(sourceFile: File, targetFileName: String): Boolean {
+    private fun copyFileToAppDirectory(sourceUri: Uri, targetFileName: String): Boolean {
         try {
             val targetFile = File(FileUtils.getProfileDirectory(this), targetFileName)
-            sourceFile.copyTo(targetFile, overwrite = true)
+
+            // Open input stream from URI using ContentResolver
+            contentResolver.openInputStream(sourceUri)?.use { inputStream ->
+                // Open output stream to target file
+                targetFile.outputStream().use { outputStream ->
+                    // Copy data
+                    inputStream.copyTo(outputStream)
+                }
+            } ?: run {
+                Log.e(TAG, "Failed to open input stream for: $sourceUri")
+                return false
+            }
+
+            Log.d(TAG, "Successfully copied $targetFileName (${targetFile.length()} bytes)")
             return true
+
         } catch (e: Exception) {
             Log.e(TAG, "Error copying file: $targetFileName", e)
             return false
@@ -911,7 +918,8 @@ class LoadProfileActivity : ComponentActivity() {
                             assetLoadError = Constants.TRANSLATER_LOAD_ERROR
                         } else {
                             synchronized(loadLock) {
-                                modelsLoaded[0]= Constants.MODELS_COUNT + Constants.MODELS_OWN_ASSETS_COUNT
+                                modelsLoaded[0] =
+                                    Constants.MODELS_COUNT + Constants.MODELS_OWN_ASSETS_COUNT
                                 loadLock.notifyAll()
                             }
                         }
@@ -951,16 +959,17 @@ class LoadProfileActivity : ComponentActivity() {
 
     private fun setTTSLanguage() {
         if (AppConfig.mainLanguage.code != ttsManager.currentLocale.language) {
+            Log.d(TAG, "TTS is not init on the lang selected")
             waitingForTTSLanguage = true
             ttsManager.changeLanguage(AppConfig.mainLanguage, this)
             waitForTTSAndNavigate()
-        }else {
-            finishedLoading = true
+        } else {
+            Log.d(TAG, "TTS is already init, navigating to 2nd section")
+            waitForTTSAndNavigate()
         }
     }
 
     private fun waitForTTSAndNavigate() {
-        val handler = Handler(Looper.getMainLooper())
         val checkTTS: Runnable = object : Runnable {
             override fun run() {
                 if (ttsManager.isReady) {
@@ -969,21 +978,23 @@ class LoadProfileActivity : ComponentActivity() {
                     finishedLoading = true
                 } else {
                     Log.w(TAG, "TTS not ready, retrying...")
-                    handler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS.toLong())
+                    ttsHandler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS.toLong())
                 }
             }
         }
-        handler.post(checkTTS)
+        ttsHandler.post(checkTTS)
     }
 
     private fun waitForLoadingCompletion() {
         val checkRunnable = object : Runnable {
             override fun run() {
                 if (finishedLoading) {
+                    Log.i(TAG,"Load finished, load locally task")
                     showLoading.value = false
                     handleLoadResult()
                 } else {
-                    mainHandler.postDelayed(this, 1000)
+                    Log.i(TAG,"Main load isn't finished")
+                    mainHandler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS.toLong())
                 }
             }
         }
@@ -1062,7 +1073,7 @@ class LoadProfileActivity : ComponentActivity() {
         firstButtonClick.value = { hideNotification() }
         secondButtonLabel.value =
             if (AppConfig.mainLanguage.code == "en") "Create account" else "Creează cont"
-        firstButtonClick.value = { handleCreateAccount() }
+        secondButtonClick.value = { handleCreateAccount() }
         thirdButtonLabel.value =
             if (AppConfig.mainLanguage.code == "en") "Load local" else "Încarcă local"
         thirdButtonClick.value = {
@@ -1212,7 +1223,7 @@ fun LoadProfileScreen(
             thirdButtonClick = thirdButtonClick
         )
 
-        val bottomSpace=screenHeight * Constants.STD_NAV_MARGIN_BOTTOM
+        val bottomSpace = screenHeight * Constants.STD_NAV_MARGIN_BOTTOM
         // Back button for Profile Selection (only visible in that section)
         if (showProfileSelection) {
             Box(

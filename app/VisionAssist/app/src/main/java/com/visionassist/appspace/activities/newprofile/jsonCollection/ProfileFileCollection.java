@@ -271,7 +271,7 @@ public class ProfileFileCollection {
             }
 
             jsonObject.put("tts_pitch", pitch);
-            jsonObject.put("tts_speed", speed);
+            jsonObject.put("tts_speech_rate", speed);
             boolean success = FileUtils.writeProfileFile(jsonObject.toString(), Constants.PROFILE_FILE_NAME);
             if (success)
                 Log.d(TAG, "ConfigurationActivity: Fields written successfully");
@@ -295,9 +295,9 @@ public class ProfileFileCollection {
             String content = FileUtils.loadFileAsString(FileUtils.getProfileInputStream(context));
             JSONObject jsonObject = new JSONObject(content);
 
-            if (jsonObject.has("tts_pitch") && jsonObject.has("tts_speed")) {
+            if (jsonObject.has("tts_pitch") && jsonObject.has("tts_speech_rate")) {
                 jsonObject.remove("tts_pitch");
-                jsonObject.remove("tts_speed");
+                jsonObject.remove("tts_speech_rate");
                 boolean success = FileUtils.writeProfileFile(jsonObject.toString(), Constants.PROFILE_FILE_NAME);
                 if (success) {
                     Log.d(TAG, "ConfigurationActivity: Fields deleted successfully");

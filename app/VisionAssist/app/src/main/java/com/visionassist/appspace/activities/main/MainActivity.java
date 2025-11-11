@@ -39,6 +39,7 @@ public class MainActivity extends AppCompatActivity {
     private TTSManager ttsManager = monitor.getTTSManager();
     private BackgroundTaskExecutor backgroundExecutor = BackgroundTaskExecutor.getInstance();
     private Handler handler = new Handler(Looper.getMainLooper());
+    private Handler ttsHandler = new Handler(Looper.getMainLooper());
     private LoadingManager loadingManager;
     private JSONObject profileData;
     private boolean waitingForTTSLanguage = false;
@@ -81,6 +82,7 @@ public class MainActivity extends AppCompatActivity {
         if (isNavigateToHome) {
             navigateToHome();
         } else if (waitingForTTSLanguage) {
+            ttsHandler.removeCallbacksAndMessages(null);
             Log.d(TAG, "Returned from TTS settings, rechecking language");
             ttsManager.recheckPendingLanguage();
             waitForTTSAndNavigate();
@@ -301,7 +303,7 @@ public class MainActivity extends AppCompatActivity {
                 } else {
                     Log.e(TAG, "Models not loaded yet. Retrying...");
                     Log.e(TAG, "Models not loaded yet. Retrying...");
-                    handler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS);
+                    handler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS);
                 }
             }
         };
@@ -311,16 +313,17 @@ public class MainActivity extends AppCompatActivity {
 
     private void setTTSLanguage() {
         if (!AppConfig.mainLanguage.getCode().equals(ttsManager.getCurrentLocale().getLanguage())) {
+            Log.d(TAG, "TTS is not init on the lang selected");
             waitingForTTSLanguage = true;
             ttsManager.changeLanguage(AppConfig.mainLanguage, this);
             waitForTTSAndNavigate();
         } else {
-            navigateToHome();
+            Log.d(TAG, "TTS is already init, navigating to 2nd section");
+            waitForTTSAndNavigate();
         }
     }
 
     private void waitForTTSAndNavigate() {
-        Handler handler = new Handler(Looper.getMainLooper());
         Runnable checkTTS = new Runnable() {
             @Override
             public void run() {
@@ -330,11 +333,11 @@ public class MainActivity extends AppCompatActivity {
                     navigateToHome();
                 } else {
                     Log.w(TAG, "TTS not ready, retrying...");
-                    handler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS);
+                    ttsHandler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS);
                 }
             }
         };
-        handler.post(checkTTS);
+        ttsHandler.post(checkTTS);
     }
 
     private void synchronizeProfile(DBManager dbManager) {
@@ -365,8 +368,8 @@ public class MainActivity extends AppCompatActivity {
                 if (ready) {
                     navigateToHomeEnd();
                 } else {
-                    Log.e(TAG, "Models not loaded yet. Retrying...");
-                    handler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS);
+                    Log.e(TAG, "Sync not ready. Retrying...");
+                    handler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS);
                 }
             }
         };

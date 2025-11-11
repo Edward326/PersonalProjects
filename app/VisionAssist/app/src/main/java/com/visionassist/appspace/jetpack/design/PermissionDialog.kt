@@ -6,6 +6,7 @@ import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -56,13 +57,17 @@ fun PermissionDialog(
         enter = fadeIn(
             initialAlpha = 0f,
             animationSpec = tween(durationMillis = Constants.ANIMATION_DELAY)
+        ),
+        exit = fadeOut(
+            targetAlpha = 0f,
+            animationSpec = tween(durationMillis = 0)  // ← Instant exit, no glitch!
         )
     ) {
         // Full screen white overlay with 50% opacity
         Box(
             modifier = modifier
                 .fillMaxSize()
-                .background(Color.Gray.copy(alpha = 0.5f)),
+                .background(Color.Gray.copy(alpha = Constants.BACKGROUND_OPACITY)),
             contentAlignment = Alignment.Center
         ) {
             // Dialog Card
