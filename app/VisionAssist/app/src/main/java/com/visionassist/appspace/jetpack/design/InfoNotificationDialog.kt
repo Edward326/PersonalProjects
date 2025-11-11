@@ -42,6 +42,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.visionassist.appspace.R
 import com.visionassist.appspace.utils.Constants
+import com.visionassist.appspace.utils.robotoExtraBold
+import com.visionassist.appspace.utils.robotoSemibold
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -98,17 +100,39 @@ fun InfoNotificationDialog(
                     Text(
                         text = buildAnnotatedString {
                             val parts = message.split("@")
-                            if (parts.size > 1) {
-                                withStyle(
-                                    style = SpanStyle(
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = Constants.STD_ERROR_FONT_SIZE.sp
-                                    )
-                                ) {
-                                    append(parts[0])
+
+                            when {
+                                parts.size==1 -> {
+                                    // Format: TitleContent
+                                    withStyle(
+                                        style = SpanStyle(
+                                            fontSize = Constants.STD_FONT_SIZE.sp
+                                        )
+                                    ) {
+                                        append(parts[0])
+                                    }
+                                }
+                                parts.size > 1 -> {
+                                    // Format: Title@Content
+                                    withStyle(
+                                        style = SpanStyle(
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = Constants.STD_ERROR_FONT_SIZE.sp
+
+                                        )
+                                    ) {
+                                        append(parts[0])
+                                    }
+                                    append("\n\n")
+                                    withStyle(
+                                        style = SpanStyle(
+                                            fontSize = Constants.STD_FONT_SIZE.sp
+                                        )
+                                    ) {
+                                        append(parts[1])
+                                    }
                                 }
                             }
-                            append(parts[1])
                         },
                         fontSize = Constants.STD_FONT_SIZE.sp,
                         color = colorResource(R.color.notification_text_gray),
@@ -191,7 +215,7 @@ fun InfoNotificationDialog(
 fun InfoNotificationDialogPreview() {
     InfoNotificationDialog(
         isVisible = true,
-        message = "This is sample information text that explains what this option does in the application.",
+        message = "Hello?@This is sample information text that explains what this option does in the application.",
         onFirstButtonClick = {}
     )
 }

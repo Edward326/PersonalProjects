@@ -104,6 +104,7 @@ class UserInfoActivity : ComponentActivity() {
     private val firstButtonClick = mutableStateOf({})
     private val secondButtonClick = mutableStateOf({})
     private val thirdButtonClick = mutableStateOf({})
+    private val fieldTextInteraction = mutableStateOf(false)
 
     // Info notification manager
     private lateinit var infoNotificationManager: InfoNotificationManager
@@ -151,6 +152,7 @@ class UserInfoActivity : ComponentActivity() {
     private fun handleNameChange(newName: String) {
         nameInput.value = newName
         showNameError.value = false
+        fieldTextInteraction.value=true
     }
 
     private fun handleAgeChange(newAge: Int) {
@@ -170,6 +172,7 @@ class UserInfoActivity : ComponentActivity() {
     private fun handleVisionChange(newVision: String) {
         visionInput.value = newVision
         showVisionError.value = false
+        fieldTextInteraction.value=true
     }
 
     private fun handleBackClick() {
@@ -199,7 +202,7 @@ class UserInfoActivity : ComponentActivity() {
         val name = nameInput.value.trim()
 
         // Check if field is empty
-        if (name.isEmpty() || name=="Eduard") {
+        if (name.isEmpty() || !fieldTextInteraction.value) {
             showNameError.value = true
             return
         }
@@ -211,6 +214,7 @@ class UserInfoActivity : ComponentActivity() {
             return
         }
 
+        fieldTextInteraction.value=false
         // Show contribution dialog
         showContributionDialog()
     }
@@ -232,13 +236,14 @@ class UserInfoActivity : ComponentActivity() {
         val vision = visionInput.value.trim()
 
         // Check if field is empty
-        if (vision.isEmpty() || vision=="Myopia") {
+        if (vision.isEmpty() || !fieldTextInteraction.value) {
             showVisionError.value = true
             return
         }
 
         // Check if contains digits
-        if (vision.any { it.isDigit() }) {
+        val namePattern = Pattern.compile("^[A-Z][a-z]+$")
+        if (!namePattern.matcher(vision).matches()) {
             showInvalidCombinationNotification()
             return
         }

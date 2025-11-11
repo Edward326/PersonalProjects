@@ -12,8 +12,10 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.accessibility.AccessibilityManager;
 import android.widget.ImageView;
+
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.compose.ui.platform.ComposeView;
+
 import com.visionassist.appspace.ExceptionVisionAssist;
 import com.visionassist.appspace.PhoneStatusMonitor;
 import com.visionassist.appspace.R;
@@ -26,6 +28,7 @@ import com.visionassist.appspace.utils.BackgroundTaskExecutor;
 import com.visionassist.appspace.utils.Constants;
 import com.visionassist.appspace.utils.PermissionChecker;
 import com.visionassist.appspace.utils.Utils;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -34,12 +37,10 @@ public class MainActivity extends AppCompatActivity {
 
     private PhoneStatusMonitor monitor = PhoneStatusMonitor.getInstance();
     private TTSManager ttsManager = monitor.getTTSManager();
-    private AudioManager audioManager;
     private BackgroundTaskExecutor backgroundExecutor = BackgroundTaskExecutor.getInstance();
     private Handler handler = new Handler(Looper.getMainLooper());
     private LoadingManager loadingManager;
     private JSONObject profileData;
-    private boolean firstResume = false;
     private boolean waitingForTTSLanguage = false;
     private boolean profileAlreadyChecked = false;
     private boolean profileAlreadyUploaded = false;
@@ -53,7 +54,7 @@ public class MainActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_main);
         disableTalkBackForActivity();
-        audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
         int maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
         audioManager.setStreamVolume(
                 AudioManager.STREAM_MUSIC,  // Stream type
@@ -70,10 +71,7 @@ public class MainActivity extends AppCompatActivity {
         loadingManager.setupLoadingBox();
 
         loadingManager.showLoading("Verifying permissions, please wait");
-        handler.postDelayed(() -> {
-            firstResume = true;
-            PermissionChecker.checkAndRequestPermissions(this, true, this::checkProfileTask);
-        }, Constants.ANIMATION_DELAY);
+        handler.postDelayed(() -> PermissionChecker.checkAndRequestPermissions(this, true, this::checkProfileTask), Constants.ANIMATION_DELAY);
     }
 
     @Override
@@ -90,21 +88,20 @@ public class MainActivity extends AppCompatActivity {
             loadAssets();
         } else if (profileAlreadyChecked) {
             uploadProfileTask();
-        } else if (firstResume) {
+        } else if (PhoneStatusMonitor.getInstance().isReturningFromPermissions) {
             handler.postDelayed(() -> PermissionChecker.checkAndRequestPermissions(this, true, this::checkProfileTask), 1000);
         }
     }
 
     @Override
-    protected  void onPause(){
+    protected void onPause() {
         super.onPause();
 
-        if(!ttsManager.isDoneSpeaking())
+        if (!ttsManager.isDoneSpeaking())
             ttsManager.stopSpeaking();
     }
 
     private void checkProfileTask() {
-        firstResume = false;
         loadingManager.changeText("Verifying profile, please wait");
         handler.postDelayed(() -> {
             try {
@@ -113,7 +110,7 @@ public class MainActivity extends AppCompatActivity {
                     Utils.profileSelector(profileStatusDecider, loadingManager);
                 } else {
                     profileData = profileStatusDecider.second;
-                    //uploadProfileTask();
+                    uploadProfileTask();
                 }
             } catch (Exception e) {
                 handleProfileError(e);
@@ -124,8 +121,9 @@ public class MainActivity extends AppCompatActivity {
     private void uploadProfileTask() {
         profileAlreadyChecked = true;
         loadingManager.changeText("Uploading profile, please wait");
-        handler.postDelayed(() -> Utils.uploadProfile(profileData), 1500);
-        loadAssets();
+        handler.postDelayed(() -> {
+            Utils.uploadProfile(profileData, this::loadAssets);
+        }, 1500);
     }
 
     private void loadAssets() {
@@ -268,6 +266,29 @@ public class MainActivity extends AppCompatActivity {
                 }
         );
         */
+
+        backgroundExecutor.executeAsync(
+                () -> {
+                    Log.d(TAG, "Simulate loading models");
+                    Thread.sleep(3000);
+                    return 0;
+                    //load captioner vocab
+                },
+                new BackgroundTaskExecutor.TaskCallback<Integer>() {
+                    @Override
+                    public void onSuccess(Integer result) throws Exception {
+                        if (result == -1)
+                            handleProfileError(new ExceptionVisionAssist(Constants.ASSETS_ERROR, loadingManager));
+                        else
+                            tasksCompleted = Constants.MODELS_COUNT + Constants.MODELS_OWN_ASSETS_COUNT;
+                    }
+
+                    @Override
+                    public void onError(Exception e) {
+                        handleProfileError(new ExceptionVisionAssist(Constants.ASSETS_ERROR, loadingManager));
+                    }
+                }
+        );
         receiveAndNavigate();
     }
 
@@ -276,8 +297,9 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void run() {
                 if (tasksCompleted == Constants.MODELS_COUNT + Constants.MODELS_OWN_ASSETS_COUNT && ttsManager.isReady()) {
-                    setupTTSLanguage();
+                    setTTSLanguage();
                 } else {
+                    Log.e(TAG, "Models not loaded yet. Retrying...");
                     Log.e(TAG, "Models not loaded yet. Retrying...");
                     handler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS);
                 }
@@ -286,10 +308,15 @@ public class MainActivity extends AppCompatActivity {
         handler.post(checkLoadedAssets);
     }
 
-    private void setupTTSLanguage() {
-        waitingForTTSLanguage = true;
-        ttsManager.changeLanguage(AppConfig.mainLanguage, this);
-        waitForTTSAndNavigate();
+
+    private void setTTSLanguage() {
+        if (!AppConfig.mainLanguage.getCode().equals(ttsManager.getCurrentLocale().getLanguage())) {
+            waitingForTTSLanguage = true;
+            ttsManager.changeLanguage(AppConfig.mainLanguage, this);
+            waitForTTSAndNavigate();
+        } else {
+            navigateToHome();
+        }
     }
 
     private void waitForTTSAndNavigate() {

@@ -272,7 +272,7 @@ class UserHashCachingActivity : ComponentActivity() {
                 val profileFile = FileUtils.getProfileFile(this@UserHashCachingActivity)
                 val profileContent = profileFile.readText()
                 val jsonObject = JSONObject(profileContent)
-                Utils.uploadProfile(jsonObject)
+                Utils.uploadProfile(jsonObject,null)
 
                 val loadModelsBoolean=loadAllAssets()
                 if (!loadModelsBoolean) {
@@ -349,6 +349,7 @@ class UserHashCachingActivity : ComponentActivity() {
         val loadLock = Object()
 
         try {
+            /*
             BackgroundTaskExecutor.getInstance().executeAsync(
                 BackgroundTaskExecutor.BackgroundTask {
                     // Load detector
@@ -429,7 +430,7 @@ class UserHashCachingActivity : ComponentActivity() {
 
             BackgroundTaskExecutor.getInstance().executeAsync(
                 BackgroundTaskExecutor.BackgroundTask {
-                    // Load translator
+                    // Load classifier
                     return@BackgroundTask 0
                 },
                 object : BackgroundTaskExecutor.TaskCallback<Int> {
@@ -533,10 +534,39 @@ class UserHashCachingActivity : ComponentActivity() {
                     }
                 }
             )
+             */
+
+            BackgroundTaskExecutor.getInstance().executeAsync(
+                BackgroundTaskExecutor.BackgroundTask {
+                    // Load translator
+                    Log.d(TAG, "Simulate loading models")
+                    Thread.sleep(3000)
+                    return@BackgroundTask 0
+                },
+                object : BackgroundTaskExecutor.TaskCallback<Int> {
+                    override fun onSuccess(result: Int) {
+                        if (result == -1) {
+                            assetLoadError = Constants.TRANSLATER_LOAD_ERROR
+                        } else {
+                            synchronized(loadLock) {
+                                modelsLoaded[0]= Constants.MODELS_COUNT + Constants.MODELS_OWN_ASSETS_COUNT
+                                loadLock.notifyAll()
+                            }
+                        }
+                    }
+
+                    override fun onError(e: Exception) {
+                        assetLoadError = Constants.TRANSLATER_LOAD_ERROR
+                        synchronized(loadLock) {
+                            loadLock.notifyAll()
+                        }
+                    }
+                }
+            )
 
             // Wait for all models to load (synchronous wait in background thread)
             synchronized(loadLock) {
-                while (modelsLoaded[0] < Constants.MODELS_COUNT) {
+                while (modelsLoaded[0] < Constants.MODELS_COUNT + Constants.MODELS_OWN_ASSETS_COUNT) {
                     // Check if error occurred
                     if (assetLoadError != -494) {
                         Log.e(TAG, "Asset loading failed with error code: $assetLoadError")
@@ -591,6 +621,11 @@ class UserHashCachingActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
+        mainHandler.removeCallbacksAndMessages(null)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
         mainHandler.removeCallbacksAndMessages(null)
     }
 }

@@ -13,6 +13,7 @@ import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
+import android.speech.tts.Voice;
 import android.util.Log;
 
 import com.visionassist.appspace.R;
@@ -20,6 +21,7 @@ import com.visionassist.appspace.utils.Constants;
 import com.visionassist.appspace.utils.Language;
 
 import java.util.Locale;
+import java.util.Set;
 
 public class TTSManager implements TextToSpeech.OnInitListener {
     private static final String TAG = "TTSManager";
@@ -88,6 +90,47 @@ public class TTSManager implements TextToSpeech.OnInitListener {
         }
     }
 
+    private boolean isVoiceDataActuallyInstalled(Locale locale) {
+        try {
+            Set<Voice> voices = tts.getVoices();
+
+            if (voices == null || voices.isEmpty()) {
+                Log.w(TAG, "No voices available from TTS engine");
+                return false;
+            }
+
+            // Look for an installed voice matching this locale
+            for (Voice voice : voices) {
+                Locale voiceLocale = voice.getLocale();
+
+                // Check if voice matches our language (and optionally country)
+                boolean languageMatches = voiceLocale.getLanguage().equals(locale.getLanguage());
+
+                if (languageMatches) {
+                    // Check if this voice has voice data installed
+                    Set<String> features = voice.getFeatures();
+
+                    // KEY CHECK: Voice is installed if it does NOT have the NOT_INSTALLED feature
+                    boolean isInstalled = features == null ||
+                            !features.contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED);
+
+                    if (isInstalled) {
+                        Log.d(TAG, "Found installed voice for " + locale + ": " + voice.getName());
+                        return true;
+                    }
+                }
+            }
+
+            Log.w(TAG, "No installed voices found for locale: " + locale);
+            return false;
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error checking voice data", e);
+            // If we can't check, assume it's not installed to be safe
+            return false;
+        }
+    }
+
     /**
      * Changes the TTS language. Shows dialog if language data is not installed.
      * Call recheckPendingLanguage() in your Activity's onResume() after returning from settings.
@@ -124,18 +167,23 @@ public class TTSManager implements TextToSpeech.OnInitListener {
                 result == TextToSpeech.LANG_COUNTRY_VAR_AVAILABLE) {
 
             // Language is available, set it
-            tts.setLanguage(locale);
-            isInitialized = true;
-            pendingLanguage = null;
-            waitingForSettings = false;
-            Log.d(TAG, "Language changed successfully to: " + language.getName());
-
+            result=tts.setLanguage(locale);
+            if (result == TextToSpeech.LANG_MISSING_DATA ||
+                    result == TextToSpeech.LANG_NOT_SUPPORTED || !isVoiceDataActuallyInstalled(locale)) {
+                // Language data is missing
+                Log.e(TAG, "Language data missing for: " + language.getName());
+                showLanguageInstallDialog(language);
+            }
+            else {
+                isInitialized = true;
+                pendingLanguage = null;
+                waitingForSettings = false;
+                Log.d(TAG, "Language changed successfully to: " + language.getName());
+            }
         } else if (result == TextToSpeech.LANG_MISSING_DATA ||
                 result == TextToSpeech.LANG_NOT_SUPPORTED) {
-
             // Language data is missing
-            Log.w(TAG, "Language data missing for: " + language.getName());
-            showLanguageInstallDialog(language);
+            Log.w(TAG, "Language data not available: " + language.getName());
         }
     }
 
@@ -157,6 +205,7 @@ public class TTSManager implements TextToSpeech.OnInitListener {
                 .setCancelable(false)
                 .setPositiveButton("Settings", (dialog, which) -> {
                     waitingForSettings = true;
+                    pendingLanguage=language;
                     openTTSSettings();
                     // Don't check immediately - wait for onResume() callback
                 })
@@ -171,19 +220,6 @@ public class TTSManager implements TextToSpeech.OnInitListener {
                 .show());
     }
 
-    /**
-     * Call this method in your Activity's onResume() to check if language was installed.
-     * This allows any amount of time for the user to download language data.
-     * <p>
-     * Example in your Activity:
-     *
-     * @Override protected void onResume() {
-     * super.onResume();
-     * if (ttsManager != null) {
-     * ttsManager.recheckPendingLanguage();
-     * }
-     * }
-     */
     public void recheckPendingLanguage() {
         if (!waitingForSettings || pendingLanguage == null) {
             return;
@@ -193,19 +229,16 @@ public class TTSManager implements TextToSpeech.OnInitListener {
         Log.d(TAG, "Rechecking language after returning from settings...");
 
         Locale locale = new Locale(pendingLanguage.getCode(), pendingLanguage.getCountry());
-        int result = tts.isLanguageAvailable(locale);
+        int result=tts.setLanguage(locale);
 
-        if (result == TextToSpeech.LANG_AVAILABLE ||
-                result == TextToSpeech.LANG_COUNTRY_AVAILABLE ||
-                result == TextToSpeech.LANG_COUNTRY_VAR_AVAILABLE) {
-
+        if (result != TextToSpeech.LANG_MISSING_DATA &&
+                result != TextToSpeech.LANG_NOT_SUPPORTED && isVoiceDataActuallyInstalled(locale)) {
             // Success! Language is now available
             tts.setLanguage(locale);
             isInitialized = true;
             Log.d(TAG, "Language successfully installed and set: " + pendingLanguage.getName());
             pendingLanguage = null;
             languageCheckAttempts = 0;
-
         } else {
             // Still not available
             languageCheckAttempts++;
@@ -421,6 +454,7 @@ public class TTSManager implements TextToSpeech.OnInitListener {
     }
 
     public void stopSpeaking() {
+        ttsDelayHandler.removeCallbacksAndMessages(null);
         if (tts.isSpeaking()) {
             tts.stop();
             isDoneSpeaking = true;

@@ -194,6 +194,8 @@ private fun HorizontalCustomSlider(
         contentAlignment = Alignment.CenterStart
     ) {
         // Track (background + active portion)
+        var trackPadding by remember { mutableFloatStateOf(0f) }
+
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
@@ -208,7 +210,8 @@ private fun HorizontalCustomSlider(
                                 offset.x,
                                 sliderWidth,
                                 valueRange,
-                                steps
+                                steps,
+                                trackPadding  // Pass padding
                             )
                             onValueChange(newValue)
                             onSliderMove?.invoke(newValue)
@@ -222,7 +225,8 @@ private fun HorizontalCustomSlider(
                                 change.position.x,
                                 sliderWidth,
                                 valueRange,
-                                steps
+                                steps,
+                                trackPadding  // Pass padding
                             )
                             onValueChange(newValue)
                             onSliderMove?.invoke(newValue)
@@ -232,35 +236,46 @@ private fun HorizontalCustomSlider(
         ) {
             sliderWidth = size.width
 
-            // Draw inactive track (full width)
+            // Calculate padding for alignment with steps and thumb
+            trackPadding = size.height * 0.3f // Same as circle radius
+            val availableTrackWidth = size.width - (trackPadding * 2)
+
+            // Draw inactive track (with padding)
             drawLine(
                 color = inactiveTrackColor,
-                start = Offset(0f, size.height / 2),
-                end = Offset(size.width, size.height / 2),
+                start = Offset(trackPadding, size.height / 2),
+                end = Offset(size.width - trackPadding, size.height / 2),
                 strokeWidth = size.height,
                 cap = StrokeCap.Round
             )
 
-            // Draw active track (from start to thumb position)
+            // Draw active track (from start to thumb position, with padding)
             drawLine(
                 color = activeTrackColor,
-                start = Offset(0f, size.height / 2),
-                end = Offset(size.width * normalizedValue, size.height / 2),
+                start = Offset(trackPadding, size.height / 2),
+                end = Offset(trackPadding + (availableTrackWidth * normalizedValue), size.height / 2),
                 strokeWidth = size.height,
                 cap = StrokeCap.Round
             )
 
             // Draw step indicators if enabled
             if (showSteps && steps > 0) {
-                val stepWidth = size.width / steps
+                // Calculate circle radius and padding to prevent clipping
+                val circleRadius = size.height * 0.3f
+                val horizontalPadding = circleRadius
+
+                // Calculate available width for steps (inset from edges)
+                val availableWidth = size.width - (horizontalPadding * 2)
+                val stepWidth = if (steps > 0) availableWidth / steps else 0f
+
                 for (i in 0..steps) {
-                    val x = stepWidth * i
+                    val x = horizontalPadding + (stepWidth * i)
                     drawCircle(
                         color = if (x <= size.width * normalizedValue)
                             stepsColor
                         else
                             stepsColor,
-                        radius = size.height *0.3f,
+                        radius = circleRadius,
                         center = Offset(x, size.height / 2)
                     )
                 }
@@ -276,8 +291,17 @@ private fun HorizontalCustomSlider(
             orientation = SliderOrientation.HORIZONTAL
         )
 
-        // Calculate centered thumb offset
-        val thumbOffset = (sliderWidth * normalizedValue - with(LocalDensity.current) { thumbActualWidth.toPx() } / 2f).roundToInt()
+        // Calculate padding to match step indicators
+        val thumbPadding = with(LocalDensity.current) {
+            (trackHeight.toPx() * 0.3f) // Same as circle radius
+        }
+
+        // Calculate available width for thumb movement (same as steps)
+        val availableThumbWidth = sliderWidth - (thumbPadding * 2)
+
+        // Calculate centered thumb offset with padding
+        val thumbOffset = (thumbPadding + (availableThumbWidth * normalizedValue) - with(LocalDensity.current) { thumbActualWidth.toPx() } / 2f).roundToInt()
+
         // Custom thumb
         CustomThumb(
             style = thumbStyle,
@@ -327,6 +351,8 @@ private fun VerticalCustomSlider(
         contentAlignment = Alignment.BottomCenter
     ) {
         // Track (background + active portion)
+        var trackPadding by remember { mutableFloatStateOf(0f) }
+
         Canvas(
             modifier = Modifier
                 .fillMaxHeight()
@@ -343,7 +369,8 @@ private fun VerticalCustomSlider(
                                 invertedY,
                                 sliderHeight,
                                 valueRange,
-                                steps
+                                steps,
+                                trackPadding  // Pass padding
                             )
                             onValueChange(newValue)
                             onSliderMove?.invoke(newValue)
@@ -358,7 +385,8 @@ private fun VerticalCustomSlider(
                                 invertedY,
                                 sliderHeight,
                                 valueRange,
-                                steps
+                                steps,
+                                trackPadding  // Pass padding
                             )
                             onValueChange(newValue)
                             onSliderMove?.invoke(newValue)
@@ -367,6 +395,9 @@ private fun VerticalCustomSlider(
                 }
         ) {
             sliderHeight = size.height
+
+            // Calculate padding for alignment with steps and thumb
+            trackPadding = size.width * 0.3f // Same as circle radius
 
             // Draw inactive track (full height)
             drawLine(
@@ -388,15 +419,22 @@ private fun VerticalCustomSlider(
 
             // Draw step indicators if enabled
             if (showSteps && steps > 0) {
-                val stepHeight = size.height / steps
+                // Calculate circle radius and padding to prevent clipping
+                val circleRadius = size.width * 0.3f
+                val verticalPadding = circleRadius
+
+                // Calculate available height for steps (inset from edges)
+                val availableHeight = size.height - (verticalPadding * 2)
+                val stepHeight = if (steps > 0) availableHeight / steps else 0f
+
                 for (i in 0..steps) {
-                    val y = size.height - (stepHeight * i)  // From bottom up
+                    val y = size.height - verticalPadding - (stepHeight * i)  // From bottom up with padding
                     drawCircle(
                         color = if (y >= size.height * (1 - normalizedValue))
                             stepsColor
                         else
                             stepsColor,
-                        radius = size.width * 0.3f,
+                        radius = circleRadius,
                         center = Offset(size.width / 2, y)
                     )
                 }
@@ -412,8 +450,16 @@ private fun VerticalCustomSlider(
             orientation = SliderOrientation.VERTICAL
         )
 
-        // Calculate centered thumb offset
-        val thumbOffsetVertical = -(sliderHeight * normalizedValue - with(LocalDensity.current) { thumbActualHeight.toPx() } / 2f).roundToInt()
+        // Calculate padding to match step indicators
+        val thumbPaddingVertical = with(LocalDensity.current) {
+            (trackWidth.toPx() * 0.3f) // Same as circle radius
+        }
+
+        // Calculate available height for thumb movement (same as steps)
+        val availableThumbHeight = sliderHeight - (thumbPaddingVertical * 2)
+
+        // Calculate centered thumb offset with padding
+        val thumbOffsetVertical = -(thumbPaddingVertical + (availableThumbHeight * normalizedValue) - with(LocalDensity.current) { thumbActualHeight.toPx() } / 2f).roundToInt()
 
         // Custom thumb (vertical orientation)
         Box(
@@ -446,10 +492,19 @@ private fun calculateNewValue(
     position: Float,
     trackSize: Float,
     valueRange: ClosedFloatingPointRange<Float>,
-    steps: Int
+    steps: Int,
+    padding: Float = 0f  // Add padding parameter
 ): Float {
+    // Adjust position to account for padding
+    val adjustedPosition = (position - padding).coerceIn(0f, trackSize - (padding * 2))
+    val adjustedTrackSize = trackSize - (padding * 2)
+
     // Calculate normalized position (0f to 1f)
-    val normalizedPosition = (position / trackSize).coerceIn(0f, 1f)
+    val normalizedPosition = if (adjustedTrackSize > 0f) {
+        (adjustedPosition / adjustedTrackSize).coerceIn(0f, 1f)
+    } else {
+        0f
+    }
 
     // If steps are defined, snap to nearest step
     val snappedPosition = if (steps > 0) {
@@ -702,7 +757,7 @@ fun CustomSliderPreview3() {
 @Preview(name = "Horizontal - With Steps", showBackground = true, widthDp = 412, heightDp = 200)
 @Composable
 fun CustomSliderPreview4() {
-    var value by remember { mutableFloatStateOf(50f) }
+    var value by remember { mutableFloatStateOf(60f) }
 
     Box(
         modifier = Modifier

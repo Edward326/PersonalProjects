@@ -145,13 +145,6 @@ class WelcomeActivity : ComponentActivity() {
     }
 
     private fun setTTSLanguage() {
-        waitingForTTSLanguage = true
-        ttsManager.changeLanguage(AppConfig.mainLanguage, this)
-        waitForTTSAndNavigate()
-    }
-
-    private fun waitForTTSAndNavigate() {
-        waitingForTTSLanguage = false
         loadingText.value =
             if (selectedLanguage.code == "en") "TTS model is configuring, please wait"
             else
@@ -160,8 +153,21 @@ class WelcomeActivity : ComponentActivity() {
         val handler = Handler(Looper.getMainLooper())
         val checkTTS: Runnable = object : Runnable {
             override fun run() {
+                waitingForTTSLanguage = true
+                ttsManager.changeLanguage(selectedLanguage, this@WelcomeActivity)
+                waitForTTSAndNavigate()
+            }
+        }
+        handler.postDelayed(checkTTS, Constants.ANIMATION_DELAY.toLong()+1000)
+    }
+
+    private fun waitForTTSAndNavigate() {
+        val handler = Handler(Looper.getMainLooper())
+        val checkTTS: Runnable = object : Runnable {
+            override fun run() {
                 if (ttsManager.isReady) {
                     Log.d(TAG, "TTS is ready, navigating to home")
+                    waitingForTTSLanguage = false
                     onLanguageNextPressedNavigate(true)
                 } else {
                     Log.w(TAG, "TTS not ready, retrying...")
@@ -169,14 +175,17 @@ class WelcomeActivity : ComponentActivity() {
                 }
             }
         }
-        handler.postDelayed(checkTTS, Constants.ANIMATION_DELAY.toLong() + 1000)
+        handler.post(checkTTS)
     }
 
     private fun onLanguageNextPressed() {
-        if (selectedLanguage.code != ttsManager.currentLocale.language)
+        if (selectedLanguage.code != ttsManager.currentLocale.language) {
+            Log.d(TAG, "TTS is not init on the lang selected")
             setTTSLanguage()
-        else
+        }else {
+            Log.d(TAG, "TTS is already init, navigating to 2nd section")
             onLanguageNextPressedNavigate(false)
+        }
     }
 
     private fun onLanguageNextPressedNavigate(isLoadingActive: Boolean) {
@@ -211,8 +220,7 @@ class WelcomeActivity : ComponentActivity() {
         ProfileFileCollection.writeWelcomeActivity(true, null, true)
 
         // Navigate to next activity (UserInfoActivity or similar)
-        val intent = Intent(this, UserInfoActivity::class.java)
-        intent.putExtra(Constants.EXTRA_USERINFO_OPTION, 1)
+        val intent = Intent(this, NewProfileActivity::class.java)
         startActivity(intent)
         finish()
     }
@@ -392,7 +400,7 @@ fun LanguageSelectionSection(
                 selectedLanguage = selectedLanguage,
                 onLanguageSelected = { language ->
                     onLanguageSelected(language)
-                    Log.d("WelcomeActivity", "Language selected: ${language.name}")
+                    Log.d("WelcomeActivity", "Language selected: ${language.code}")
                 })
 
             Box(modifier = Modifier.height(screenHeight * 0.33f))

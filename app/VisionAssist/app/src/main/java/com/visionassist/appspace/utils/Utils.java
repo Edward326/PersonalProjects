@@ -8,6 +8,7 @@ import android.content.IntentFilter;
 import android.os.BatteryManager;
 import android.util.Log;
 import android.util.Pair;
+
 import com.visionassist.appspace.ExceptionVisionAssist;
 import com.visionassist.appspace.PhoneStatusMonitor;
 import com.visionassist.appspace.activities.newprofile.ConfigurationActivity;
@@ -20,8 +21,10 @@ import com.visionassist.appspace.activities.newprofile.WelcomeActivity;
 import com.visionassist.appspace.database.DBConstants;
 import com.visionassist.appspace.jetpack.managers.ErrorDialogManager;
 import com.visionassist.appspace.jetpack.managers.LoadingManager;
+
 import org.json.JSONException;
 import org.json.JSONObject;
+
 import java.io.InputStream;
 
 public class Utils {
@@ -30,9 +33,9 @@ public class Utils {
     @SuppressLint("StaticFieldLeak")
     static final PhoneStatusMonitor phoneMonitor = PhoneStatusMonitor.getInstance();
     @SuppressLint("StaticFieldLeak")
-    static Activity activity=phoneMonitor.getCurrentActivity();
+    static Activity activity = phoneMonitor.getCurrentActivity();
     @SuppressLint("StaticFieldLeak")
-    static Context context=phoneMonitor.getCurrentContext();
+    static Context context = phoneMonitor.getCurrentContext();
 
     public static Pair<Integer, JSONObject> checkProfile(Context context) {
         // Check if profile directory exists
@@ -59,28 +62,28 @@ public class Utils {
 
     public static void profileSelector(Pair<Integer, JSONObject> profileStatusDecider, LoadingManager loadingManager) throws Exception {
         Intent intent;
-        Context context=phoneMonitor.getCurrentContext();
+        Context context = phoneMonitor.getCurrentContext();
 
         switch (profileStatusDecider.first) {
             case 1:
-                    // Delete existing profile directory if it exists
-                    if (FileUtils.profileDirectoryExists(context)) {
-                        boolean deleted = FileUtils.deleteProfileDirectory(context);
-                        Log.d(TAG, "Profile directory deletion: " + (deleted ? "success" : "failed"));
-                    }
+                // Delete existing profile directory if it exists
+                if (FileUtils.profileDirectoryExists(context)) {
+                    boolean deleted = FileUtils.deleteProfileDirectory(context);
+                    Log.d(TAG, "Profile directory deletion: " + (deleted ? "success" : "failed"));
+                }
 
-                    // Create fresh profile structure
-                    boolean created = FileUtils.createProfileDirFile(Constants.PROFILE_FILE_NAME);
-                    if (!created) {
-                        Log.e(TAG, "Failed to create profile structure");
-                        // Still continue to ConfigurationActivity, let it handle the error
-                    }
-                    intent = new Intent(context, ConfigurationActivity.class);
-                    Intent finalIntent = intent;
-                    loadingManager.hideLoading();
-                    context.startActivity(finalIntent);
-                    activity.finish();
-                    break;
+                // Create fresh profile structure
+                boolean created = FileUtils.createProfileDirFile(Constants.PROFILE_FILE_NAME);
+                if (!created) {
+                    Log.e(TAG, "Failed to create profile structure");
+                    // Still continue to ConfigurationActivity, let it handle the error
+                }
+                intent = new Intent(context, ConfigurationActivity.class);
+                Intent finalIntent = intent;
+                loadingManager.hideLoading();
+                context.startActivity(finalIntent);
+                activity.finish();
+                break;
 
             case -4:
                 try {
@@ -96,7 +99,7 @@ public class Utils {
                     activity.finish();
                     break;
                 } catch (JSONException e) {
-                    throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR,loadingManager);
+                    throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR, loadingManager);
                 }
 
             case -3:
@@ -110,7 +113,7 @@ public class Utils {
                     activity.finish();
                     break;
                 } catch (JSONException e) {
-                    throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR,loadingManager);
+                    throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR, loadingManager);
                 }
 
             case -2:
@@ -118,28 +121,28 @@ public class Utils {
                     AppConfig.blindness = profileStatusDecider.second.getBoolean("blindness");
                     AppConfig.mainLanguage = languageExtractor(profileStatusDecider.second);
                     intent = new Intent(context, WelcomeActivity.class);
-                    intent.putExtra(Constants.EXTRA_WELCOME_OPTION,true);
+                    intent.putExtra(Constants.EXTRA_WELCOME_OPTION, true);
                     Intent finalIntent2 = intent;
                     loadingManager.hideLoading();
                     context.startActivity(finalIntent2);
                     activity.finish();
                     break;
                 } catch (JSONException e) {
-                    throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR,loadingManager);
+                    throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR, loadingManager);
                 }
 
             case -1:
                 try {
                     AppConfig.blindness = profileStatusDecider.second.getBoolean("blindness");
                     intent = new Intent(context, WelcomeActivity.class);
-                    intent.putExtra(Constants.EXTRA_WELCOME_OPTION,false);
+                    intent.putExtra(Constants.EXTRA_WELCOME_OPTION, false);
                     Intent finalIntent3 = intent;
                     loadingManager.hideLoading();
                     context.startActivity(finalIntent3);
                     activity.finish();
                     break;
                 } catch (JSONException e) {
-                    throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR,loadingManager);
+                    throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR, loadingManager);
                 }
 
             case 2:
@@ -147,14 +150,14 @@ public class Utils {
                     AppConfig.blindness = profileStatusDecider.second.getBoolean("blindness");
                     AppConfig.mainLanguage = languageExtractor(profileStatusDecider.second);
                     intent = new Intent(context, UserInfoActivity.class);
-                    intent.putExtra(Constants.EXTRA_USERINFO_OPTION,1);
+                    intent.putExtra(Constants.EXTRA_USERINFO_OPTION, 1);
                     Intent finalIntent4 = intent;
                     loadingManager.hideLoading();
                     context.startActivity(finalIntent4);
                     activity.finish();
                     break;
                 } catch (JSONException e) {
-                    throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR,loadingManager);
+                    throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR, loadingManager);
                 }
 
             case 3:
@@ -162,14 +165,14 @@ public class Utils {
                     AppConfig.blindness = profileStatusDecider.second.getBoolean("blindness");
                     AppConfig.mainLanguage = languageExtractor(profileStatusDecider.second);
                     intent = new Intent(context, UserInfoActivity.class);
-                    intent.putExtra(Constants.EXTRA_USERINFO_OPTION,2);
+                    intent.putExtra(Constants.EXTRA_USERINFO_OPTION, 2);
                     Intent finalIntent5 = intent;
                     loadingManager.hideLoading();
                     context.startActivity(finalIntent5);
                     activity.finish();
                     break;
                 } catch (JSONException e) {
-                    throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR,loadingManager);
+                    throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR, loadingManager);
                 }
 
             case 4:
@@ -177,14 +180,14 @@ public class Utils {
                     AppConfig.blindness = profileStatusDecider.second.getBoolean("blindness");
                     AppConfig.mainLanguage = languageExtractor(profileStatusDecider.second);
                     intent = new Intent(context, UserInfoActivity.class);
-                    intent.putExtra(Constants.EXTRA_USERINFO_OPTION,3);
+                    intent.putExtra(Constants.EXTRA_USERINFO_OPTION, 3);
                     Intent finalIntent6 = intent;
                     loadingManager.hideLoading();
                     context.startActivity(finalIntent6);
                     activity.finish();
                     break;
                 } catch (JSONException e) {
-                    throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR,loadingManager);
+                    throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR, loadingManager);
                 }
 
             case 5:
@@ -198,7 +201,7 @@ public class Utils {
                     activity.finish();
                     break;
                 } catch (JSONException e) {
-                    throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR,loadingManager);
+                    throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR, loadingManager);
                 }
 
             case 6:
@@ -206,14 +209,14 @@ public class Utils {
                     AppConfig.blindness = profileStatusDecider.second.getBoolean("blindness");
                     AppConfig.mainLanguage = languageExtractor(profileStatusDecider.second);
                     intent = new Intent(context, UserAccessibility1Activity.class);
-                    intent.putExtra(Constants.EXTRA_USERACC_OPTION,1);
+                    intent.putExtra(Constants.EXTRA_USERACC_OPTION, 1);
                     Intent finalIntent8 = intent;
                     loadingManager.hideLoading();
                     context.startActivity(finalIntent8);
                     activity.finish();
                     break;
                 } catch (JSONException e) {
-                    throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR,loadingManager);
+                    throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR, loadingManager);
                 }
 
             case 7:
@@ -221,14 +224,14 @@ public class Utils {
                     AppConfig.blindness = profileStatusDecider.second.getBoolean("blindness");
                     AppConfig.mainLanguage = languageExtractor(profileStatusDecider.second);
                     intent = new Intent(context, UserAccessibility1Activity.class);
-                    intent.putExtra(Constants.EXTRA_USERACC_OPTION,2);
+                    intent.putExtra(Constants.EXTRA_USERACC_OPTION, 2);
                     Intent finalIntent9 = intent;
                     loadingManager.hideLoading();
                     context.startActivity(finalIntent9);
                     activity.finish();
                     break;
                 } catch (JSONException e) {
-                    throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR,loadingManager);
+                    throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR, loadingManager);
                 }
 
             case 8:
@@ -236,14 +239,14 @@ public class Utils {
                     AppConfig.blindness = profileStatusDecider.second.getBoolean("blindness");
                     AppConfig.mainLanguage = languageExtractor(profileStatusDecider.second);
                     intent = new Intent(context, UserHashCachingActivity.class);
-                    intent.putExtra(Constants.EXTRA_HCACHING_OPTION,1);
+                    intent.putExtra(Constants.EXTRA_HCACHING_OPTION, 1);
                     Intent finalIntent10 = intent;
                     loadingManager.hideLoading();
                     context.startActivity(finalIntent10);
                     activity.finish();
                     break;
                 } catch (JSONException e) {
-                    throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR,loadingManager);
+                    throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR, loadingManager);
                 }
 
             case 9:
@@ -251,14 +254,14 @@ public class Utils {
                     AppConfig.blindness = profileStatusDecider.second.getBoolean("blindness");
                     AppConfig.mainLanguage = languageExtractor(profileStatusDecider.second);
                     intent = new Intent(context, UserHashCachingActivity.class);
-                    intent.putExtra(Constants.EXTRA_HCACHING_OPTION,2);
+                    intent.putExtra(Constants.EXTRA_HCACHING_OPTION, 2);
                     Intent finalIntent11 = intent;
                     loadingManager.hideLoading();
                     context.startActivity(finalIntent11);
                     activity.finish();
                     break;
                 } catch (JSONException e) {
-                    throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR,loadingManager);
+                    throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR, loadingManager);
                 }
 
             default:
@@ -271,7 +274,7 @@ public class Utils {
         }
     }
 
-    public static void uploadProfile(JSONObject profileSource) {
+    public static void uploadProfile(JSONObject profileSource, Runnable afterUploadProfile) {
         try {
             AppConfig.blindness = profileSource.getBoolean("blindness");
             AppConfig.mainLanguage = languageExtractor(profileSource);
@@ -286,19 +289,19 @@ public class Utils {
                 AppConfig.caption_color = profileSource.getString("caption_color");
                 AppConfig.caption_bck_color = profileSource.getString("caption_bck_color");
                 AppConfig.haptics = profileSource.getBoolean("haptics");
-            }
-            else
-            {
+            } else {
                 AppConfig.tts_speech_rate = (float) profileSource.getDouble("tts_speech_rate");
                 AppConfig.tts_pitch = (float) profileSource.getDouble("tts_pitch");
             }
             AppConfig.hash_caching = profileSource.getString("hash_caching");
             AppConfig.env_reports = profileSource.getBoolean("env_reports");
+            if (afterUploadProfile != null)
+                afterUploadProfile.run();
         } catch (Exception e) {
-                Log.e(TAG, "Thrown exception, explanation: ",e);
-                ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
-                errorDialog.setupDialog(Constants.JSON_PARSE_ERROR);
-                phoneMonitor.shutdownApp(errorDialog, context);
+            Log.e(TAG, "Thrown exception, explanation: ", e);
+            ErrorDialogManager errorDialog = new ErrorDialogManager(activity);
+            errorDialog.setupDialog(Constants.JSON_PARSE_ERROR);
+            phoneMonitor.shutdownApp(errorDialog, context);
         }
     }
 

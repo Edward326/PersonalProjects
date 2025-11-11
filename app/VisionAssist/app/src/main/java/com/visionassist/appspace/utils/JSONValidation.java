@@ -3,12 +3,9 @@ package com.visionassist.appspace.utils;
 
 import android.util.Log;
 import android.util.Pair;
-
 import com.visionassist.appspace.PhoneStatusMonitor;
-
 import org.json.JSONException;
 import org.json.JSONObject;
-
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -69,7 +66,7 @@ public class JSONValidation {
                 && jsonObject.has("language_country")
                 && jsonObject.has("new_profile"))
             if (!jsonObject.has("remote")) {
-                if (!jsonObject.getBoolean("new_profile"))
+                if (jsonObject.getBoolean("new_profile"))
                     return new Pair<>(-3, jsonObject);   // NewProfileActivity
                 else
                     return new Pair<>(-4, jsonObject);   // LoadProfileActivity
@@ -134,7 +131,7 @@ public class JSONValidation {
                 if (!jsonObject.has("env_reports"))
                     return new Pair<>(9, jsonObject);   // EnvironmentReportsIActivity
 
-                if (jsonObject.getBoolean("hash_caching"))
+                if (jsonObject.getString("hash_caching").equals("heavy") || jsonObject.getString("hash_caching").equals("light"))
                     if (!FileUtils.getHashCacheFile(PhoneStatusMonitor.getInstance().getCurrentContext()).exists()) {
                         FileUtils.createProfileDirFile(Constants.HASH_CACHE_FILE_NAME);
                         return new Pair<>(0, jsonObject);   // ConfigurationActivity
@@ -169,7 +166,7 @@ public class JSONValidation {
                 if (!jsonObject.has("env_reports"))
                     return new Pair<>(9, jsonObject);   // EnvironmentReportsIActivity
 
-                if (jsonObject.getBoolean("hash_caching"))
+                if (jsonObject.getString("hash_caching").equals("heavy") || jsonObject.getString("hash_caching").equals("light"))
                     if (!FileUtils.getHashCacheFile(PhoneStatusMonitor.getInstance().getCurrentContext()).exists()) {
                         if (FileUtils.createProfileDirFile(Constants.HASH_CACHE_FILE_NAME))
                             return new Pair<>(0, jsonObject);   // ConfigurationActivity

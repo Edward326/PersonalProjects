@@ -37,6 +37,7 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
     private boolean errorShown = false;
     private boolean isPaused = false;
     public boolean profileLoaded = false;
+    public boolean isReturningFromPermissions=false;
     private TTSManager ttsManager;
     private DBManager dbManager;
     @SuppressLint("StaticFieldLeak")

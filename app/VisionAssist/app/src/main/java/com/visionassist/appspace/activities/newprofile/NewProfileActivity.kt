@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
@@ -168,7 +169,7 @@ class NewProfileActivity : ComponentActivity() {
     private fun handleBackFromProfileSelection() {
         ProfileFileCollection.deleteWelcomeActivity(true)
         val intent = Intent(this, WelcomeActivity::class.java)
-        intent.putExtra(Constants.EXTRA_WELCOME_OPTION, false)
+        intent.putExtra(Constants.EXTRA_WELCOME_OPTION, true)
         startActivity(intent)
         finish()
     }
@@ -387,6 +388,26 @@ class NewProfileActivity : ComponentActivity() {
         val intent = Intent(this, LoadProfileActivity::class.java)
         startActivity(intent)
         finish()
+    }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        when (keyCode) {
+            KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                Log.d(TAG, "Volume button down for repeat pressed")
+                return true
+            }
+
+            KeyEvent.KEYCODE_VOLUME_UP -> {
+                Log.d(TAG, "Volume button up pressed")
+                return true
+            }
+        }
+        return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        mainHandler.removeCallbacksAndMessages(null)
     }
 }
 

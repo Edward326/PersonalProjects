@@ -77,23 +77,6 @@ class ConfigurationActivity : ComponentActivity() {
         speakInitialCaption()
     }
 
-    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        when (keyCode) {
-            KeyEvent.KEYCODE_VOLUME_DOWN -> {
-                Log.d(TAG, "Volume button down for repeat pressed")
-                ttsManager.onVolumeDownPressed()
-                return true
-            }
-
-            KeyEvent.KEYCODE_VOLUME_UP -> {
-                Log.d(TAG, "Volume button up pressed")
-                return true
-            }
-        }
-
-        return super.onKeyDown(keyCode, event)
-    }
-
     private fun speakInitialCaption() {
         val retryRunnable = object : Runnable {
             override fun run() {
@@ -197,6 +180,23 @@ class ConfigurationActivity : ComponentActivity() {
         }
     }
 
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        when (keyCode) {
+            KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                Log.d(TAG, "Volume button down for repeat pressed")
+                ttsManager.onVolumeDownPressed()
+                return true
+            }
+
+            KeyEvent.KEYCODE_VOLUME_UP -> {
+                Log.d(TAG, "Volume button up pressed")
+                return true
+            }
+        }
+
+        return super.onKeyDown(keyCode, event)
+    }
+
     override fun onPause() {
         super.onPause()
         cancelAllHandlers()
@@ -204,9 +204,13 @@ class ConfigurationActivity : ComponentActivity() {
 
     private fun cancelAllHandlers() {
         mainHandler.removeCallbacksAndMessages(null)
-        if (!ttsManager.isDoneSpeaking)
-            ttsManager.stopSpeaking()
+        ttsManager.stopSpeaking()
         Log.d(TAG, "All handlers cancelled")
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        mainHandler.removeCallbacksAndMessages(null)
     }
 }
 

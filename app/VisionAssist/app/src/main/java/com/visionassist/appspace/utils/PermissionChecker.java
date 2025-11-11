@@ -18,6 +18,8 @@ public class PermissionChecker {
     private static final String TAG = "PermissionChecker";
 
     public static void checkAndRequestPermissions(Activity activity, boolean blindProfile,Runnable onPermissionsGranted) {
+        PhoneStatusMonitor phoneMonitor=PhoneStatusMonitor.getInstance();
+        phoneMonitor.isReturningFromPermissions=false;
         boolean cameraGranted = checkCameraPermission(activity);
         boolean microphoneGranted = checkMicrophonePermission(activity);
         boolean storageGranted = checkStoragePermissions(activity);
@@ -40,6 +42,7 @@ public class PermissionChecker {
             return;
         }
 
+        PhoneStatusMonitor.getInstance().isReturningFromPermissions=true;
         if (blindProfile) {
             PhoneStatusMonitor monitor = PhoneStatusMonitor.getInstance();
             TTSManager ttsManager = monitor.getTTSManager();

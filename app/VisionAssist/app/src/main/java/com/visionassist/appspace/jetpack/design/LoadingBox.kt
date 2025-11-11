@@ -5,12 +5,14 @@ package com.visionassist.appspace.jetpack.design
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -18,21 +20,26 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.visionassist.appspace.R
 import com.visionassist.appspace.utils.Constants
 import com.visionassist.appspace.utils.robotoRegular
+import com.visionassist.appspace.utils.robotoSemibold
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -59,29 +66,27 @@ fun LoadingComponent(
         ) {
             // Loading content
             Column(
-                modifier = Modifier.padding(32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth(0.8f)
             ) {
                 // Loading Text
                 Text(
                     text = loadingText,
                     fontSize = Constants.STD_FONT_SIZE.sp,
-                    fontFamily = robotoRegular,
-                    fontWeight = FontWeight.Medium,
-                    fontStyle = FontStyle.Normal,
-                    color = Color(0xFF6096BA),
+                    fontFamily = robotoSemibold,
+                    color = colorResource(R.color.std_purple),
+                    textAlign = TextAlign.Center,
                     letterSpacing = 1.sp
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 // Linear Progress Indicator
                 LinearProgressIndicator(
                     modifier = Modifier
-                        .width(200.dp)
-                        .height(5.dp)
-                        .clip(RoundedCornerShape(1000.dp)),
+                        .width(230.dp)
+                        .height(8.dp),
                     color = colorResource(R.color.std_purple),
                     trackColor = Color(0xFFE8DEF8),
                     gapSize = 10.dp
@@ -94,8 +99,17 @@ fun LoadingComponent(
 @Preview(name = "Loading Linear", showBackground = true, widthDp = 412, heightDp = 917)
 @Composable
 fun LoadingComponentPreview() {
-    LoadingComponent(
-        isVisible = true,
-        loadingText = "Please wait"
-    )
+
+    MaterialTheme{
+        Image(
+            painter = painterResource(id = R.drawable.welcome_background),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+        LoadingComponent(
+            isVisible = true,
+            loadingText = "Please wait"
+        )
+    }
 }

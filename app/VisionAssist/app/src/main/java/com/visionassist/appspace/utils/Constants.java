@@ -120,7 +120,7 @@ public class Constants {
     public static final int STD_FONT_SIZE = 14;
     public static final int STD_FONT_SIZE_LW = STD_FONT_SIZE - 2;
     public static final int STD_BUTTON_FONT_SIZE = STD_FONT_SIZE + 2;
-    public static final int STD_ERROR_FONT_SIZE = STD_FONT_SIZE + 2;
+    public static final int STD_ERROR_FONT_SIZE = STD_FONT_SIZE + 4;
     public static final int STD_SLIDER_INFO_SIZE = 23;
     public static final int STD_BUTTON_HEIGHT = 58;
     public static final int STD_BUTTON_PAGE_HEIGHT = 86;

@@ -68,6 +68,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.documentfile.provider.DocumentFile
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
 import com.visionassist.appspace.activities.main.BlindHomeActivity
@@ -138,7 +139,7 @@ class LoadProfileActivity : ComponentActivity() {
     private var assetLoadError = -494
 
     // Managers
-    private lateinit var infoNotificationManager: InfoNotificationManager
+    private val infoNotificationManager = InfoNotificationManager(this)
 
     // Folder picker launcher
     private lateinit var folderPickerLauncher: ActivityResultLauncher<Uri?>
@@ -246,7 +247,7 @@ class LoadProfileActivity : ComponentActivity() {
         Log.d(TAG, "Navigate to create account")
 
         hideNotification()
-        ProfileFileCollection.writeWelcomeActivity(true, null, false)
+        ProfileFileCollection.writeWelcomeActivity(true, null, true)
         val intent = Intent(this, NewProfileActivity::class.java)
         startActivity(intent)
         finish()
@@ -438,7 +439,7 @@ class LoadProfileActivity : ComponentActivity() {
             }
 
             // Upload profile to AppConfig
-            Utils.uploadProfile(profileJson)
+            Utils.uploadProfile(profileJson,null)
 
             // Load assets
             if (!loadAllAssets()) {
@@ -581,7 +582,7 @@ class LoadProfileActivity : ComponentActivity() {
 
             // Step 2: Open stream to profile file
             val inputStream = try {
-                contentResolver.openInputStream(Uri.fromFile(profileFile))
+                contentResolver.openInputStream(profileFile)
                     ?: return Constants.LOAD_PROFILE_FILE_STREAMOPEN
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to open profile file stream", e)
@@ -637,7 +638,7 @@ class LoadProfileActivity : ComponentActivity() {
             }
 
             // Step 6: Upload phase
-            Utils.uploadProfile(profileJson)
+            Utils.uploadProfile(profileJson,null)
             if (!loadAllAssets()) {
                 return assetLoadError
             }
@@ -648,17 +649,26 @@ class LoadProfileActivity : ComponentActivity() {
         }
     }
 
-    private fun findProfileFileInFolder(uri: Uri): File? {
+    private fun findProfileFileInFolder(uri: Uri): Uri? {
         try {
-            val folderPath = uri.path ?: return null
-            val folder = File(folderPath)
+            // Use DocumentFile to work with content:// URIs
+            val folder = DocumentFile.fromTreeUri(this, uri)
 
-            if (!folder.exists() || !folder.isDirectory) {
+            if (folder == null || !folder.exists() || !folder.isDirectory) {
+                Log.e(TAG, "Folder not found or not a directory")
                 return null
             }
 
-            val profileFile = File(folder, Constants.PROFILE_FILE_NAME)
-            return if (profileFile.exists()) profileFile else null
+            // Find profile.json in the folder
+            val profileFile = folder.findFile(Constants.PROFILE_FILE_NAME)
+
+            if (profileFile != null && profileFile.exists() && profileFile.isFile) {
+                Log.d(TAG, "Found profile file: ${profileFile.uri}")
+                return profileFile.uri
+            } else {
+                Log.e(TAG, "Profile file not found in folder")
+                return null
+            }
 
         } catch (e: Exception) {
             Log.e(TAG, "Error finding profile file", e)
@@ -701,6 +711,7 @@ class LoadProfileActivity : ComponentActivity() {
         val loadLock = Object()
 
         try {
+            /*
             BackgroundTaskExecutor.getInstance().executeAsync(
                 BackgroundTaskExecutor.BackgroundTask {
                     // Load detector
@@ -781,7 +792,7 @@ class LoadProfileActivity : ComponentActivity() {
 
             BackgroundTaskExecutor.getInstance().executeAsync(
                 BackgroundTaskExecutor.BackgroundTask {
-                    // Load translator
+                    // Load classifier
                     return@BackgroundTask 0
                 },
                 object : BackgroundTaskExecutor.TaskCallback<Int> {
@@ -885,10 +896,39 @@ class LoadProfileActivity : ComponentActivity() {
                     }
                 }
             )
+             */
+
+            BackgroundTaskExecutor.getInstance().executeAsync(
+                BackgroundTaskExecutor.BackgroundTask {
+                    // Load translator
+                    Log.d(TAG, "Simulate loading models")
+                    Thread.sleep(3000)
+                    return@BackgroundTask 0
+                },
+                object : BackgroundTaskExecutor.TaskCallback<Int> {
+                    override fun onSuccess(result: Int) {
+                        if (result == -1) {
+                            assetLoadError = Constants.TRANSLATER_LOAD_ERROR
+                        } else {
+                            synchronized(loadLock) {
+                                modelsLoaded[0]= Constants.MODELS_COUNT + Constants.MODELS_OWN_ASSETS_COUNT
+                                loadLock.notifyAll()
+                            }
+                        }
+                    }
+
+                    override fun onError(e: Exception) {
+                        assetLoadError = Constants.TRANSLATER_LOAD_ERROR
+                        synchronized(loadLock) {
+                            loadLock.notifyAll()
+                        }
+                    }
+                }
+            )
 
             // Wait for all models to load (synchronous wait in background thread)
             synchronized(loadLock) {
-                while (modelsLoaded[0] < Constants.MODELS_COUNT) {
+                while (modelsLoaded[0] < Constants.MODELS_COUNT + Constants.MODELS_OWN_ASSETS_COUNT) {
                     // Check if error occurred
                     if (assetLoadError != -494) {
                         Log.e(TAG, "Asset loading failed with error code: $assetLoadError")
@@ -914,8 +954,9 @@ class LoadProfileActivity : ComponentActivity() {
             waitingForTTSLanguage = true
             ttsManager.changeLanguage(AppConfig.mainLanguage, this)
             waitForTTSAndNavigate()
-        }else
-            finishedLoading=true
+        }else {
+            finishedLoading = true
+        }
     }
 
     private fun waitForTTSAndNavigate() {
@@ -996,7 +1037,7 @@ class LoadProfileActivity : ComponentActivity() {
         firstButtonClick.value = { hideNotification() }
         secondButtonLabel.value =
             if (AppConfig.mainLanguage.code == "en") "Create account" else "Creează cont"
-        firstButtonClick.value = { handleCreateAccount() }
+        secondButtonClick.value = { handleCreateAccount() }
         showNotification.value = true
     }
 
@@ -1057,6 +1098,11 @@ class LoadProfileActivity : ComponentActivity() {
             }
         }
         return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        mainHandler.removeCallbacksAndMessages(null)
     }
 }
 

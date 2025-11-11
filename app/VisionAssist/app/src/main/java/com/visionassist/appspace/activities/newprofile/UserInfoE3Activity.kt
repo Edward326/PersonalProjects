@@ -293,7 +293,7 @@ fun UserInfoE3Screen(
 @Composable
 fun UserInfoE3ActivityPreview() {
     UserInfoE3Screen(
-        pitchValue = 1.0f,
+        pitchValue = 0f,
         speedValue = 1.0f,
         onPitchChange = {},
         onSpeedChange = {},

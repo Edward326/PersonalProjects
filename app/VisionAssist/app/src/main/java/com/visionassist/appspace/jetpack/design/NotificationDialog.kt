@@ -45,6 +45,9 @@ import com.visionassist.appspace.R
 import com.visionassist.appspace.activities.newprofile.LoadProfileActivity
 import com.visionassist.appspace.utils.AppConfig
 import com.visionassist.appspace.utils.Constants
+import com.visionassist.appspace.utils.robotoExtraBold
+import com.visionassist.appspace.utils.robotoRegular
+import com.visionassist.appspace.utils.robotoSemibold
 
 @Composable
 fun NotificationDialog(
@@ -124,7 +127,13 @@ fun NotificationDialog(
                     Text(
                         text = buildAnnotatedString {
                             val parts = message.split("@")
-                            append(parts[0])
+                            withStyle(
+                                style = SpanStyle(
+                                    fontSize = Constants.STD_FONT_SIZE.sp
+                                )
+                            ) {
+                                append(parts[0])
+                            }
 
                             if (parts.size > 1) {
                                 withStyle(
@@ -167,8 +176,7 @@ fun NotificationDialog(
                                 ) {
                                     Text(
                                         text = firstButtonLabel,
-                                        fontSize = Constants.STD_BUTTON_FONT_SIZE.sp
-                                    )
+                                        fontSize = Constants.STD_BUTTON_FONT_SIZE.sp)
                                 }
 
                                 // Create account + Load local (row)
@@ -184,7 +192,7 @@ fun NotificationDialog(
                                         shape = RoundedCornerShape(28.dp),
                                         colors = ButtonDefaults.buttonColors(
                                             containerColor = colorResource(R.color.std_purple),
-                                            contentColor = Color.White
+                                            contentColor = Color.White,
                                         )
                                     ) {
                                         Text(
@@ -268,7 +276,9 @@ fun NotificationDialog(
                                     contentColor = colorResource(R.color.std_purple)
                                 )
                             ) {
-                                Text(text = firstButtonLabel, fontSize = Constants.STD_BUTTON_FONT_SIZE.sp)
+                                Text(text = firstButtonLabel,
+                                    fontSize = Constants.STD_BUTTON_FONT_SIZE.sp
+                                )
                             }
                         }
                     }
