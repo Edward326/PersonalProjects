@@ -1,5 +1,4 @@
 -testare(load->local/remote new->local/remote):
-	-vazut de ce cand revine in UserE3 nu se pun sliderele la appconfig
 	-testat pe loweysight new profile remote=false(isCOntribtuor=true/false)
 	-testat pe romana pe orice configuratie
 	-testat pe blindeness new profile remote=true(isCOntribtuor=true/false)
