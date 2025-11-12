@@ -131,17 +131,11 @@ public class JSONValidation {
                 if (!jsonObject.has("hash_caching"))
                     return new Pair<>(8, jsonObject);   // UserHashCachingActivity
 
-                if (!jsonObject.has("env_reports"))
-                    return new Pair<>(9, jsonObject);   // EnvironmentReportsIActivity
-
-                if (jsonObject.getString("hash_caching").equals("heavy") || jsonObject.getString("hash_caching").equals("light")) {
-                    if (!FileUtils.createProfileDirFile(Constants.HASH_CACHE_FILE_NAME))
-                        return new Pair<>(0, jsonObject);   // ConfigurationActivity
-                }
-                if (jsonObject.getBoolean("env_reports")) {
-                    if (!FileUtils.createProfileDirFile(Constants.ENV_REPORTS_FILE_NAME))
-                        return new Pair<>(0, jsonObject);   // ConfigurationActivity
-                }
+                if (jsonObject.getString("hash_caching").equals("heavy") || jsonObject.getString("hash_caching").equals("light"))
+                    if (!FileUtils.getHashCacheFile(PhoneStatusMonitor.getInstance().getCurrentContext()).exists()) {
+                        if (!FileUtils.createProfileDirFile(Constants.HASH_CACHE_FILE_NAME))
+                            return new Pair<>(1, jsonObject);   // ConfigurationActivity
+                    }
 
                 inputStream.close();
                 // All validations passed
@@ -157,29 +151,13 @@ public class JSONValidation {
                         || !jsonObject.has("tts_speech_rate"))
                     return new Pair<>(1, jsonObject);   // ConfigurationActivity
 
-                if ((!jsonObject.has("env_reports") && jsonObject.has("hash_caching"))
-                        || (jsonObject.has("env_reports") && !jsonObject.has("hash_caching")))
-                    return new Pair<>(1, jsonObject);   // ConfigurationActivity
-
                 if (!jsonObject.has("hash_caching"))
                     return new Pair<>(8, jsonObject);   // UserHashCachingActivity
 
-                if (!jsonObject.has("env_reports"))
-                    return new Pair<>(9, jsonObject);   // EnvironmentReportsIActivity
-
                 if (jsonObject.getString("hash_caching").equals("heavy") || jsonObject.getString("hash_caching").equals("light"))
                     if (!FileUtils.getHashCacheFile(PhoneStatusMonitor.getInstance().getCurrentContext()).exists()) {
-                        if (FileUtils.createProfileDirFile(Constants.HASH_CACHE_FILE_NAME))
-                            return new Pair<>(0, jsonObject);   // ConfigurationActivity
-                        else
-                            return new Pair<>(1, jsonObject);
-                    }
-                if (jsonObject.getBoolean("env_reports"))
-                    if (!FileUtils.getEnvReportsFile(PhoneStatusMonitor.getInstance().getCurrentContext()).exists()) {
-                        if (FileUtils.createProfileDirFile(Constants.ENV_REPORTS_FILE_NAME))
-                            return new Pair<>(0, jsonObject);   // ConfigurationActivity
-                        else
-                            return new Pair<>(1, jsonObject);
+                        if (!FileUtils.createProfileDirFile(Constants.HASH_CACHE_FILE_NAME))
+                            return new Pair<>(1, jsonObject);   // ConfigurationActivity
                     }
 
                 inputStream.close();
@@ -205,32 +183,31 @@ public class JSONValidation {
         if (!jsonObject.has("caption_color")
                 && !jsonObject.has("caption_bck_color")
                 && !jsonObject.has("haptics"))
-            return new Pair<>(7, jsonObject);    // UserAccesibility1Activity
+            return new Pair<>(7, jsonObject);    // UserAccesibility2Activity
 
         if (!jsonObject.has("caption_color")
                 || !jsonObject.has("caption_bck_color")
                 || !jsonObject.has("haptics"))
-            return new Pair<>(7, jsonObject);    // UserAccesibility1Activity
+            return new Pair<>(1, jsonObject);    // ConfigurationActivity
 
         if (!jsonObject.has("hash_caching"))
-            return new Pair<>(8, jsonObject);   // UserHashCachingActivity
+            if (jsonObject.has("env_reports"))
+                return new Pair<>(1, jsonObject);    // ConfigurationActivity
+            else
+                return new Pair<>(8, jsonObject);   // UserHashCachingActivity
 
         if (!jsonObject.has("env_reports"))
             return new Pair<>(9, jsonObject);   // EnvironmentReportsIActivity
 
         if (jsonObject.getString("hash_caching").equals("heavy") || jsonObject.getString("hash_caching").equals("light"))
             if (!FileUtils.getHashCacheFile(PhoneStatusMonitor.getInstance().getCurrentContext()).exists()) {
-                if (FileUtils.createProfileDirFile(Constants.HASH_CACHE_FILE_NAME))
-                    return new Pair<>(0, jsonObject);   // ConfigurationActivity
-                else
-                    return new Pair<>(1, jsonObject);
+                if (!FileUtils.createProfileDirFile(Constants.HASH_CACHE_FILE_NAME))
+                    return new Pair<>(1, jsonObject);   // ConfigurationActivity
             }
         if (jsonObject.getBoolean("env_reports"))
             if (!FileUtils.getEnvReportsFile(PhoneStatusMonitor.getInstance().getCurrentContext()).exists()) {
-                if (FileUtils.createProfileDirFile(Constants.ENV_REPORTS_FILE_NAME))
-                    return new Pair<>(0, jsonObject);   // ConfigurationActivity
-                else
-                    return new Pair<>(1, jsonObject);
+                if (!FileUtils.createProfileDirFile(Constants.ENV_REPORTS_FILE_NAME))
+                    return new Pair<>(1, jsonObject);   // ConfigurationActivity
             }
 
         inputStream.close();

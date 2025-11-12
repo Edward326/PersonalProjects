@@ -81,14 +81,26 @@ class UserInfoActivity : ComponentActivity() {
     private val currentSection = mutableIntStateOf(1) // 1=name, 2=age, 3=vision
 
     // Section 1 states (Name)
-    private val nameInput = mutableStateOf("Eduard")
+    private val nameInput = mutableStateOf(
+        if (AppConfig.user_name != null) AppConfig.user_name
+        else
+            "Eduard"
+    )
     private val showNameError = mutableStateOf(false)
 
     // Section 2 states (Age)
-    private val ageValue = mutableIntStateOf(55)
+    private val ageValue = mutableIntStateOf(
+        if (AppConfig.age != 0) AppConfig.age
+        else
+            55
+    )
 
     // Section 3 states (Vision condition)
-    private val visionInput = mutableStateOf("Myopia")
+    private val visionInput = mutableStateOf(
+        if (AppConfig.visual_condition != null) AppConfig.visual_condition
+        else
+            "Myopia"
+    )
     private val showVisionError = mutableStateOf(false)
 
     // Notification states
@@ -120,7 +132,7 @@ class UserInfoActivity : ComponentActivity() {
         val sectionParam = intent.getIntExtra(Constants.EXTRA_USERINFO_OPTION, 1)
         currentSection.intValue = sectionParam
 
-        if(AppConfig.user_name!=null)fieldTextInteraction.value=true
+        //if(AppConfig.user_name!=null)fieldTextInteraction.value=true
 
         setContent {
             UserInfoScreen(
@@ -152,16 +164,14 @@ class UserInfoActivity : ComponentActivity() {
     }
 
     private fun handleNameChange(newName: String) {
-        AppConfig.user_name=newName
         nameInput.value = newName
         showNameError.value = false
-        fieldTextInteraction.value=true
+        fieldTextInteraction.value = true
     }
 
     private fun handleAgeChange(newAge: Int) {
-        AppConfig.age=newAge
         ageValue.intValue = newAge
-        if(AppConfig.blindness) {
+        if (AppConfig.blindness) {
             ttsManager.stopSpeaking()
             ttsManager.speak(
                 newAge.toString(),
@@ -174,10 +184,9 @@ class UserInfoActivity : ComponentActivity() {
     }
 
     private fun handleVisionChange(newVision: String) {
-        AppConfig.visual_condition=newVision
         visionInput.value = newVision
         showVisionError.value = false
-        fieldTextInteraction.value=true
+        fieldTextInteraction.value = true
     }
 
     private fun handleBackClick() {
@@ -186,11 +195,14 @@ class UserInfoActivity : ComponentActivity() {
                 // Delete section 1 data and go to section 1
                 ProfileFileCollection.deleteUserInfoActivity(0)
                 currentSection.intValue = 1
+                fieldTextInteraction.value=false
             }
+
             3 -> {
                 // Delete section 2 data and go to section 2
                 ProfileFileCollection.deleteUserInfoActivity(1)
                 currentSection.intValue = 2
+                fieldTextInteraction.value=false
             }
         }
     }
@@ -205,6 +217,20 @@ class UserInfoActivity : ComponentActivity() {
 
     private fun handleSection1Next() {
         val name = nameInput.value.trim()
+        if (AppConfig.user_name != null) {
+            if (name.isEmpty()){
+                showNameError.value = true
+                return
+            }
+            val namePattern = Pattern.compile("^[A-Z][a-z]+$")
+            if (!namePattern.matcher(name).matches()) {
+                showInvalidCombinationNotification()
+                return
+            }
+            AppConfig.user_name = name
+            showContributionDialog()
+            return
+        }
 
         // Check if field is empty
         if (name.isEmpty() || !fieldTextInteraction.value) {
@@ -219,15 +245,17 @@ class UserInfoActivity : ComponentActivity() {
             return
         }
 
-        fieldTextInteraction.value=false
-        // Show contribution dialog
+        fieldTextInteraction.value = false
+        AppConfig.user_name = name
 
+        // Show contribution dialog
         showContributionDialog()
     }
 
     private fun handleSection2Next() {
         // Write age and navigate
         ProfileFileCollection.writeUserInfoActivity(1, false, "", ageValue.intValue, "")
+        AppConfig.age = ageValue.intValue
 
         if (AppConfig.blindness) {
             val intent = Intent(this, UserInfoE3Activity::class.java)
@@ -240,6 +268,24 @@ class UserInfoActivity : ComponentActivity() {
 
     private fun handleSection3Next() {
         val vision = visionInput.value.trim()
+        if (AppConfig.visual_condition != null) {
+            if (vision.isEmpty()){
+                showNameError.value = true
+                return
+            }
+            val namePattern = Pattern.compile("^[A-Z][a-z]+$")
+            if (!namePattern.matcher(vision).matches()) {
+                showInvalidCombinationNotification()
+                return
+            }
+            ProfileFileCollection.writeUserInfoActivity(2, false, "", 0, vision)
+            AppConfig.visual_condition = vision
+
+            val intent = Intent(this, UserAccessibility1Activity::class.java)
+            intent.putExtra(Constants.EXTRA_USERACC_OPTION, 1)
+            startActivity(intent)
+            finish()
+        }
 
         // Check if field is empty
         if (vision.isEmpty() || !fieldTextInteraction.value) {
@@ -256,9 +302,10 @@ class UserInfoActivity : ComponentActivity() {
 
         // Write vision condition and navigate
         ProfileFileCollection.writeUserInfoActivity(2, false, "", 0, vision)
+        AppConfig.visual_condition = vision
 
         val intent = Intent(this, UserAccessibility1Activity::class.java)
-        intent.putExtra(Constants.EXTRA_USERINFO_OPTION, 1)
+        intent.putExtra(Constants.EXTRA_USERACC_OPTION, 1)
         startActivity(intent)
         finish()
     }
@@ -298,12 +345,12 @@ class UserInfoActivity : ComponentActivity() {
 
         if (AppConfig.blindness) {
             val intent = Intent(this, UserInfoE3Activity::class.java)
-            intent.putExtra(Constants.EXTRA_HCACHING_OPTION,1)
+            intent.putExtra(Constants.EXTRA_HCACHING_OPTION, 1)
             startActivity(intent)
             finish()
         } else {
             val intent = Intent(this, UserAccessibility1Activity::class.java)
-            intent.putExtra(Constants.EXTRA_USERINFO_OPTION,1)
+            intent.putExtra(Constants.EXTRA_USERINFO_OPTION, 1)
             startActivity(intent)
             finish()
         }
@@ -323,6 +370,7 @@ class UserInfoActivity : ComponentActivity() {
                 Log.d(TAG, "Volume button down pressed")
                 return true
             }
+
             KeyEvent.KEYCODE_VOLUME_UP -> {
                 Log.d(TAG, "Volume button up pressed")
                 return true
@@ -449,7 +497,7 @@ fun UserInfoScreen(
             thirdButtonClick = thirdButtonClick
         )
 
-        val bottomSpace=screenHeight * Constants.STD_NAV_MARGIN_BOTTOM
+        val bottomSpace = screenHeight * Constants.STD_NAV_MARGIN_BOTTOM
         // Navigation Buttons
         Row(
             modifier = Modifier
@@ -504,7 +552,7 @@ fun NameSection(
             horizontalArrangement = Arrangement.Center
         ) {
             BasicTextField(
-                value = if(AppConfig.user_name!=null) AppConfig.user_name else nameInput,
+                value = nameInput,
                 onValueChange = onNameChange,
                 modifier = Modifier
                     .fillMaxWidth(0.4f)
@@ -592,7 +640,7 @@ fun AgeSection(
             modifier = Modifier.fillMaxWidth()
         ) {
             CustomSlider(
-                value = if(AppConfig.age!=0)AppConfig.age.toFloat() else ageValue.toFloat(),
+                value = ageValue.toFloat(),
                 onValueChange = { onAgeChange(it.toInt()) },
                 valueRange = 0f..100f,
                 steps = 0,
@@ -610,7 +658,7 @@ fun AgeSection(
             Box(modifier = Modifier.height(screenHeight * 0.012f))
 
             Text(
-                text = if(AppConfig.age!=0)AppConfig.age.toString() else ageValue.toString(),
+                text = ageValue.toString(),
                 fontSize = Constants.STD_SLIDER_INFO_SIZE.sp,
                 color = colorResource(R.color.std_purple),
                 fontFamily = robotoSemibold
@@ -666,7 +714,7 @@ fun VisionSection(
             horizontalArrangement = Arrangement.Center
         ) {
             BasicTextField(
-                value = if(AppConfig.visual_condition!=null)AppConfig.visual_condition else visionInput,
+                value = visionInput,
                 onValueChange = onVisionChange,
                 modifier = Modifier
                     .fillMaxWidth(0.6f)

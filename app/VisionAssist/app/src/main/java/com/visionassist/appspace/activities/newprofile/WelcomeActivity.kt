@@ -80,7 +80,10 @@ class WelcomeActivity : ComponentActivity() {
     private val TAG = "WelcomeActivity"
 
     private var currentSection by mutableStateOf(Section.LANGUAGE)
-    private var selectedLanguage by mutableStateOf(Language("en", "English", "US"))
+    private var selectedLanguage by mutableStateOf(
+        if (AppConfig.mainLanguage != null) AppConfig.mainLanguage else
+            Language("en", "English", "US")
+    )
     private var startWithProfileSelection = false
     private val showLoading = mutableStateOf(false)
     private val loadingText = mutableStateOf("")
@@ -160,7 +163,7 @@ class WelcomeActivity : ComponentActivity() {
                 waitForTTSAndNavigate(true)
             }
         }
-        handler.postDelayed(checkTTS, Constants.ANIMATION_DELAY.toLong()+1000)
+        handler.postDelayed(checkTTS, Constants.ANIMATION_DELAY.toLong() + 1000)
     }
 
     private fun waitForTTSAndNavigate(wait: Boolean) {
@@ -183,7 +186,7 @@ class WelcomeActivity : ComponentActivity() {
         if (selectedLanguage.code != ttsManager.currentLocale.language) {
             Log.d(TAG, "TTS is not init on the lang selected")
             setTTSLanguage()
-        }else {
+        } else {
             Log.d(TAG, "TTS is already init, navigating to 2nd section")
             waitForTTSAndNavigate(false)
         }
@@ -398,7 +401,7 @@ fun LanguageSelectionSection(
 
             // Language Selector
             LanguageSelector(
-                selectedLanguage = if(AppConfig.mainLanguage!=null) AppConfig.mainLanguage else selectedLanguage,
+                selectedLanguage = selectedLanguage,
                 onLanguageSelected = { language ->
                     onLanguageSelected(language)
                     Log.d("WelcomeActivity", "Language selected: ${language.code}")

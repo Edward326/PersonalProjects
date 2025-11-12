@@ -85,7 +85,7 @@ class UserHashCachingActivity : ComponentActivity() {
     private val currentSection = mutableIntStateOf(1) // 1 or 2
 
     // Section 1 - Hash Cache
-    private val hashCacheOption = mutableStateOf("Don't use")
+    private val hashCacheOption = mutableStateOf(if(AppConfig.hash_caching!=null)AppConfig.hash_caching else "Don't use")
     private val notificationStep = mutableIntStateOf(0) // 0 = none, 1 = first, 2 = second
 
     // Section 2 - Environment Reports
@@ -186,8 +186,6 @@ class UserHashCachingActivity : ComponentActivity() {
                 } else {
                     // Blind - go back to UserInfoE3Activity
                     ProfileFileCollection.deleteUserInfoE3Activity()
-                    AppConfig.tts_pitch = Constants.TTS_PITCH
-                    AppConfig.tts_speech_rate = Constants.TTS_SPEECH_RATE
                     val intent = Intent(this, UserInfoE3Activity::class.java)
                     startActivity(intent)
                     finish()
@@ -735,7 +733,7 @@ fun Section1Content(
             verticalAlignment = Alignment.Bottom
         ) {
             HashCacheSelector(
-                selectedOption = if(AppConfig.hash_caching!=null)AppConfig.hash_caching else hashCacheOption,
+                selectedOption = hashCacheOption,
                 availableOptions = listOf("Don't use", "Light", "Heavy"),
                 onOptionSelected = onHashCacheOptionSelected
             )
@@ -788,7 +786,7 @@ fun Section2Content(
             )
 
             Switch(
-                checked = if(AppConfig.env_reports) true else envReportsEnabled,
+                checked = envReportsEnabled,
                 onCheckedChange = onEnvReportsToggle,
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = Color.White,

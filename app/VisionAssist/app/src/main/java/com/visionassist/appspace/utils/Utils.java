@@ -165,6 +165,8 @@ public class Utils {
                 try {
                     AppConfig.blindness = profileStatusDecider.second.getBoolean("blindness");
                     AppConfig.mainLanguage = languageExtractor(profileStatusDecider.second);
+                    AppConfig.user_name = profileStatusDecider.second.getString("user_name");
+                    AppConfig.isContributor = profileStatusDecider.second.getBoolean("contributor");
                     intent = new Intent(context, UserInfoActivity.class);
                     intent.putExtra(Constants.EXTRA_USERINFO_OPTION, 2);
                     Intent finalIntent5 = intent;
@@ -180,6 +182,9 @@ public class Utils {
                 try {
                     AppConfig.blindness = profileStatusDecider.second.getBoolean("blindness");
                     AppConfig.mainLanguage = languageExtractor(profileStatusDecider.second);
+                    AppConfig.user_name = profileStatusDecider.second.getString("user_name");
+                    AppConfig.isContributor = profileStatusDecider.second.getBoolean("contributor");
+                    AppConfig.age = profileStatusDecider.second.getInt("age");
                     intent = new Intent(context, UserInfoActivity.class);
                     intent.putExtra(Constants.EXTRA_USERINFO_OPTION, 3);
                     Intent finalIntent6 = intent;
@@ -195,6 +200,11 @@ public class Utils {
                 try {
                     AppConfig.blindness = profileStatusDecider.second.getBoolean("blindness");
                     AppConfig.mainLanguage = languageExtractor(profileStatusDecider.second);
+                    AppConfig.user_name = profileStatusDecider.second.getString("user_name");
+                    AppConfig.isContributor = profileStatusDecider.second.getBoolean("contributor");
+                    if (AppConfig.isContributor)
+                        AppConfig.age = profileStatusDecider.second.getInt("age");
+
                     intent = new Intent(context, UserInfoE3Activity.class);
                     Intent finalIntent7 = intent;
                     loadingManager.hideLoading();
@@ -209,6 +219,13 @@ public class Utils {
                 try {
                     AppConfig.blindness = profileStatusDecider.second.getBoolean("blindness");
                     AppConfig.mainLanguage = languageExtractor(profileStatusDecider.second);
+                    AppConfig.user_name = profileStatusDecider.second.getString("user_name");
+                    AppConfig.isContributor = profileStatusDecider.second.getBoolean("contributor");
+                    if (AppConfig.isContributor) {
+                        AppConfig.age = profileStatusDecider.second.getInt("age");
+                        AppConfig.visual_condition = profileStatusDecider.second.getString("visual_condition");
+                    }
+
                     intent = new Intent(context, UserAccessibility1Activity.class);
                     intent.putExtra(Constants.EXTRA_USERACC_OPTION, 1);
                     Intent finalIntent8 = intent;
@@ -224,6 +241,13 @@ public class Utils {
                 try {
                     AppConfig.blindness = profileStatusDecider.second.getBoolean("blindness");
                     AppConfig.mainLanguage = languageExtractor(profileStatusDecider.second);
+                    AppConfig.user_name = profileStatusDecider.second.getString("user_name");
+                    AppConfig.isContributor = profileStatusDecider.second.getBoolean("contributor");
+                    if (AppConfig.isContributor) {
+                        AppConfig.age = profileStatusDecider.second.getInt("age");
+                        AppConfig.visual_condition = profileStatusDecider.second.getString("visual_condition");
+                    }
+
                     intent = new Intent(context, UserAccessibility1Activity.class);
                     intent.putExtra(Constants.EXTRA_USERACC_OPTION, 2);
                     Intent finalIntent9 = intent;
@@ -239,6 +263,18 @@ public class Utils {
                 try {
                     AppConfig.blindness = profileStatusDecider.second.getBoolean("blindness");
                     AppConfig.mainLanguage = languageExtractor(profileStatusDecider.second);
+                    AppConfig.user_name = profileStatusDecider.second.getString("user_name");
+                    AppConfig.isContributor = profileStatusDecider.second.getBoolean("contributor");
+                    if (AppConfig.isContributor) {
+                        AppConfig.age = profileStatusDecider.second.getInt("age");
+                        if (!AppConfig.blindness)
+                            AppConfig.visual_condition = profileStatusDecider.second.getString("visual_condition");
+                    }
+                    if (AppConfig.blindness) {
+                        AppConfig.tts_speech_rate = (float) profileStatusDecider.second.getDouble("tts_speech_rate");
+                        AppConfig.tts_pitch = (float) profileStatusDecider.second.getDouble("tts_pitch");
+                    }
+
                     intent = new Intent(context, UserHashCachingActivity.class);
                     intent.putExtra(Constants.EXTRA_HCACHING_OPTION, 1);
                     Intent finalIntent10 = intent;
@@ -254,6 +290,14 @@ public class Utils {
                 try {
                     AppConfig.blindness = profileStatusDecider.second.getBoolean("blindness");
                     AppConfig.mainLanguage = languageExtractor(profileStatusDecider.second);
+                    AppConfig.user_name = profileStatusDecider.second.getString("user_name");
+                    AppConfig.isContributor = profileStatusDecider.second.getBoolean("contributor");
+                    if (AppConfig.isContributor) {
+                        AppConfig.age = profileStatusDecider.second.getInt("age");
+                        AppConfig.visual_condition = profileStatusDecider.second.getString("visual_condition");
+                    }
+                    AppConfig.hash_caching = profileStatusDecider.second.getString("hash_caching");
+
                     intent = new Intent(context, UserHashCachingActivity.class);
                     intent.putExtra(Constants.EXTRA_HCACHING_OPTION, 2);
                     Intent finalIntent11 = intent;
