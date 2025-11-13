@@ -45,14 +45,14 @@ public class BlindHomeActivity extends AppCompatActivity {
         logoImage.setVisibility(View.VISIBLE);
 
         try {
-            String content1 = "Data of the hash_cache.json:\n"+FileUtils.loadFileAsString(FileUtils.getHashCacheInputStream(this));
+            String content1 = "Data of the hash_cache.json:\n" + FileUtils.loadFileAsString(FileUtils.getHashCacheInputStream(this));
             //String content2 = "\n\nData of the env_reports.json:\n"+FileUtils.loadFileAsString(FileUtils.getEnvReportsInputStream(this));
-            String content3 = "\n\nData of the AppConfig:\n"+ AppConfig.listAppConfig();
-            String content4="\n\nIsInitProfileLoaded:\t"+ PhoneStatusMonitor.getInstance().profileLoaded;
-            String content5 = "\n\nData of the profile.json:\n"+FileUtils.loadFileAsString(FileUtils.getProfileInputStream(this));
+            String content3 = "\n\nData of the AppConfig:\n" + AppConfig.listAppConfig();
+            String content4 = "\n\nIsInitProfileLoaded:\t" + PhoneStatusMonitor.getInstance().profileLoaded;
+            String content5 = "\n\nData of the profile.json:\n" + FileUtils.loadFileAsString(FileUtils.getProfileInputStream(this));
 
-            String concat=content1+content3+content4+content5;
-            Log.d(TAG, "BlindHomeActivity created\n\n---STATUS---\n"+concat);
+            String concat = content1 + content3 + content4 + content5;
+            Log.d(TAG, "BlindHomeActivity created\n\n---STATUS---\n" + concat);
         } catch (IOException e) {
             handleProfileError(e);
         }
@@ -61,21 +61,24 @@ public class BlindHomeActivity extends AppCompatActivity {
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         // Use a switch statement for key code checks
-        switch (keyCode) {
-            case KeyEvent.KEYCODE_VOLUME_DOWN:
+        return switch (keyCode) {
+            case KeyEvent.KEYCODE_VOLUME_DOWN -> {
                 Log.d(TAG, "Volume button down pressed");
-                return true;
-            case KeyEvent.KEYCODE_VOLUME_UP:
+                yield true;
+            }
+            case KeyEvent.KEYCODE_VOLUME_UP -> {
                 Log.d(TAG, "Volume button up pressed");
-                return true;
-        }
+                yield true;
+            }
+            default ->
 
-        // For all other keys, call the super implementation
-        return super.onKeyDown(keyCode, event);
+                // For all other keys, call the super implementation
+                    super.onKeyDown(keyCode, event);
+        };
     }
 
     private void handleProfileError(Exception e) {
-        PhoneStatusMonitor monitor=PhoneStatusMonitor.getInstance();
+        PhoneStatusMonitor monitor = PhoneStatusMonitor.getInstance();
         if (e instanceof ExceptionVisionAssist) {
             LoadingManager ref = ((ExceptionVisionAssist) e).getLoadingManager();
             int errorCode = ((ExceptionVisionAssist) e).getErrorCode();

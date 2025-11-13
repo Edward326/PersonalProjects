@@ -173,6 +173,14 @@ fun load_errorText(context: Context): String {
     }
 }
 
+fun load_errorTextBlind(context: Context,exitCode: Int): String {
+    return when (AppConfig.mainLanguage.code) {
+        "en" -> context.getString(R.string.exit_error2_en)+exitCode.toString()
+        "ro" -> context.getString(R.string.exit_error2_ro)+exitCode.toString()
+        else -> context.getString(R.string.exit_error2_en)+exitCode.toString()
+    }
+}
+
 fun haptic_model0(): LongArray {
     return longArrayOf(0, 500)
 }

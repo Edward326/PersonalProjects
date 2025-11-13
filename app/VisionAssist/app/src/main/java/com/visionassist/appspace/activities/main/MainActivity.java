@@ -12,10 +12,8 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.accessibility.AccessibilityManager;
 import android.widget.ImageView;
-
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.compose.ui.platform.ComposeView;
-
 import com.visionassist.appspace.ExceptionVisionAssist;
 import com.visionassist.appspace.PhoneStatusMonitor;
 import com.visionassist.appspace.R;
@@ -28,7 +26,6 @@ import com.visionassist.appspace.utils.BackgroundTaskExecutor;
 import com.visionassist.appspace.utils.Constants;
 import com.visionassist.appspace.utils.PermissionChecker;
 import com.visionassist.appspace.utils.Utils;
-
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -123,9 +120,7 @@ public class MainActivity extends AppCompatActivity {
     private void uploadProfileTask() {
         profileAlreadyChecked = true;
         loadingManager.changeText("Uploading profile, please wait");
-        handler.postDelayed(() -> {
-            Utils.uploadProfile(profileData, this::loadAssets);
-        }, 1500);
+        handler.postDelayed(() -> Utils.uploadProfile(profileData, this::loadAssets), 1500);
     }
 
     private void loadAssets() {
@@ -276,12 +271,9 @@ public class MainActivity extends AppCompatActivity {
                     return 0;
                     //load captioner vocab
                 },
-                new BackgroundTaskExecutor.TaskCallback<Integer>() {
+                new BackgroundTaskExecutor.TaskCallback<>() {
                     @Override
-                    public void onSuccess(Integer result) throws Exception {
-                        if (result == -1)
-                            handleProfileError(new ExceptionVisionAssist(Constants.ASSETS_ERROR, loadingManager));
-                        else
+                    public void onSuccess(Integer result) {
                             tasksCompleted = Constants.MODELS_COUNT + Constants.MODELS_OWN_ASSETS_COUNT;
                     }
 
@@ -318,7 +310,7 @@ public class MainActivity extends AppCompatActivity {
             ttsManager.changeLanguage(AppConfig.mainLanguage, this);
             waitForTTSAndNavigate();
         } else {
-            Log.d(TAG, "TTS is already init, navigating to 2nd section");
+            Log.d(TAG, "TTS is already init, continue the thread");
             waitForTTSAndNavigate();
         }
     }
@@ -347,7 +339,7 @@ public class MainActivity extends AppCompatActivity {
                     dbManager.syncProfile(profileData);
                     return 0;
                 },
-                new BackgroundTaskExecutor.TaskCallback<Integer>() {
+                new BackgroundTaskExecutor.TaskCallback<>() {
                     @Override
                     public void onSuccess(Integer result) {
                         ready = true;
@@ -446,16 +438,19 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         // Use a switch statement for key code checks
-        switch (keyCode) {
-            case KeyEvent.KEYCODE_VOLUME_DOWN:
+        return switch (keyCode) {
+            case KeyEvent.KEYCODE_VOLUME_DOWN -> {
                 Log.d(TAG, "Volume button down pressed");
-                return true;
-            case KeyEvent.KEYCODE_VOLUME_UP:
+                yield true;
+            }
+            case KeyEvent.KEYCODE_VOLUME_UP -> {
                 Log.d(TAG, "Volume button up pressed");
-                return true;
-        }
+                yield true;
+            }
+            default ->
 
-        // For all other keys, call the super implementation
-        return super.onKeyDown(keyCode, event);
+                // For all other keys, call the super implementation
+                    super.onKeyDown(keyCode, event);
+        };
     }
 }

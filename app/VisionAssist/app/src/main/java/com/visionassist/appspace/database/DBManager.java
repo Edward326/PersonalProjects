@@ -1,21 +1,17 @@
 package com.visionassist.appspace.database;
 
 import static org.mindrot.jbcrypt.BCrypt.checkpw;
-
 import android.content.Context;
 import android.util.Log;
 import android.util.Pair;
-
-import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.visionassist.appspace.ExceptionVisionAssist;
 import com.visionassist.appspace.jetpack.managers.LoadingManager;
 import com.visionassist.appspace.utils.Constants;
 import com.visionassist.appspace.utils.FileUtils;
-
 import org.json.JSONException;
 import org.json.JSONObject;
-
+import org.mindrot.jbcrypt.BCrypt;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -28,19 +24,15 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.mindrot.jbcrypt.BCrypt;
-
 public class DBManager {
     private static final String TAG = "DBManager";
 
     private Context context;
-    private FirebaseAuth firebaseAuth;
     private FirebaseFirestore firebaseDb;
     private int status = DBConstants.STATUS_INITIALIZED;
 
     public DBManager(Context context) {
         this.context = context;
-        this.firebaseAuth = FirebaseAuth.getInstance();
         this.firebaseDb = FirebaseFirestore.getInstance();
         Log.d(TAG, "DBManager initialized (Firestore only - no Cloud Storage)");
     }
@@ -117,7 +109,7 @@ public class DBManager {
                     .document(email) // Use email as document ID
                     .set(userData)
                     .addOnSuccessListener(aVoid -> {
-                        Log.d(TAG, "User account created successfully in Firestore");
+                        Log.d(TAG, "User account created successfully in Firestore Database");
                         success.set(true);
                         latch.countDown();
                     })
@@ -266,7 +258,7 @@ public class DBManager {
                     return new Pair<>(status, null);
                 }
                 Log.d(TAG, "Profile successfully copied to profile.json");
-                if(profileCopyFile.delete())
+                if (profileCopyFile.delete())
                     Log.d(TAG, "Deletion failed of profile.json");
                 else
                     Log.d(TAG, "Deletion successfully of profile.json");
@@ -274,7 +266,7 @@ public class DBManager {
                 return new Pair<>(status, profileData);
             } else {
                 Log.e(TAG, "Failed to create required files, aborting profile replacement");
-                if(profileCopyFile.delete())
+                if (profileCopyFile.delete())
                     Log.d(TAG, "Deletion failed of profile.json");
                 else
                     Log.d(TAG, "Deletion successfully of profile.json");
@@ -497,5 +489,13 @@ public class DBManager {
 
     public int getStatus() {
         return status;
+    }
+
+    public int getStatusOverview() {
+        return switch (status) {
+            case DBConstants.SYNC_OK -> 1;
+            case DBConstants.INTERNET_CONNECTION_FAILED, DBConstants.SYNC_ERROR -> 2;
+            default -> 0;
+        };
     }
 }

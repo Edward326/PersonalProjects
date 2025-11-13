@@ -163,6 +163,7 @@ class NewProfileActivity : ComponentActivity() {
             } else {
                 showRegisterSection.value = true
                 switchChecked.value = true
+                emailInput.value="";passwordInput.value=""
             }
         }
     }
@@ -296,8 +297,7 @@ class NewProfileActivity : ComponentActivity() {
                 showNoInternetNotification()
             }
 
-            DBConstants.SYNC_OK, DBConstants.PASSWORD_INCORRECT
-                -> {
+            DBConstants.SYNC_OK, DBConstants.PASSWORD_INCORRECT -> {
                 showEmailExistsNotification()
             }
 
@@ -334,6 +334,7 @@ class NewProfileActivity : ComponentActivity() {
         firstButtonLabel.value = "OK"
         firstButtonClick.value = { hideNotification() }
         showNotification.value = true
+        switchChecked.value = false
     }
 
     private fun showEmailExistsNotification() {
@@ -343,10 +344,10 @@ class NewProfileActivity : ComponentActivity() {
         showTwoButtons.value = true
         showThreeButtons.value = false
         firstButtonLabel.value = if (AppConfig.mainLanguage.code == "en") "Retry" else "Reîncearcă"
-        firstButtonClick.value = { hideNotification() }
+        firstButtonClick.value = { hideNotification(); emailInput.value = ""; passwordInput.value="" }
         secondButtonLabel.value =
             if (AppConfig.mainLanguage.code == "en") "Login" else "Autentificare"
-        firstButtonClick.value = { handleNotificationLogin()}
+        secondButtonClick.value = { handleNotificationLogin()}
         showNotification.value = true
     }
 
@@ -357,7 +358,7 @@ class NewProfileActivity : ComponentActivity() {
         showTwoButtons.value = false
         showThreeButtons.value = false
         firstButtonLabel.value = "OK"
-        firstButtonClick.value = { hideNotification() }
+        firstButtonClick.value = { hideNotification(); emailInput.value = "" }
         showNotification.value = true
     }
 

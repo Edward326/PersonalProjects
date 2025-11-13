@@ -44,17 +44,20 @@ public class HomeActivity extends AppCompatActivity {
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         // Use a switch statement for key code checks
-        switch (keyCode) {
-            case KeyEvent.KEYCODE_VOLUME_DOWN:
+        return switch (keyCode) {
+            case KeyEvent.KEYCODE_VOLUME_DOWN -> {
                 Log.d(TAG, "Volume button down pressed");
-                return true;
-            case KeyEvent.KEYCODE_VOLUME_UP:
+                yield true;
+            }
+            case KeyEvent.KEYCODE_VOLUME_UP -> {
                 Log.d(TAG, "Volume button up pressed");
-                return true;
-        }
+                yield true;
+            }
+            default ->
 
-        // For all other keys, call the super implementation
-        return super.onKeyDown(keyCode, event);
+                // For all other keys, call the super implementation
+                    super.onKeyDown(keyCode, event);
+        };
     }
 
     private void handleProfileError(Exception e) {

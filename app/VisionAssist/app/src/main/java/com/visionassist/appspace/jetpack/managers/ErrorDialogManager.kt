@@ -15,12 +15,14 @@ class ErrorDialogManager(
     private var isVisibleState = mutableStateOf(false)
     private var composeView: ComposeView? = null
     private var isSetup = false
+    private var errorCodeMember=0
 
     /**
      * Setup dialog with custom message and error code
      * Call this once during initialization
      */
     fun setupDialog(errorCode: Int) {
+        errorCodeMember=errorCode
         val message : String = if (!PhoneStatusMonitor.getInstance().profileLoaded)
             "A critical error has occurred and the application needs to close to protect the integrity of your data. If this happens again, contact support with the code below"
         else load_errorText(PhoneStatusMonitor.getInstance().currentContext)
@@ -67,4 +69,6 @@ class ErrorDialogManager(
             rootView.addView(composeView)
         }
     }
+
+    fun getErrorCode(): Int {return errorCodeMember}
 }

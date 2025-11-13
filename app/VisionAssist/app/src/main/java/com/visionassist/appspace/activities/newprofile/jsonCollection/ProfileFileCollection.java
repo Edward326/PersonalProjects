@@ -3,11 +3,16 @@ package com.visionassist.appspace.activities.newprofile.jsonCollection;
 import android.content.Context;
 import android.util.Log;
 import com.visionassist.appspace.PhoneStatusMonitor;
+import com.visionassist.appspace.database.DBConstants;
 import com.visionassist.appspace.utils.Constants;
 import com.visionassist.appspace.utils.FileUtils;
 import com.visionassist.appspace.utils.Language;
 import org.json.JSONObject;
 import java.io.File;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.Locale;
 
 public class ProfileFileCollection {
     private static final String TAG = "ProfileJsonManager";
@@ -158,6 +163,14 @@ public class ProfileFileCollection {
                 if (email != null && passwordHash != null) {
                     jsonObject.put("email", email);
                     jsonObject.put("password_hash", passwordHash);
+
+                    Calendar calendar = Calendar.getInstance();
+                    calendar.add(Calendar.DAY_OF_MONTH, -DBConstants.SYNC_INTERVAL_DAYS);
+                    Date pastDate = calendar.getTime();
+
+                    String currentDate = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                            .format(pastDate);
+                    jsonObject.put("last_sync_date", currentDate);
                     Log.d(TAG, "NewProfileActivity: Remote profile fields written successfully");
                 }
             } else {
@@ -497,16 +510,6 @@ public class ProfileFileCollection {
 
         } catch (Exception e) {
             Log.e(TAG, "Error writing profile", e);
-            return false;
-        }
-    }
-
-    public static boolean clearProfile() {
-        try {
-            JSONObject emptyJson = new JSONObject();
-            return FileUtils.writeProfileFile(emptyJson.toString(), Constants.PROFILE_FILE_NAME);
-        } catch (Exception e) {
-            Log.e(TAG, "Error clearing profile", e);
             return false;
         }
     }

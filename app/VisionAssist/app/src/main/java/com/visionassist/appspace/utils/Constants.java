@@ -85,7 +85,7 @@ public class Constants {
     public static final float BACKGROUND_OPACITY = 0.5f;
 
     // Error codes, followed by shutdown
-    public static final int ERROR_READ_DELAY = 10000;
+    public static final int ERROR_READ_DELAY = 8000;
     public static final int EXCEPTION_CLASS_ERROR = -1;
     public static final int DIR_DELETE_ERROR = 0;
     public static final int JSON_PARSE_ERROR = 1;

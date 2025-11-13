@@ -1,6 +1,6 @@
 package com.visionassist.appspace;
 
-import static com.visionassist.appspace.utils.UtilsKt.load_errorText;
+import static com.visionassist.appspace.utils.UtilsKt.load_errorTextBlind;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -241,7 +241,7 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
         if (errorManager != null) {
             if (profileLoaded) {
                 if (AppConfig.blindness) {
-                    ttsManager.speak(load_errorText(context), AppConfig.tts_pitch, AppConfig.tts_speech_rate, false, null);
+                    ttsManager.speak(load_errorTextBlind(context, errorManager.getErrorCode()), AppConfig.tts_pitch, AppConfig.tts_speech_rate, false, null);
                     Handler speakHandler = new Handler(Looper.getMainLooper());
                     // Recursive Runnable for TTS retry
                     Runnable ttsRetryRunnable = new Runnable() {

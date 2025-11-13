@@ -69,7 +69,7 @@ public class Utils {
             @Override
             public void run() {
                 if (PhoneStatusMonitor.getInstance().getTTSManager().isReady()) {
-                    Log.d(TAG, "TTS is ready, navigating to home");
+                    Log.d(TAG, "TTS was set to: "+PhoneStatusMonitor.getInstance().getTTSManager().getCurrentLocale().getLanguage());
                     try {
                         profileSelectorMain(profileStatusDecider, loadingManager);
                     } catch (Exception e) {
@@ -85,13 +85,14 @@ public class Utils {
     }
 
     public static void profileSelector(Pair<Integer, JSONObject> profileStatusDecider, LoadingManager loadingManager) throws Exception {
-        if (profileStatusDecider.second.has("blindness")) {
-            if (profileStatusDecider.second.has("language_code")
-                    && profileStatusDecider.second.has("language_desc")
-                    && profileStatusDecider.second.has("language_country")) {
+        if (profileStatusDecider.second!=null &&
+                profileStatusDecider.second.has("blindness")
+                && profileStatusDecider.second.has("language_code")
+                && profileStatusDecider.second.has("language_desc")
+                && profileStatusDecider.second.has("language_country"))
+        {
                 PhoneStatusMonitor.getInstance().getTTSManager().changeLanguage(languageExtractor(profileStatusDecider.second), PhoneStatusMonitor.getInstance().getCurrentActivity());
                 waitForTTSAndNavigate(profileStatusDecider,loadingManager);
-            }
         } else
             profileSelectorMain(profileStatusDecider, loadingManager);
     }
@@ -102,6 +103,11 @@ public class Utils {
 
         switch (profileStatusDecider.first) {
             case 1:
+                if(FileUtils.getProfileFile(context).exists()){
+                    String content5 = "Last data of the profile.json:\n"+FileUtils.loadFileAsString(FileUtils.getProfileInputStream(context));
+                    Log.i(TAG, content5);
+                }
+
                 // Delete existing profile directory if it exists
                 if (FileUtils.profileDirectoryExists(context)) {
                     boolean deleted = FileUtils.deleteProfileDirectory(context);
