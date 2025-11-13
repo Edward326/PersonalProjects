@@ -1,11 +1,11 @@
 -testare(load->local/remote new->local/remote):
-	-testat pe loweysight new profile remote=false(isCOntribtuor=true/false)
-	-testat pe romana pe orice configuratie
 	-testat pe blindeness new profile remote=true(isCOntribtuor=true/false)
 	-testat pe loweyesight new profile remote=true(isCOntribtuor=true/false)
 	-testat pentru load(loacal/remote) + newprofile(local/remote), redschidere app(rulare intiitalizare in MainActivity)
-	-tesatare switch intre activitati, inchdiere telefon, si revenire
+	-tesatare activitati configurarre switch intre activitati, inchdiere telefon, si revenire
 	-implemennattrea mecanismului de resetpassword(claude)+testare
+	-testare activitati configurarre pe ambele limbi
+	-rezolvat lag intre slide
 
 -perntru fiecare model(classifier,translater, STT):
 	-gasit un model ce poate fii exportat in onnx, lat low, size mic al modelului, acc acceptabila
