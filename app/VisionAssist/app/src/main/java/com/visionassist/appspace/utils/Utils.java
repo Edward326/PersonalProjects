@@ -6,6 +6,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.BatteryManager;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.util.Pair;
 
@@ -61,7 +63,40 @@ public class Utils {
         }
     }
 
+    public static  void waitForTTSAndNavigate(Pair<Integer, JSONObject> profileStatusDecider, LoadingManager loadingManager) throws Exception{
+        Handler ttsHandler = new Handler(Looper.getMainLooper());
+        Runnable checkTTS = new Runnable() {
+            @Override
+            public void run() {
+                if (PhoneStatusMonitor.getInstance().getTTSManager().isReady()) {
+                    Log.d(TAG, "TTS is ready, navigating to home");
+                    try {
+                        profileSelectorMain(profileStatusDecider, loadingManager);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                } else {
+                    Log.w(TAG, "TTS not ready, retrying...");
+                    ttsHandler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS);
+                }
+            }
+        };
+        ttsHandler.post(checkTTS);
+    }
+
     public static void profileSelector(Pair<Integer, JSONObject> profileStatusDecider, LoadingManager loadingManager) throws Exception {
+        if (profileStatusDecider.second.has("blindness")) {
+            if (profileStatusDecider.second.has("language_code")
+                    && profileStatusDecider.second.has("language_desc")
+                    && profileStatusDecider.second.has("language_country")) {
+                PhoneStatusMonitor.getInstance().getTTSManager().changeLanguage(languageExtractor(profileStatusDecider.second), PhoneStatusMonitor.getInstance().getCurrentActivity());
+                waitForTTSAndNavigate(profileStatusDecider,loadingManager);
+            }
+        } else
+            profileSelectorMain(profileStatusDecider, loadingManager);
+    }
+
+    public static void profileSelectorMain(Pair<Integer, JSONObject> profileStatusDecider, LoadingManager loadingManager) throws Exception {
         Intent intent;
         Context context = phoneMonitor.getCurrentContext();
 
@@ -247,6 +282,11 @@ public class Utils {
                         AppConfig.age = profileStatusDecider.second.getInt("age");
                         AppConfig.visual_condition = profileStatusDecider.second.getString("visual_condition");
                     }
+                    AppConfig.bbox_color = profileStatusDecider.second.getString("bbox_color");
+                    AppConfig.label_color = profileStatusDecider.second.getString("label_color");
+                    AppConfig.label_bck_color = profileStatusDecider.second.getString("label_bck_color");
+                    AppConfig.isBold = profileStatusDecider.second.getBoolean("bold");
+                    AppConfig.show_confidence = profileStatusDecider.second.getBoolean("show_confidence");
 
                     intent = new Intent(context, UserAccessibility1Activity.class);
                     intent.putExtra(Constants.EXTRA_USERACC_OPTION, 2);
@@ -273,6 +313,15 @@ public class Utils {
                     if (AppConfig.blindness) {
                         AppConfig.tts_speech_rate = (float) profileStatusDecider.second.getDouble("tts_speech_rate");
                         AppConfig.tts_pitch = (float) profileStatusDecider.second.getDouble("tts_pitch");
+                    } else {
+                        AppConfig.bbox_color = profileStatusDecider.second.getString("bbox_color");
+                        AppConfig.label_color = profileStatusDecider.second.getString("label_color");
+                        AppConfig.label_bck_color = profileStatusDecider.second.getString("label_bck_color");
+                        AppConfig.isBold = profileStatusDecider.second.getBoolean("bold");
+                        AppConfig.show_confidence = profileStatusDecider.second.getBoolean("show_confidence");
+                        AppConfig.caption_color = profileStatusDecider.second.getString("caption_color");
+                        AppConfig.caption_bck_color = profileStatusDecider.second.getString("caption_bck_color");
+                        AppConfig.haptics = profileStatusDecider.second.getBoolean("haptics");
                     }
 
                     intent = new Intent(context, UserHashCachingActivity.class);
@@ -296,6 +345,14 @@ public class Utils {
                         AppConfig.age = profileStatusDecider.second.getInt("age");
                         AppConfig.visual_condition = profileStatusDecider.second.getString("visual_condition");
                     }
+                    AppConfig.bbox_color = profileStatusDecider.second.getString("bbox_color");
+                    AppConfig.label_color = profileStatusDecider.second.getString("label_color");
+                    AppConfig.label_bck_color = profileStatusDecider.second.getString("label_bck_color");
+                    AppConfig.isBold = profileStatusDecider.second.getBoolean("bold");
+                    AppConfig.show_confidence = profileStatusDecider.second.getBoolean("show_confidence");
+                    AppConfig.caption_color = profileStatusDecider.second.getString("caption_color");
+                    AppConfig.caption_bck_color = profileStatusDecider.second.getString("caption_bck_color");
+                    AppConfig.haptics = profileStatusDecider.second.getBoolean("haptics");
                     AppConfig.hash_caching = profileStatusDecider.second.getString("hash_caching");
 
                     intent = new Intent(context, UserHashCachingActivity.class);

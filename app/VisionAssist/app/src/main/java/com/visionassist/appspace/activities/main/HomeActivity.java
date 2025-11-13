@@ -29,12 +29,12 @@ public class HomeActivity extends AppCompatActivity {
 
         try {
             String content1 = "Data of the hash_cache.json:\n"+FileUtils.loadFileAsString(FileUtils.getHashCacheInputStream(this));
-            String content2 = "\n\nData of the env_reports.json:\n"+FileUtils.loadFileAsString(FileUtils.getEnvReportsInputStream(this));
+            //String content2 = "\n\nData of the env_reports.json:\n"+FileUtils.loadFileAsString(FileUtils.getEnvReportsInputStream(this));
             String content3 = "\n\nData of the AppConfig:\n"+ AppConfig.listAppConfig();
             String content4="\n\nIsInitProfileLoaded:\t"+ PhoneStatusMonitor.getInstance().profileLoaded;
             String content5 = "\n\nData of the profile.json:\n"+FileUtils.loadFileAsString(FileUtils.getProfileInputStream(this));
 
-            String concat=content1+content2+content3+content4+content5;
+            String concat=content1+content3+content4+content5;
             Log.d(TAG, "HomeActivity created\n\n---STATUS---\n"+concat);
         } catch (IOException e) {
             handleProfileError(e);

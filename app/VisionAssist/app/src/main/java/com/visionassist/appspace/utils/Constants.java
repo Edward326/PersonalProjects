@@ -140,7 +140,7 @@ public class Constants {
     public static final float STD_NAV_MARGIN_BOTTOM=0.10f;
 
     // UserAccessibility1Activity params
-    public static final int SLIDER_UPDATE_DELAY = 2000;
+    public static final int PREVIEW_UPDATE_DELAY = 1000;
 
     // Debug Configuration
     public static final boolean DEBUG_MODE = true;

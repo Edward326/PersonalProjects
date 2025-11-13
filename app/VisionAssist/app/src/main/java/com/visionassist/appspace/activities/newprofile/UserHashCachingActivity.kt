@@ -784,26 +784,29 @@ fun Section2Content(
                 modifier = Modifier
                     .padding(start = 22.dp)
             )
-
-            Switch(
-                checked = envReportsEnabled,
-                onCheckedChange = onEnvReportsToggle,
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = Color.White,
-                    checkedTrackColor = colorResource(R.color.std_purple),
-                )
-            )
-
-            // Info Button
-            IconButton(
-                onClick = onEnvReportsInfoClick,
-                modifier = Modifier.size(Constants.STD_INFO_BUTTON_SIZE.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Info,
-                    contentDescription = "Info",
-                    tint = colorResource(R.color.std_purple),
+            Column (
+                horizontalAlignment =   Alignment.End
+            ){
+                // Info Button
+                IconButton(
+                    onClick = onEnvReportsInfoClick,
                     modifier = Modifier.size(Constants.STD_INFO_BUTTON_SIZE.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Info,
+                        contentDescription = "Info",
+                        tint = colorResource(R.color.std_purple),
+                        modifier = Modifier.size(Constants.STD_INFO_BUTTON_SIZE.dp)
+                    )
+                }
+
+                Switch(
+                    checked = envReportsEnabled,
+                    onCheckedChange = onEnvReportsToggle,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = colorResource(R.color.std_purple),
+                    )
                 )
             }
         }

@@ -93,7 +93,7 @@ class UserInfoE3Activity : ComponentActivity() {
         val text = if(AppConfig.mainLanguage.code=="en")
             "The speed of assistant is $newSpeed"
         else
-            "Tonalitatea vocii este $newSpeed"
+            "Viteza vocii este $newSpeed"
         ttsManager.speak(text, pitchValue.floatValue, newSpeed, false, haptic_model0())
     }
 

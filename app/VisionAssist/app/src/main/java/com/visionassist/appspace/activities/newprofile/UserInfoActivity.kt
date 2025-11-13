@@ -79,6 +79,7 @@ class UserInfoActivity : ComponentActivity() {
 
     // Section management
     private val currentSection = mutableIntStateOf(1) // 1=name, 2=age, 3=vision
+    private val lastSection = mutableIntStateOf(1)
 
     // Section 1 states (Name)
     private val nameInput = mutableStateOf(
@@ -136,6 +137,7 @@ class UserInfoActivity : ComponentActivity() {
 
         setContent {
             UserInfoScreen(
+                lastSection = lastSection.intValue,
                 currentSection = currentSection.intValue,
                 nameInput = nameInput.value,
                 showNameError = showNameError.value,
@@ -195,14 +197,15 @@ class UserInfoActivity : ComponentActivity() {
                 // Delete section 1 data and go to section 1
                 ProfileFileCollection.deleteUserInfoActivity(0)
                 currentSection.intValue = 1
-                fieldTextInteraction.value=false
+                fieldTextInteraction.value = false
             }
 
             3 -> {
                 // Delete section 2 data and go to section 2
                 ProfileFileCollection.deleteUserInfoActivity(1)
+                lastSection.intValue=3
                 currentSection.intValue = 2
-                fieldTextInteraction.value=false
+                fieldTextInteraction.value = false
             }
         }
     }
@@ -218,7 +221,7 @@ class UserInfoActivity : ComponentActivity() {
     private fun handleSection1Next() {
         val name = nameInput.value.trim()
         if (AppConfig.user_name != null) {
-            if (name.isEmpty()){
+            if (name.isEmpty()) {
                 showNameError.value = true
                 return
             }
@@ -269,7 +272,7 @@ class UserInfoActivity : ComponentActivity() {
     private fun handleSection3Next() {
         val vision = visionInput.value.trim()
         if (AppConfig.visual_condition != null) {
-            if (vision.isEmpty()){
+            if (vision.isEmpty()) {
                 showNameError.value = true
                 return
             }
@@ -285,6 +288,7 @@ class UserInfoActivity : ComponentActivity() {
             intent.putExtra(Constants.EXTRA_USERACC_OPTION, 1)
             startActivity(intent)
             finish()
+            return
         }
 
         // Check if field is empty
@@ -357,6 +361,7 @@ class UserInfoActivity : ComponentActivity() {
     }
 
     private fun navigateToSection2() {
+        lastSection.intValue=1
         currentSection.intValue = 2
     }
 
@@ -389,6 +394,7 @@ class UserInfoActivity : ComponentActivity() {
 
 @Composable
 fun UserInfoScreen(
+    lastSection: Int,
     currentSection: Int,
     nameInput: String,
     showNameError: Boolean,
@@ -447,7 +453,7 @@ fun UserInfoScreen(
         AnimatedVisibility(
             visible = currentSection == 2,
             enter = slideInHorizontally(
-                initialOffsetX = { it },
+                initialOffsetX = { if(lastSection==1) it else -it },
                 animationSpec = tween(Constants.ANIMATION_DELAY)
             ),
             exit = slideOutHorizontally(
@@ -762,6 +768,7 @@ fun VisionSection(
 @Composable
 fun UserInfoNameSectionPreview() {
     UserInfoScreen(
+        lastSection = 1,
         currentSection = 1,
         nameInput = "Eduard",
         showNameError = false,
@@ -792,6 +799,7 @@ fun UserInfoNameSectionPreview() {
 @Composable
 fun UserInfoAgeSectionPreview() {
     UserInfoScreen(
+        lastSection = 1,
         currentSection = 2,
         nameInput = "Eduard",
         showNameError = false,
@@ -822,6 +830,7 @@ fun UserInfoAgeSectionPreview() {
 @Composable
 fun UserInfoVisionSectionPreview() {
     UserInfoScreen(
+        lastSection = 1,
         currentSection = 3,
         nameInput = "Eduard",
         showNameError = false,
