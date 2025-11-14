@@ -11,53 +11,74 @@ import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -117,7 +138,7 @@ class NewProfileActivity : ComponentActivity() {
     // Registration status members
     private var registerStatus = DBConstants.STATUS_INITIALIZED
     private var finishedRegistering = false
-    private var passwordHash = ""
+    private var userID = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -248,7 +269,7 @@ class NewProfileActivity : ComponentActivity() {
                 if (emailValidation == DBConstants.EMAIL_VALID) {
                     // Create account
                     val ret=dbManager.createAccount(email, password)
-                    passwordHash=ret.first
+                    userID=ret.first
                     return ret.second
                 } else
                     return emailValidation
@@ -285,7 +306,7 @@ class NewProfileActivity : ComponentActivity() {
                 mainHandler.postDelayed({
                     val email = emailInput.value.trim()
 
-                    ProfileFileCollection.writeNewProfileActivity(true, email, passwordHash)
+                    ProfileFileCollection.writeNewProfileActivity(true, email, userID)
                     val intent = Intent(this, UserInfoActivity::class.java)
                     intent.putExtra(Constants.EXTRA_USERINFO_OPTION, 1)
                     startActivity(intent)
@@ -372,7 +393,7 @@ class NewProfileActivity : ComponentActivity() {
         firstButtonClick.value = { hideNotification() }
         secondButtonLabel.value =
             if (AppConfig.mainLanguage.code == "en") "Try local" else "Continuați local"
-        firstButtonClick.value = { handleNextFromProfileSelection() }
+        secondButtonClick.value = { handleNextFromProfileSelection() }
         showNotification.value = true
     }
 
@@ -650,7 +671,7 @@ fun ProfileSelectionSection(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun RegisterSection(
     emailInput: String,
@@ -662,55 +683,110 @@ fun RegisterSection(
     onBackClick: () -> Unit,
     onDoneClick: () -> Unit
 ) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+    val isKeyboardVisible = WindowInsets.isImeVisible
+
+    var fadeComplete by remember { mutableStateOf(!isKeyboardVisible) }
+
+    val titleAlpha by animateFloatAsState(
+        targetValue = if (isKeyboardVisible) 0f else 1f,
+        animationSpec = tween(
+            durationMillis = 150,
+            easing = FastOutSlowInEasing
+        ),
+        finishedListener = { finalValue ->
+            // When fade completes, allow slide to start
+            if (finalValue == 0f) {
+                fadeComplete = true
+            }
+        },
+        label = "Title Fade Animation"
+    )
+
+    // Slide animation happens after fade (starts when fadeComplete = true)
+    val cardOffsetY by animateDpAsState(
+        targetValue = if (isKeyboardVisible && fadeComplete) (-160).dp else 0.dp,
+        animationSpec = tween(
+            durationMillis = 200,
+            delayMillis = if (isKeyboardVisible) 150 else 0, // Delay for fade-out
+            easing = FastOutSlowInEasing
+        ),
+        label = "Card Slide Animation"
+    )
+
+    // Reset fadeComplete when keyboard hides
+    LaunchedEffect(isKeyboardVisible) {
+        if (!isKeyboardVisible) {
+            fadeComplete = false
+        }
+    }
+
     BoxWithConstraints(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
     ) {
         val screenHeight = maxHeight
 
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    detectTapGestures(onTap = {
+                        keyboardController?.hide()
+                        focusManager.clearFocus()
+                    })
+                },
             verticalArrangement = Arrangement.SpaceAround,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Box(modifier = Modifier.height(screenHeight * Constants.STD_TITLE_MARGIN_TOP))
 
-            // Title
-            Text(
-                text = "VisionAssist\nAccount",
-                fontSize = Constants.STD_TITLE_SIZE.sp,
-                color = colorResource(R.color.std_cyan),
-                fontFamily = robotoLight,
-                letterSpacing = 6.sp,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center,
-                lineHeight = 60.sp
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.graphicsLayer {
+                    alpha = titleAlpha
+                }
             )
-
-            Box(modifier = Modifier.height(screenHeight * Constants.STD_TITLE_SUBTITLE_MARGIN_TOP))
-
-            // Logo in circle
-            Box(
-                modifier = Modifier
-                    .size(55.dp)
-                    .background(
-                        color = colorResource(R.color.std_cyan),
-                        shape = RoundedCornerShape(55)
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter = painterResource(R.drawable.vision_assist_logo),
-                    contentDescription = "VisionAssist Logo",
-                    modifier = Modifier.size(55.dp)
+            {
+                // Title
+                Text(
+                    text = "VisionAssist\nAccount",
+                    fontSize = Constants.STD_TITLE_SIZE.sp,
+                    color = colorResource(R.color.std_cyan),
+                    fontFamily = robotoLight,
+                    letterSpacing = 6.sp,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center,
+                    lineHeight = 60.sp
                 )
-            }
 
-            Box(modifier = Modifier.height(screenHeight * 0.01f))
+                Box(modifier = Modifier.height(screenHeight * Constants.STD_TITLE_SUBTITLE_MARGIN_TOP))
+
+                // Logo in circle
+                Box(
+                    modifier = Modifier
+                        .size(55.dp)
+                        .background(
+                            color = colorResource(R.color.std_cyan),
+                            shape = RoundedCornerShape(55)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.vision_assist_logo),
+                        contentDescription = "VisionAssist Logo",
+                        modifier = Modifier.size(55.dp)
+                    )
+                }
+                Box(modifier = Modifier.height(screenHeight * 0.01f))
+            }
 
             // Login Card
             Card(
                 modifier = Modifier
                     .fillMaxWidth(0.8f)
+                    .offset(y = cardOffsetY)
                     .height(Constants.STD_LOGINCARD_WIDTH.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
@@ -725,8 +801,7 @@ fun RegisterSection(
                     Column(
                         modifier = Modifier
                             .weight(0.75f)
-                            .padding(top = 30.dp, start = 20.dp, end = 20.dp),
-                        verticalArrangement = Arrangement.spacedBy(30.dp)
+                            .padding(top = 30.dp, start = 20.dp, end = 20.dp)
                     ) {
                         // Email Field
                         Column {
@@ -780,6 +855,8 @@ fun RegisterSection(
                             )
                         }
 
+                        Spacer(modifier = Modifier.height(15.dp))
+
                         // Password Field
                         Column {
                             Row(
@@ -803,6 +880,8 @@ fun RegisterSection(
                             }
 
                             Spacer(modifier = Modifier.height(4.dp))
+
+                            var passwordVisible by remember { mutableStateOf(false) }
 
                             BasicTextField(
                                 value = passwordInput,
@@ -828,9 +907,36 @@ fun RegisterSection(
                                     fontFamily = robotoRegular,
                                     letterSpacing = 1.sp
                                 ),
-                                visualTransformation = PasswordVisualTransformation(),
+                                visualTransformation = if (passwordVisible)
+                                    VisualTransformation.None
+                                else
+                                    PasswordVisualTransformation(),
+                                keyboardActions = KeyboardActions(
+                                    onDone = {
+                                        keyboardController?.hide()
+                                        focusManager.clearFocus()
+                                    }
+                                ),
                                 singleLine = true
                             )
+
+                            IconButton(
+                                onClick = { passwordVisible = !passwordVisible },
+                                modifier = Modifier.align(Alignment.CenterHorizontally)
+                            ) {
+                                Icon(
+                                    modifier = Modifier.size(35.dp),
+                                    imageVector = if (passwordVisible)
+                                        Icons.Filled.Visibility
+                                    else
+                                        Icons.Filled.VisibilityOff,
+                                    contentDescription = if (passwordVisible)
+                                        if (AppConfig.mainLanguage.code == "en") "Hide password" else "Ascunde parola"
+                                    else
+                                        if (AppConfig.mainLanguage.code == "en") "Show password" else "Arată parola",
+                                    tint = colorResource(R.color.std_purple)
+                                )
+                            }
                         }
                     }
 

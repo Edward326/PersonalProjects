@@ -3,7 +3,7 @@
 "language_code":"en","language_desc":"English","language_country":"US",
 "new_profile":true,
 "remote":true,"email":"eduardvesea@gmail.com",
-"password_hash":"this is generated when the profile is created, and then used for auth, on push",
+"user_id":"this is generated when the profile is created via Auth, used optionally",
 "last_sync_date":"2024-06-10",
 "user_name":"Someone",
 "contributor":true,"age":30,"visual_condition":"myopia",

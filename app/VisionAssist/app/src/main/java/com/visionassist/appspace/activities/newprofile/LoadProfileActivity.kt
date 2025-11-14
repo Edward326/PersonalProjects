@@ -16,54 +16,75 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -187,7 +208,10 @@ class LoadProfileActivity : ComponentActivity() {
                 passwordInput = passwordInput.value,
                 showEmailError = showEmailError.value,
                 showPasswordError = showPasswordError.value,
-                onEmailChange = { emailInput.value = it; showEmailError.value = false; fieldTextInteraction.value=true },
+                onEmailChange = {
+                    emailInput.value = it; showEmailError.value =
+                    false; fieldTextInteraction.value = true
+                },
                 onPasswordChange = { passwordInput.value = it; showPasswordError.value = false },
                 onBackClickProfileSelection = ::handleBackFromProfileSelection,
                 onLocallyClick = ::handleLocallyClick,
@@ -221,7 +245,7 @@ class LoadProfileActivity : ComponentActivity() {
     }
 
     private fun handleBackFromLoginSection() {
-        fieldTextInteraction.value=false
+        fieldTextInteraction.value = false
         showNotification.value = false
         mainHandler.postDelayed({
             showProfileSelection.value = true
@@ -244,8 +268,8 @@ class LoadProfileActivity : ComponentActivity() {
             return
         }
 
-        showPasswordError.value=false
-        showEmailError.value=false
+        showPasswordError.value = false
+        showEmailError.value = false
         // Slide to login section
         showProfileSelection.value = false
     }
@@ -314,11 +338,11 @@ class LoadProfileActivity : ComponentActivity() {
         val checkRunnable = object : Runnable {
             override fun run() {
                 if (finishedLoading) {
-                    Log.i(TAG,"Load finished, password forgot task")
+                    Log.i(TAG, "Load finished, password forgot task")
                     showLoading.value = false
                     handleForgotPasswordResult()
                 } else {
-                    Log.i(TAG,"Password forgot task isn't finished")
+                    Log.i(TAG, "Password forgot task isn't finished")
                     mainHandler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS.toLong())
                 }
             }
@@ -328,7 +352,7 @@ class LoadProfileActivity : ComponentActivity() {
 
     private fun handleForgotPasswordResult() {
         when (loginStatus) {
-            DBConstants.EMAIL_VALID -> {
+            DBConstants.PASSWORD_RESET_SENT -> {
                 // Show success notification
                 showSuccessNotification(load_passChangedSuccess(this, emailInput.value))
 
@@ -466,11 +490,11 @@ class LoadProfileActivity : ComponentActivity() {
         val checkRunnable = object : Runnable {
             override fun run() {
                 if (finishedLoading) {
-                    Log.i(TAG,"Load finished, login task")
+                    Log.i(TAG, "Load finished, login task")
                     showLoading.value = false
                     handleLoginResult()
                 } else {
-                    Log.i(TAG,"Login task isn't finished")
+                    Log.i(TAG, "Login task isn't finished")
                     mainHandler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS.toLong())
                 }
             }
@@ -641,7 +665,7 @@ class LoadProfileActivity : ComponentActivity() {
                 if (hashCacheFile != null) {
                     if (!copyFileToAppDirectory(hashCacheFile, Constants.ENV_REPORTS_FILE_NAME)) {
                         // Clear hash cache on error
-                        if(!FileUtils.createProfileDirFile(Constants.ENV_REPORTS_FILE_NAME))
+                        if (!FileUtils.createProfileDirFile(Constants.ENV_REPORTS_FILE_NAME))
                             return Constants.LOAD_PROFILE_FILE_UPLOAD
                         return Constants.LOAD_PROFILE_FILE_ENVR_UPLOAD_ERROR
                     }
@@ -660,7 +684,7 @@ class LoadProfileActivity : ComponentActivity() {
         }
     }
 
-    private fun findProfileFileInFolder(uri: Uri,fileName: String): Uri? {
+    private fun findProfileFileInFolder(uri: Uri, fileName: String): Uri? {
         try {
             // Use DocumentFile to work with content:// URIs
             val folder = DocumentFile.fromTreeUri(this, uri)
@@ -989,11 +1013,11 @@ class LoadProfileActivity : ComponentActivity() {
         val checkRunnable = object : Runnable {
             override fun run() {
                 if (finishedLoading) {
-                    Log.i(TAG,"Load finished, load locally task")
+                    Log.i(TAG, "Load finished, load locally task")
                     showLoading.value = false
                     handleLoadResult()
                 } else {
-                    Log.i(TAG,"Main load isn't finished")
+                    Log.i(TAG, "Main load isn't finished")
                     mainHandler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS.toLong())
                 }
             }
@@ -1335,7 +1359,7 @@ fun ProfileLoadButton(
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalLayoutApi::class)
 @Composable
 fun LoginSection(
     emailInput: String,
@@ -1348,55 +1372,111 @@ fun LoginSection(
     onBackClick: () -> Unit,
     onDoneClick: () -> Unit
 ) {
+
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+    val isKeyboardVisible = WindowInsets.isImeVisible
+
+    var fadeComplete by remember { mutableStateOf(!isKeyboardVisible) }
+
+    val titleAlpha by animateFloatAsState(
+        targetValue = if (isKeyboardVisible) 0f else 1f,
+        animationSpec = tween(
+            durationMillis = 150,
+            easing = FastOutSlowInEasing
+        ),
+        finishedListener = { finalValue ->
+            // When fade completes, allow slide to start
+            if (finalValue == 0f) {
+                fadeComplete = true
+            }
+        },
+        label = "Title Fade Animation"
+    )
+
+    // Slide animation happens after fade (starts when fadeComplete = true)
+    val cardOffsetY by animateDpAsState(
+        targetValue = if (isKeyboardVisible && fadeComplete) (-160).dp else 0.dp,
+        animationSpec = tween(
+            durationMillis = 200,
+            delayMillis = if (isKeyboardVisible) 150 else 0, // Delay for fade-out
+            easing = FastOutSlowInEasing
+        ),
+        label = "Card Slide Animation"
+    )
+
+    // Reset fadeComplete when keyboard hides
+    LaunchedEffect(isKeyboardVisible) {
+        if (!isKeyboardVisible) {
+            fadeComplete = false
+        }
+    }
+
     BoxWithConstraints(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
     ) {
         val screenHeight = maxHeight
 
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    detectTapGestures(onTap = {
+                        keyboardController?.hide()
+                        focusManager.clearFocus()
+                    })
+                },
             verticalArrangement = Arrangement.SpaceAround,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Box(modifier = Modifier.height(screenHeight * Constants.STD_TITLE_MARGIN_TOP))
 
-            // Title
-            Text(
-                text = "VisionAssist\nAccount",
-                fontSize = Constants.STD_TITLE_SIZE.sp,
-                color = colorResource(R.color.std_cyan),
-                fontFamily = robotoLight,
-                letterSpacing = 6.sp,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center,
-                lineHeight = 60.sp
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.graphicsLayer {
+                    alpha = titleAlpha
+                }
             )
-
-            Box(modifier = Modifier.height(screenHeight * Constants.STD_TITLE_SUBTITLE_MARGIN_TOP))
-
-            // Logo in circle
-            Box(
-                modifier = Modifier
-                    .size(55.dp)
-                    .background(
-                        color = colorResource(R.color.std_cyan),
-                        shape = RoundedCornerShape(55)
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter = painterResource(R.drawable.vision_assist_logo),
-                    contentDescription = "VisionAssist Logo",
-                    modifier = Modifier.size(55.dp)
+            {
+                // Title
+                Text(
+                    text = "VisionAssist\nAccount",
+                    fontSize = Constants.STD_TITLE_SIZE.sp,
+                    color = colorResource(R.color.std_cyan),
+                    fontFamily = robotoLight,
+                    letterSpacing = 6.sp,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center,
+                    lineHeight = 60.sp
                 )
-            }
 
-            Box(modifier = Modifier.height(screenHeight * 0.01f))
+                Box(modifier = Modifier.height(screenHeight * Constants.STD_TITLE_SUBTITLE_MARGIN_TOP))
+
+                // Logo in circle
+                Box(
+                    modifier = Modifier
+                        .size(55.dp)
+                        .background(
+                            color = colorResource(R.color.std_cyan),
+                            shape = RoundedCornerShape(55)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.vision_assist_logo),
+                        contentDescription = "VisionAssist Logo",
+                        modifier = Modifier.size(55.dp)
+                    )
+                }
+                Box(modifier = Modifier.height(screenHeight * 0.01f))
+            }
 
             // Login Card
             Card(
                 modifier = Modifier
                     .fillMaxWidth(0.8f)
+                    .offset(y = cardOffsetY)
                     .height(Constants.STD_LOGINCARD_WIDTH.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
@@ -1411,8 +1491,7 @@ fun LoginSection(
                     Column(
                         modifier = Modifier
                             .weight(0.75f)
-                            .padding(top = 30.dp, start = 20.dp, end = 20.dp),
-                        verticalArrangement = Arrangement.spacedBy(30.dp)
+                            .padding(top = 30.dp, start = 20.dp, end = 20.dp)
                     ) {
                         // Email Field
                         Column {
@@ -1466,6 +1545,8 @@ fun LoginSection(
                             )
                         }
 
+                        Spacer(modifier = Modifier.height(15.dp))
+
                         // Password Field
                         Column {
                             Row(
@@ -1489,6 +1570,8 @@ fun LoginSection(
                             }
 
                             Spacer(modifier = Modifier.height(4.dp))
+
+                            var passwordVisible by remember { mutableStateOf(false) }
 
                             BasicTextField(
                                 value = passwordInput,
@@ -1514,9 +1597,36 @@ fun LoginSection(
                                     fontFamily = robotoRegular,
                                     letterSpacing = 1.sp
                                 ),
-                                visualTransformation = PasswordVisualTransformation(),
+                                visualTransformation = if (passwordVisible)
+                                    VisualTransformation.None
+                                else
+                                    PasswordVisualTransformation(),
+                                keyboardActions = KeyboardActions(
+                                    onDone = {
+                                        keyboardController?.hide()
+                                        focusManager.clearFocus()
+                                    }
+                                ),
                                 singleLine = true
                             )
+
+                            IconButton(
+                                onClick = { passwordVisible = !passwordVisible },
+                                modifier = Modifier.align(Alignment.CenterHorizontally)
+                            ) {
+                                Icon(
+                                    modifier = Modifier.size(35.dp),
+                                    imageVector = if (passwordVisible)
+                                        Icons.Filled.Visibility
+                                    else
+                                        Icons.Filled.VisibilityOff,
+                                    contentDescription = if (passwordVisible)
+                                        if (AppConfig.mainLanguage.code == "en") "Hide password" else "Ascunde parola"
+                                    else
+                                        if (AppConfig.mainLanguage.code == "en") "Show password" else "Arată parola",
+                                    tint = colorResource(R.color.std_purple)
+                                )
+                            }
                         }
 
                         // Forgot Password Button

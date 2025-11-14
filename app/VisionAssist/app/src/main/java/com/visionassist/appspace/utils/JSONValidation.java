@@ -3,12 +3,9 @@ package com.visionassist.appspace.utils;
 
 import android.util.Log;
 import android.util.Pair;
-
 import com.visionassist.appspace.PhoneStatusMonitor;
-
 import org.json.JSONException;
 import org.json.JSONObject;
-
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -91,7 +88,7 @@ public class JSONValidation {
 
         if (isRemote) {
             if (!jsonObject.has("email")
-                    || !jsonObject.has("password_hash")
+                    || !jsonObject.has("user_id")
                     || !jsonObject.has("last_sync_date"))
                 return new Pair<>(1, jsonObject);   // ConfigurationActivity
         }

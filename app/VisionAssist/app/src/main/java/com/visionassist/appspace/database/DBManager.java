@@ -1,9 +1,10 @@
 package com.visionassist.appspace.database;
 
-import static org.mindrot.jbcrypt.BCrypt.checkpw;
 import android.content.Context;
 import android.util.Log;
 import android.util.Pair;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.visionassist.appspace.ExceptionVisionAssist;
 import com.visionassist.appspace.jetpack.managers.LoadingManager;
@@ -11,7 +12,6 @@ import com.visionassist.appspace.utils.Constants;
 import com.visionassist.appspace.utils.FileUtils;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.mindrot.jbcrypt.BCrypt;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -29,12 +29,14 @@ public class DBManager {
 
     private Context context;
     private FirebaseFirestore firebaseDb;
+    private final FirebaseAuth auth;
     private int status = DBConstants.STATUS_INITIALIZED;
 
     public DBManager(Context context) {
         this.context = context;
         this.firebaseDb = FirebaseFirestore.getInstance();
-        Log.d(TAG, "DBManager initialized (Firestore only - no Cloud Storage)");
+        this.auth = FirebaseAuth.getInstance();
+        Log.d(TAG, "DBManager initialized, FirebaseAuth(auth) and FirebaseFirestore(data persistence)");
     }
 
     private boolean hasInternetConnection() {
@@ -71,6 +73,58 @@ public class DBManager {
         }
     }
 
+    private boolean emailExistsInDatabase(String email) {
+        try {
+            CountDownLatch latch = new CountDownLatch(1);
+            boolean[] exists = {false};
+
+            firebaseDb.collection(DBConstants.FIREBASE_USERS_COLLECTION)
+                    .document(email)
+                    .get()
+                    .addOnSuccessListener(documentSnapshot -> {
+                        exists[0] = documentSnapshot.exists();
+                        latch.countDown();
+                    })
+                    .addOnFailureListener(e -> {
+                        Log.e(TAG, "Error checking email existence", e);
+                        latch.countDown();
+                    });
+
+            latch.await();
+            return exists[0];
+
+        } catch (InterruptedException e) {
+            Log.e(TAG, "Interrupted while checking email", e);
+            return false;
+        }
+    }
+
+    private boolean verifyPassword(String email, String password) {
+        try {
+            CountDownLatch latch = new CountDownLatch(1);
+            AtomicBoolean success = new AtomicBoolean(false);
+
+            auth.signInWithEmailAndPassword(email, password)
+                    .addOnCompleteListener(authTask -> {
+                        if (authTask.isSuccessful()) {
+                            Log.d(TAG, "Password valid, verified from Realtime Database");
+                            success.set(true);
+                            latch.countDown();
+                        } else {
+                            Log.d(TAG, "Password invalid, verified from Realtime Database");
+                            latch.countDown();
+                        }
+                    });
+
+            latch.await();
+
+            return success.get();
+        } catch (InterruptedException e) {
+            Log.e(TAG, "Interrupted while verifying password", e);
+            return false;
+        }
+    }
+
     public int validateEmail(String email) {
         Log.d(TAG, "Validating email: " + email);
 
@@ -88,34 +142,33 @@ public class DBManager {
 
     public Pair<String, Integer> createAccount(String email, String password) {
         Log.d(TAG, "Creating account for: " + email);
-        String hashedPassword = hashPassword(password);
-        Log.d(TAG, "Password hashed successfully");
 
         if (!hasInternetConnection()) {
             status = DBConstants.INTERNET_CONNECTION_FAILED;
-            return new Pair<>(hashedPassword, status);
+            return null;
         }
 
         try {
             CountDownLatch latch = new CountDownLatch(1);
             AtomicBoolean success = new AtomicBoolean(false);
+            String[] userID={"salut"};
 
-            // Create user document in Firestore with encrypted password
-            Map<String, Object> userData = new HashMap<>();
-            userData.put(DBConstants.FIREBASE_EMAIL_FIELD, email);
-            userData.put(DBConstants.FIREBASE_PASSWORD_FIELD, hashedPassword); // Store hashed password
-
-            firebaseDb.collection(DBConstants.FIREBASE_USERS_COLLECTION)
-                    .document(email) // Use email as document ID
-                    .set(userData)
-                    .addOnSuccessListener(aVoid -> {
-                        Log.d(TAG, "User account created successfully in Firestore Database");
-                        success.set(true);
-                        latch.countDown();
-                    })
-                    .addOnFailureListener(e -> {
-                        Log.e(TAG, "Error creating user account in Firestore", e);
-                        latch.countDown();
+            auth.createUserWithEmailAndPassword(email, password)
+                    .addOnCompleteListener(authTask -> {
+                        if (authTask.isSuccessful()) {
+                            FirebaseUser user = auth.getCurrentUser();
+                            if (user != null) {
+                                userID[0] = user.getUid();
+                                Log.d(TAG, "User account created successfully in Realtime Database\nUID: "+user);
+                                success.set(true);
+                                latch.countDown();
+                            }
+                            else
+                                latch.countDown();
+                        } else {
+                            Log.e(TAG, "Error creating user account in Realtime Database");
+                            latch.countDown();
+                        }
                     });
 
             latch.await();
@@ -125,7 +178,7 @@ public class DBManager {
             } else {
                 status = DBConstants.ACCOUNT_CREATION_FAILED;
             }
-            return new Pair<>(hashedPassword, status);
+            return new Pair<>(userID[0], status);
         } catch (Exception e) {
             Log.e(TAG, "Error in createAccount", e);
             status = DBConstants.ACCOUNT_CREATION_FAILED;
@@ -133,24 +186,18 @@ public class DBManager {
         }
     }
 
-    public int resetPassword(String email) {
-        Log.d(TAG, "Resetting password for: " + email);
-
-        if (!hasInternetConnection()) {
-            status = DBConstants.INTERNET_CONNECTION_FAILED;
-            return DBConstants.INTERNET_CONNECTION_FAILED;
-        }
-
+    public void syncProfile(JSONObject profileData) throws JSONException {
         try {
-            if (!emailExistsInDatabase(email)) {
-                return DBConstants.EMAIL_NOT_FOUND;
+            if (!hasInternetConnection()) {
+                status = DBConstants.INTERNET_CONNECTION_FAILED;
+                return;
             }
 
-            return DBConstants.EMAIL_VALID;
-        } catch (Exception e) {
-            Log.e(TAG, "Error in resetPassword", e);
-            status = DBConstants.GENERIC_ERROR;
-            return DBConstants.GENERIC_ERROR;
+            String email = profileData.getString("email");
+            pushProfile(email, profileData);
+        } catch (JSONException e) {
+            Log.e(TAG, "Error parsing profile data", e);
+            throw e;
         }
     }
 
@@ -317,6 +364,45 @@ public class DBManager {
         }
     }
 
+    public int resetPassword(String email) {
+        Log.d(TAG, "Resetting password for: " + email);
+
+        if (!hasInternetConnection()) {
+            status = DBConstants.INTERNET_CONNECTION_FAILED;
+            return DBConstants.INTERNET_CONNECTION_FAILED;
+        }
+
+        try {
+            if (!emailExistsInDatabase(email)) {
+                return DBConstants.EMAIL_NOT_FOUND;
+            }
+
+            CountDownLatch latch = new CountDownLatch(1);
+            AtomicBoolean success = new AtomicBoolean(false);
+
+            Log.d(TAG, "Sending password reset email to: " + email);
+            auth.sendPasswordResetEmail(email)
+                    .addOnCompleteListener(task -> {
+                        if (task.isSuccessful()) {
+                            Log.d(TAG, "Password reset email sent successfully");
+                            success.set(true);
+                            latch.countDown();
+                        } else {
+                            Log.e(TAG, "Failed to send password reset email");
+                            latch.countDown();
+                        }
+                    });
+
+            latch.await();
+
+            return success.get()?DBConstants.PASSWORD_RESET_SENT:DBConstants.GENERIC_ERROR;
+        } catch (Exception e) {
+            Log.e(TAG, "Error in resetPassword", e);
+            status = DBConstants.GENERIC_ERROR;
+            return DBConstants.GENERIC_ERROR;
+        }
+    }
+
     public boolean isRemoteProfile(JSONObject profileData, LoadingManager loadingManager) throws ExceptionVisionAssist {
         try {
             if (!profileData.getBoolean("remote")) {
@@ -336,21 +422,6 @@ public class DBManager {
         } catch (JSONException e) {
             Log.e(TAG, "Error checking remote profile", e);
             throw new ExceptionVisionAssist(Constants.JSON_PARSE_ERROR, loadingManager);
-        }
-    }
-
-    public void syncProfile(JSONObject profileData) throws JSONException {
-        try {
-            if (!hasInternetConnection()) {
-                status = DBConstants.INTERNET_CONNECTION_FAILED;
-                return;
-            }
-
-            String email = profileData.getString("email");
-            pushProfile(email, profileData);
-        } catch (JSONException e) {
-            Log.e(TAG, "Error parsing profile data", e);
-            throw e;
         }
     }
 
@@ -389,61 +460,6 @@ public class DBManager {
         }
     }
 
-    private boolean emailExistsInDatabase(String email) {
-        try {
-            CountDownLatch latch = new CountDownLatch(1);
-            boolean[] exists = {false};
-
-            firebaseDb.collection(DBConstants.FIREBASE_USERS_COLLECTION)
-                    .document(email)
-                    .get()
-                    .addOnSuccessListener(documentSnapshot -> {
-                        exists[0] = documentSnapshot.exists();
-                        latch.countDown();
-                    })
-                    .addOnFailureListener(e -> {
-                        Log.e(TAG, "Error checking email existence", e);
-                        latch.countDown();
-                    });
-
-            latch.await();
-            return exists[0];
-
-        } catch (InterruptedException e) {
-            Log.e(TAG, "Interrupted while checking email", e);
-            return false;
-        }
-    }
-
-    private boolean verifyPassword(String email, String password) {
-        try {
-            CountDownLatch latch = new CountDownLatch(1);
-            boolean[] isCorrect = {false};
-
-            firebaseDb.collection(DBConstants.FIREBASE_USERS_COLLECTION)
-                    .document(email)
-                    .get()
-                    .addOnSuccessListener(documentSnapshot -> {
-                        if (documentSnapshot.exists()) {
-                            String storedPasswordHash = documentSnapshot.getString(DBConstants.FIREBASE_PASSWORD_FIELD);
-                            isCorrect[0] = checkpw(password, storedPasswordHash);
-                        }
-                        latch.countDown();
-                    })
-                    .addOnFailureListener(e -> {
-                        Log.e(TAG, "Error verifying password", e);
-                        latch.countDown();
-                    });
-
-            latch.await();
-            return isCorrect[0];
-
-        } catch (InterruptedException e) {
-            Log.e(TAG, "Interrupted while verifying password", e);
-            return false;
-        }
-    }
-
     private boolean copyFile(File source, File destination) {
         try (FileInputStream fis = new FileInputStream(source);
              FileOutputStream fos = new FileOutputStream(destination)) {
@@ -477,10 +493,6 @@ public class DBManager {
         }
 
         return map;
-    }
-
-    public static String hashPassword(String plainPassword) {
-        return BCrypt.hashpw(plainPassword, BCrypt.gensalt(12));
     }
 
     private boolean isValidEmailFormat(String email) {

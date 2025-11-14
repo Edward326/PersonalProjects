@@ -159,10 +159,10 @@ public class ProfileFileCollection {
             jsonObject.put("remote", isRemote);
 
             if (isRemote) {
-                // Write email and password_hash for remote profiles
+                // Write email and user_id for remote profiles
                 if (email != null && passwordHash != null) {
                     jsonObject.put("email", email);
-                    jsonObject.put("password_hash", passwordHash);
+                    jsonObject.put("user_id", passwordHash);
 
                     Calendar calendar = Calendar.getInstance();
                     calendar.add(Calendar.DAY_OF_MONTH, -DBConstants.SYNC_INTERVAL_DAYS);

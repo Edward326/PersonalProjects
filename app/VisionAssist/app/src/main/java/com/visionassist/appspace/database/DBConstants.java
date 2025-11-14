@@ -44,7 +44,5 @@ public class DBConstants {
     public static final String FIREBASE_USERS_COLLECTION = "users";
 
     // ==================== FIREBASE FIELD NAMES ====================
-    public static final String FIREBASE_EMAIL_FIELD = "email";
-    public static final String FIREBASE_PASSWORD_FIELD = "password_hash";
     public static final String FIREBASE_LAST_SYNC_FIELD = "last_sync_date";
 }

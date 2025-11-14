@@ -5,10 +5,8 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.util.Log;
-
 import com.visionassist.appspace.PhoneStatusMonitor;
 import com.visionassist.appspace.jetpack.managers.ErrorDialogManager;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;

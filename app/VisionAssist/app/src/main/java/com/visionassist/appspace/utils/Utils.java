@@ -10,7 +10,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.util.Pair;
-
 import com.visionassist.appspace.ExceptionVisionAssist;
 import com.visionassist.appspace.PhoneStatusMonitor;
 import com.visionassist.appspace.activities.newprofile.ConfigurationActivity;
@@ -24,10 +23,8 @@ import com.visionassist.appspace.activities.newprofile.WelcomeActivity;
 import com.visionassist.appspace.database.DBConstants;
 import com.visionassist.appspace.jetpack.managers.ErrorDialogManager;
 import com.visionassist.appspace.jetpack.managers.LoadingManager;
-
 import org.json.JSONException;
 import org.json.JSONObject;
-
 import java.io.InputStream;
 
 public class Utils {

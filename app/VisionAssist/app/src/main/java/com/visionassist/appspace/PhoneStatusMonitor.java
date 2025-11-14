@@ -1,7 +1,6 @@
 package com.visionassist.appspace;
 
 import static com.visionassist.appspace.utils.UtilsKt.load_errorTextBlind;
-
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -12,10 +11,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.util.Pair;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-
 import com.visionassist.appspace.database.DBManager;
 import com.visionassist.appspace.jetpack.managers.ErrorDialogManager;
 import com.visionassist.appspace.models.ttsengine.TTSManager;
