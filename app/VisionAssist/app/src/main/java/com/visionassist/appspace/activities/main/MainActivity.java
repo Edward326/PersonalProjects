@@ -206,6 +206,8 @@ public class MainActivity extends AppCompatActivity {
                 () -> {
                     Log.d(TAG, "Load the detector");
                     //load speech to text
+                    // useless words
+                    // synonyms
                 },
                 new BackgroundTaskExecutor.TaskCallback<Integer>() {
                     @Override
@@ -221,47 +223,6 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
         );
-        backgroundExecutor.executeAsync(
-                () -> {
-                    Log.d(TAG, "Load the detector");
-                    //load yolo's class names
-                    // useless words
-                    // synonyms
-                    // classifier scene names
-                },
-                new BackgroundTaskExecutor.TaskCallback<Integer>() {
-                    @Override
-                    public void onSuccess(Integer result) throws Exception {
-                        if (result == -1)
-                            handleProfileError(new ExceptionVisionAssist(Constants.ASSETS_ERROR, loadingManager));
-                        else tasksCompleted += 4;
-                    }
-
-                    @Override
-                    public void onError(Exception e) {
-                        handleProfileError(new ExceptionVisionAssist(Constants.ASSETS_ERROR, loadingManager));
-                    }
-                }
-        );
-        backgroundExecutor.executeAsync(
-                () -> {
-                    Log.d(TAG, "Load the detector");
-                    //load captioner vocab
-                },
-                new BackgroundTaskExecutor.TaskCallback<Integer>() {
-                    @Override
-                    public void onSuccess(Integer result) throws Exception {
-                        if (result == -1)
-                            handleProfileError(new ExceptionVisionAssist(Constants.ASSETS_ERROR, loadingManager));
-                        else tasksCompleted++;
-                    }
-
-                    @Override
-                    public void onError(Exception e) {
-                        handleProfileError(new ExceptionVisionAssist(Constants.ASSETS_ERROR, loadingManager));
-                    }
-                }
-        );
         */
 
         backgroundExecutor.executeAsync(
@@ -274,7 +235,7 @@ public class MainActivity extends AppCompatActivity {
                 new BackgroundTaskExecutor.TaskCallback<>() {
                     @Override
                     public void onSuccess(Integer result) {
-                            tasksCompleted = Constants.MODELS_COUNT + Constants.MODELS_OWN_ASSETS_COUNT;
+                        tasksCompleted = Constants.MODELS_COUNT + Constants.MODELS_OWN_ASSETS_COUNT;
                     }
 
                     @Override

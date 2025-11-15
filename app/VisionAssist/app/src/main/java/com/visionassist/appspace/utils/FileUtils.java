@@ -344,14 +344,14 @@ public class FileUtils {
                             String className = parts[1].trim();
                             classNames.put(classId, className);
 
-                            if (Constants.DEBUG_MODE && classId < 5) {
+                            if (classId < 5) {
                                 Log.d(TAG, String.format("Loaded class: %d -> '%s'", classId, className));
                             }
                         }
                     } else {
                         classNames.put(lineNumber, line);
 
-                        if (Constants.DEBUG_MODE && lineNumber < 5) {
+                        if (lineNumber < 5) {
                             Log.d(TAG, String.format("Loaded class: %d -> '%s'", lineNumber, line));
                         }
                     }

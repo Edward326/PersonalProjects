@@ -17,7 +17,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import com.visionassist.appspace.R;
 import com.visionassist.appspace.models.captioner.BLIPModel;
-import com.visionassist.appspace.models.detector.YOLOModel;
+import com.visionassist.appspace.models.detector.YOLODetector;
 import com.visionassist.appspace.models.detector.DetectionResult;
 import com.visionassist.appspace.utils.Constants;
 import java.io.InputStream;
@@ -34,7 +34,7 @@ public class DetectionActivity extends AppCompatActivity {
     private Button viewCaptionButton;
     private TextView statusTextView;
 
-    private YOLOModel yoloDetector;
+    private YOLODetector yoloDetector;
     private BLIPModel blipCaptioner;
 
     private Bitmap originalBitmap;
@@ -84,7 +84,7 @@ public class DetectionActivity extends AppCompatActivity {
         executorService.execute(() -> {
             try {
                 // Load models in the background
-                yoloDetector = new YOLOModel(this);
+                yoloDetector = new YOLODetector(this);
                 blipCaptioner = new BLIPModel(this);
                 Log.d(TAG, "Models loaded successfully.");
 

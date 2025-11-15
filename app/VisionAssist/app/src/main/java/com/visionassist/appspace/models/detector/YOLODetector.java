@@ -1,0 +1,464 @@
+package com.visionassist.appspace.models.detector;
+
+import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.RectF;
+import android.util.Log;
+import com.visionassist.appspace.utils.*;
+import java.io.IOException;
+import java.nio.FloatBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import ai.onnxruntime.OnnxTensor;
+import ai.onnxruntime.OrtEnvironment;
+import ai.onnxruntime.OrtSession;
+
+public class YOLODetector {
+    private static final String TAG = "YOLODetector";
+
+    private OrtEnvironment ortEnvironment;
+    private OrtSession ortSession;
+    private Map<Integer, String> classNames;
+    private Context context;
+
+    // Model parameters
+    private static final int NUM_DETECTIONS = 8400;
+    private static final int NUM_FEATURES = 84; // 4 bbox + 80 classes
+
+    // Preprocessing parameters (same as PyTorch version)
+    private float scaleX = 1.0f;
+    private float scaleY = 1.0f;
+    private int offsetX = 0;
+    private int offsetY = 0;
+
+    public YOLODetector(Context context) {
+        this.context = context;
+    }
+
+    private int loadModel() {
+        try {
+            Log.d(TAG, "Loading Detector Model YOLO ...");
+
+            // Create ONNX Runtime environment
+            ortEnvironment = OrtEnvironment.getEnvironment();
+
+            // Load model from assets
+            String modelPath = FileUtils.assetFilePath(context, Constants.YOLO_MODEL_DETECTOR_FILE);
+
+            // Create session options
+            OrtSession.SessionOptions options = new OrtSession.SessionOptions();
+            options.setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT);
+
+            // Load session
+            assert ortEnvironment != null;
+            ortSession = ortEnvironment.createSession(modelPath, options);
+
+            Log.d(TAG, "Model loaded successfully");
+
+            loadClassNames();
+            Log.d(TAG, "Detector class names loaded: " + classNames.size() + " classes");
+
+            return 0;
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to load Detector Model YOLO", e);
+            return -1;
+        }
+    }
+
+    private void loadClassNames() throws IOException {
+        try {
+            String classNameFile = AppConfig.mainLanguage.getCode().equals("en") ? Constants.DETECTOR_CLASSES_FILE_EN : Constants.DETECTOR_CLASSES_FILE_RO;
+            classNames = FileUtils.loadClassNames(context, classNameFile);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to load class names", e);
+            throw new IOException("Failed to load class names: " + e.getMessage());
+        }
+    }
+
+    public DetectionResult detectObjects(Bitmap bitmap) {
+        try {
+            Log.d(TAG, "Starting detection on image: " + bitmap.getWidth() + "x" + bitmap.getHeight());
+
+            // Step 1: Preprocess image
+            long startPreprocess = System.currentTimeMillis();
+            float[] inputArray = preprocessImage(bitmap);
+            long preprocessTime = System.currentTimeMillis() - startPreprocess;
+
+            if (inputArray == null) {
+                Log.e(TAG, "Failed to preprocess image");
+                return new DetectionResult(new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
+            }
+
+            // Step 2: Run inference
+            long startInference = System.currentTimeMillis();
+            float[] output = runInference(inputArray);
+            long inferenceTime = System.currentTimeMillis() - startInference;
+
+
+            if (output == null) {
+                Log.e(TAG, "Inference failed");
+                return new DetectionResult(new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
+            }
+
+            // Step 3: Post-process results
+            long startPostprocess = System.currentTimeMillis();
+            DetectionResult result = postprocessOutput(output, bitmap.getWidth(), bitmap.getHeight());
+            long postprocessTime = System.currentTimeMillis() - startPostprocess;
+
+            Log.d(TAG, "Preprocessing completed in " + preprocessTime + "ms");
+            Log.d(TAG, "Inference completed in " + inferenceTime + "ms");
+            Log.d(TAG, "Post-processing completed in " + postprocessTime + "ms");
+            Log.d(TAG, "Total time for inference: " + (preprocessTime + inferenceTime + postprocessTime) + "ms");
+            Log.d(TAG, "Detection completed:\nObjects found(" + result.getDetectionCount() + ")\n" + result.listBoundingBoxes());
+
+            return result;
+        } catch (Exception e) {
+            Log.e(TAG, "Error during object detection", e);
+            return new DetectionResult(new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
+        }
+    }
+
+    private float[] preprocessImage(Bitmap bitmap) {
+        try {
+            // Resize bitmap with padding (same as PyTorch version)
+            Bitmap resizedBitmap = resizeBitmapWithPadding(bitmap, Constants.DETECTOR_INPUT_SIZE, Constants.DETECTOR_INPUT_SIZE);
+
+            //Log.d(TAG, "Original size: " + bitmap.getWidth() + "x" + bitmap.getHeight());
+            //Log.d(TAG, "Resized size: " + resizedBitmap.getWidth() + "x" + resizedBitmap.getHeight());
+
+            // Convert to float array (CHW format, normalized to [0, 1])
+            float[] inputArray = new float[3 * Constants.DETECTOR_INPUT_SIZE * Constants.DETECTOR_INPUT_SIZE];
+            int[] pixels = new int[Constants.DETECTOR_INPUT_SIZE * Constants.DETECTOR_INPUT_SIZE];
+            resizedBitmap.getPixels(pixels, 0, Constants.DETECTOR_INPUT_SIZE, 0, 0, Constants.DETECTOR_INPUT_SIZE, Constants.DETECTOR_INPUT_SIZE);
+
+            for (int i = 0; i < pixels.length; i++) {
+                int pixel = pixels[i];
+
+                // Extract RGB and normalize to [0, 1]
+                float r = ((pixel >> 16) & 0xFF) / 255.0f;
+                float g = ((pixel >> 8) & 0xFF) / 255.0f;
+                float b = (pixel & 0xFF) / 255.0f;
+
+                // Store in CHW format (channels first)
+                inputArray[i] = r;                              // R channel
+                inputArray[Constants.DETECTOR_INPUT_SIZE * Constants.DETECTOR_INPUT_SIZE + i] = g;    // G channel
+                inputArray[2 * Constants.DETECTOR_INPUT_SIZE * Constants.DETECTOR_INPUT_SIZE + i] = b; // B channel
+            }
+
+            return inputArray;
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error preprocessing image", e);
+            return null;
+        }
+    }
+
+    private Bitmap resizeBitmapWithPadding(Bitmap originalBitmap, int targetWidth, int targetHeight) {
+        int originalWidth = originalBitmap.getWidth();
+        int originalHeight = originalBitmap.getHeight();
+
+        // Calculate scale factor to maintain aspect ratio
+        float scale = Math.min(
+                (float) targetWidth / originalWidth,
+                (float) targetHeight / originalHeight
+        );
+
+        int scaledWidth = Math.round(originalWidth * scale);
+        int scaledHeight = Math.round(originalHeight * scale);
+
+        // Calculate padding
+        int padX = (targetWidth - scaledWidth) / 2;
+        int padY = (targetHeight - scaledHeight) / 2;
+
+
+        Log.d(TAG, String.format("Preprocessing: %dx%d -> %dx%d (scale=%.3f, pad=%d,%d)",
+                originalWidth, originalHeight, targetWidth, targetHeight, scale, padX, padY));
+
+
+        // Create target bitmap with gray padding
+        Bitmap targetBitmap = Bitmap.createBitmap(targetWidth, targetHeight, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(targetBitmap);
+
+        // Fill with gray color (RGB: 114, 114, 114)
+        canvas.drawColor(Color.rgb(114, 114, 114));
+
+        // Scale and center the original image
+        Bitmap scaledBitmap = Bitmap.createScaledBitmap(originalBitmap, scaledWidth, scaledHeight, true);
+        canvas.drawBitmap(scaledBitmap, padX, padY, null);
+
+        // Store scale and offset for coordinate conversion
+        this.scaleX = scale;
+        this.scaleY = scale;
+        this.offsetX = padX;
+        this.offsetY = padY;
+
+        return targetBitmap;
+    }
+
+    private float[] runInference(float[] inputArray) {
+        try {
+            // Create input tensor: shape [1, 3, 640, 640]
+            long[] shape = {1, 3, Constants.DETECTOR_INPUT_SIZE, Constants.DETECTOR_INPUT_SIZE};
+
+            OnnxTensor inputTensor = OnnxTensor.createTensor(
+                    ortEnvironment,
+                    FloatBuffer.wrap(inputArray),
+                    shape
+            );
+
+            // Run inference
+            Map<String, OnnxTensor> inputs = Collections.singletonMap("images", inputTensor);
+            OrtSession.Result results = ortSession.run(inputs);
+
+            // Get output tensor
+            // ONNX output shape: [1, 84, 8400] (same as PyTorch Mobile)
+            OnnxTensor outputTensor = (OnnxTensor) results.get(0);
+            float[][][] outputArray = (float[][][]) outputTensor.getValue();
+
+            // Flatten to 1D array: [84 * 8400]
+            float[] flatOutput = new float[NUM_FEATURES * NUM_DETECTIONS];
+            int idx = 0;
+            for (int i = 0; i < NUM_FEATURES; i++) {
+                for (int j = 0; j < NUM_DETECTIONS; j++) {
+                    flatOutput[idx++] = outputArray[0][i][j];
+                }
+            }
+
+            // Cleanup
+            inputTensor.close();
+            results.close();
+
+            return flatOutput;
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error during inference", e);
+            return null;
+        }
+    }
+
+    private DetectionResult postprocessOutput(float[] output, int originalWidth, int originalHeight) {
+        // THIS IS EXACTLY THE SAME AS YOUR PYTORCH VERSION
+        // The output format is identical: [84, 8400]
+
+        List<RectF> boundingBoxes = new ArrayList<>();
+        List<Float> confidences = new ArrayList<>();
+        List<String> labels = new ArrayList<>();
+
+        final float DEBUG_CONFIDENCE_THRESHOLD = 0.001f;
+        int highConfCount = 0;
+        int validBoxCount = 0;
+
+        // Process each detection (same logic as PyTorch version)
+        for (int i = 0; i < NUM_DETECTIONS; i++) {
+            float centerX = output[i];
+            float centerY = output[NUM_DETECTIONS + i];
+            float width = output[2 * NUM_DETECTIONS + i];
+            float height = output[3 * NUM_DETECTIONS + i];
+
+            // Find the class with highest confidence
+            float maxClassConf = 0;
+            int bestClass = -1;
+
+            for (int classIdx = 0; classIdx < 80; classIdx++) {
+                float classConf = output[(4 + classIdx) * NUM_DETECTIONS + i];
+                if (classConf > maxClassConf) {
+                    maxClassConf = classConf;
+                    bestClass = classIdx;
+                }
+            }
+
+            if (maxClassConf > DEBUG_CONFIDENCE_THRESHOLD) {
+                highConfCount++;
+
+                // Check if bounding box is reasonable
+                if (width > 0 && height > 0 && centerX >= 0 && centerY >= 0 &&
+                        centerX <= Constants.DETECTOR_INPUT_SIZE && centerY <= Constants.DETECTOR_INPUT_SIZE) {
+
+                    validBoxCount++;
+
+                    // Apply actual confidence threshold
+                    if (maxClassConf >= Constants.CONFIDENCE_THRESHOLD) {
+                        // Convert center format to corner format
+                        float left = centerX - width / 2;
+                        float top = centerY - height / 2;
+                        float right = centerX + width / 2;
+                        float bottom = centerY + height / 2;
+
+                        // Convert coordinates from model space to original image space
+                        RectF bbox = convertCoordinates(left, top, right, bottom, originalWidth, originalHeight);
+
+                        String className = classNames.getOrDefault(bestClass, "unknown");
+                        if (className != null && !className.equals("unknown")) {
+                            boundingBoxes.add(bbox);
+                            confidences.add(maxClassConf);
+                            labels.add(className);
+                            //Log.d(TAG, String.format("Valid detection: %s (%.3f) at [%.1f,%.1f,%.1f,%.1f]",
+                            //        className, maxClassConf, bbox.left, bbox.top, bbox.right, bbox.bottom));
+                        }
+                    }
+                }
+            }
+        }
+
+        Log.d(TAG, String.format("Detection summary: %d high-conf (>%.3f), %d valid boxes, %d passed threshold",
+                highConfCount, DEBUG_CONFIDENCE_THRESHOLD, validBoxCount, boundingBoxes.size()));
+
+        // Apply Non-Maximum Suppression (same as PyTorch version)
+        List<Integer> keepIndices = applyNMS(boundingBoxes, confidences);
+
+        // Filter results based on NMS
+        List<RectF> finalBoxes = new ArrayList<>();
+        List<Float> finalConfidences = new ArrayList<>();
+        List<String> finalLabels = new ArrayList<>();
+
+        for (int idx : keepIndices) {
+            finalBoxes.add(boundingBoxes.get(idx));
+            finalConfidences.add(confidences.get(idx));
+            finalLabels.add(labels.get(idx));
+        }
+
+        Log.d(TAG, String.format("NMS: %d -> %d detections", boundingBoxes.size(), finalBoxes.size()));
+
+        return new DetectionResult(finalBoxes, finalConfidences, finalLabels);
+    }
+
+    private RectF convertCoordinates(float left, float top, float right, float bottom,
+                                     int originalWidth, int originalHeight) {
+        // Same as PyTorch version
+        left -= offsetX;
+        top -= offsetY;
+        right -= offsetX;
+        bottom -= offsetY;
+
+        left /= scaleX;
+        top /= scaleY;
+        right /= scaleX;
+        bottom /= scaleY;
+
+        left = Math.max(0, Math.min(originalWidth, left));
+        top = Math.max(0, Math.min(originalHeight, top));
+        right = Math.max(0, Math.min(originalWidth, right));
+        bottom = Math.max(0, Math.min(originalHeight, bottom));
+
+        return new RectF(left, top, right, bottom);
+    }
+
+    private List<Integer> applyNMS(List<RectF> boxes, List<Float> confidences) {
+        // Same as PyTorch version
+        if (boxes.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        List<Integer> indices = new ArrayList<>();
+        for (int i = 0; i < boxes.size(); i++) {
+            indices.add(i);
+        }
+
+        indices.sort((i1, i2) -> Float.compare(confidences.get(i2), confidences.get(i1)));
+
+        List<Integer> keep = new ArrayList<>();
+        boolean[] suppressed = new boolean[boxes.size()];
+
+        for (int idx : indices) {
+            if (suppressed[idx]) continue;
+
+            keep.add(idx);
+            RectF boxA = boxes.get(idx);
+
+            for (int otherIdx : indices) {
+                if (otherIdx == idx || suppressed[otherIdx]) continue;
+
+                RectF boxB = boxes.get(otherIdx);
+                float iou = calculateIoU(boxA, boxB);
+
+                if (iou > Constants.NMS_THRESHOLD) {
+                    suppressed[otherIdx] = true;
+                }
+            }
+        }
+
+        return keep;
+    }
+
+    private float calculateIoU(RectF boxA, RectF boxB) {
+        // Same as PyTorch version
+        float intersectionLeft = Math.max(boxA.left, boxB.left);
+        float intersectionTop = Math.max(boxA.top, boxB.top);
+        float intersectionRight = Math.min(boxA.right, boxB.right);
+        float intersectionBottom = Math.min(boxA.bottom, boxB.bottom);
+
+        if (intersectionLeft >= intersectionRight || intersectionTop >= intersectionBottom) {
+            return 0.0f;
+        }
+
+        float intersectionArea = (intersectionRight - intersectionLeft) * (intersectionBottom - intersectionTop);
+
+        float areaA = (boxA.right - boxA.left) * (boxA.bottom - boxA.top);
+        float areaB = (boxB.right - boxB.left) * (boxB.bottom - boxB.top);
+
+        float unionArea = areaA + areaB - intersectionArea;
+
+        return unionArea > 0 ? intersectionArea / unionArea : 0.0f;
+    }
+
+    public Bitmap drawDetections(Bitmap originalBitmap, DetectionResult detectionResult) {
+        // Same as PyTorch version
+        Bitmap mutableBitmap = originalBitmap.copy(Bitmap.Config.ARGB_8888, true);
+        Canvas canvas = new Canvas(mutableBitmap);
+
+        Paint boxPaint = new Paint();
+        boxPaint.setColor(Constants.BBOX_COLOR);
+        boxPaint.setStyle(Paint.Style.STROKE);
+        boxPaint.setStrokeWidth(Constants.BBOX_STROKE_WIDTH);
+
+        Paint textPaint = new Paint();
+        textPaint.setColor(Constants.TEXT_COLOR);
+        textPaint.setTextSize(Constants.TEXT_SIZE);
+        textPaint.setAntiAlias(true);
+
+        Paint backgroundPaint = new Paint();
+        backgroundPaint.setColor(Constants.TEXT_BACKGROUND_COLOR);
+        backgroundPaint.setStyle(Paint.Style.FILL);
+
+        List<RectF> boxes = detectionResult.getBoundingBoxes();
+        List<Float> confidences = detectionResult.getConfidences();
+        List<String> labels = detectionResult.getLabels();
+
+        for (int i = 0; i < boxes.size(); i++) {
+            RectF box = boxes.get(i);
+            float confidence = confidences.get(i);
+            String label = labels.get(i);
+
+            canvas.drawRect(box, boxPaint);
+
+            String text = label + " " + String.format("%.2f", confidence);
+            float textWidth = textPaint.measureText(text);
+            float textHeight = textPaint.getTextSize();
+
+            canvas.drawRect(box.left, box.top - textHeight - 4,
+                    box.left + textWidth + 8, box.top, backgroundPaint);
+
+            canvas.drawText(text, box.left + 4, box.top - 4, textPaint);
+        }
+
+        return mutableBitmap;
+    }
+
+    public void close() {
+        try {
+            if (ortSession != null) {
+                ortSession.close();
+            }
+            if (ortEnvironment != null) {
+                ortEnvironment.close();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error closing ONNX session", e);
+        }
+    }
+}

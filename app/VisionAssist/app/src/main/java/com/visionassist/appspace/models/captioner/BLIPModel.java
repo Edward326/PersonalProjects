@@ -101,12 +101,10 @@ public class BLIPModel {
         }
     }
 
-    private void loadModel() throws Exception {
-        String modelPath = null;
+    private void loadModel() {
+        String modelPath;
 
         try {
-            // Try quantized model first
-            if (Constants.USE_QUANTIZED_MODELS) {
                 Log.d(TAG, "Attempting to load quantized BLIP model...");
 
                 if (FileUtils.assetExists(context, Constants.BLIP_MODEL_FILE)) {
@@ -126,43 +124,15 @@ public class BLIPModel {
                     Log.w(TAG, "Quantized model not found: " + Constants.BLIP_MODEL_FILE);
                     throw new Exception("Quantized model not available");
                 }
-            }
 
         } catch (Exception e) {
-            Log.w(TAG, "Failed to load quantized model, trying regular model...", e);
-
-            // Fallback to regular model
-            try {
-                if (FileUtils.assetExists(context, Constants.BLIP_MODEL_REGULAR)) {
-                    modelPath = FileUtils.assetFilePath(context, Constants.BLIP_MODEL_REGULAR);
-
-                    File modelFile = new File(modelPath);
-                    Log.d(TAG, "Regular model size: " + (modelFile.length() / 1024 / 1024) + " MB");
-
-                    OrtSession.SessionOptions sessionOptions = new OrtSession.SessionOptions();
-                    sessionOptions.setOptimizationLevel(OrtSession.SessionOptions.OptLevel.BASIC_OPT);
-
-                    ortSession = ortEnvironment.createSession(modelPath, sessionOptions);
-                    isQuantized = false;
-
-                    Log.d(TAG, "Regular BLIP model loaded successfully");
-                } else {
-                    throw new Exception("No BLIP model found");
-                }
-            } catch (Exception fallbackException) {
-                Log.e(TAG, "Failed to load any BLIP model", fallbackException);
-                throw new Exception("Failed to load BLIP model: " + fallbackException.getMessage());
-            }
+            Log.w(TAG, "Failed to load quantized model, captioner not loaded", e);
         }
 
         if (ortSession != null) {
             Log.d(TAG, "Model inputs: " + ortSession.getInputNames());
             Log.d(TAG, "Model outputs: " + ortSession.getOutputNames());
         }
-    }
-
-    public boolean isUsingQuantizedModel() {
-        return isQuantized;
     }
 
     public String generateCaption(Bitmap bitmap, List<String> detectedLabels) {
@@ -190,9 +160,8 @@ public class BLIPModel {
         long[] generatedTokens = autoregressiveGenerate(imageArray);
 
         // Step 3: Decode tokens to text using vocabulary
-        String caption = tokenizer.decode(generatedTokens);
 
-        return caption;
+        return tokenizer.decode(generatedTokens);
     }
 
     private float[][][] preprocessImage(Bitmap bitmap) {
@@ -284,8 +253,7 @@ public class BLIPModel {
         Log.d(TAG, "Generation completed, final length: " + currentLength);
 
         // Return generated tokens (excluding BOS)
-        long[] generatedTokens = Arrays.copyOfRange(currentSequence, 1, currentLength);
-        return generatedTokens;
+        return Arrays.copyOfRange(currentSequence, 1, currentLength);
     }
 
     private Map<String, OnnxTensor> createInputTensors(float[][][] imageArray, long[] sequence, int seqLength) throws OrtException {
@@ -293,7 +261,7 @@ public class BLIPModel {
 
         // Create image tensor [1, 3, H, W]
         long[] imageShape = {1, 3, imageSize, imageSize};
-        FloatBuffer imageBuffer = FloatBuffer.allocate(1 * 3 * imageSize * imageSize);
+        FloatBuffer imageBuffer = FloatBuffer.allocate(3 * imageSize * imageSize);
 
         // Fill buffer in CHW format
         for (int c = 0; c < 3; c++) {

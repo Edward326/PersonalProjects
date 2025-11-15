@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="#F5F5F5"
+    tools:context=".ModelTesterActivity">
+
+    <!-- Title -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Model Tester"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:textColor="#333333"
+        android:gravity="center"
+        android:paddingBottom="16dp"/>
+
+    <!-- Status Display -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="@android:color/white"
+        android:padding="12dp"
+        android:layout_marginBottom="16dp">
+
+        <TextView
+            android:id="@+id/tv_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Initializing..."
+            android:textSize="16sp"
+            android:textColor="#333333"
+            android:lineSpacingExtra="4dp"/>
+    </ScrollView>
+
+    <!-- Test Buttons Section -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Classifier Test"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textColor="#555555"
+        android:paddingBottom="8dp"/>
+
+    <Button
+        android:id="@+id/btn_capture"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="📸 Capture Image (Test Classifier)"
+        android:textColor="@android:color/white"
+        android:background="#4CAF50"
+        android:padding="16dp"
+        android:layout_marginBottom="24dp"
+        android:enabled="false"/>
+
+    <!-- Speech Recognition Section -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Speech Recognition Test"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textColor="#555555"
+        android:paddingBottom="8dp"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/btn_listen"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="🎤 Start Listening"
+            android:textColor="@android:color/white"
+            android:background="#2196F3"
+            android:padding="16dp"
+            android:layout_marginEnd="8dp"
+            android:enabled="false"/>
+
+        <Button
+            android:id="@+id/btn_stop_listen"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="🛑 Stop"
+            android:textColor="@android:color/white"
+            android:background="#F44336"
+            android:padding="16dp"
+            android:layout_marginStart="8dp"
+            android:enabled="false"/>
+    </LinearLayout>
+</LinearLayout>

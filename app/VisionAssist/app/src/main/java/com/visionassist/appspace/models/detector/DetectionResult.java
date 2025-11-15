@@ -44,4 +44,15 @@ public class DetectionResult {
     public boolean hasDetections() {
         return getDetectionCount() > 0;
     }
+
+    public String listBoundingBoxes(){
+        String resultConcat = "";
+        for(int i=0;i< labels.size();i++)
+        {
+            resultConcat+=String.format("%d. %s(%.3f)",i+1,labels.get(i),confidences.get(i));
+            if(i+1< labels.size())
+                resultConcat+="\n";
+        }
+        return resultConcat;
+    }
 }
