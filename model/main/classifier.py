@@ -25,21 +25,16 @@ class YOLOClassifierConverter:
             return None
         
     def export_to_onnx_simple(self, save_path):
-        """
-        Export to ONNX WITHOUT NMS (most reliable)
-        Output shape: [1, 84, 8400]
-        """
         print("🔧 Exporting YOLO to ONNX (simple mode)...")
         
         try:
             exported_file = self.model.export(
                 format="onnx",
-                imgsz=640,
+                imgsz=224,
                 half=True,          # FP16 for speed
                 dynamic=False,      # Fixed size
                 simplify=True,      # Optimize
-                opset=12,
-                nms=False,          # No NMS (do in Java)
+                opset=12
             )
             
             if exported_file and os.path.exists(exported_file):
@@ -63,7 +58,7 @@ class YOLOClassifierConverter:
         return self.class_names
 
     def save_class_names(self, output_path):
-        """Save COCO class names to file"""
+        """Save ImageNet class names to file"""
         class_names = self.get_class_names()
         if class_names:
             with open(output_path, "w") as f:
