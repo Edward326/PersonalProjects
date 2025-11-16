@@ -15,6 +15,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import com.visionassist.appspace.database.DBManager;
 import com.visionassist.appspace.jetpack.managers.ErrorDialogManager;
+import com.visionassist.appspace.models.ModelManager;
 import com.visionassist.appspace.models.ttsengine.TTSManager;
 import com.visionassist.appspace.utils.AppConfig;
 import com.visionassist.appspace.utils.Constants;
@@ -34,9 +35,10 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
     private boolean errorShown = false;
     private boolean isPaused = false;
     public boolean profileLoaded = false;
-    public boolean isReturningFromPermissions=false;
+    public boolean isReturningFromPermissions = false;
     private TTSManager ttsManager;
     private DBManager dbManager;
+    private ModelManager modelManager;
     @SuppressLint("StaticFieldLeak")
     private static PhoneStatusMonitor instance;
 
@@ -44,6 +46,7 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
         this.appContext = context.getApplicationContext();
         this.handler = new Handler(Looper.getMainLooper());
         this.dbManager = new DBManager(this.appContext);
+        this.modelManager = new ModelManager();
         this.ttsManager = new TTSManager(this.appContext);
         setupMonitoringRunnable();
     }
@@ -60,21 +63,23 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
         return instance;
     }
 
-    public TTSManager getTTSManager() {
-        return ttsManager;
-    }
-
     public DBManager getDBManager() {
         return dbManager;
+    }
+
+    public ModelManager getModelManager() {
+        return modelManager;
+    }
+
+    public TTSManager getTTSManager() {
+        return ttsManager;
     }
 
     public Activity getCurrentActivity() {
         return currentActivity;
     }
 
-    public Context getCurrentContext() {
-        return currentContext != null ? currentContext : appContext;
-    }
+    public Context getCurrentContext() {return currentContext != null ? currentContext : appContext;}
 
     private void setupMonitoringRunnable() {
         monitoringRunnable = new Runnable() {
@@ -267,9 +272,10 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
             exitApp();
     }
 
-    private void exitApp() {
+    public void exitApp() {
         stopMonitoring();
-
+        handler.removeCallbacksAndMessages(null);
+        modelManager.cleanup();
         // Crucial: Shut down the TTS engine first
         if (ttsManager != null) {
             ttsManager.shutdown();
@@ -279,6 +285,13 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
             // Close all activities associated with this application
             currentActivity.finishAffinity();
         }
+        currentActivity = null;
+        currentContext = null;
+
+        if (appContext instanceof Application) {
+            ((Application) appContext).unregisterActivityLifecycleCallbacks(this);
+        }
+
         // Force exit after a short delay to allow the OS to clean up
         new Handler(Looper.getMainLooper()).postDelayed(() -> System.exit(0), 500);
     }
@@ -375,19 +388,5 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
             currentActivity = null;
             currentContext = null;
         }
-    }
-
-    public void shutdown() {
-        stopMonitoring();
-        if (appContext instanceof Application) {
-            ((Application) appContext).unregisterActivityLifecycleCallbacks(this);
-        }
-        // Crucial: Shut down the TTS engine when the monitor is shut down
-        if (ttsManager != null) {
-            ttsManager.shutdown();
-        }
-        // Clear references
-        currentActivity = null;
-        currentContext = null;
     }
 }

@@ -58,13 +58,13 @@ public class CaptionTranslator {
                     return 0;
                 } else {
                     Log.d(TAG, "Romanian translation model not found, downloading...");
-                    return downloadModel();
+                    return -2;
                 }
 
             } catch (ExecutionException | InterruptedException e) {
                 Log.e(TAG, "Error checking if model is downloaded", e);
                 // If check fails, try to download anyway
-                return downloadModel();
+                return -2;
             }
 
         } catch (Exception e) {
@@ -73,7 +73,7 @@ public class CaptionTranslator {
         }
     }
 
-    private int downloadModel() {
+    public int downloadModel() {
         try {
             // Set download conditions (require WiFi to avoid data charges)
             DownloadConditions conditions = new DownloadConditions.Builder()

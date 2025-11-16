@@ -40,7 +40,7 @@ public class YOLODetector {
         this.context = context;
     }
 
-    private int loadModel() {
+    public int loadModel() {
         try {
             Log.d(TAG, "Loading Detector Model YOLO ...");
 

@@ -24,7 +24,7 @@ public class VisionAssistApplication extends Application {
         // Cleanup
         PhoneStatusMonitor instance = PhoneStatusMonitor.getInstance();
         if (instance != null) {
-            instance.shutdown();
+            instance.exitApp();
         }
 
         Log.d(TAG, "Application terminating");

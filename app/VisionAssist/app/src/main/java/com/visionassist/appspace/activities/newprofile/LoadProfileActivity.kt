@@ -159,7 +159,6 @@ class LoadProfileActivity : ComponentActivity() {
     private var loadStatus = DBConstants.STATUS_INITIALIZED
     private var loginStatus = DBConstants.STATUS_INITIALIZED
     private var finishedLoading = false
-    private var assetLoadError = -494
 
     // Managers
     private val infoNotificationManager = InfoNotificationManager(this)
@@ -407,7 +406,6 @@ class LoadProfileActivity : ComponentActivity() {
         // Reset states
         finishedLoading = false
         loginStatus = Constants.LOAD_PROFILE_SUCCESS
-        assetLoadError = -494
 
         // Launch async task
         backgroundExecutor.executeAsync(
@@ -418,7 +416,7 @@ class LoadProfileActivity : ComponentActivity() {
 
                     if (result == DBConstants.SYNC_OK) {
                         // Setup TTS on main thread
-                        setTTSLanguage()
+                        PhoneStatusMonitor.getInstance().modelManager.loadAssets {setTTSLanguage()}
                     } else {
                         // Error case
                         finishedLoading = true
@@ -473,11 +471,6 @@ class LoadProfileActivity : ComponentActivity() {
 
             // Upload profile to AppConfig
             Utils.uploadProfile(profileJson, null)
-
-            // Load assets
-            if (!loadAllAssets()) {
-                return assetLoadError  // Return specific asset error
-            }
 
             return DBConstants.SYNC_OK
         } catch (e: Exception) {
@@ -586,8 +579,9 @@ class LoadProfileActivity : ComponentActivity() {
                     if (result == Constants.LOAD_PROFILE_SUCCESS
                         || result == Constants.LOAD_PROFILE_FILE_HC_UPLOAD_ERROR
                         || result == Constants.LOAD_PROFILE_FILE_ENVR_UPLOAD_ERROR
-                    )
-                        setTTSLanguage()
+                    ) {
+                        PhoneStatusMonitor.getInstance().modelManager.loadAssets {setTTSLanguage()}
+                    }
                     else
                         finishedLoading = true
                 }
@@ -674,9 +668,7 @@ class LoadProfileActivity : ComponentActivity() {
 
             // Step 6: Upload phase
             Utils.uploadProfile(profileJson, null)
-            if (!loadAllAssets()) {
-                return assetLoadError
-            }
+
             return Constants.LOAD_PROFILE_SUCCESS
         } catch (e: Exception) {
             Log.e(TAG, "Unexpected error during profile load", e)
@@ -732,251 +724,6 @@ class LoadProfileActivity : ComponentActivity() {
 
         } catch (e: Exception) {
             Log.e(TAG, "Error copying file: $targetFileName", e)
-            return false
-        }
-    }
-
-    private fun loadAllAssets(): Boolean {
-        // Similar to MainActivity asset loading
-        val modelsLoaded = intArrayOf(0)
-        val loadLock = Object()
-
-        try {
-            /*
-            BackgroundTaskExecutor.getInstance().executeAsync(
-                BackgroundTaskExecutor.BackgroundTask {
-                    // Load detector
-                    return@BackgroundTask 0
-                },
-                object : BackgroundTaskExecutor.TaskCallback<Int> {
-                    override fun onSuccess(result: Int) {
-                        if (result == -1) {
-                            assetLoadError = Constants.DETECTOR_LOAD_ERROR
-                        } else {
-                            synchronized(loadLock) {
-                                modelsLoaded[0]++
-                                loadLock.notifyAll()
-                            }
-                        }
-                    }
-
-                    override fun onError(e: Exception) {
-                        assetLoadError = Constants.DETECTOR_LOAD_ERROR
-                        synchronized(loadLock) {
-                            loadLock.notifyAll()
-                        }
-                    }
-                }
-            )
-
-            BackgroundTaskExecutor.getInstance().executeAsync(
-                BackgroundTaskExecutor.BackgroundTask {
-                    // Load captioner
-                    return@BackgroundTask 0
-                },
-                object : BackgroundTaskExecutor.TaskCallback<Int> {
-                    override fun onSuccess(result: Int) {
-                        if (result == -1) {
-                            assetLoadError = Constants.CAPTIONER_LOAD_ERROR
-                        } else {
-                            synchronized(loadLock) {
-                                modelsLoaded[0]++
-                                loadLock.notifyAll()
-                            }
-                        }
-                    }
-
-                    override fun onError(e: Exception) {
-                        assetLoadError = Constants.CAPTIONER_LOAD_ERROR
-                        synchronized(loadLock) {
-                            loadLock.notifyAll()
-                        }
-                    }
-                }
-            )
-
-            BackgroundTaskExecutor.getInstance().executeAsync(
-                BackgroundTaskExecutor.BackgroundTask {
-                    // Load translator
-                    return@BackgroundTask 0
-                },
-                object : BackgroundTaskExecutor.TaskCallback<Int> {
-                    override fun onSuccess(result: Int) {
-                        if (result == -1) {
-                            assetLoadError = Constants.TRANSLATER_LOAD_ERROR
-                        } else {
-                            synchronized(loadLock) {
-                                modelsLoaded[0]++
-                                loadLock.notifyAll()
-                            }
-                        }
-                    }
-
-                    override fun onError(e: Exception) {
-                        assetLoadError = Constants.TRANSLATER_LOAD_ERROR
-                        synchronized(loadLock) {
-                            loadLock.notifyAll()
-                        }
-                    }
-                }
-            )
-
-            BackgroundTaskExecutor.getInstance().executeAsync(
-                BackgroundTaskExecutor.BackgroundTask {
-                    // Load classifier
-                    return@BackgroundTask 0
-                },
-                object : BackgroundTaskExecutor.TaskCallback<Int> {
-                    override fun onSuccess(result: Int) {
-                        if (result == -1) {
-                            assetLoadError = Constants.CLASSIFIER_LOAD_ERROR
-                        } else {
-                            synchronized(loadLock) {
-                                modelsLoaded[0]++
-                                loadLock.notifyAll()
-                            }
-                        }
-                    }
-
-                    override fun onError(e: Exception) {
-                        assetLoadError = Constants.CLASSIFIER_LOAD_ERROR
-                        synchronized(loadLock) {
-                            loadLock.notifyAll()
-                        }
-                    }
-                }
-            )
-
-            BackgroundTaskExecutor.getInstance().executeAsync(
-                BackgroundTaskExecutor.BackgroundTask {
-                    // Load speech to text
-                    return@BackgroundTask 0
-                },
-                object : BackgroundTaskExecutor.TaskCallback<Int> {
-                    override fun onSuccess(result: Int) {
-                        if (result == -1) {
-                            assetLoadError = Constants.STT_LOAD_ERROR
-                        } else {
-                            synchronized(loadLock) {
-                                modelsLoaded[0]++
-                                loadLock.notifyAll()
-                            }
-                        }
-                    }
-
-                    override fun onError(e: Exception) {
-                        assetLoadError = Constants.STT_LOAD_ERROR
-                        synchronized(loadLock) {
-                            loadLock.notifyAll()
-                        }
-                    }
-                }
-            )
-
-            BackgroundTaskExecutor.getInstance().executeAsync(
-                BackgroundTaskExecutor.BackgroundTask {
-                    //load yolo's class names
-                    // useless words
-                    // synonyms
-                    // classifier scene names
-                    return@BackgroundTask 0
-                },
-                object : BackgroundTaskExecutor.TaskCallback<Int> {
-                    override fun onSuccess(result: Int) {
-                        if (result == -1) {
-                            assetLoadError = Constants.ASSETS_ERROR
-                        } else {
-                            synchronized(loadLock) {
-                                modelsLoaded[0]++
-                                loadLock.notifyAll()
-                            }
-                        }
-                    }
-
-                    override fun onError(e: Exception) {
-                        assetLoadError = Constants.ASSETS_ERROR
-                        synchronized(loadLock) {
-                            loadLock.notifyAll()
-                        }
-                    }
-                }
-            )
-
-            BackgroundTaskExecutor.getInstance().executeAsync(
-                BackgroundTaskExecutor.BackgroundTask {
-                    //load captioner vocab
-                    return@BackgroundTask 0
-                },
-                object : BackgroundTaskExecutor.TaskCallback<Int> {
-                    override fun onSuccess(result: Int) {
-                        if (result == -1) {
-                            assetLoadError = Constants.ASSETS_ERROR
-                        } else {
-                            synchronized(loadLock) {
-                                modelsLoaded[0]++
-                                loadLock.notifyAll()
-                            }
-                        }
-                    }
-
-                    override fun onError(e: Exception) {
-                        assetLoadError = Constants.ASSETS_ERROR
-                        synchronized(loadLock) {
-                            loadLock.notifyAll()
-                        }
-                    }
-                }
-            )
-             */
-
-            BackgroundTaskExecutor.getInstance().executeAsync(
-                BackgroundTaskExecutor.BackgroundTask {
-                    // Load translator
-                    Log.d(TAG, "Simulate loading models")
-                    Thread.sleep(3000)
-                    return@BackgroundTask 0
-                },
-                object : BackgroundTaskExecutor.TaskCallback<Int> {
-                    override fun onSuccess(result: Int) {
-                        if (result == -1) {
-                            assetLoadError = Constants.TRANSLATER_LOAD_ERROR
-                        } else {
-                            synchronized(loadLock) {
-                                modelsLoaded[0] =
-                                    Constants.MODELS_COUNT + Constants.MODELS_OWN_ASSETS_COUNT
-                                loadLock.notifyAll()
-                            }
-                        }
-                    }
-
-                    override fun onError(e: Exception) {
-                        assetLoadError = Constants.TRANSLATER_LOAD_ERROR
-                        synchronized(loadLock) {
-                            loadLock.notifyAll()
-                        }
-                    }
-                }
-            )
-
-            // Wait for all models to load (synchronous wait in background thread)
-            synchronized(loadLock) {
-                while (modelsLoaded[0] < Constants.MODELS_COUNT + Constants.MODELS_OWN_ASSETS_COUNT) {
-                    // Check if error occurred
-                    if (assetLoadError != -494) {
-                        Log.e(TAG, "Asset loading failed with error code: $assetLoadError")
-                        return false
-                    }
-
-                    // Wait without timeout - this is safe because we're in a background thread
-                    loadLock.wait()
-                }
-            }
-
-            Log.d(TAG, "All assets loaded successfully")
-            return true
-        } catch (e: Exception) {
-            Log.e(TAG, "Error loading assets", e)
-            assetLoadError = Constants.ASSETS_ERROR
             return false
         }
     }

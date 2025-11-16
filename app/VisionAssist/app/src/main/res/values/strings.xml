@@ -190,4 +190,9 @@
     <string name="critical_warning_ro">Avertisment critic!</string>
     <string name="uploading_loading_en">Uploading profile, please wait</string>
     <string name="uploading_loading_ro">Profilul se încarcă, vă rugăm așteptați</string>
+    <string name="classifier_error_en">Scene Classifier Model could not be loaded. You can still use object detection and captioning features but without reports section</string>
+    <string name="classifier_error_ro">Modelul de clasificare a scenelor nu a putut fi încărcat. Puteți utiliza în continuare funcțiile de detectare a obiectelor și de subtitrare, dar fără secțiunea de rapoarte</string>
+    <string name="stt_error_en">Speech Recognition Model could not be loaded. You can still use other features but without \"Find My Object\" feature</string>
+    <string name="translator_error_ro">Funcția de traducere nu a putut fi încărcată. Modelul de caption va fi doar în limba engleză</string>
+
 </resources>

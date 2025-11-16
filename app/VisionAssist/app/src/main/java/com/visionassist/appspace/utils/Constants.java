@@ -5,14 +5,14 @@ import android.os.Build;
 
 public class Constants {
     // Model Configuration
-    public static final String YOLO_MODEL_DETECTOR_FILE = "yolov8n_mobile.onnx";
+    public static final String YOLO_MODEL_DETECTOR_FILE = "yolov8s_mobile.onnx";
     public static final String DETECTOR_CLASSES_FILE_EN = "detector_class_names_en.txt";
     public static final String DETECTOR_CLASSES_FILE_RO = "detector_class_names_ro.txt";
-    public static final String YOLO_MODEL_CLASSIFIER_FILE = "yolov8n_cls_mobile.onnx";
+    public static final String YOLO_MODEL_CLASSIFIER_FILE = "yolov8m_cls_mobile.onnx";
     public static final String CLASSIFIER_CLASSES_FILE_EN = "classifier_class_names_en.txt";
     public static final String CLASSIFIER_CLASSES_FILE_RO = "classifier_class_names_ro.txt";
     public static final String BLIP_MODEL_FILE = "blip_captioner_quantized.onnx";
-    public static final String VOSK_MODEL_DIR = "vosk-model-small-en-us-0.15";
+    public static final String VOSK_MODEL_DIR = "vosk-model-en-us-0.22-lgraph";
     public static final String USELESS_WORDS_FILE = "useless_words.txt";
     public static final String OBJECT_SYNONYMS_FILE = "object_synonyms.json";
 

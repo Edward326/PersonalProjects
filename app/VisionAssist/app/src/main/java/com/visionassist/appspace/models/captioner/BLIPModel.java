@@ -25,10 +25,8 @@ public class BLIPModel {
     private OrtEnvironment ortEnvironment;
     private OrtSession ortSession;
     private final Context context;
-    private JsonObject preprocessingInfo;
     private Tokenizer tokenizer;
     private Random random;
-    private boolean isQuantized = false;
 
     // BLIP preprocessing parameters
     private float[] imageMean = {0.48145466f, 0.4578275f, 0.40821073f};
@@ -39,19 +37,22 @@ public class BLIPModel {
     public BLIPModel(Context context) {
         this.context = context;
         this.random = new Random();
+    }
+
+    public int initModel(){
         try {
             this.ortEnvironment = OrtEnvironment.getEnvironment();
             this.tokenizer = new Tokenizer(context);
             loadPreprocessingInfo();
-            loadModel();
-            Log.d(TAG, "BlipCaptioner initialized successfully" + (isQuantized ? " (quantized)" : " (regular)"));
+            return loadModel();
         } catch (Exception e) {
             Log.e(TAG, "Failed to initialize BlipCaptioner", e);
-            throw new RuntimeException("BlipCaptioner initialization failed", e);
+            return -1;
         }
     }
 
     private void loadPreprocessingInfo() {
+        JsonObject preprocessingInfo;
         try {
             if (FileUtils.assetExists(context, "model_info.json")) {
                 String jsonContent = FileUtils.loadAssetAsString(context, "model_info.json");
@@ -97,11 +98,10 @@ public class BLIPModel {
             }
         } catch (Exception e) {
             Log.w(TAG, "Could not load preprocessing info, using defaults", e);
-            preprocessingInfo = new JsonObject();
         }
     }
 
-    private void loadModel() {
+    public int loadModel() {
         String modelPath;
 
         try {
@@ -117,7 +117,6 @@ public class BLIPModel {
                     sessionOptions.setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT);
 
                     ortSession = ortEnvironment.createSession(modelPath, sessionOptions);
-                    isQuantized = true;
 
                     Log.d(TAG, "Quantized BLIP model loaded successfully!");
                 } else {
@@ -127,12 +126,15 @@ public class BLIPModel {
 
         } catch (Exception e) {
             Log.w(TAG, "Failed to load quantized model, captioner not loaded", e);
+            return -1;
         }
 
         if (ortSession != null) {
             Log.d(TAG, "Model inputs: " + ortSession.getInputNames());
             Log.d(TAG, "Model outputs: " + ortSession.getOutputNames());
+            return 0;
         }
+        else return -1;
     }
 
     public String generateCaption(Bitmap bitmap, List<String> detectedLabels) {

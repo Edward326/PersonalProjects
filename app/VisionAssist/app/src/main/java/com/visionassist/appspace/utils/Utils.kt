@@ -432,3 +432,19 @@ fun load_envReportsInfo(context: Context): String {
         else -> context.getString(R.string.env_reports_info_en)
     }
 }
+
+fun load_sceneClassifierError(context: Context): String {
+    return when (AppConfig.mainLanguage.code) {
+        "en" -> context.getString(R.string.classifier_error_en)
+        "ro" -> context.getString(R.string.classifier_error_ro)
+        else -> context.getString(R.string.classifier_error_en)
+    }
+}
+
+fun load_speechRecognizerError(context: Context): String {
+    return context.getString(R.string.stt_error_en)
+}
+
+fun load_translaterError(context: Context): String {
+    return context.getString(R.string.translator_error_ro)
+}

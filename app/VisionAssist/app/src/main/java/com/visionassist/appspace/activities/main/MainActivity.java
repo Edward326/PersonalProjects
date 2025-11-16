@@ -12,8 +12,10 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.accessibility.AccessibilityManager;
 import android.widget.ImageView;
+
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.compose.ui.platform.ComposeView;
+
 import com.visionassist.appspace.ExceptionVisionAssist;
 import com.visionassist.appspace.PhoneStatusMonitor;
 import com.visionassist.appspace.R;
@@ -26,6 +28,7 @@ import com.visionassist.appspace.utils.BackgroundTaskExecutor;
 import com.visionassist.appspace.utils.Constants;
 import com.visionassist.appspace.utils.PermissionChecker;
 import com.visionassist.appspace.utils.Utils;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -41,9 +44,7 @@ public class MainActivity extends AppCompatActivity {
     private JSONObject profileData;
     private boolean waitingForTTSLanguage = false;
     private boolean profileAlreadyChecked = false;
-    private boolean profileAlreadyUploaded = false;
     private boolean isNavigateToHome = false;
-    private int tasksCompleted = 0;
     private boolean ready = false;
 
     @Override
@@ -83,8 +84,6 @@ public class MainActivity extends AppCompatActivity {
             Log.d(TAG, "Returned from TTS settings, rechecking language");
             ttsManager.recheckPendingLanguage();
             waitForTTSAndNavigate();
-        } else if (profileAlreadyUploaded) {
-            loadAssets();
         } else if (profileAlreadyChecked) {
             uploadProfileTask();
         } else if (PhoneStatusMonitor.getInstance().isReturningFromPermissions) {
@@ -120,149 +119,11 @@ public class MainActivity extends AppCompatActivity {
     private void uploadProfileTask() {
         profileAlreadyChecked = true;
         loadingManager.changeText("Uploading profile, please wait");
-        handler.postDelayed(() -> Utils.uploadProfile(profileData, this::loadAssets), 1500);
+        handler.postDelayed(() ->
+                        Utils.uploadProfile(profileData,
+                                ()->PhoneStatusMonitor.getInstance().getModelManager().loadAssets(this::setTTSLanguage)),
+                1500);
     }
-
-    private void loadAssets() {
-        profileAlreadyUploaded = true;
-        /*
-        backgroundExecutor.executeAsync(
-                () -> {
-                    Log.d(TAG, "Load the detector");
-                    //load yolo
-                },
-                new BackgroundTaskExecutor.TaskCallback<Integer>() {
-                    @Override
-                    public void onSuccess(Integer result) throws Exception {
-                        if (result == -1)
-                            handleProfileError(new ExceptionVisionAssist(Constants.DETECTOR_LOAD_ERROR, loadingManager));
-                        else tasksCompleted++;
-                    }
-
-                    @Override
-                    public void onError(Exception e) {
-                        handleProfileError(new ExceptionVisionAssist(Constants.DETECTOR_LOAD_ERROR, loadingManager));
-                    }
-                }
-        );
-        backgroundExecutor.executeAsync(
-                () -> {
-                    Log.d(TAG, "Load the captioner");
-                    //load captioner
-                },
-                new BackgroundTaskExecutor.TaskCallback<Integer>() {
-                    @Override
-                    public void onSuccess(Integer result) throws Exception {
-                        if (result == -1)
-                            handleProfileError(new ExceptionVisionAssist(Constants.CAPTIONER_LOAD_ERROR, loadingManager));
-                        else tasksCompleted++;
-                    }
-
-                    @Override
-                    public void onError(Exception e) {
-                        handleProfileError(new ExceptionVisionAssist(Constants.CAPTIONER_LOAD_ERROR, loadingManager));
-                    }
-                }
-        );
-        backgroundExecutor.executeAsync(
-                () -> {
-                    Log.d(TAG, "Load the detector");
-                    //load translater
-                },
-                new BackgroundTaskExecutor.TaskCallback<Integer>() {
-                    @Override
-                    public void onSuccess(Integer result) throws Exception {
-                        if (result == -1)
-                            handleProfileError(new ExceptionVisionAssist(Constants.TRANSLATER_LOAD_ERROR, loadingManager));
-                        else tasksCompleted++;
-                    }
-
-                    @Override
-                    public void onError(Exception e) {
-                        handleProfileError(new ExceptionVisionAssist(Constants.TRANSLATER_LOAD_ERROR, loadingManager));
-                    }
-                }
-        );
-        backgroundExecutor.executeAsync(
-                () -> {
-                    Log.d(TAG, "Load the detector");
-                    //load classifier
-                },
-                new BackgroundTaskExecutor.TaskCallback<Integer>() {
-                    @Override
-                    public void onSuccess(Integer result) throws Exception {
-                        if (result == -1)
-                            handleProfileError(new ExceptionVisionAssist(Constants.CLASSIFIER_LOAD_ERROR, loadingManager));
-                        else tasksCompleted++;
-                    }
-
-                    @Override
-                    public void onError(Exception e) {
-                        handleProfileError(new ExceptionVisionAssist(Constants.CLASSIFIER_LOAD_ERROR, loadingManager));
-                    }
-                }
-        );
-        backgroundExecutor.executeAsync(
-                () -> {
-                    Log.d(TAG, "Load the detector");
-                    //load speech to text
-                    // useless words
-                    // synonyms
-                },
-                new BackgroundTaskExecutor.TaskCallback<Integer>() {
-                    @Override
-                    public void onSuccess(Integer result) throws Exception {
-                        if (result == -1)
-                            handleProfileError(new ExceptionVisionAssist(Constants.STT_LOAD_ERROR, loadingManager));
-                        else tasksCompleted++;
-                    }
-
-                    @Override
-                    public void onError(Exception e) {
-                        handleProfileError(new ExceptionVisionAssist(Constants.STT_LOAD_ERROR, loadingManager));
-                    }
-                }
-        );
-        */
-
-        backgroundExecutor.executeAsync(
-                () -> {
-                    Log.d(TAG, "Simulate loading models");
-                    Thread.sleep(3000);
-                    return 0;
-                    //load captioner vocab
-                },
-                new BackgroundTaskExecutor.TaskCallback<>() {
-                    @Override
-                    public void onSuccess(Integer result) {
-                        tasksCompleted = Constants.MODELS_COUNT + Constants.MODELS_OWN_ASSETS_COUNT;
-                    }
-
-                    @Override
-                    public void onError(Exception e) {
-                        handleProfileError(new ExceptionVisionAssist(Constants.ASSETS_ERROR, loadingManager));
-                    }
-                }
-        );
-        receiveAndNavigate();
-    }
-
-    private void receiveAndNavigate() {
-        Runnable checkLoadedAssets = new Runnable() {
-            @Override
-            public void run() {
-                if (tasksCompleted == Constants.MODELS_COUNT + Constants.MODELS_OWN_ASSETS_COUNT && ttsManager.isReady()) {
-                    setTTSLanguage();
-                } else {
-                    Log.e(TAG, "Models not loaded yet. Retrying...");
-                    Log.e(TAG, "Models not loaded yet. Retrying...");
-                    handler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS);
-                }
-            }
-        };
-        handler.post(checkLoadedAssets);
-    }
-
 
     private void setTTSLanguage() {
         if (!AppConfig.mainLanguage.getCode().equals(ttsManager.getCurrentLocale().getLanguage())) {

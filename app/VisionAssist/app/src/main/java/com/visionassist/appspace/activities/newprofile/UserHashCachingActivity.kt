@@ -85,7 +85,8 @@ class UserHashCachingActivity : ComponentActivity() {
     private val currentSection = mutableIntStateOf(1) // 1 or 2
 
     // Section 1 - Hash Cache
-    private val hashCacheOption = mutableStateOf(if(AppConfig.hash_caching!=null)AppConfig.hash_caching else "Don't use")
+    private val hashCacheOption =
+        mutableStateOf(if (AppConfig.hash_caching != null) AppConfig.hash_caching else "Don't use")
     private val notificationStep = mutableIntStateOf(0) // 0 = none, 1 = first, 2 = second
 
     // Section 2 - Environment Reports
@@ -98,7 +99,6 @@ class UserHashCachingActivity : ComponentActivity() {
     // Background task variables
     private var isFinished = false
     private var loadStatus = -1
-    private var assetLoadError = -494
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -159,7 +159,7 @@ class UserHashCachingActivity : ComponentActivity() {
 
     // Section 2 Handlers
     private fun handleEnvReportsToggle(enabled: Boolean) {
-        AppConfig.env_reports=enabled
+        AppConfig.env_reports = enabled
         envReportsEnabled.value = enabled
         Log.d(TAG, "Environment reports enabled: $enabled")
     }
@@ -271,15 +271,10 @@ class UserHashCachingActivity : ComponentActivity() {
                 val profileFile = FileUtils.getProfileFile(this@UserHashCachingActivity)
                 val profileContent = profileFile.readText()
                 val jsonObject = JSONObject(profileContent)
-                Utils.uploadProfile(jsonObject,null)
-
-                val loadModelsBoolean=loadAllAssets()
-                if (!loadModelsBoolean) {
-                    return@BackgroundTask assetLoadError
-                }
+                Utils.uploadProfile(jsonObject, null)
 
                 // Sync profile to remote if needed
-                if (jsonObject.getBoolean( "remote")) {
+                if (jsonObject.getBoolean("remote")) {
                     val dbManager = monitor.dbManager
                     dbManager.syncProfile(jsonObject)
                     return@BackgroundTask dbManager.status
@@ -290,7 +285,14 @@ class UserHashCachingActivity : ComponentActivity() {
             object : BackgroundTaskExecutor.TaskCallback<Int> {
                 override fun onSuccess(result: Int) {
                     loadStatus = result
-                    isFinished = true
+                    if (loadStatus == DBConstants.INTERNET_CONNECTION_FAILED
+                        || loadStatus == DBConstants.SYNC_OK
+                        || loadStatus == DBConstants.SYNC_ERROR
+                        || loadStatus == 0
+                    )
+                        PhoneStatusMonitor.getInstance().modelManager.loadAssets { isFinished = true }
+                    else
+                        isFinished = true
                 }
 
                 override fun onError(e: Exception) {
@@ -314,7 +316,7 @@ class UserHashCachingActivity : ComponentActivity() {
             if (isFinished) {
                 // Check load status
                 when (loadStatus) {
-                    DBConstants.INTERNET_CONNECTION_FAILED, DBConstants.SYNC_OK, DBConstants.SYNC_ERROR , 0 -> {
+                    DBConstants.INTERNET_CONNECTION_FAILED, DBConstants.SYNC_OK, DBConstants.SYNC_ERROR, 0 -> {
                         // Success
                         monitor.profileLoaded = true
                         isLoading.value = false
@@ -328,6 +330,7 @@ class UserHashCachingActivity : ComponentActivity() {
                         startActivity(intent)
                         finish()
                     }
+
                     else -> {
                         // Asset error or other error
                         handleProfileError(
@@ -340,250 +343,6 @@ class UserHashCachingActivity : ComponentActivity() {
                 waitForAssetLoading()
             }
         }, Constants.LOAD_CHECK_DELAY_MS.toLong())
-    }
-
-    private fun loadAllAssets(): Boolean {
-        // Similar to MainActivity asset loading
-        val modelsLoaded = intArrayOf(0)
-        val loadLock = Object()
-
-        try {
-            /*
-            BackgroundTaskExecutor.getInstance().executeAsync(
-                BackgroundTaskExecutor.BackgroundTask {
-                    // Load detector
-                    return@BackgroundTask 0
-                },
-                object : BackgroundTaskExecutor.TaskCallback<Int> {
-                    override fun onSuccess(result: Int) {
-                        if (result == -1) {
-                            assetLoadError = Constants.DETECTOR_LOAD_ERROR
-                        } else {
-                            synchronized(loadLock) {
-                                modelsLoaded[0]++
-                                loadLock.notifyAll()
-                            }
-                        }
-                    }
-
-                    override fun onError(e: Exception) {
-                        assetLoadError = Constants.DETECTOR_LOAD_ERROR
-                        synchronized(loadLock) {
-                            loadLock.notifyAll()
-                        }
-                    }
-                }
-            )
-
-            BackgroundTaskExecutor.getInstance().executeAsync(
-                BackgroundTaskExecutor.BackgroundTask {
-                    // Load captioner
-                    return@BackgroundTask 0
-                },
-                object : BackgroundTaskExecutor.TaskCallback<Int> {
-                    override fun onSuccess(result: Int) {
-                        if (result == -1) {
-                            assetLoadError = Constants.CAPTIONER_LOAD_ERROR
-                        } else {
-                            synchronized(loadLock) {
-                                modelsLoaded[0]++
-                                loadLock.notifyAll()
-                            }
-                        }
-                    }
-
-                    override fun onError(e: Exception) {
-                        assetLoadError = Constants.CAPTIONER_LOAD_ERROR
-                        synchronized(loadLock) {
-                            loadLock.notifyAll()
-                        }
-                    }
-                }
-            )
-
-            BackgroundTaskExecutor.getInstance().executeAsync(
-                BackgroundTaskExecutor.BackgroundTask {
-                    // Load translator
-                    return@BackgroundTask 0
-                },
-                object : BackgroundTaskExecutor.TaskCallback<Int> {
-                    override fun onSuccess(result: Int) {
-                        if (result == -1) {
-                            assetLoadError = Constants.TRANSLATER_LOAD_ERROR
-                        } else {
-                            synchronized(loadLock) {
-                                modelsLoaded[0]++
-                                loadLock.notifyAll()
-                            }
-                        }
-                    }
-
-                    override fun onError(e: Exception) {
-                        assetLoadError = Constants.TRANSLATER_LOAD_ERROR
-                        synchronized(loadLock) {
-                            loadLock.notifyAll()
-                        }
-                    }
-                }
-            )
-
-            BackgroundTaskExecutor.getInstance().executeAsync(
-                BackgroundTaskExecutor.BackgroundTask {
-                    // Load classifier
-                    return@BackgroundTask 0
-                },
-                object : BackgroundTaskExecutor.TaskCallback<Int> {
-                    override fun onSuccess(result: Int) {
-                        if (result == -1) {
-                            assetLoadError = Constants.CLASSIFIER_LOAD_ERROR
-                        } else {
-                            synchronized(loadLock) {
-                                modelsLoaded[0]++
-                                loadLock.notifyAll()
-                            }
-                        }
-                    }
-
-                    override fun onError(e: Exception) {
-                        assetLoadError = Constants.CLASSIFIER_LOAD_ERROR
-                        synchronized(loadLock) {
-                            loadLock.notifyAll()
-                        }
-                    }
-                }
-            )
-
-            BackgroundTaskExecutor.getInstance().executeAsync(
-                BackgroundTaskExecutor.BackgroundTask {
-                    // Load speech to text
-                    return@BackgroundTask 0
-                },
-                object : BackgroundTaskExecutor.TaskCallback<Int> {
-                    override fun onSuccess(result: Int) {
-                        if (result == -1) {
-                            assetLoadError = Constants.STT_LOAD_ERROR
-                        } else {
-                            synchronized(loadLock) {
-                                modelsLoaded[0]++
-                                loadLock.notifyAll()
-                            }
-                        }
-                    }
-
-                    override fun onError(e: Exception) {
-                        assetLoadError = Constants.STT_LOAD_ERROR
-                        synchronized(loadLock) {
-                            loadLock.notifyAll()
-                        }
-                    }
-                }
-            )
-
-            BackgroundTaskExecutor.getInstance().executeAsync(
-                BackgroundTaskExecutor.BackgroundTask {
-                    //load yolo's class names
-                    // useless words
-                    // synonyms
-                    // classifier scene names
-                    return@BackgroundTask 0
-                },
-                object : BackgroundTaskExecutor.TaskCallback<Int> {
-                    override fun onSuccess(result: Int) {
-                        if (result == -1) {
-                            assetLoadError = Constants.ASSETS_ERROR
-                        } else {
-                            synchronized(loadLock) {
-                                modelsLoaded[0]++
-                                loadLock.notifyAll()
-                            }
-                        }
-                    }
-
-                    override fun onError(e: Exception) {
-                        assetLoadError = Constants.ASSETS_ERROR
-                        synchronized(loadLock) {
-                            loadLock.notifyAll()
-                        }
-                    }
-                }
-            )
-
-            BackgroundTaskExecutor.getInstance().executeAsync(
-                BackgroundTaskExecutor.BackgroundTask {
-                    //load captioner vocab
-                    return@BackgroundTask 0
-                },
-                object : BackgroundTaskExecutor.TaskCallback<Int> {
-                    override fun onSuccess(result: Int) {
-                        if (result == -1) {
-                            assetLoadError = Constants.ASSETS_ERROR
-                        } else {
-                            synchronized(loadLock) {
-                                modelsLoaded[0]++
-                                loadLock.notifyAll()
-                            }
-                        }
-                    }
-
-                    override fun onError(e: Exception) {
-                        assetLoadError = Constants.ASSETS_ERROR
-                        synchronized(loadLock) {
-                            loadLock.notifyAll()
-                        }
-                    }
-                }
-            )
-             */
-
-            BackgroundTaskExecutor.getInstance().executeAsync(
-                BackgroundTaskExecutor.BackgroundTask {
-                    // Load translator
-                    Log.d(TAG, "Simulate loading models")
-                    Thread.sleep(3000)
-                    return@BackgroundTask 0
-                },
-                object : BackgroundTaskExecutor.TaskCallback<Int> {
-                    override fun onSuccess(result: Int) {
-                        if (result == -1) {
-                            assetLoadError = Constants.TRANSLATER_LOAD_ERROR
-                        } else {
-                            synchronized(loadLock) {
-                                modelsLoaded[0]= Constants.MODELS_COUNT + Constants.MODELS_OWN_ASSETS_COUNT
-                                loadLock.notifyAll()
-                            }
-                        }
-                    }
-
-                    override fun onError(e: Exception) {
-                        assetLoadError = Constants.TRANSLATER_LOAD_ERROR
-                        synchronized(loadLock) {
-                            loadLock.notifyAll()
-                        }
-                    }
-                }
-            )
-
-            // Wait for all models to load (synchronous wait in background thread)
-            synchronized(loadLock) {
-                while (modelsLoaded[0] < Constants.MODELS_COUNT + Constants.MODELS_OWN_ASSETS_COUNT) {
-                    // Check if error occurred
-                    if (assetLoadError != -494) {
-                        Log.e(TAG, "Asset loading failed with error code: $assetLoadError")
-                        return false
-                    }
-
-                    // Wait without timeout - this is safe because we're in a background thread
-                    loadLock.wait()
-                }
-            }
-
-            Log.d(TAG, "All assets loaded successfully")
-            return true
-        } catch (e: Exception) {
-            Log.e(TAG, "Error loading assets", e)
-            assetLoadError = Constants.ASSETS_ERROR
-            return false
-        }
     }
 
     private fun handleProfileError(e: Exception) {
@@ -728,7 +487,8 @@ fun Section1Content(
         // Hash Cache Selector with Info Button
         Row(
             modifier = Modifier
-                .fillMaxWidth(0.8f).padding(start = 20.dp),
+                .fillMaxWidth(0.8f)
+                .padding(start = 20.dp),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.Bottom
         ) {
@@ -784,9 +544,9 @@ fun Section2Content(
                 modifier = Modifier
                     .padding(start = 22.dp)
             )
-            Column (
-                horizontalAlignment =   Alignment.End
-            ){
+            Column(
+                horizontalAlignment = Alignment.End
+            ) {
                 // Info Button
                 IconButton(
                     onClick = onEnvReportsInfoClick,
