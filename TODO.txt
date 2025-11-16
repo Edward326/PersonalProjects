@@ -1,16 +1,8 @@
--perntru fiecare model(classifier,translater, STT):
-	-gasit un model ce poate fii exportat in onnx, lat low, size mic al modelului, acc acceptabila
-	-implmentat codul pentru a le xporta in onnx si sa fie in varianta quantized/pruned
-	-creearea cklaselor ce vor realiza inferenta
-	-tesatarea modelului prin MainActivity
--creeat loadAssets(varianta java->in utils.java si kt->in utils.kt)
--creeat apel catre loadAssets, in mainactivity/loadprofile/userhashcachibng(local,have an account)
-
 -implementat core-ul aplicatiei(HomeActivity,BlindHomeActivity, activitati pentru caption/detection, EnvirotmentsReports, Settings)
 
 -testarea aplicatiei + debugging
 
--fine tuning(detector, classifier, captioner)
+-fine tuning(detector, classifier(indoorcvpr), captioner)
 
 -testarea pe telefoane + debugging
 
