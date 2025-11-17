@@ -131,4 +131,7 @@ dependencies {
 
     // Speech To Text Model
     implementation libs.vosk.android
+
+    // Coroutines
+    implementation libs.kotlinx.coroutines.android
 }
