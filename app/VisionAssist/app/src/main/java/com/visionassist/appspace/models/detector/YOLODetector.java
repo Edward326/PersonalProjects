@@ -449,6 +449,10 @@ public class YOLODetector {
         return mutableBitmap;
     }
 
+    public String getClassName(int i){
+        return classNames.getOrDefault(i,"unknown");
+    }
+
     public void close() {
         try {
             if (ortSession != null) {

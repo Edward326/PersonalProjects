@@ -465,6 +465,7 @@ class LoadProfileActivity : ComponentActivity() {
                 return Constants.LOAD_PROFILE_FILE_UPLOAD
             }
 
+            profileJson.put("init",2)
             if (!ProfileFileCollection.writeProfile(profileJson)) {
                 return Constants.LOAD_PROFILE_FILE_UPLOAD
             }
@@ -638,6 +639,8 @@ class LoadProfileActivity : ComponentActivity() {
                 return Constants.LOAD_PROFILE_FILE_UPLOAD
             }
 
+            profileJson.put("init",2)
+
             if (!ProfileFileCollection.writeProfile(profileJson)) {
                 return Constants.LOAD_PROFILE_FILE_UPLOAD
             }
@@ -665,6 +668,8 @@ class LoadProfileActivity : ComponentActivity() {
                     }
                 }
             }
+
+
 
             // Step 6: Upload phase
             Utils.uploadProfile(profileJson, null)

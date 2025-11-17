@@ -27,6 +27,10 @@ val robotoExtraBold = FontFamily(
     Font(R.font.roboto_extrabold)
 )
 
+val robotoExtraBoldItalic = FontFamily(
+    Font(R.font.roboto_extrabolditalic)
+)
+
 fun load_loadingText(context: Context): String {
     return when (AppConfig.mainLanguage.code) {
         "en" -> context.getString(R.string.wait_en)
@@ -182,7 +186,7 @@ fun load_errorTextBlind(context: Context,exitCode: Int): String {
 }
 
 fun haptic_model0(): LongArray {
-    return longArrayOf(0, 500)
+    return longArrayOf(0, 250)
 }
 
 fun load_profileSelectionButton(context: Context, case: Boolean): String {
@@ -447,4 +451,76 @@ fun load_speechRecognizerError(context: Context): String {
 
 fun load_translaterError(context: Context): String {
     return context.getString(R.string.translator_error_ro)
+}
+
+fun load_homeTitle(context: android.content.Context): String {
+    return if (com.visionassist.appspace.utils.AppConfig.mainLanguage.code == "en") {
+        "Hello ~${com.visionassist.appspace.utils.AppConfig.user_name}, what can I do for you?"
+    } else {
+        "Salut ~${com.visionassist.appspace.utils.AppConfig.user_name}, cu ce te pot ajuta?"
+    }
+}
+
+fun load_detectionTutorial(context: android.content.Context, step: Int): String {
+    return if (com.visionassist.appspace.utils.AppConfig.mainLanguage.code == "en") {
+        when (step) {
+            1 -> "Volume up button ~goes into detection activity"
+            2 -> "The activity could be ~shortcut on lock screen with an icon, you can turn this on from settings"
+            else -> load_homeTitle(context)
+        }
+    } else {
+        when (step) {
+            1 -> "Butonul de volum sus ~intră în activitatea de detectare"
+            2 -> "Activitatea poate fi ~scurtată pe ecranul de blocare cu o pictogramă, poți activa acest lucru din setări"
+            else -> load_homeTitle(context)
+        }
+    }
+}
+
+fun load_captionTutorial(context: android.content.Context, step: Int): String {
+    return if (com.visionassist.appspace.utils.AppConfig.mainLanguage.code == "en") {
+        when (step) {
+            1 -> "Volume down button ~activates caption"
+            2 -> "The activity could be ~shortcut from settings"
+            else -> load_homeTitle(context)
+        }
+    } else {
+        when (step) {
+            1 -> "Butonul de volum jos ~activează caption"
+            2 -> "Activitatea poate fi ~scurtată din setări"
+            else -> load_homeTitle(context)
+        }
+    }
+}
+
+fun load_speakTutorial(context: android.content.Context, step: Int): String {
+    if (com.visionassist.appspace.utils.AppConfig.mainLanguage.code != "en") {
+        return load_homeTitle(context)
+    }
+
+    return when (step) {
+        1 -> "Rapidly press ~volume down button twice to start speaking"
+        2 -> "When you speak ~words will be prompted on screen in white"
+        3 -> "Press volume down ~to cancel speaking"
+        4 -> "Press volume down ~to approve what the model recorded"
+        5 -> "Press volume up ~to retry speaking"
+        6 -> "Press anywhere on screen ~to cancel"
+        else -> load_homeTitle(context)
+    }
+}
+
+fun load_syncStatusText(context: android.content.Context, days: Int): String {
+    return if (com.visionassist.appspace.utils.AppConfig.mainLanguage.code == "en") {
+        "$days days since last sync"
+    } else {
+        "$days zile de la ultima sincronizare"
+    }
+}
+
+fun load_syncErrorText(context: android.content.Context): String {
+    return if (com.visionassist.appspace.utils.AppConfig.mainLanguage.code == "en") {
+        "Sync failed ~Make sure you have network access and restart the app to solve this"
+    } else {
+        "Sincronizarea a eșuat ~Asigură-te că ai acces la rețea și repornește aplicația pentru a rezolva acest lucru"
+    }
 }

@@ -230,7 +230,7 @@ class UserHashCachingActivity : ComponentActivity() {
 
                     // Write to profile
                     ProfileFileCollection.writeUserHashCachingActivity(option, false)
-                    AppConfig.hash_caching = option
+
 
                     // Navigate to section 2
                     currentSection.intValue = 2
@@ -247,7 +247,6 @@ class UserHashCachingActivity : ComponentActivity() {
                 }
 
                 ProfileFileCollection.writeUserHashCachingActivity(enabled.toString(), true)
-                AppConfig.env_reports = enabled
 
                 // Start loading assets
                 startLoadingAssets()
@@ -271,6 +270,8 @@ class UserHashCachingActivity : ComponentActivity() {
                 val profileFile = FileUtils.getProfileFile(this@UserHashCachingActivity)
                 val profileContent = profileFile.readText()
                 val jsonObject = JSONObject(profileContent)
+                jsonObject.put("init",1)
+                ProfileFileCollection.writeProfile(jsonObject)
                 Utils.uploadProfile(jsonObject, null)
 
                 // Sync profile to remote if needed

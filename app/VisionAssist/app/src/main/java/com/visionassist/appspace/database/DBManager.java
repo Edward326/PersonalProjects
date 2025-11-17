@@ -151,7 +151,7 @@ public class DBManager {
         try {
             CountDownLatch latch = new CountDownLatch(1);
             AtomicBoolean success = new AtomicBoolean(false);
-            String[] userID={"salut"};
+            String[] userID = {"salut"};
 
             auth.createUserWithEmailAndPassword(email, password)
                     .addOnCompleteListener(authTask -> {
@@ -159,11 +159,10 @@ public class DBManager {
                             FirebaseUser user = auth.getCurrentUser();
                             if (user != null) {
                                 userID[0] = user.getUid();
-                                Log.d(TAG, "User account created successfully in Realtime Database\nUID: "+user);
+                                Log.d(TAG, "User account created successfully in Realtime Database\nUID: " + user);
                                 success.set(true);
                                 latch.countDown();
-                            }
-                            else
+                            } else
                                 latch.countDown();
                         } else {
                             Log.e(TAG, "Error creating user account in Realtime Database");
@@ -395,7 +394,7 @@ public class DBManager {
 
             latch.await();
 
-            return success.get()?DBConstants.PASSWORD_RESET_SENT:DBConstants.GENERIC_ERROR;
+            return success.get() ? DBConstants.PASSWORD_RESET_SENT : DBConstants.GENERIC_ERROR;
         } catch (Exception e) {
             Log.e(TAG, "Error in resetPassword", e);
             status = DBConstants.GENERIC_ERROR;
@@ -411,8 +410,7 @@ public class DBManager {
                 return false;
             }
 
-            String lastSyncDateStr = profileData.getString("last_sync_date");
-            if (!isSyncNeeded(lastSyncDateStr)) {
+            if (!isSyncNeeded()) {
                 Log.d(TAG, "Sync not needed yet");
                 status = DBConstants.SYNC_OK;
                 return false;
@@ -425,35 +423,11 @@ public class DBManager {
         }
     }
 
-    private boolean isSyncNeeded(String lastSyncDateStr) {
+    private boolean isSyncNeeded() {
         try {
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
-            Date lastSyncDate = sdf.parse(lastSyncDateStr);
-
-            if (lastSyncDate == null) {
-                return true;
-            }
-
-            // Use Calendar to calculate days difference properly
-            Calendar lastSync = Calendar.getInstance();
-            lastSync.setTime(lastSyncDate);
-            lastSync.set(Calendar.HOUR_OF_DAY, 0);
-            lastSync.set(Calendar.MINUTE, 0);
-            lastSync.set(Calendar.SECOND, 0);
-            lastSync.set(Calendar.MILLISECOND, 0);
-
-            Calendar current = Calendar.getInstance();
-            current.set(Calendar.HOUR_OF_DAY, 0);
-            current.set(Calendar.MINUTE, 0);
-            current.set(Calendar.SECOND, 0);
-            current.set(Calendar.MILLISECOND, 0);
-
-            long diffTime = current.getTimeInMillis() - lastSync.getTimeInMillis();
-            long diffDays = diffTime / (1000 * 60 * 60 * 24);
-
+            long diffDays = getDiffDays();
             Log.d(TAG, "Days since last sync: " + diffDays);
             return diffDays >= DBConstants.SYNC_INTERVAL_DAYS;
-
         } catch (Exception e) {
             Log.e(TAG, "Error checking sync interval", e);
             return true; // Sync if error
@@ -509,5 +483,40 @@ public class DBManager {
             case DBConstants.INTERNET_CONNECTION_FAILED, DBConstants.SYNC_ERROR -> 2;
             default -> 0;
         };
+    }
+
+    public long getDiffDays() {
+        try {
+            String profileContent = FileUtils.loadFileAsString(FileUtils.getProfileInputStream(context));
+            JSONObject jsonObject = new JSONObject(profileContent);
+
+            if(!jsonObject.getBoolean("remote"))return 0;
+
+            String lastSyncDateStr = jsonObject.getString("last_sync_date");
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+            Date lastSyncDate = sdf.parse(lastSyncDateStr);
+
+            if (lastSyncDate == null) {
+                return DBConstants.SYNC_INTERVAL_DAYS;
+            }
+
+            Calendar lastSync = Calendar.getInstance();
+            lastSync.setTime(lastSyncDate);
+            lastSync.set(Calendar.HOUR_OF_DAY, 0);
+            lastSync.set(Calendar.MINUTE, 0);
+            lastSync.set(Calendar.SECOND, 0);
+            lastSync.set(Calendar.MILLISECOND, 0);
+
+            Calendar current = Calendar.getInstance();
+            current.set(Calendar.HOUR_OF_DAY, 0);
+            current.set(Calendar.MINUTE, 0);
+            current.set(Calendar.SECOND, 0);
+            current.set(Calendar.MILLISECOND, 0);
+
+            long diffTime = current.getTimeInMillis() - lastSync.getTimeInMillis();
+            return diffTime / (1000 * 60 * 60 * 24);
+        } catch (Exception e) {
+            return 0;
+        }
     }
 }

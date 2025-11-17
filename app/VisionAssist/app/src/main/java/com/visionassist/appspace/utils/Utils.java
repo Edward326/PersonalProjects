@@ -20,6 +20,7 @@ import com.visionassist.appspace.activities.newprofile.UserHashCachingActivity;
 import com.visionassist.appspace.activities.newprofile.UserInfoActivity;
 import com.visionassist.appspace.activities.newprofile.UserInfoE3Activity;
 import com.visionassist.appspace.activities.newprofile.WelcomeActivity;
+import com.visionassist.appspace.activities.newprofile.jsonCollection.ProfileFileCollection;
 import com.visionassist.appspace.database.DBConstants;
 import com.visionassist.appspace.jetpack.managers.ErrorDialogManager;
 import com.visionassist.appspace.jetpack.managers.LoadingManager;
@@ -401,6 +402,14 @@ public class Utils {
             AppConfig.hash_caching = profileSource.getString("hash_caching");
             if (!AppConfig.blindness)
                 AppConfig.env_reports = profileSource.getBoolean("env_reports");
+
+            int firstTimeCounts=profileSource.getInt("init");
+            AppConfig.showTutorial=firstTimeCounts<=2;
+            if(AppConfig.showTutorial) {
+                profileSource.put("init",++firstTimeCounts);
+                ProfileFileCollection.writeProfile(profileSource);
+            }
+
             if (afterUploadProfile != null)
                 afterUploadProfile.run();
         } catch (Exception e) {

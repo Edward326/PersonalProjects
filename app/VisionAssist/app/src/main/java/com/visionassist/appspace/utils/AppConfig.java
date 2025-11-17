@@ -21,6 +21,7 @@ public class AppConfig {
     public static boolean haptics;
     public static String hash_caching;
     public static boolean env_reports;
+    public static boolean showTutorial=true;
 
     public static String listAppConfig() {
         return "blindness: " + blindness + "\n" +
