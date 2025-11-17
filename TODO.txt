@@ -1,4 +1,7 @@
--implementat core-ul aplicatiei(HomeActivity,BlindHomeActivity, activitati pentru caption/detection, EnvirotmentsReports, Settings)
+-implementat core-ul aplicatiei:
+	-HomeActivity+findmyobject,BlindHomeActivity+findmyobject
+	-activitati pentru detection(low eyesight:live/static | blind), caption(low eysight | blind)
+	-EnvirotmentsReports, Settings(low eysight | blind)
 
 -testarea aplicatiei + debugging
 
