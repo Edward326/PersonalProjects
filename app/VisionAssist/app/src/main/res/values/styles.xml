@@ -3,7 +3,7 @@
     <!-- Base application theme -->
     <style name="AppTheme" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">@color/purple_primary</item>
-        <item name="colorPrimaryDark">@color/purple_dark</item>
+        <item name="colorPrimaryDark">@color/std_purple_dark</item>
         <item name="colorAccent">@color/purple_light</item>
         <item name="android:statusBarColor">@color/transparent</item>
         <item name="android:navigationBarColor">@color/transparent</item>
@@ -21,7 +21,7 @@
     <style name="WelcomeTextStyle">
         <item name="android:textColor">@color/text_primary</item>
         <item name="android:textSize">28sp</item>
-        <item name="android:fontFamily">@font/roboto_light_ttf</item>
+        <item name="android:fontFamily">@font/roboto_light</item>
         <item name="android:letterSpacing">0.02</item>
     </style>
 

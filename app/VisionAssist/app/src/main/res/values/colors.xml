@@ -3,12 +3,14 @@
     <!-- Primary Colors -->
     <color name="purple_primary">#6B5CE7</color>
     <color name="purple_light">#809C8CFF</color>
-    <color name="purple_dark">#5A4FCF</color>
-    <color name="std_cyan">#6096BA</color>
     <color name="std_purple">#6750A4</color>
+    <color name="std_purple_dark">#381E72</color>
+    <color name="std_cyan">#6096BA</color>
+    <color name="std_cyan_dark">#497694</color>
     <color name="std_light_purple">#EADDFF</color>
     <color name="notification_white">#ECE6F0</color>
     <color name="error_red">#B3261E</color>
+    <color name="checked_green">#34C759</color>
     <color name="notification_text_gray">#49454F</color>
     <color name="notification_button_white">#F7F2FA</color>
     <color name="slider_green">#2E6F40</color>

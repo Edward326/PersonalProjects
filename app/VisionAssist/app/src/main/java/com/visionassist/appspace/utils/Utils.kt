@@ -12,7 +12,7 @@ data class Language(
 )
 
 val robotoRegular = FontFamily(
-    Font(R.font.roboto_regular_ttf)
+    Font(R.font.roboto_regular)
 )
 
 val robotoSemibold = FontFamily(
@@ -20,11 +20,19 @@ val robotoSemibold = FontFamily(
 )
 
 val robotoLight = FontFamily(
-    Font(R.font.roboto_light_ttf)
+    Font(R.font.roboto_light)
+)
+
+val robotoBold = FontFamily(
+    Font(R.font.roboto_bold)
 )
 
 val robotoExtraBold = FontFamily(
     Font(R.font.roboto_extrabold)
+)
+
+val robotoMediumItalic = FontFamily(
+    Font(R.font.roboto_mediumitalic)
 )
 
 val robotoExtraBoldItalic = FontFamily(

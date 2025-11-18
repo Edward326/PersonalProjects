@@ -60,7 +60,7 @@ import com.visionassist.appspace.utils.Constants
 import com.visionassist.appspace.utils.Language
 
 val robotoMedium = FontFamily(
-    Font(R.font.roboto_medium_ttf, weight = FontWeight.Medium)
+    Font(R.font.roboto_medium, weight = FontWeight.Medium)
 )
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)

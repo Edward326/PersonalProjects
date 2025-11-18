@@ -22,7 +22,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -31,8 +33,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -57,6 +61,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemColors
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -70,6 +75,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -101,9 +107,9 @@ import com.visionassist.appspace.utils.load_homeTitle
 import com.visionassist.appspace.utils.load_speakTutorial
 import com.visionassist.appspace.utils.load_syncErrorText
 import com.visionassist.appspace.utils.load_syncStatusText
+import com.visionassist.appspace.utils.robotoBold
 import com.visionassist.appspace.utils.robotoExtraBold
 import com.visionassist.appspace.utils.robotoExtraBoldItalic
-import com.visionassist.appspace.utils.robotoLight
 import com.visionassist.appspace.utils.robotoSemibold
 import kotlinx.coroutines.delay
 
@@ -118,13 +124,12 @@ class HomeActivity : ComponentActivity() {
     // Tutorial info button states
     private val detectionInfoPressed = mutableStateOf(false)
     private val captionInfoPressed = mutableStateOf(false)
-    private val speakInfoPressed = mutableStateOf(false)
     private val speakInfoClickCount = mutableStateOf(0)
 
     // Detection button states
     private val showDetectionOptions = mutableStateOf(false)
     private val selectedDetectionOption = mutableStateOf<DetectionOption?>(null)
-    private val detectionIconColor = mutableStateOf(R.color.std_purple)
+    private val detectionIconColor = mutableStateOf(R.color.std_purple_dark)
 
     // Speech recognition states
     private val showSpeechDialog = mutableStateOf(false)
@@ -168,7 +173,6 @@ class HomeActivity : ComponentActivity() {
                 selectedDetectionOption = selectedDetectionOption.value,
                 detectionInfoPressed = detectionInfoPressed.value,
                 captionInfoPressed = captionInfoPressed.value,
-                speakInfoPressed = speakInfoPressed.value,
                 showSpeechDialog = showSpeechDialog.value,
                 speechText = speechText.value,
                 speechProcessText = speechProcessText.value,
@@ -303,9 +307,9 @@ class HomeActivity : ComponentActivity() {
 
     private fun handleSpeakInfoClick() {
         vibrateIfEnabled()
-        if (!speakInfoPressed.value) {
-            speakInfoPressed.value = true
-        }
+        //if (!speakInfoPressed.value) {
+        //    speakInfoPressed.value = true
+        // }
 
         speakInfoClickCount.value++
         titleText.value = load_speakTutorial(this, speakInfoClickCount.value)
@@ -494,7 +498,6 @@ class HomeActivity : ComponentActivity() {
 }
 
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
@@ -506,7 +509,6 @@ fun HomeScreen(
     selectedDetectionOption: HomeActivity.DetectionOption?,
     detectionInfoPressed: Boolean,
     captionInfoPressed: Boolean,
-    speakInfoPressed: Boolean,
     showSpeechDialog: Boolean,
     speechText: String,
     speechProcessText: String,
@@ -540,8 +542,8 @@ fun HomeScreen(
 
         // Main content
         Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally
+            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.912f),
+            verticalArrangement = Arrangement.SpaceAround
         ) {
             Box(modifier = Modifier.height(screenHeight * 0.045f))
 
@@ -552,18 +554,15 @@ fun HomeScreen(
                 modifier = Modifier.size(Constants.LOGO_SIZE.dp)
             )
 
-            Box(modifier = Modifier.height(screenHeight * 0.05f))
-
             // Title with typewriter animation
             TypewriterText(
                 text = titleText,
-                fontSize = Constants.STD_TITLE_SIZE.sp,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp)
             )
 
-            Box(modifier = Modifier.height(screenHeight * 0.08f))
+            Box(modifier = Modifier.height(screenWidth * 0.10f))
 
             // Detection Button with options
             DetectionButtonSection(
@@ -579,7 +578,8 @@ fun HomeScreen(
                 onInfoClick = onDetectionInfoClick
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+
+            Box(modifier = Modifier.height(screenHeight * 0.04f))
 
             // Caption Button
             CaptionButtonSection(
@@ -589,33 +589,24 @@ fun HomeScreen(
                 onInfoClick = onCaptionInfoClick
             )
 
-            Spacer(modifier = Modifier.weight(1f))
 
-            // Sync status section
-            if (syncStatus > 0) {
-                SyncStatusSection(
-                    syncStatus = syncStatus,
-                    syncDays = syncDays
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-            }
+            Box(modifier = Modifier.height(screenHeight * 0.21f))
 
-            // Speak info button (only in English and if tutorial enabled)
-            if (AppConfig.showTutorial &&
-                AppConfig.mainLanguage.code == "en" &&
-                !speakInfoPressed
-            ) {
-                InfoButtonWithPulse(
-                    onClick = onSpeakInfoClick,
-                    isPulsing = !speakInfoPressed
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-            }
+            SyncStatusSection(
+                syncStatus = syncStatus,
+                syncDays = syncDays,
+                showInfoButton = AppConfig.showTutorial && AppConfig.mainLanguage.code == "en",
+                onInfoClick = onSpeakInfoClick
+            )
+
+            Box(modifier = Modifier.height(screenHeight * 0.01f))
         }
+
 
         // Bottom Navigation Bar
         Box(
             modifier = Modifier.align(Alignment.BottomCenter)
+                  .fillMaxWidth().fillMaxHeight(0.087f),
         ) {
             BottomNavigationBar(
                 onNavigateHome = onNavigateHome,
@@ -641,7 +632,6 @@ fun HomeScreen(
 @Composable
 fun TypewriterText(
     text: String,
-    fontSize: androidx.compose.ui.unit.TextUnit,
     modifier: Modifier = Modifier
 ) {
     var displayedText by remember { mutableStateOf("") }
@@ -659,38 +649,45 @@ fun TypewriterText(
 
     Text(
         text = buildAnnotatedString {
-            when {
-                parts.size == 1 -> {
+            when (parts.size) {
+                1 -> {
                     withStyle(
                         style = SpanStyle(
-                            color = colorResource(R.color.std_cyan),
-                            fontFamily = robotoExtraBold,
-                            fontSize = fontSize
+                            color = colorResource(R.color.std_purple),
+                            fontFamily = robotoSemibold,
+                            fontSize = Constants.STD_SUBTITLE_SIZE.sp
                         )
                     ) {
                         append(parts[0])
                     }
                 }
-
-                parts.size > 1 -> {
+                3 -> {
                     withStyle(
                         style = SpanStyle(
-                            color = colorResource(R.color.std_cyan),
-                            fontFamily = robotoExtraBold,
-                            fontSize = fontSize
+                            color = colorResource(R.color.std_purple),
+                            fontFamily = robotoSemibold,
+                            fontSize = Constants.STD_SUBTITLE_SIZE.sp
                         )
                     ) {
                         append(parts[0])
                     }
-                    append("\n")
                     withStyle(
                         style = SpanStyle(
-                            color = colorResource(R.color.std_purple),
-                            fontFamily = robotoLight,
-                            fontSize = fontSize
+                            color = colorResource(R.color.std_purple_dark),
+                            fontFamily = robotoExtraBold,
+                            fontSize = Constants.STD_SUBTITLE_SIZE.sp
                         )
                     ) {
                         append(parts[1])
+                    }
+                    withStyle(
+                        style = SpanStyle(
+                            color = colorResource(R.color.std_purple),
+                            fontFamily = robotoSemibold,
+                            fontSize = Constants.STD_SUBTITLE_SIZE.sp
+                        )
+                    ) {
+                        append(parts[2])
                     }
                 }
             }
@@ -714,95 +711,201 @@ fun DetectionButtonSection(
     onOptionSelected: (HomeActivity.DetectionOption) -> Unit,
     onInfoClick: () -> Unit
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
+    // Button dimensions
+    val buttonHeight = Constants.STD_BUTTON_PAGE_HEIGHT.dp
+    val optionWidth = screenWidth * 0.21f // 1.8x detection width
+    val optionHeight = buttonHeight
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height((Constants.STD_BUTTON_PAGE_HEIGHT).dp + optionWidth) // Space for both options
     ) {
-        // Detection options (slide from left)
+        // Detection button X position (0.23 from left edge)
+        val detectionX = screenWidth * 0.23f
+
+        // === STATIC BUTTON (Slides LEFT) ===
         AnimatedVisibility(
             visible = showOptions,
-            enter = slideInHorizontally(initialOffsetX = { -it }) + fadeIn(),
-            exit = slideOutHorizontally(targetOffsetX = { -it }) + fadeOut()
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                DetectionOptionButton(
-                    text = "Static",
-                    isSelected = selectedOption == HomeActivity.DetectionOption.STATIC,
-                    onClick = { onOptionSelected(HomeActivity.DetectionOption.STATIC) }
+            enter = slideInHorizontally(
+                initialOffsetX = { it },
+                animationSpec = tween(Constants.ANIMATION_DELAY)
+            ),
+            exit = slideOutHorizontally(
+                targetOffsetX = { it },
+                animationSpec = tween(Constants.ANIMATION_DELAY)
+            ),
+            modifier = Modifier
+                .offset(
+                    x = detectionX - optionWidth - 5.dp,
+                    y = buttonHeight
                 )
+        ) {
+            OptionButton(
+                text = "Static",
+                isSelected = selectedOption == HomeActivity.DetectionOption.STATIC,
+                onClick = { onOptionSelected(HomeActivity.DetectionOption.STATIC) },
+                width = optionWidth,
+                height = optionHeight,
+                isRotated = false
+            )
+        }
 
-                DetectionOptionButton(
-                    text = "Live",
-                    isSelected = selectedOption == HomeActivity.DetectionOption.LIVE,
-                    onClick = { onOptionSelected(HomeActivity.DetectionOption.LIVE) }
+        // === LIVE BUTTON (Slides UP, rotated 90°) ===
+        AnimatedVisibility(
+            visible = showOptions,
+            enter = slideInVertically(
+                initialOffsetY = { it },
+                animationSpec = tween(Constants.ANIMATION_DELAY)
+            ),
+            exit = slideOutVertically(
+                targetOffsetY = { it },
+                animationSpec = tween(Constants.ANIMATION_DELAY)
+            ),
+            modifier = Modifier
+                .offset(
+                    x = detectionX, // Center with detection
+                    y = buttonHeight - optionWidth - 4.dp // ABOVE detection
+                )
+        ) {
+            OptionButton(
+                text = "Live",
+                isSelected = selectedOption == HomeActivity.DetectionOption.LIVE,
+                onClick = { onOptionSelected(HomeActivity.DetectionOption.LIVE) },
+                width = optionWidth,
+                height = optionHeight,
+                isRotated = true
+            )
+        }
+
+        // === DETECTION BUTTON (Fixed position) ===
+        Row(
+            modifier = Modifier
+                .offset(x = detectionX, y = buttonHeight)
+                .fillMaxWidth(0.77f),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            MainActionButton(
+                shape = RoundedCornerShape(
+                    topStart = 5.dp,
+                    topEnd = 31.dp,
+                    bottomStart = 5.dp,
+                    bottomEnd = 5.dp
+                ),
+                text = "Detection",
+                iconRes = R.drawable.detection_icon,
+                iconColor = iconColor,
+                screenWidth = screenWidth,
+                onClick = onDetectionClick,
+                onIconPress = onIconPress,
+                onIconRelease = onIconRelease
+            )
+
+            if (showInfoButton) {
+                InfoButtonWithPulse(
+                    onClick = onInfoClick,
+                    isPulsing = true
                 )
             }
         }
+    }
+}
 
-        Spacer(modifier = Modifier.width(8.dp))
-
-        // Main Detection Button
-        MainActionButton(
-            text = "Detection",
-            iconRes = R.drawable.detection_icon, // Replace with actual icon
-            iconColor = iconColor,
-            screenWidth = screenWidth,
-            onClick = onDetectionClick,
-            onIconPress = onIconPress,
-            onIconRelease = onIconRelease
-        )
-
-        // Info button
-        if (showInfoButton) {
-            Spacer(modifier = Modifier.width(8.dp))
-            InfoButtonWithPulse(
-                onClick = onInfoClick,
-                isPulsing = true
+// === UNIFIED OPTION BUTTON (handles both regular and rotated) ===
+@Composable
+fun OptionButton(
+    text: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    width: Dp,
+    height: Dp,
+    isRotated: Boolean
+) {
+    if (isRotated) {
+        // Rotated button (for "Live" - vertical)
+        Button(
+            onClick = onClick,
+            modifier = Modifier
+                .width(height) // Swap dimensions
+                .height(height)
+                .shadow(
+                    3.dp, RoundedCornerShape(
+                        topStart = 31.dp,
+                        topEnd = 31.dp,
+                        bottomStart = 5.dp,
+                        bottomEnd = 5.dp
+                    )
+                ),
+            shape = RoundedCornerShape(
+                topStart = 31.dp,
+                topEnd = 31.dp,
+                bottomStart = 5.dp,
+                bottomEnd = 5.dp
+            ),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (isSelected) {
+                    colorResource(R.color.std_purple_dark)
+                } else {
+                    colorResource(R.color.std_cyan)
+                },
+                contentColor = Color.White
+            ),
+            contentPadding = PaddingValues(0.dp)
+        ) {
+            Text(
+                text = text,
+                fontSize = 22.sp,
+                fontFamily = robotoExtraBoldItalic
+            )
+        }
+    } else {
+        // Regular button (for "Static" - horizontal)
+        Button(
+            onClick = onClick,
+            modifier = Modifier
+                .width(width)
+                .height(height)
+                .shadow(
+                    3.dp, RoundedCornerShape(
+                        topStart = 31.dp,
+                        topEnd = 5.dp,
+                        bottomStart = 31.dp,
+                        bottomEnd = 5.dp
+                    )
+                ),
+            shape = RoundedCornerShape(
+                topStart = 31.dp,
+                topEnd = 5.dp,
+                bottomStart = 31.dp,
+                bottomEnd = 5.dp
+            ),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (isSelected) {
+                    colorResource(R.color.std_purple)
+                } else {
+                    colorResource(R.color.std_cyan)
+                },
+                contentColor = Color.White
+            ),
+            contentPadding = PaddingValues(0.dp)
+        ) {
+            Text(
+                text = text,
+                fontSize = 22.sp,
+                fontFamily = robotoExtraBoldItalic
             )
         }
     }
 }
 
-@Composable
-fun DetectionOptionButton(
-    text: String,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    Button(
-        onClick = onClick,
-        modifier = Modifier
-            .width((0.2f * LocalContext.current.resources.displayMetrics.widthPixels / LocalContext.current.resources.displayMetrics.density).dp)
-            .height(Constants.STD_BUTTON_PAGE_HEIGHT.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = if (isSelected) {
-                colorResource(R.color.std_purple)
-            } else {
-                colorResource(R.color.std_cyan)
-            },
-            contentColor = Color.White
-        )
-    ) {
-        Text(
-            text = text,
-            fontSize = 22.sp,
-            fontFamily = robotoExtraBoldItalic
-        )
-    }
-}
-
-
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainActionButton(
+    shape: Shape,
     predefinedIcon: ImageVector? = null,
     text: String,
-    iconRes: Int=0,
+    iconRes: Int = 0,
     iconColor: Int,
     screenWidth: Dp,
     onClick: () -> Unit,
@@ -813,73 +916,66 @@ fun MainActionButton(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(0.dp)
     ) {
+
+        val buttonWidth = screenWidth * 0.6f
         // Main button
         Button(
             onClick = onClick,
             modifier = Modifier
                 .shadow(
                     3.dp,
-                    RoundedCornerShape(
-                        topStart = 5.dp,
-                        topEnd = 31.dp,
-                        bottomStart = 5.dp,
-                        bottomEnd = 5.dp
-                    )
+                    shape
                 )
-                .width(screenWidth * 0.6f)
+                .width(buttonWidth)
                 .height(Constants.STD_BUTTON_PAGE_HEIGHT.dp),
-            shape = RoundedCornerShape(
-                topStart = 5.dp,
-                topEnd = 31.dp,
-                bottomStart = 5.dp,
-                bottomEnd = 5.dp
-            ),
+            shape = shape,
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color.White,
                 contentColor = colorResource(R.color.std_purple)
-            )
+            ),
+            contentPadding = PaddingValues(0.dp)
         ) {
+            // Icon button (circle)
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .shadow(3.dp, CircleShape)
+                    .clip(CircleShape)
+                    .background(colorResource(iconColor))
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onPress = {
+                                onIconPress()
+                                tryAwaitRelease()
+                                onIconRelease()
+                            }
+                        )
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                if (predefinedIcon == null) {
+                    Icon(
+                        painter = painterResource(iconRes),
+                        contentDescription = "Action icon",
+                        tint = Color.White.copy(alpha = 0.7f),
+                        modifier = Modifier.size(28.dp)
+                    )
+                } else {
+                    Icon(
+                        imageVector = predefinedIcon,
+                        contentDescription = "Action icon",
+                        tint = Color.White.copy(alpha = 0.7f),
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.width(buttonWidth * 0.05f))
             Text(
                 text = text,
                 fontSize = Constants.STD_SUBTITLE_SIZE.sp,
-                fontFamily = robotoSemibold
+                fontFamily = robotoBold,
+                color = colorResource(R.color.std_purple_dark)
             )
-        }
-
-        // Icon button (circle)
-        Box(
-            modifier = Modifier
-                .offset(x = (-10).dp) // Overlap with main button
-                .size(56.dp)
-                .shadow(3.dp, CircleShape)
-                .clip(CircleShape)
-                .background(colorResource(iconColor))
-                .pointerInput(Unit) {
-                    detectTapGestures(
-                        onPress = {
-                            onIconPress()
-                            tryAwaitRelease()
-                            onIconRelease()
-                        }
-                    )
-                },
-            contentAlignment = Alignment.Center
-        ) {
-            if (predefinedIcon == null) {
-                Icon(
-                    painter = painterResource(iconRes),
-                    contentDescription = "Action icon",
-                    tint = Color.White.copy(alpha = 0.7f),
-                    modifier = Modifier.size(28.dp)
-                )
-            } else {
-                Icon(
-                    imageVector =predefinedIcon,
-                    contentDescription = "Action icon",
-                    tint = Color.White.copy(alpha = 0.7f),
-                    modifier = Modifier.size(28.dp)
-                )
-            }
         }
     }
 }
@@ -893,14 +989,23 @@ fun CaptionButtonSection(
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center,
+        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
+
+        Box(modifier = Modifier.width(screenWidth * 0.2f))
+
         // Caption Button
         MainActionButton(
+            shape = RoundedCornerShape(
+                topStart = 5.dp,
+                topEnd = 5.dp,
+                bottomStart = 31.dp,
+                bottomEnd = 31.dp
+            ),
             predefinedIcon = Icons.Filled.TextFields,
             text = "Caption",
-            iconColor = R.color.std_purple,
+            iconColor = R.color.std_purple_dark,
             screenWidth = screenWidth,
             onClick = onCaptionClick,
             onIconPress = {}, // No special behavior
@@ -909,7 +1014,7 @@ fun CaptionButtonSection(
 
         // Info button
         if (showInfoButton) {
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(15.dp))
             InfoButtonWithPulse(
                 onClick = onInfoClick,
                 isPulsing = true
@@ -954,42 +1059,68 @@ fun InfoButtonWithPulse(
 @Composable
 fun SyncStatusSection(
     syncStatus: Int,
-    syncDays: Int
+    syncDays: Int,
+    showInfoButton: Boolean,
+    onInfoClick: () -> Unit
 ) {
+    // Main row ALWAYS exists
     Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp)
+            .fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(24.dp)
-                .clip(CircleShape)
-                .background(if (syncStatus == 1) Color.Green else Color.Red),
-            contentAlignment = Alignment.Center
+        // === FIRST ROW: 0.7 weight (Sync on LEFT) ===
+        Row(
+            modifier = Modifier.weight(0.7f).padding(start = 10.dp),
+            horizontalArrangement = Arrangement.Start,  // Align LEFT
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = if (syncStatus == 1) Icons.Filled.Sync else Icons.Filled.SyncProblem,
-                contentDescription = "Sync status",
-                tint = Color.White,
-                modifier = Modifier.size(16.dp)
-            )
+            if (syncStatus > 0) {
+                // Sync circle icon
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .background(if (syncStatus == 1) colorResource(R.color.checked_green) else colorResource(R.color.error_red)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (syncStatus == 1) Icons.Filled.Sync else Icons.Filled.SyncProblem,
+                        contentDescription = "Sync status",
+                        tint = Color.White,
+                        modifier = Modifier.size(21.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(4.dp))
+
+                // Sync text
+                Text(
+                    text = if (syncStatus == 1) {
+                        load_syncStatusText(LocalContext.current, syncDays)
+                    } else {
+                        load_syncErrorText(LocalContext.current)
+                    },
+                    fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
+                    fontFamily = robotoSemibold,
+                    color = colorResource(if (syncStatus == 1) R.color.std_cyan_dark else R.color.error_red)
+                )
+            }
         }
 
-        Spacer(modifier = Modifier.width(8.dp))
-
-        Text(
-            text = if (syncStatus == 1) {
-                load_syncStatusText(LocalContext.current, syncDays)
-            } else {
-                load_syncErrorText(LocalContext.current)
-            },
-            fontSize = Constants.STD_FONT_SIZE.sp,
-            fontFamily = robotoSemibold,
-            color = colorResource(if (syncStatus == 1) R.color.std_cyan else R.color.error_red)
-        )
+        // === SECOND ROW: Remaining weight (Info on RIGHT) ===
+        Row(
+            modifier = Modifier.weight(1f - 0.7f), // Rest of the weight
+            horizontalArrangement = Arrangement.End,  // Align RIGHT
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (showInfoButton) {
+                InfoButtonWithPulse(
+                    onClick = onInfoClick,
+                    isPulsing = true
+                )
+            }
+        }
     }
 }
 
@@ -1001,8 +1132,7 @@ fun BottomNavigationBar(
     showReports: Boolean
 ) {
     NavigationBar(
-        containerColor = Color.White.copy(alpha = 0.9f),
-        contentColor = colorResource(R.color.std_purple)
+        containerColor = Color.White
     ) {
         NavigationBarItem(
             icon = {
@@ -1011,8 +1141,23 @@ fun BottomNavigationBar(
                     contentDescription = "Home"
                 )
             },
-            label = { Text("Home") },
+            label = { Text(
+                text="Home",
+                fontSize = Constants.STD_FONT_SIZE_LW.sp,
+                fontFamily = robotoSemibold
+            )
+
+                    },
             selected = true,
+            colors= NavigationBarItemColors(
+                selectedIconColor = Color.White.copy(0.7f),
+                unselectedIconColor = Color(0xFF49454F),
+                selectedIndicatorColor = colorResource(R.color.std_purple),
+                selectedTextColor = Color.Black,
+                unselectedTextColor = Color(0xFF49454F),
+                disabledIconColor = Color.White,
+                disabledTextColor = Color.White
+            ),
             onClick = onNavigateHome
         )
 
@@ -1055,7 +1200,7 @@ fun SpeechRecognitionDialog(
     AnimatedVisibility(
         visible = isVisible,
         enter = fadeIn(animationSpec = tween(Constants.ANIMATION_DELAY)),
-        exit = fadeOut(animationSpec = tween(0))
+        exit = fadeOut(animationSpec = tween(Constants.ANIMATION_DELAY))
     ) {
         Box(
             modifier = Modifier
@@ -1068,51 +1213,80 @@ fun SpeechRecognitionDialog(
                 },
             contentAlignment = Alignment.Center
         ) {
+            val hasProcessText = processText.isNotEmpty()
+
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
                 modifier = Modifier
-                    .fillMaxWidth(0.8f)
+                    .fillMaxWidth(0.85f)
                     .animateContentSize()
             ) {
-                // Speaking section
+                // === TOP TEXT (processText when exists, speechText when it doesn't) ===
                 AnimatedContent(
-                    targetState = isSpeaking,
+                    targetState = hasProcessText,
                     transitionSpec = {
-                        fadeIn() togetherWith fadeOut()
+                        if (targetState) {
+                            // ProcessText appearing: fade in
+                            fadeIn(animationSpec = tween(Constants.ANIMATION_DELAY))
+                                .togetherWith(fadeOut(animationSpec = tween(0)))
+                        } else {
+                            // ProcessText disappearing: instant reset (no animation)
+                            fadeIn(animationSpec = tween(0))
+                                .togetherWith(fadeOut(animationSpec = tween(0)))
+                        }
                     },
-                    label = "speaking_animation"
-                ) { speaking ->
-                    if (speaking) {
+                    label = "top_text_animation"
+                ) { showingProcess ->
+                    if (showingProcess) {
+                        // Show processText at top (title size, white)
                         Text(
-                            text = speechText.ifEmpty { "Listening..." },
-                            fontSize = Constants.STD_SUBTITLE_SIZE.sp,
+                            text = processText,
+                            fontSize = Constants.STD_TITLE_SIZE.sp,
                             fontFamily = robotoSemibold,
                             color = Color.White,
                             textAlign = TextAlign.Center
                         )
                     } else {
+                        // Show speechText at top (title size, colored)
                         Text(
                             text = speechText,
                             fontSize = Constants.STD_TITLE_SIZE.sp,
-                            fontFamily = robotoExtraBoldItalic,
-                            color = colorResource(R.color.std_cyan),
+                            fontFamily = robotoSemibold,
+                            color = if (isSpeaking) {
+                                Color.White
+                            } else {
+                                colorResource(R.color.std_purple_dark)
+                            },
                             textAlign = TextAlign.Center
                         )
                     }
                 }
 
-                // Process text section
-                if (processText.isNotEmpty()) {
+                // === BOTTOM TEXT (speechText slides down when processText appears) ===
+                if (hasProcessText) {
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    Text(
-                        text = processText,
-                        fontSize = Constants.STD_FONT_SIZE.sp,
-                        fontFamily = robotoSemibold,
-                        color = colorResource(R.color.std_purple),
-                        textAlign = TextAlign.Center
-                    )
+                    // Animated appearance of bottom speechText
+                    AnimatedVisibility(
+                        visible = true,
+                        enter = slideInVertically(
+                            initialOffsetY = { -it / 2 }, // Slide from above
+                            animationSpec = tween(Constants.ANIMATION_DELAY)
+                        ) + fadeIn(animationSpec = tween(Constants.ANIMATION_DELAY))
+                    ) {
+                        Text(
+                            text = speechText,
+                            fontSize = Constants.STD_FONT_SIZE.sp, // Small font
+                            fontFamily = robotoSemibold,
+                            color = if (isSpeaking) {
+                                Color.White
+                            } else {
+                                colorResource(R.color.std_purple_dark)
+                            },
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
             }
         }
@@ -1123,15 +1297,14 @@ fun SpeechRecognitionDialog(
 @Composable
 fun HomeActivityPreview() {
     HomeScreen(
-        titleText = "Hello ~Eduard, what can I do for you?",
+        titleText = "Hello ~Eduard~,\nwhat can I do for you?",
         syncStatus = 1,
         syncDays = 5,
         showDetectionOptions = false,
-        detectionIconColor = R.color.std_purple,
+        detectionIconColor = R.color.std_purple_dark,
         selectedDetectionOption = null,
         detectionInfoPressed = false,
         captionInfoPressed = false,
-        speakInfoPressed = false,
         showSpeechDialog = false,
         speechText = "",
         speechProcessText = "",
@@ -1160,7 +1333,7 @@ fun HomeActivityPreview() {
 @Composable
 fun HomeActivityWithOptionsPreview() {
     HomeScreen(
-        titleText = "Hello ~Eduard, what can I do for you?",
+        titleText = "Hello ~Eduard~,\nwhat can I do for you?",
         syncStatus = 1,
         syncDays = 5,
         showDetectionOptions = true,
@@ -1168,7 +1341,6 @@ fun HomeActivityWithOptionsPreview() {
         selectedDetectionOption = HomeActivity.DetectionOption.LIVE,
         detectionInfoPressed = false,
         captionInfoPressed = false,
-        speakInfoPressed = false,
         showSpeechDialog = false,
         speechText = "",
         speechProcessText = "",
@@ -1188,14 +1360,38 @@ fun HomeActivityWithOptionsPreview() {
     )
 }
 
-@Preview(name = "Speech Recognition Dialog", showBackground = true, widthDp = 412, heightDp = 917)
+@Preview(
+    name = "Home Activity - Speaking Dialog Enabled",
+    showBackground = true,
+    widthDp = 412,
+    heightDp = 917
+)
 @Composable
-fun SpeechDialogPreview() {
-    SpeechRecognitionDialog(
-        isVisible = true,
-        speechText = "Find my apple",
-        processText = "Matched: apple",
+fun HomeActivityWithSpeakingDialogPreview() {
+    HomeScreen(
+        titleText = "Hello ~Eduard~,\nwhat can I do for you?",
+        syncStatus = 1,
+        syncDays = 5,
+        showDetectionOptions = false,
+        detectionIconColor = R.color.std_purple_dark,
+        selectedDetectionOption = HomeActivity.DetectionOption.LIVE,
+        detectionInfoPressed = false,
+        captionInfoPressed = false,
+        showSpeechDialog = true,
+        speechText = "Where is my phone, tablet, apple, and laptop",
+        speechProcessText = "Processing the speech",
         isSpeaking = false,
-        onTap = {}
+        onDetectionClick = {},
+        onDetectionIconPress = {},
+        onDetectionIconRelease = {},
+        onDetectionOptionSelected = {},
+        onCaptionClick = {},
+        onDetectionInfoClick = {},
+        onCaptionInfoClick = {},
+        onSpeakInfoClick = {},
+        onNavigateHome = {},
+        onNavigateReports = {},
+        onNavigateSettings = {},
+        onSpeechDialogTap = {}
     )
 }
