@@ -2,7 +2,6 @@
 
 package com.visionassist.appspace.activities.main
 
-import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
@@ -11,25 +10,67 @@ import android.util.Log
 import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.SyncProblem
+import androidx.compose.material.icons.filled.TextFields
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -37,17 +78,34 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
-import com.visionassist.appspace.utils.*
+import com.visionassist.appspace.activities.tabs.home.caption.CaptionActivity
+import com.visionassist.appspace.activities.tabs.home.detection.LiveDetectionActivity
+import com.visionassist.appspace.activities.tabs.home.detection.StaticDetectionActivity
+import com.visionassist.appspace.activities.tabs.reports.EnvironmentReportsActivity
+import com.visionassist.appspace.activities.tabs.settings.SettingsActivity
+import com.visionassist.appspace.utils.AppConfig
+import com.visionassist.appspace.utils.Constants
+import com.visionassist.appspace.utils.PermissionChecker
+import com.visionassist.appspace.utils.haptic_model0
+import com.visionassist.appspace.utils.load_captionTutorial
+import com.visionassist.appspace.utils.load_detectionTutorial
+import com.visionassist.appspace.utils.load_homeTitle
+import com.visionassist.appspace.utils.load_speakTutorial
+import com.visionassist.appspace.utils.load_syncErrorText
+import com.visionassist.appspace.utils.load_syncStatusText
+import com.visionassist.appspace.utils.robotoExtraBold
+import com.visionassist.appspace.utils.robotoExtraBoldItalic
+import com.visionassist.appspace.utils.robotoLight
+import com.visionassist.appspace.utils.robotoSemibold
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 class HomeActivity : ComponentActivity() {
     private val TAG = "HomeActivity"
@@ -95,9 +153,9 @@ class HomeActivity : ComponentActivity() {
 
         // Get sync status
         val dbManager = PhoneStatusMonitor.getInstance().dbManager
-        syncStatus.value = dbManager.getStatusOverview()
+        syncStatus.value = dbManager.statusOverview
         if (syncStatus.value == 1) {
-            syncDays.value = dbManager.diffDays
+            syncDays.value = dbManager.diffDays.toInt()
         }
 
         setContent {
@@ -136,8 +194,6 @@ class HomeActivity : ComponentActivity() {
 
         val phoneMonitor = PhoneStatusMonitor.getInstance()
         if (phoneMonitor.isReturningFromPermissions) {
-            phoneMonitor.isReturningFromPermissions = false
-
             // Determine what action we were doing before permissions
             // This is simplified - you may need additional state tracking
             handler.postDelayed({
@@ -145,8 +201,6 @@ class HomeActivity : ComponentActivity() {
             }, 500)
         }
     }
-
-    // ==================== DETECTION HANDLERS ====================
 
     private fun handleDetectionClick() {
         vibrateIfEnabled()
@@ -211,8 +265,6 @@ class HomeActivity : ComponentActivity() {
         }
     }
 
-    // ==================== CAPTION HANDLERS ====================
-
     private fun handleCaptionClick() {
         vibrateIfEnabled()
         launchCaptionActivity()
@@ -229,8 +281,6 @@ class HomeActivity : ComponentActivity() {
             }
         }
     }
-
-    // ==================== INFO BUTTON HANDLERS ====================
 
     private fun handleDetectionInfoClick() {
         vibrateIfEnabled()
@@ -272,8 +322,6 @@ class HomeActivity : ComponentActivity() {
         return 1 // Implement cycling logic if needed
     }
 
-    // ==================== NAVIGATION HANDLERS ====================
-
     private fun handleNavigateHome() {
         vibrateIfEnabled()
         // Already on home, do nothing
@@ -294,8 +342,6 @@ class HomeActivity : ComponentActivity() {
         startActivity(intent)
         finish()
     }
-
-    // ==================== SPEECH RECOGNITION HANDLERS ====================
 
     private fun launchSpeechRecognition() {
         showSpeechDialog.value = true
@@ -339,7 +385,7 @@ class HomeActivity : ComponentActivity() {
             retrySpeech.value = true
         } else {
             val yoloDetector = PhoneStatusMonitor.getInstance()
-                .modelManager.yoloDetector
+                .modelManager.detector
 
             val classNames = matchedIndices.map { yoloDetector.getClassName(it) }
             speechProcessText.value = "Matched: ${classNames.joinToString(", ")}"
@@ -363,8 +409,6 @@ class HomeActivity : ComponentActivity() {
         cancelSpeech.value = false
         sendSpeech.value = false
     }
-
-    // ==================== VOLUME BUTTON HANDLERS ====================
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         when (keyCode) {
@@ -413,18 +457,18 @@ class HomeActivity : ComponentActivity() {
                 showSpeechDialog.value = false
                 resetSpeechStates()
             }
+
             sendSpeech.value -> {
                 // Process recognized text
                 processRecognizedSpeech()
             }
+
             else -> {
                 // Launch caption activity
                 launchCaptionActivity()
             }
         }
     }
-
-    // ==================== UTILITY METHODS ====================
 
     private fun vibrateIfEnabled() {
         if (AppConfig.haptics) {
@@ -449,7 +493,7 @@ class HomeActivity : ComponentActivity() {
     }
 }
 
-// ==================== COMPOSABLE SCREEN ====================
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -488,7 +532,7 @@ fun HomeScreen(
 
         // Background image
         Image(
-            painter = painterResource(R.drawable.welcome_background),
+            painter = painterResource(R.drawable.app_background),
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
@@ -530,7 +574,7 @@ fun HomeScreen(
                 showInfoButton = AppConfig.showTutorial && !detectionInfoPressed,
                 onDetectionClick = onDetectionClick,
                 onIconPress = onDetectionIconPress,
-                onIconRelease = onIconRelease,
+                onIconRelease = onDetectionIconRelease,
                 onOptionSelected = onDetectionOptionSelected,
                 onInfoClick = onDetectionInfoClick
             )
@@ -559,7 +603,8 @@ fun HomeScreen(
             // Speak info button (only in English and if tutorial enabled)
             if (AppConfig.showTutorial &&
                 AppConfig.mainLanguage.code == "en" &&
-                !speakInfoPressed) {
+                !speakInfoPressed
+            ) {
                 InfoButtonWithPulse(
                     onClick = onSpeakInfoClick,
                     isPulsing = !speakInfoPressed
@@ -593,8 +638,6 @@ fun HomeScreen(
     }
 }
 
-// ==================== TYPEWRITER TEXT COMPONENT ====================
-
 @Composable
 fun TypewriterText(
     text: String,
@@ -602,13 +645,12 @@ fun TypewriterText(
     modifier: Modifier = Modifier
 ) {
     var displayedText by remember { mutableStateOf("") }
-    val fullText = text
 
-    LaunchedEffect(fullText) {
+    LaunchedEffect(text) {
         displayedText = ""
-        fullText.forEachIndexed { index, _ ->
+        text.forEachIndexed { index, _ ->
             delay(50) // Typing speed
-            displayedText = fullText.substring(0, index + 1)
+            displayedText = text.take(index + 1)
         }
     }
 
@@ -629,6 +671,7 @@ fun TypewriterText(
                         append(parts[0])
                     }
                 }
+
                 parts.size > 1 -> {
                     withStyle(
                         style = SpanStyle(
@@ -752,13 +795,14 @@ fun DetectionOptionButton(
     }
 }
 
-// ==================== MAIN ACTION BUTTON ====================
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainActionButton(
+    predefinedIcon: ImageVector? = null,
     text: String,
-    iconRes: Int,
+    iconRes: Int=0,
     iconColor: Int,
     screenWidth: Dp,
     onClick: () -> Unit,
@@ -773,10 +817,23 @@ fun MainActionButton(
         Button(
             onClick = onClick,
             modifier = Modifier
-                .shadow(3.dp, RoundedCornerShape(topStart = 5.dp, topEnd = 31.dp, bottomStart = 5.dp, bottomEnd = 5.dp))
+                .shadow(
+                    3.dp,
+                    RoundedCornerShape(
+                        topStart = 5.dp,
+                        topEnd = 31.dp,
+                        bottomStart = 5.dp,
+                        bottomEnd = 5.dp
+                    )
+                )
                 .width(screenWidth * 0.6f)
                 .height(Constants.STD_BUTTON_PAGE_HEIGHT.dp),
-            shape = RoundedCornerShape(topStart = 5.dp, topEnd = 31.dp, bottomStart = 5.dp, bottomEnd = 5.dp),
+            shape = RoundedCornerShape(
+                topStart = 5.dp,
+                topEnd = 31.dp,
+                bottomStart = 5.dp,
+                bottomEnd = 5.dp
+            ),
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color.White,
                 contentColor = colorResource(R.color.std_purple)
@@ -808,17 +865,24 @@ fun MainActionButton(
                 },
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                painter = painterResource(iconRes),
-                contentDescription = "Action icon",
-                tint = Color.White.copy(alpha = 0.7f),
-                modifier = Modifier.size(28.dp)
-            )
+            if (predefinedIcon == null) {
+                Icon(
+                    painter = painterResource(iconRes),
+                    contentDescription = "Action icon",
+                    tint = Color.White.copy(alpha = 0.7f),
+                    modifier = Modifier.size(28.dp)
+                )
+            } else {
+                Icon(
+                    imageVector =predefinedIcon,
+                    contentDescription = "Action icon",
+                    tint = Color.White.copy(alpha = 0.7f),
+                    modifier = Modifier.size(28.dp)
+                )
+            }
         }
     }
 }
-
-// ==================== CAPTION BUTTON SECTION ====================
 
 @Composable
 fun CaptionButtonSection(
@@ -834,8 +898,8 @@ fun CaptionButtonSection(
     ) {
         // Caption Button
         MainActionButton(
+            predefinedIcon = Icons.Filled.TextFields,
             text = "Caption",
-            iconRes = R.drawable.caption_icon, // Replace with actual icon (text fields)
             iconColor = R.color.std_purple,
             screenWidth = screenWidth,
             onClick = onCaptionClick,
@@ -853,8 +917,6 @@ fun CaptionButtonSection(
         }
     }
 }
-
-// ==================== INFO BUTTON WITH PULSE ====================
 
 @Composable
 fun InfoButtonWithPulse(
@@ -888,8 +950,6 @@ fun InfoButtonWithPulse(
         )
     }
 }
-
-// ==================== SYNC STATUS SECTION ====================
 
 @Composable
 fun SyncStatusSection(
@@ -932,8 +992,6 @@ fun SyncStatusSection(
         )
     }
 }
-
-// ==================== BOTTOM NAVIGATION BAR ====================
 
 @Composable
 fun BottomNavigationBar(
@@ -985,8 +1043,6 @@ fun BottomNavigationBar(
         )
     }
 }
-
-// ==================== SPEECH RECOGNITION DIALOG ====================
 
 @Composable
 fun SpeechRecognitionDialog(
@@ -1063,7 +1119,6 @@ fun SpeechRecognitionDialog(
     }
 }
 
-
 @Preview(name = "Home Activity", showBackground = true, widthDp = 412, heightDp = 917)
 @Composable
 fun HomeActivityPreview() {
@@ -1072,7 +1127,7 @@ fun HomeActivityPreview() {
         syncStatus = 1,
         syncDays = 5,
         showDetectionOptions = false,
-        detectionIconColor = com.visionassist.appspace.R.color.std_purple,
+        detectionIconColor = R.color.std_purple,
         selectedDetectionOption = null,
         detectionInfoPressed = false,
         captionInfoPressed = false,
@@ -1096,7 +1151,12 @@ fun HomeActivityPreview() {
     )
 }
 
-@Preview(name = "Home Activity - Detection Options Visible", showBackground = true, widthDp = 412, heightDp = 917)
+@Preview(
+    name = "Home Activity - Detection Options Visible",
+    showBackground = true,
+    widthDp = 412,
+    heightDp = 917
+)
 @Composable
 fun HomeActivityWithOptionsPreview() {
     HomeScreen(
@@ -1104,7 +1164,7 @@ fun HomeActivityWithOptionsPreview() {
         syncStatus = 1,
         syncDays = 5,
         showDetectionOptions = true,
-        detectionIconColor = com.visionassist.appspace.R.color.std_cyan,
+        detectionIconColor = R.color.std_cyan,
         selectedDetectionOption = HomeActivity.DetectionOption.LIVE,
         detectionInfoPressed = false,
         captionInfoPressed = false,
