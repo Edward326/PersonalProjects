@@ -86,6 +86,7 @@ import com.visionassist.appspace.utils.haptic_model0
 import com.visionassist.appspace.utils.load_infoBB
 import com.visionassist.appspace.utils.load_infoCaption
 import com.visionassist.appspace.utils.robotoSemibold
+import com.visionassist.appspace.utils.vibrate
 import kotlin.math.roundToInt
 
 class UserAccessibility1Activity : ComponentActivity() {
@@ -191,13 +192,7 @@ class UserAccessibility1Activity : ComponentActivity() {
                 onHapticsChange = {
                     hasHaptics.value = it
                     if (it) {
-                        val vibrator = getSystemService(VIBRATOR_SERVICE) as Vibrator
-                        if (Constants.API_LEVEL >= Build.VERSION_CODES.O) {
-                            // Modern way (API 26+)
-                            vibrator.vibrate(
-                                VibrationEffect.createWaveform(haptic_model0(),-1)
-                            )
-                        }
+                        vibrate(haptic_model0())
                     }
                     },
                     onInfoClick = ::handleInfoClick,

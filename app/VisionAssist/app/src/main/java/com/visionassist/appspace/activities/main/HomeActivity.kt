@@ -28,6 +28,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -74,12 +75,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
@@ -111,6 +114,7 @@ import com.visionassist.appspace.utils.robotoBold
 import com.visionassist.appspace.utils.robotoExtraBold
 import com.visionassist.appspace.utils.robotoExtraBoldItalic
 import com.visionassist.appspace.utils.robotoSemibold
+import com.visionassist.appspace.utils.vibrate
 import kotlinx.coroutines.delay
 
 class HomeActivity : ComponentActivity() {
@@ -122,13 +126,12 @@ class HomeActivity : ComponentActivity() {
     private val syncDays = mutableStateOf(0)
 
     // Tutorial info button states
-    private val detectionInfoPressed = mutableStateOf(false)
-    private val captionInfoPressed = mutableStateOf(false)
-    private val speakInfoClickCount = mutableStateOf(0)
+    private val speakInfoClickCount = mutableStateOf(1)
 
     // Detection button states
     private val showDetectionOptions = mutableStateOf(false)
     private val selectedDetectionOption = mutableStateOf<DetectionOption?>(null)
+    private val selectedDetectionOptionPrevious = mutableStateOf<DetectionOption?>(null)
     private val detectionIconColor = mutableStateOf(R.color.std_purple_dark)
 
     // Speech recognition states
@@ -143,6 +146,7 @@ class HomeActivity : ComponentActivity() {
     // Volume button tracking
     private var lastVolumeDownPress = 0L
     private var volumeDownPressCount = 0
+    private var basicInfoClickCount = 1
 
     private val handler = Handler(Looper.getMainLooper())
 
@@ -171,15 +175,11 @@ class HomeActivity : ComponentActivity() {
                 showDetectionOptions = showDetectionOptions.value,
                 detectionIconColor = detectionIconColor.value,
                 selectedDetectionOption = selectedDetectionOption.value,
-                detectionInfoPressed = detectionInfoPressed.value,
-                captionInfoPressed = captionInfoPressed.value,
                 showSpeechDialog = showSpeechDialog.value,
                 speechText = speechText.value,
                 speechProcessText = speechProcessText.value,
                 isSpeaking = isSpeaking.value,
                 onDetectionClick = ::handleDetectionClick,
-                onDetectionIconPress = ::handleDetectionIconPress,
-                onDetectionIconRelease = ::handleDetectionIconRelease,
                 onDetectionOptionSelected = ::handleDetectionOptionSelected,
                 onCaptionClick = ::handleCaptionClick,
                 onDetectionInfoClick = ::handleDetectionInfoClick,
@@ -188,7 +188,8 @@ class HomeActivity : ComponentActivity() {
                 onNavigateHome = ::handleNavigateHome,
                 onNavigateReports = ::handleNavigateReports,
                 onNavigateSettings = ::handleNavigateSettings,
-                onSpeechDialogTap = ::handleSpeechDialogTap
+                onSpeechDialogTap = ::handleSpeechDialogTap,
+                navigateFun = ::navigateToLiveOrStatic
             )
         }
     }
@@ -212,37 +213,34 @@ class HomeActivity : ComponentActivity() {
         detectionIconColor.value = if (showDetectionOptions.value) {
             R.color.std_cyan
         } else {
+            selectedDetectionOption.value = null
             R.color.std_purple
         }
+
     }
 
-    private fun handleDetectionIconPress() {
-        vibrateIfEnabled()
-        detectionIconColor.value = R.color.std_cyan
-        selectedDetectionOption.value = DetectionOption.LIVE
-    }
-
-    private fun handleDetectionIconRelease() {
-        val selected = selectedDetectionOption.value
-
-        detectionIconColor.value = R.color.std_purple
-        showDetectionOptions.value = false
-
-        if (selected != null) {
-            when (selected) {
-                DetectionOption.LIVE -> launchLiveDetection()
-                DetectionOption.STATIC -> launchStaticDetection()
+    private fun handleDetectionOptionSelected(option: DetectionOption?, navigate: Boolean) {
+        if(option!=null) {
+            if (selectedDetectionOption.value != option) {
+                vibrateIfEnabled()
+                selectedDetectionOption.value = option
             }
-        } else {
-            vibrateIfEnabled()
         }
-
-        selectedDetectionOption.value = null
+        else
+            selectedDetectionOption.value = null
+        if (navigate) {
+            navigateToLiveOrStatic()
+        }
     }
 
-    private fun handleDetectionOptionSelected(option: DetectionOption) {
-        vibrateIfEnabled()
-        selectedDetectionOption.value = option
+    private fun navigateToLiveOrStatic() {
+        when (selectedDetectionOption.value) {
+            DetectionOption.LIVE -> launchLiveDetection()
+            DetectionOption.STATIC -> launchStaticDetection()
+            else -> {
+                handleDetectionClick()
+            }
+        }
     }
 
     private fun launchLiveDetection() {
@@ -288,9 +286,6 @@ class HomeActivity : ComponentActivity() {
 
     private fun handleDetectionInfoClick() {
         vibrateIfEnabled()
-        if (!detectionInfoPressed.value) {
-            detectionInfoPressed.value = true
-        }
 
         // Cycle through tutorial messages
         titleText.value = load_detectionTutorial(this, getNextInfoStep())
@@ -298,32 +293,33 @@ class HomeActivity : ComponentActivity() {
 
     private fun handleCaptionInfoClick() {
         vibrateIfEnabled()
-        if (!captionInfoPressed.value) {
-            captionInfoPressed.value = true
-        }
 
         titleText.value = load_captionTutorial(this, getNextInfoStep())
     }
 
     private fun handleSpeakInfoClick() {
         vibrateIfEnabled()
-        //if (!speakInfoPressed.value) {
-        //    speakInfoPressed.value = true
-        // }
 
-        speakInfoClickCount.value++
         titleText.value = load_speakTutorial(this, speakInfoClickCount.value)
 
         // Reset after showing all messages
-        if (speakInfoClickCount.value >= 5) {
+        if (speakInfoClickCount.value == 7) {
             speakInfoClickCount.value = 0
-            titleText.value = load_homeTitle(this)
         }
+        else
+            speakInfoClickCount.value++
     }
 
     private fun getNextInfoStep(): Int {
         // Simple counter for tutorial steps
-        return 1 // Implement cycling logic if needed
+        if(basicInfoClickCount ==3) {
+            basicInfoClickCount = 0
+            return basicInfoClickCount
+        }
+        else {
+            basicInfoClickCount++
+            return basicInfoClickCount-1
+        }
     }
 
     private fun handleNavigateHome() {
@@ -476,7 +472,7 @@ class HomeActivity : ComponentActivity() {
 
     private fun vibrateIfEnabled() {
         if (AppConfig.haptics) {
-            haptic_model0()
+            vibrate(haptic_model0())
         }
     }
 
@@ -507,16 +503,12 @@ fun HomeScreen(
     showDetectionOptions: Boolean,
     detectionIconColor: Int,
     selectedDetectionOption: HomeActivity.DetectionOption?,
-    detectionInfoPressed: Boolean,
-    captionInfoPressed: Boolean,
     showSpeechDialog: Boolean,
     speechText: String,
     speechProcessText: String,
     isSpeaking: Boolean,
     onDetectionClick: () -> Unit,
-    onDetectionIconPress: () -> Unit,
-    onDetectionIconRelease: () -> Unit,
-    onDetectionOptionSelected: (HomeActivity.DetectionOption) -> Unit,
+    onDetectionOptionSelected: (HomeActivity.DetectionOption?, navigate: Boolean) -> Unit,
     onCaptionClick: () -> Unit,
     onDetectionInfoClick: () -> Unit,
     onCaptionInfoClick: () -> Unit,
@@ -524,7 +516,8 @@ fun HomeScreen(
     onNavigateHome: () -> Unit,
     onNavigateReports: () -> Unit,
     onNavigateSettings: () -> Unit,
-    onSpeechDialogTap: () -> Unit
+    onSpeechDialogTap: () -> Unit,
+    navigateFun: () -> Unit,
 ) {
     BoxWithConstraints(
         modifier = Modifier.fillMaxSize()
@@ -542,8 +535,9 @@ fun HomeScreen(
 
         // Main content
         Column(
-            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.912f),
-            verticalArrangement = Arrangement.SpaceAround
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.913f)
         ) {
             Box(modifier = Modifier.height(screenHeight * 0.045f))
 
@@ -570,12 +564,12 @@ fun HomeScreen(
                 iconColor = detectionIconColor,
                 selectedOption = selectedDetectionOption,
                 screenWidth = screenWidth,
-                showInfoButton = AppConfig.showTutorial && !detectionInfoPressed,
+                showInfoButton = AppConfig.showTutorial,
                 onDetectionClick = onDetectionClick,
-                onIconPress = onDetectionIconPress,
-                onIconRelease = onDetectionIconRelease,
+                onIconPress = onDetectionClick,
                 onOptionSelected = onDetectionOptionSelected,
-                onInfoClick = onDetectionInfoClick
+                onInfoClick = onDetectionInfoClick,
+                navigate = navigateFun
             )
 
 
@@ -584,13 +578,14 @@ fun HomeScreen(
             // Caption Button
             CaptionButtonSection(
                 screenWidth = screenWidth,
-                showInfoButton = AppConfig.showTutorial && !captionInfoPressed,
+                showInfoButton = AppConfig.showTutorial,
                 onCaptionClick = onCaptionClick,
                 onInfoClick = onCaptionInfoClick
             )
 
+            //Box(modifier = Modifier.height(screenHeight * 0.21f))
 
-            Box(modifier = Modifier.height(screenHeight * 0.21f))
+            Spacer(modifier = Modifier.weight(1f))
 
             SyncStatusSection(
                 syncStatus = syncStatus,
@@ -598,15 +593,15 @@ fun HomeScreen(
                 showInfoButton = AppConfig.showTutorial && AppConfig.mainLanguage.code == "en",
                 onInfoClick = onSpeakInfoClick
             )
-
-            Box(modifier = Modifier.height(screenHeight * 0.01f))
         }
 
 
         // Bottom Navigation Bar
         Box(
-            modifier = Modifier.align(Alignment.BottomCenter)
-                  .fillMaxWidth().fillMaxHeight(0.087f),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .fillMaxHeight(0.087f),
         ) {
             BottomNavigationBar(
                 onNavigateHome = onNavigateHome,
@@ -639,7 +634,7 @@ fun TypewriterText(
     LaunchedEffect(text) {
         displayedText = ""
         text.forEachIndexed { index, _ ->
-            delay(50) // Typing speed
+            delay(70) // Typing speed
             displayedText = text.take(index + 1)
         }
     }
@@ -661,6 +656,7 @@ fun TypewriterText(
                         append(parts[0])
                     }
                 }
+
                 3 -> {
                     withStyle(
                         style = SpanStyle(
@@ -707,23 +703,75 @@ fun DetectionButtonSection(
     showInfoButton: Boolean,
     onDetectionClick: () -> Unit,
     onIconPress: () -> Unit,
-    onIconRelease: () -> Unit,
-    onOptionSelected: (HomeActivity.DetectionOption) -> Unit,
-    onInfoClick: () -> Unit
+    onOptionSelected: (HomeActivity.DetectionOption?, navigate: Boolean) -> Unit,
+    onInfoClick: () -> Unit,
+    navigate: () -> Unit
 ) {
     // Button dimensions
     val buttonHeight = Constants.STD_BUTTON_PAGE_HEIGHT.dp
-    val optionWidth = screenWidth * 0.21f // 1.8x detection width
-    val optionHeight = buttonHeight
+    val optionWidth = screenWidth * 0.21f
+    val detectionX = screenWidth * 0.23f
+
+    // ✅ NEW: Drag detection state
+    val density = LocalDensity.current
+
+    // Helper function to determine which button is being hovered
+    fun getHoveredOption(position: Offset): HomeActivity.DetectionOption? {
+        if (!showOptions) return null
+
+        with(density) {
+            // Static button bounds (left of detection)
+            val staticLeft = (detectionX - optionWidth - 5.dp).toPx()
+            val staticRight = (detectionX - 5.dp).toPx()
+            val staticTop = buttonHeight.toPx()
+            val staticBottom = (buttonHeight + buttonHeight).toPx()
+
+            if (position.x in staticLeft..staticRight &&
+                position.y in staticTop..staticBottom
+            ) {
+                return HomeActivity.DetectionOption.STATIC
+            }
+
+            // Live button bounds (above detection, rotated)
+            val liveLeft = detectionX.toPx()
+            val liveRight = (detectionX + buttonHeight).toPx() // Rotated: width is height
+            val liveTop = (buttonHeight - optionWidth - 4.dp).toPx()
+            val liveBottom = (buttonHeight - 4.dp).toPx()
+
+            if (position.x in liveLeft..liveRight &&
+                position.y in liveTop..liveBottom
+            ) {
+                return HomeActivity.DetectionOption.LIVE
+            }
+        }
+
+        return null
+    }
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height((Constants.STD_BUTTON_PAGE_HEIGHT).dp + optionWidth) // Space for both options
+            .height((Constants.STD_BUTTON_PAGE_HEIGHT).dp + optionWidth)
+            .pointerInput(showOptions) {
+                // ✅ Detect drag gestures when options are visible
+                if (showOptions) {
+                    detectDragGestures(
+                        onDragStart = { offset ->
+                            onOptionSelected(getHoveredOption(offset), false)
+                        },
+                        onDrag = { change, _ ->
+                            onOptionSelected(getHoveredOption(change.position), false)
+                        },
+                        onDragEnd = {
+                            navigate()
+                        },
+                        onDragCancel = {
+                            navigate()
+                        }
+                    )
+                }
+            }
     ) {
-        // Detection button X position (0.23 from left edge)
-        val detectionX = screenWidth * 0.23f
-
         // === STATIC BUTTON (Slides LEFT) ===
         AnimatedVisibility(
             visible = showOptions,
@@ -744,9 +792,9 @@ fun DetectionButtonSection(
             OptionButton(
                 text = "Static",
                 isSelected = selectedOption == HomeActivity.DetectionOption.STATIC,
-                onClick = { onOptionSelected(HomeActivity.DetectionOption.STATIC) },
+                onClick = { onOptionSelected(HomeActivity.DetectionOption.STATIC, true) },
                 width = optionWidth,
-                height = optionHeight,
+                height = buttonHeight,
                 isRotated = false
             )
         }
@@ -764,16 +812,16 @@ fun DetectionButtonSection(
             ),
             modifier = Modifier
                 .offset(
-                    x = detectionX, // Center with detection
-                    y = buttonHeight - optionWidth - 4.dp // ABOVE detection
+                    x = detectionX,
+                    y = buttonHeight - optionWidth - 4.dp
                 )
         ) {
             OptionButton(
                 text = "Live",
                 isSelected = selectedOption == HomeActivity.DetectionOption.LIVE,
-                onClick = { onOptionSelected(HomeActivity.DetectionOption.LIVE) },
+                onClick = { onOptionSelected(HomeActivity.DetectionOption.LIVE, true) },
                 width = optionWidth,
-                height = optionHeight,
+                height = buttonHeight,
                 isRotated = true
             )
         }
@@ -798,8 +846,7 @@ fun DetectionButtonSection(
                 iconColor = iconColor,
                 screenWidth = screenWidth,
                 onClick = onDetectionClick,
-                onIconPress = onIconPress,
-                onIconRelease = onIconRelease
+                onIconPress = onIconPress
             )
 
             if (showInfoButton) {
@@ -909,74 +956,65 @@ fun MainActionButton(
     iconColor: Int,
     screenWidth: Dp,
     onClick: () -> Unit,
-    onIconPress: () -> Unit,
-    onIconRelease: () -> Unit
+    onIconPress: () -> Unit
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(0.dp)
-    ) {
-
-        val buttonWidth = screenWidth * 0.6f
-        // Main button
-        Button(
-            onClick = onClick,
-            modifier = Modifier
-                .shadow(
-                    3.dp,
-                    shape
-                )
-                .width(buttonWidth)
-                .height(Constants.STD_BUTTON_PAGE_HEIGHT.dp),
-            shape = shape,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color.White,
-                contentColor = colorResource(R.color.std_purple)
-            ),
-            contentPadding = PaddingValues(0.dp)
-        ) {
-            // Icon button (circle)
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .shadow(3.dp, CircleShape)
-                    .clip(CircleShape)
-                    .background(colorResource(iconColor))
-                    .pointerInput(Unit) {
-                        detectTapGestures(
-                            onPress = {
-                                onIconPress()
-                                tryAwaitRelease()
-                                onIconRelease()
-                            }
-                        )
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                if (predefinedIcon == null) {
-                    Icon(
-                        painter = painterResource(iconRes),
-                        contentDescription = "Action icon",
-                        tint = Color.White.copy(alpha = 0.7f),
-                        modifier = Modifier.size(28.dp)
-                    )
-                } else {
-                    Icon(
-                        imageVector = predefinedIcon,
-                        contentDescription = "Action icon",
-                        tint = Color.White.copy(alpha = 0.7f),
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.width(buttonWidth * 0.05f))
-            Text(
-                text = text,
-                fontSize = Constants.STD_SUBTITLE_SIZE.sp,
-                fontFamily = robotoBold,
-                color = colorResource(R.color.std_purple_dark)
+    val buttonWidth = screenWidth * 0.6f
+    // Main button
+    Button(
+        onClick = onClick,
+        modifier = Modifier
+            .shadow(
+                3.dp,
+                shape
             )
+            .width(buttonWidth)
+            .height(Constants.STD_BUTTON_PAGE_HEIGHT.dp),
+        shape = shape,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color.White,
+            contentColor = colorResource(R.color.std_purple)
+        ),
+        contentPadding = PaddingValues(0.dp)
+    ) {
+        // Icon button (circle)
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .shadow(3.dp, CircleShape)
+                .clip(CircleShape)
+                .background(colorResource(iconColor))
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onPress = {
+                            onIconPress()
+                        }
+                    )
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            if (predefinedIcon == null) {
+                Icon(
+                    painter = painterResource(iconRes),
+                    contentDescription = "Action icon",
+                    tint = Color.White.copy(alpha = 0.7f),
+                    modifier = Modifier.size(28.dp)
+                )
+            } else {
+                Icon(
+                    imageVector = predefinedIcon,
+                    contentDescription = "Action icon",
+                    tint = Color.White.copy(alpha = 0.7f),
+                    modifier = Modifier.size(28.dp)
+                )
+            }
         }
+        Spacer(modifier = Modifier.width(buttonWidth * 0.05f))
+        Text(
+            text = text,
+            fontSize = Constants.STD_SUBTITLE_SIZE.sp,
+            fontFamily = robotoBold,
+            color = colorResource(R.color.std_purple_dark)
+        )
     }
 }
 
@@ -1009,7 +1047,6 @@ fun CaptionButtonSection(
             screenWidth = screenWidth,
             onClick = onCaptionClick,
             onIconPress = {}, // No special behavior
-            onIconRelease = {}
         )
 
         // Info button
@@ -1071,7 +1108,9 @@ fun SyncStatusSection(
     ) {
         // === FIRST ROW: 0.7 weight (Sync on LEFT) ===
         Row(
-            modifier = Modifier.weight(0.7f).padding(start = 10.dp),
+            modifier = Modifier
+                .weight(0.7f)
+                .padding(start = 10.dp),
             horizontalArrangement = Arrangement.Start,  // Align LEFT
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -1081,7 +1120,11 @@ fun SyncStatusSection(
                     modifier = Modifier
                         .size(24.dp)
                         .clip(CircleShape)
-                        .background(if (syncStatus == 1) colorResource(R.color.checked_green) else colorResource(R.color.error_red)),
+                        .background(
+                            if (syncStatus == 1) colorResource(R.color.checked_green) else colorResource(
+                                R.color.error_red
+                            )
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -1141,15 +1184,16 @@ fun BottomNavigationBar(
                     contentDescription = "Home"
                 )
             },
-            label = { Text(
-                text="Home",
-                fontSize = Constants.STD_FONT_SIZE_LW.sp,
-                fontFamily = robotoSemibold
-            )
+            label = {
+                Text(
+                    text = "Home",
+                    fontSize = Constants.STD_FONT_SIZE_LW.sp,
+                    fontFamily = robotoSemibold
+                )
 
-                    },
+            },
             selected = true,
-            colors= NavigationBarItemColors(
+            colors = NavigationBarItemColors(
                 selectedIconColor = Color.White.copy(0.7f),
                 unselectedIconColor = Color(0xFF49454F),
                 selectedIndicatorColor = colorResource(R.color.std_purple),
@@ -1303,16 +1347,12 @@ fun HomeActivityPreview() {
         showDetectionOptions = false,
         detectionIconColor = R.color.std_purple_dark,
         selectedDetectionOption = null,
-        detectionInfoPressed = false,
-        captionInfoPressed = false,
         showSpeechDialog = false,
         speechText = "",
         speechProcessText = "",
         isSpeaking = true,
         onDetectionClick = {},
-        onDetectionIconPress = {},
-        onDetectionIconRelease = {},
-        onDetectionOptionSelected = {},
+        onDetectionOptionSelected = { _, _ -> },
         onCaptionClick = {},
         onDetectionInfoClick = {},
         onCaptionInfoClick = {},
@@ -1320,7 +1360,8 @@ fun HomeActivityPreview() {
         onNavigateHome = {},
         onNavigateReports = {},
         onNavigateSettings = {},
-        onSpeechDialogTap = {}
+        onSpeechDialogTap = {},
+        navigateFun = {}
     )
 }
 
@@ -1339,16 +1380,12 @@ fun HomeActivityWithOptionsPreview() {
         showDetectionOptions = true,
         detectionIconColor = R.color.std_cyan,
         selectedDetectionOption = HomeActivity.DetectionOption.LIVE,
-        detectionInfoPressed = false,
-        captionInfoPressed = false,
         showSpeechDialog = false,
         speechText = "",
         speechProcessText = "",
         isSpeaking = true,
         onDetectionClick = {},
-        onDetectionIconPress = {},
-        onDetectionIconRelease = {},
-        onDetectionOptionSelected = {},
+        onDetectionOptionSelected = { _, _ -> },
         onCaptionClick = {},
         onDetectionInfoClick = {},
         onCaptionInfoClick = {},
@@ -1356,7 +1393,8 @@ fun HomeActivityWithOptionsPreview() {
         onNavigateHome = {},
         onNavigateReports = {},
         onNavigateSettings = {},
-        onSpeechDialogTap = {}
+        onSpeechDialogTap = {},
+        navigateFun = {}
     )
 }
 
@@ -1375,16 +1413,12 @@ fun HomeActivityWithSpeakingDialogPreview() {
         showDetectionOptions = false,
         detectionIconColor = R.color.std_purple_dark,
         selectedDetectionOption = HomeActivity.DetectionOption.LIVE,
-        detectionInfoPressed = false,
-        captionInfoPressed = false,
         showSpeechDialog = true,
         speechText = "Where is my phone, tablet, apple, and laptop",
         speechProcessText = "Processing the speech",
         isSpeaking = false,
         onDetectionClick = {},
-        onDetectionIconPress = {},
-        onDetectionIconRelease = {},
-        onDetectionOptionSelected = {},
+        onDetectionOptionSelected = { _, _ -> },
         onCaptionClick = {},
         onDetectionInfoClick = {},
         onCaptionInfoClick = {},
@@ -1392,6 +1426,7 @@ fun HomeActivityWithSpeakingDialogPreview() {
         onNavigateHome = {},
         onNavigateReports = {},
         onNavigateSettings = {},
-        onSpeechDialogTap = {}
+        onSpeechDialogTap = {},
+        navigateFun = {}
     )
 }
