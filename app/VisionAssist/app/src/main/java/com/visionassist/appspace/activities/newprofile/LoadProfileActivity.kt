@@ -252,7 +252,7 @@ class LoadProfileActivity : ComponentActivity() {
     }
 
     private fun handleLocallyClick() {
-        val message = load_infoLoadProfileActivity(this)
+        val message = load_infoLoadProfileActivity()
         val butOpt = if (AppConfig.mainLanguage.code == "en") "Files" else "Fișiere"
         infoNotificationManager.showNotification(message, {
             infoNotificationManager.hideNotification()
@@ -353,7 +353,7 @@ class LoadProfileActivity : ComponentActivity() {
         when (loginStatus) {
             DBConstants.PASSWORD_RESET_SENT -> {
                 // Show success notification
-                showSuccessNotification(load_passChangedSuccess(this, emailInput.value))
+                showSuccessNotification(load_passChangedSuccess(emailInput.value))
 
                 // Hide after 5 seconds
                 mainHandler.postDelayed({
@@ -499,7 +499,7 @@ class LoadProfileActivity : ComponentActivity() {
     private fun handleLoginResult() {
         when (loginStatus) {
             DBConstants.SYNC_OK -> {
-                showSuccessNotification(load_profileImportedSuccess(this))
+                showSuccessNotification(load_profileImportedSuccess())
 
                 // Navigate after 5 seconds
                 mainHandler.postDelayed({
@@ -783,7 +783,7 @@ class LoadProfileActivity : ComponentActivity() {
             Constants.LOAD_PROFILE_FILE_ENVR_UPLOAD_ERROR,
             Constants.LOAD_PROFILE_FILE_HC_UPLOAD_ERROR
                 -> {
-                showSuccessNotification(load_successLocalLoadProfileActivity(this, loadStatus))
+                showSuccessNotification(load_successLocalLoadProfileActivity(loadStatus))
 
                 // Navigate to home after delay
                 mainHandler.postDelayed({
@@ -816,7 +816,7 @@ class LoadProfileActivity : ComponentActivity() {
 
     private fun showErrorNotification(errorCode: Int) {
         notificationType.value = NotificationType.ERROR
-        notificationMessage.value = load_errorLocalLoadProfileActivity(this, errorCode)
+        notificationMessage.value = load_errorLocalLoadProfileActivity(errorCode)
         showOneButton.value = false
         showTwoButtons.value = true
         showThreeButtons.value = false

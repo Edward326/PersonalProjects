@@ -1,5 +1,12 @@
 //butonul de camera este apasat=> verifica intai checkPhoneStatus
 package com.visionassist.appspace.activities.tabs.home.caption;
+
+public class CaptionActivity {
+
+}
+/*
+// OLD VERSION
+package com.visionassist.appspace.activities.tabs.home.caption;
 import android.os.Bundle;
 import android.speech.tts.TextToSpeech;
 import android.util.Log;
@@ -85,3 +92,4 @@ public class CaptionActivity extends AppCompatActivity implements TextToSpeech.O
         super.onDestroy();
     }
 }
+ */

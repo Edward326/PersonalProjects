@@ -1,4 +1,4 @@
 package com.visionassist.appspace.activities.tabs.home.findmyobjects;
 
-public class FindMyObject {
+public class BlindFindMyObjectActivity {
 }

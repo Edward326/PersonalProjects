@@ -43,8 +43,7 @@ public class Constants {
     public static final String ENV_REPORTS_FILE_NAME = "env_reports.txt";
 
     // Intent Extras
-    public static final String EXTRA_IMAGE_PATH = "extra_image_path";
-    public static final String EXTRA_CAPTION_TEXT = "extra_caption_text";
+    public static final String EXTRA_IMAGE_BITMAP = "bitmap_bytearray";
     public static final String EXTRA_PERMISSION_OPTION = "permission_option";
     public static final String EXTRA_WELCOME_OPTION = "welcome_option";
     public static final String EXTRA_USERINFO_OPTION = "userinfo_option";
@@ -88,6 +87,8 @@ public class Constants {
     public static final float BACKGROUND_OPACITY = 0.5f;
 
     // Error codes, followed by shutdown
+    public static final int REGISTER_CAMERA_LAUNCHER=-3;
+    public static final int CAMERA_MAKE_PHOTO=-4;
     public static final int ERROR_READ_DELAY = 8000;
     public static final int EXCEPTION_CLASS_ERROR = -1;
     public static final int DIR_DELETE_ERROR = 0;
@@ -95,10 +96,6 @@ public class Constants {
     public static final int FILE_WRITE_ERROR = 2;
     public static final int DETECTOR_LOAD_ERROR = 3;
     public static final int CAPTIONER_LOAD_ERROR = 4;
-    public static final int TRANSLATER_LOAD_ERROR = 5;
-    public static final int CLASSIFIER_LOAD_ERROR = 6;
-    public static final int STT_LOAD_ERROR = 7;
-    public static final int ASSETS_ERROR = 8;
 
     // Error codes, used in load_profile_activity
     public static final int LOAD_PROFILE_EXCEPTION = -2;

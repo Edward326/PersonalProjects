@@ -3,13 +3,18 @@
 package com.visionassist.appspace.activities.main
 
 import android.content.Intent
+import android.graphics.Bitmap
+import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.MediaStore
 import android.util.Log
 import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts.TakePicture
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
@@ -29,6 +34,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -93,13 +99,15 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.FileProvider
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
 import com.visionassist.appspace.activities.tabs.home.caption.CaptionActivity
 import com.visionassist.appspace.activities.tabs.home.detection.LiveDetectionActivity
-import com.visionassist.appspace.activities.tabs.home.detection.StaticDetectionActivity
+import com.visionassist.appspace.activities.tabs.home.findmyobjects.FindMyObjectActivity
 import com.visionassist.appspace.activities.tabs.reports.EnvironmentReportsActivity
 import com.visionassist.appspace.activities.tabs.settings.SettingsActivity
+import com.visionassist.appspace.jetpack.managers.ErrorDialogManager
 import com.visionassist.appspace.utils.AppConfig
 import com.visionassist.appspace.utils.Constants
 import com.visionassist.appspace.utils.PermissionChecker
@@ -116,6 +124,10 @@ import com.visionassist.appspace.utils.robotoExtraBoldItalic
 import com.visionassist.appspace.utils.robotoSemibold
 import com.visionassist.appspace.utils.vibrate
 import kotlinx.coroutines.delay
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.IOException
+
 
 class HomeActivity : ComponentActivity() {
     private val TAG = "HomeActivity"
@@ -131,7 +143,6 @@ class HomeActivity : ComponentActivity() {
     // Detection button states
     private val showDetectionOptions = mutableStateOf(false)
     private val selectedDetectionOption = mutableStateOf<DetectionOption?>(null)
-    private val selectedDetectionOptionPrevious = mutableStateOf<DetectionOption?>(null)
     private val detectionIconColor = mutableStateOf(R.color.std_purple_dark)
 
     // Speech recognition states
@@ -148,6 +159,15 @@ class HomeActivity : ComponentActivity() {
     private var volumeDownPressCount = 0
     private var basicInfoClickCount = 1
 
+    // Runnable for navigation ot an activity
+    private var onPermissionGranted = {}
+
+    // Camera intent parameters
+    private lateinit var takePictureLauncher: ActivityResultLauncher<Uri>
+    private lateinit var currentPhotoUri: Uri
+    private var classOpt = 0
+
+    // Main handler
     private val handler = Handler(Looper.getMainLooper())
 
     enum class DetectionOption {
@@ -157,8 +177,10 @@ class HomeActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        registerCameraLauncher()
+
         // Load initial title
-        titleText.value = load_homeTitle(this)
+        titleText.value = load_homeTitle()
 
         // Get sync status
         val dbManager = PhoneStatusMonitor.getInstance().dbManager
@@ -189,22 +211,50 @@ class HomeActivity : ComponentActivity() {
                 onNavigateReports = ::handleNavigateReports,
                 onNavigateSettings = ::handleNavigateSettings,
                 onSpeechDialogTap = ::handleSpeechDialogTap,
-                navigateFun = ::navigateToLiveOrStatic
+                navigateFun = ::navigateToLiveOrStatic,
+                onSwipeToLeft = ::handleSwipeToLeft
             )
         }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun registerCameraLauncher() {
+        takePictureLauncher = registerForActivityResult(
+            TakePicture()
+        ) { isSuccess ->
+            if (isSuccess) {
+                try {
+                    val bitmap = MediaStore.Images.Media.getBitmap(
+                        contentResolver,
+                        currentPhotoUri
+                    )
+
+                    Log.d(TAG, "Photo captured successfully")
+                    Log.d(TAG, "Bitmap: ${bitmap.width}x${bitmap.height}")
+
+                    navigateToFindMyObjectWithBitmap(bitmap)
+                } catch (e: IOException) {
+                    Log.e(TAG, "Error loading captured image", e)
+                    showCameraError()
+                }
+            } else {
+                Log.e(TAG, "Image capture failed or cancelled")
+                showCameraError()
+            }
+        }
+
+        Log.d(TAG, "Camera launcher registered")
     }
 
     override fun onResume() {
         super.onResume()
 
-        val phoneMonitor = PhoneStatusMonitor.getInstance()
-        if (phoneMonitor.isReturningFromPermissions) {
-            // Determine what action we were doing before permissions
-            // This is simplified - you may need additional state tracking
-            handler.postDelayed({
-                // Re-check what action to resume
-            }, 500)
-        }
+        if (PhoneStatusMonitor.getInstance().isReturningFromPermissions)
+            PermissionChecker.checkAndRequestPermissions(
+                this,
+                AppConfig.blindness,
+                onPermissionGranted
+            )
     }
 
     private fun handleDetectionClick() {
@@ -220,13 +270,12 @@ class HomeActivity : ComponentActivity() {
     }
 
     private fun handleDetectionOptionSelected(option: DetectionOption?, navigate: Boolean) {
-        if(option!=null) {
+        if (option != null) {
             if (selectedDetectionOption.value != option) {
                 vibrateIfEnabled()
                 selectedDetectionOption.value = option
             }
-        }
-        else
+        } else
             selectedDetectionOption.value = null
         if (navigate) {
             navigateToLiveOrStatic()
@@ -244,7 +293,7 @@ class HomeActivity : ComponentActivity() {
     }
 
     private fun launchLiveDetection() {
-        PermissionChecker.checkAndRequestPermissions(this, AppConfig.blindness) {
+        onPermissionGranted = {
             checkPhoneStatusAndNavigate {
                 // Navigate to LiveDetectionActivity
                 val intent = Intent(this, LiveDetectionActivity::class.java)
@@ -252,19 +301,69 @@ class HomeActivity : ComponentActivity() {
                 finish()
             }
         }
+        PermissionChecker.checkAndRequestPermissions(this, AppConfig.blindness, onPermissionGranted)
     }
 
     private fun launchStaticDetection() {
-        PermissionChecker.checkAndRequestPermissions(this, AppConfig.blindness) {
+        classOpt = 0
+        onPermissionGranted = {
             checkPhoneStatusAndNavigate {
-                // Take photo and navigate to StaticDetectionActivity
-                // TODO: Implement camera capture
-                // For now, just navigate
-                val intent = Intent(this, StaticDetectionActivity::class.java)
-                startActivity(intent)
-                finish()
+                launchCamera()
             }
         }
+        PermissionChecker.checkAndRequestPermissions(this, AppConfig.blindness, onPermissionGranted)
+    }
+
+    private fun launchCamera() {
+        try {
+            val photoFile = File.createTempFile(
+                "temp_visionassist",
+                ".jpg",
+                cacheDir
+            )
+
+            currentPhotoUri = FileProvider.getUriForFile(
+                this,
+                "$packageName.fileprovider",
+                photoFile
+            )
+
+            Log.d(TAG, "Launching camera with URI: $currentPhotoUri")
+
+            takePictureLauncher.launch(currentPhotoUri)
+        } catch (e: IOException) {
+            Log.e(TAG, "Error creating temp file", e)
+            showCameraError()
+        }
+    }
+
+    private fun navigateToFindMyObjectWithBitmap(bitmap: Bitmap) {
+        try {
+            val intent = Intent(
+                this, if (classOpt == 0)
+                    FindMyObjectActivity::class.java
+                else
+                    CaptionActivity::class.java
+            )
+
+            val byteArrayOutputStream = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, byteArrayOutputStream)
+            val byteArray = byteArrayOutputStream.toByteArray()
+
+            intent.putExtra(Constants.EXTRA_IMAGE_BITMAP, byteArray)
+            startActivity(intent)
+            finish()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error navigating to FindMyObjectActivity", e)
+            showCameraError()
+        }
+    }
+
+    private fun showCameraError() {
+        val monitor = PhoneStatusMonitor.getInstance()
+        val errorDialog = ErrorDialogManager(monitor.currentActivity)
+        errorDialog.setupDialog(Constants.CAMERA_MAKE_PHOTO)
+        monitor.shutdownApp(errorDialog, monitor.currentContext)
     }
 
     private fun handleCaptionClick() {
@@ -273,15 +372,13 @@ class HomeActivity : ComponentActivity() {
     }
 
     private fun launchCaptionActivity() {
-        PermissionChecker.checkAndRequestPermissions(this, AppConfig.blindness) {
+        classOpt = 1
+        onPermissionGranted = {
             checkPhoneStatusAndNavigate {
-                // Take photo and navigate to CaptionActivity
-                // TODO: Implement camera capture
-                val intent = Intent(this, CaptionActivity::class.java)
-                startActivity(intent)
-                finish()
+                launchCamera()
             }
         }
+        PermissionChecker.checkAndRequestPermissions(this, AppConfig.blindness, onPermissionGranted)
     }
 
     private fun handleDetectionInfoClick() {
@@ -305,20 +402,18 @@ class HomeActivity : ComponentActivity() {
         // Reset after showing all messages
         if (speakInfoClickCount.value == 7) {
             speakInfoClickCount.value = 0
-        }
-        else
+        } else
             speakInfoClickCount.value++
     }
 
     private fun getNextInfoStep(): Int {
         // Simple counter for tutorial steps
-        if(basicInfoClickCount ==3) {
+        if (basicInfoClickCount == 3) {
             basicInfoClickCount = 0
-            return basicInfoClickCount
-        }
-        else {
+            return 0
+        } else {
             basicInfoClickCount++
-            return basicInfoClickCount-1
+            return basicInfoClickCount - 1
         }
     }
 
@@ -329,16 +424,27 @@ class HomeActivity : ComponentActivity() {
 
     private fun handleNavigateReports() {
         vibrateIfEnabled()
-        if (AppConfig.env_reports) {
-            val intent = Intent(this, EnvironmentReportsActivity::class.java)
-            startActivity(intent)
-            finish()
-        }
+
+        val intent = Intent(this, EnvironmentReportsActivity::class.java)
+        startActivity(intent)
+        finish()
+
     }
 
     private fun handleNavigateSettings() {
         vibrateIfEnabled()
         val intent = Intent(this, SettingsActivity::class.java)
+        startActivity(intent)
+        finish()
+    }
+
+    private fun handleSwipeToLeft() {
+        val intent = Intent(
+            this, if (AppConfig.env_reports)
+                EnvironmentReportsActivity::class.java
+            else
+                SettingsActivity::class.java
+        )
         startActivity(intent)
         finish()
     }
@@ -518,9 +624,45 @@ fun HomeScreen(
     onNavigateSettings: () -> Unit,
     onSpeechDialogTap: () -> Unit,
     navigateFun: () -> Unit,
+    onSwipeToLeft: () -> Unit
 ) {
+    var swipeStartX by remember { mutableStateOf(0f) }
+
     BoxWithConstraints(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                detectDragGestures(
+                    onDragStart = { offset ->
+                        swipeStartX = offset.x
+                    },
+                    onDrag = { _, _ -> },
+                    onDragEnd = {
+                        // Drag ended - calculate swipe
+                    },
+                    onDragCancel = {
+                        swipeStartX = 0f
+                    }
+                )
+            }
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures { change, dragAmount ->
+                    change.consume()
+
+                    val swipeEndX = change.position.x
+                    val swipeDistance = swipeEndX - swipeStartX
+                    val swipeThreshold = 100f // Minimum swipe distance
+
+                    when {
+                        // ✅ Swipe LEFT (right to left)
+                        swipeDistance < -swipeThreshold -> {
+                            Log.d("HomeScreen", "Swipe LEFT detected")
+                            onSwipeToLeft() // Navigate to Settings
+                            swipeStartX = 0f
+                        }
+                    }
+                }
+            }
     ) {
         val screenHeight = maxHeight
         val screenWidth = maxWidth
@@ -612,15 +754,13 @@ fun HomeScreen(
         }
 
         // Speech Recognition Dialog
-        if (showSpeechDialog) {
-            SpeechRecognitionDialog(
-                isVisible = showSpeechDialog,
-                speechText = speechText,
-                processText = speechProcessText,
-                isSpeaking = isSpeaking,
-                onTap = onSpeechDialogTap
-            )
-        }
+        SpeechRecognitionDialog(
+            isVisible = showSpeechDialog,
+            speechText = speechText,
+            processText = speechProcessText,
+            isSpeaking = isSpeaking,
+            onTap = onSpeechDialogTap
+        )
     }
 }
 
@@ -1068,28 +1208,68 @@ fun InfoButtonWithPulse(
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
 
-    val scale by infiniteTransition.animateFloat(
+    // Scale animation for the pulse circle (grows from 1.0 to 1.4)
+    val pulseScale by infiniteTransition.animateFloat(
         initialValue = 1f,
-        targetValue = if (isPulsing) 1.2f else 1f,
+        targetValue = 1.3f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
+            animation = tween(
+                durationMillis = 1500,
+                easing = FastOutSlowInEasing
+            ),
+            repeatMode = RepeatMode.Restart
         ),
-        label = "scale"
+        label = "pulse_scale"
     )
 
-    IconButton(
-        onClick = onClick,
-        modifier = modifier
-            .scale(if (isPulsing) scale else 1f)
-            .size(Constants.STD_INFO_BUTTON_SIZE.dp)
+    // Alpha animation for the pulse circle (fades from 0.4 to 0.0)
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = 1500,
+                easing = FastOutSlowInEasing
+            ),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "pulse_alpha"
+    )
+
+    Box(
+        modifier = modifier.size(Constants.STD_INFO_BUTTON_SIZE.dp * 1.3f),
+        contentAlignment = Alignment.Center
     ) {
-        Icon(
-            imageVector = Icons.Filled.Info,
-            contentDescription = "Info",
-            tint = colorResource(R.color.std_purple),
-            modifier = Modifier.size(Constants.STD_INFO_BUTTON_SIZE.dp)
-        )
+        // Pulse circle (behind the button) - only visible when pulsing
+        if (isPulsing) {
+            Box(
+                modifier = Modifier
+                    .size(Constants.STD_INFO_BUTTON_SIZE.dp)
+                    .scale(pulseScale)
+                    .background(
+                        color = colorResource(R.color.std_purple).copy(alpha = pulseAlpha),
+                        shape = CircleShape
+                    )
+            )
+        }
+
+        // Actual button (ALWAYS constant size)
+        IconButton(
+            onClick = onClick,
+            modifier = Modifier
+                .size(Constants.STD_INFO_BUTTON_SIZE.dp)
+                .background(
+                    color = colorResource(R.color.std_purple).copy(alpha = 0.0f),
+                    shape = CircleShape
+                )
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Info,
+                contentDescription = "Info",
+                tint = colorResource(R.color.std_purple),
+                modifier = Modifier.size((Constants.STD_INFO_BUTTON_SIZE).dp)
+            )
+        }
     }
 }
 
@@ -1129,18 +1309,18 @@ fun SyncStatusSection(
                 ) {
                     Icon(
                         imageVector = if (syncStatus == 1) Icons.Filled.Sync else Icons.Filled.SyncProblem,
-                        contentDescription = "Sync status",
+                        contentDescription = if (AppConfig.mainLanguage.code == "en") "Sync status" else "Status sincronizare",
                         tint = Color.White,
                         modifier = Modifier.size(21.dp)
                     )
                 }
 
-                Spacer(modifier = Modifier.width(4.dp))
+                Spacer(modifier = Modifier.width(5.dp))
 
                 // Sync text
                 Text(
                     text = if (syncStatus == 1) {
-                        load_syncStatusText(LocalContext.current, syncDays)
+                        load_syncStatusText(syncDays)
                     } else {
                         load_syncErrorText(LocalContext.current)
                     },
@@ -1361,7 +1541,8 @@ fun HomeActivityPreview() {
         onNavigateReports = {},
         onNavigateSettings = {},
         onSpeechDialogTap = {},
-        navigateFun = {}
+        navigateFun = {},
+        onSwipeToLeft = {}
     )
 }
 
@@ -1394,7 +1575,8 @@ fun HomeActivityWithOptionsPreview() {
         onNavigateReports = {},
         onNavigateSettings = {},
         onSpeechDialogTap = {},
-        navigateFun = {}
+        navigateFun = {},
+        onSwipeToLeft = {}
     )
 }
 
@@ -1427,6 +1609,7 @@ fun HomeActivityWithSpeakingDialogPreview() {
         onNavigateReports = {},
         onNavigateSettings = {},
         onSpeechDialogTap = {},
-        navigateFun = {}
+        navigateFun = {},
+        onSwipeToLeft = {}
     )
 }

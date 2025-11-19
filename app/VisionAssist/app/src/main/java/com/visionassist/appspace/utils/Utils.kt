@@ -227,7 +227,7 @@ fun load_profileSelectionButton(context: Context, case: Boolean): String {
     }
 }
 
-fun load_infoLoadProfileActivity(context: Context): String {
+fun load_infoLoadProfileActivity(): String {
     return when (AppConfig.mainLanguage.code) {
         "en" -> "Please select the '${Constants.PROFILE_FOLDER_NAME}' folder from your storage to load your profile"
         "ro" -> "Vă rugăm să selectați folderul '${Constants.PROFILE_FOLDER_NAME}' din fișierele dvs. pentru a încărca profilul"
@@ -235,7 +235,7 @@ fun load_infoLoadProfileActivity(context: Context): String {
     }
 }
 
-fun load_errorLocalLoadProfileActivity(context: Context,errorCode: Int): String {
+fun load_errorLocalLoadProfileActivity(errorCode: Int): String {
     return when (AppConfig.mainLanguage.code) {
         "en" -> "Error was encountered while fetching the profile\n\n@(Error code: ${errorCode})"
         "ro" -> "A apărut o eroare în timpul încărcării profilului dvs.\n\n@(Error code: ${errorCode})"
@@ -243,7 +243,7 @@ fun load_errorLocalLoadProfileActivity(context: Context,errorCode: Int): String 
     }
 }
 
-fun load_successLocalLoadProfileActivity(context: Context,errorCode: Int): String {
+fun load_successLocalLoadProfileActivity(errorCode: Int): String {
     return when (AppConfig.mainLanguage.code) {
         "en" -> "Profile imported successfully\n\n@(Exit code: ${errorCode})"
         "ro" -> "Profil încărcat cu succes\n\n@(Exit code: ${errorCode})"
@@ -275,7 +275,7 @@ fun load_genericErrorLoad(context: Context): String {
     }
 }
 
-fun load_passChangedSuccess(context: Context,emailInput: String): String {
+fun load_passChangedSuccess(emailInput: String): String {
     return when (AppConfig.mainLanguage.code) {
         "en" -> "Password change request sent to\n${emailInput}"
         "ro" -> "Cerere de schimbare a parolei trimisă către\n${emailInput}"
@@ -283,7 +283,7 @@ fun load_passChangedSuccess(context: Context,emailInput: String): String {
     }
 }
 
-fun load_profileImportedSuccess(context: Context): String {
+fun load_profileImportedSuccess(): String {
     return  when (AppConfig.mainLanguage.code) {
         "en" -> "Profile imported successfully"
         "ro" -> "Profilul a fost importat cu succes"
@@ -355,7 +355,7 @@ fun load_whatTypeOfVision(context: Context): String {
     }
 }
 
-fun load_agreeButton(context: Context): String {
+fun load_agreeButton(): String {
     return when (AppConfig.mainLanguage.code) {
         "en" -> "Agree"
         "ro" -> "De acord"
@@ -363,7 +363,7 @@ fun load_agreeButton(context: Context): String {
     }
 }
 
-fun load_disagreeButton(context: Context): String {
+fun load_disagreeButton(): String {
     return when (AppConfig.mainLanguage.code) {
         "en" -> "Disagree"
         "ro" -> "Nu sunt de acord"
@@ -475,26 +475,26 @@ fun load_translaterError(context: Context): String {
     return context.getString(R.string.translator_error_ro)
 }
 
-fun load_homeTitle(context: Context): String {
+fun load_homeTitle(): String {
     return if (AppConfig.mainLanguage.code == "en") {
-        "Hello ~${AppConfig.user_name}, what can I do for you?"
+        "Hello ~${AppConfig.user_name}~,\nwhat can I do for you?"
     } else {
-        "Salut ~${AppConfig.user_name}, cu ce te pot ajuta?"
+        "Salut ~${AppConfig.user_name}~,\ncu ce te pot ajuta?"
     }
 }
 
 fun load_detectionTutorial(context: Context, step: Int): String {
     return if (AppConfig.mainLanguage.code == "en") {
         when (step) {
-            1 -> "Press ~volume up~ button to launch static detection activity"
-            2 -> "The detection activity could be ~shortcut~ on lock screen, feature available in settings"
-            else -> load_homeTitle(context)
+            1 -> context.getString(R.string.detect1_en)
+            2 -> context.getString(R.string.detect2_en)
+            else -> load_homeTitle()
         }
     } else {
         when (step) {
-            1 -> "Apasă butonul de ~volum sus~ pentru a lansa activitatea de detecție"
-            2 -> "Activitatea de detecție poate fi accesata din ecranul de blocare, poți activa acest lucru din setări"
-            else -> load_homeTitle(context)
+            1 -> context.getString(R.string.detect1_ro)
+            2 -> context.getString(R.string.detect2_ro)
+            else -> load_homeTitle()
         }
     }
 }
@@ -502,37 +502,37 @@ fun load_detectionTutorial(context: Context, step: Int): String {
 fun load_captionTutorial(context: Context, step: Int): String {
     return if (AppConfig.mainLanguage.code == "en") {
         when (step) {
-            1 -> "Press ~volume down~ button to launch caption activity"
-            2 -> "The caption activity could be ~shortcut~ on lock screen, feature available in settings"
-            else -> load_homeTitle(context)
+            1 -> context.getString(R.string.caption1_en)
+            2 -> context.getString(R.string.caption2_en)
+            else -> load_homeTitle()
         }
     } else {
         when (step) {
-            1 -> "Apasă butonul de ~volum jos~ pentru a lansa activitatea de caption"
-            2 -> "Activitatea de caption poate fi accesata din ecranul de blocare, poți activa acest lucru din setări"
-            else -> load_homeTitle(context)
+            1 -> context.getString(R.string.caption1_ro)
+            2 -> context.getString(R.string.caption2_ro)
+            else -> load_homeTitle()
         }
     }
 }
 
 fun load_speakTutorial(context: Context, step: Int): String {
     if (AppConfig.mainLanguage.code != "en") {
-        return load_homeTitle(context)
+        return load_homeTitle()
     }
 
     return when (step) {
-        1 -> "Rapidly press ~volume down~ button twice to enable the Find My Object feature"
-        2 -> "When the model will listen, ~words~ recognised will be prompted on screen in white"
-        3 -> "When the model detected that you are done speaking, ~caption~ will change color in dark purple"
-        4 -> "After sentence is recognized, press ~volume down~ to send the caption to processing"
-        5 -> "After processing is done, if known model objects are detected, press ~volume up~ to launch camera"
-        6 -> "Press ~volume up~ to retry speaking"
-        7 -> "Press anytime, anywhere on ~screen~ to disable the Find My Object feature"
-        else -> load_homeTitle(context)
+        1 -> context.getString(R.string.findmyobj1_en)
+        2 -> context.getString(R.string.findmyobj2_en)
+        3 -> context.getString(R.string.findmyobj3_en)
+        4 -> context.getString(R.string.findmyobj4_en)
+        5 -> context.getString(R.string.findmyobj5_en)
+        6 -> context.getString(R.string.findmyobj6_en)
+        7 -> context.getString(R.string.findmyobj7_en)
+        else -> load_homeTitle()
     }
 }
 
-fun load_syncStatusText(context: Context, days: Int): String {
+fun load_syncStatusText(days: Int): String {
     return if (AppConfig.mainLanguage.code == "en") {
         "$days days since last sync"
     } else {
@@ -541,9 +541,9 @@ fun load_syncStatusText(context: Context, days: Int): String {
 }
 
 fun load_syncErrorText(context: Context): String {
-    return if (AppConfig.mainLanguage.code == "en") {
-        "Sync failed ~Make sure you have network access and restart the app to solve this"
-    } else {
-        "Sincronizarea a eșuat ~Asigură-te că ai acces la rețea și repornește aplicația pentru a rezolva acest lucru"
+    return when (AppConfig.mainLanguage.code) {
+        "en" -> context.getString(R.string.sync_error_en)
+        "ro" -> context.getString(R.string.sync_error_ro)
+        else -> context.getString(R.string.sync_error_en)
     }
 }
