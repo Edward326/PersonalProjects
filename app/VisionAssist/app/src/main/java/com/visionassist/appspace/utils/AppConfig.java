@@ -9,8 +9,8 @@ public class AppConfig {
     public static boolean isContributor;
     public static int age;
     public static String visual_condition;
-    public static float tts_speech_rate;
-    public static float tts_pitch;
+    public static float tts_speech_rate=Constants.TTS_SPEECH_RATE;
+    public static float tts_pitch=Constants.TTS_PITCH;
     public static String bbox_color;
     public static String label_color;
     public static String label_bck_color;

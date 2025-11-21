@@ -8,6 +8,7 @@
     <color name="std_cyan">#6096BA</color>
     <color name="std_cyan_dark">#497694</color>
     <color name="std_light_purple">#EADDFF</color>
+    <color name="std_light_purple2">#B190F4</color>
     <color name="notification_white">#ECE6F0</color>
     <color name="error_red">#B3261E</color>
     <color name="checked_green">#34C759</color>

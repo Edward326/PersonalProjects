@@ -43,12 +43,13 @@ public class Constants {
     public static final String ENV_REPORTS_FILE_NAME = "env_reports.txt";
 
     // Intent Extras
-    public static final String EXTRA_IMAGE_BITMAP = "bitmap_bytearray";
     public static final String EXTRA_PERMISSION_OPTION = "permission_option";
     public static final String EXTRA_WELCOME_OPTION = "welcome_option";
     public static final String EXTRA_USERINFO_OPTION = "userinfo_option";
     public static final String EXTRA_USERACC_OPTION = "useracc_option";
     public static final String EXTRA_HCACHING_OPTION = "hcaching_option";
+    public static final String EXTRA_IMAGE_URI = "image_uri";
+    public static final String EXTRA_MATCHED_INDICES = "bitmap_bytearray";
 
     // Battery and Temperature Checks
     public static final boolean APPLY_BATTERY_CHECK = true;
@@ -67,6 +68,7 @@ public class Constants {
     public static final int RETRY_TTS_DELAY_MS = 1000;
     public static final int LOAD_CHECK_DELAY_MS = 1000;
     public static final int MAX_LANGUAGE_CHECK_ATTEMPTS = 3;
+    public static final int VOLUME_DOWN_DELAY_MS = 1000;
 
     // TTS Repeat Configuration
     public static final long REPEAT_DELAY = 2000; // 2 seconds wait for volume button

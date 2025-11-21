@@ -547,3 +547,19 @@ fun load_syncErrorText(context: Context): String {
         else -> context.getString(R.string.sync_error_en)
     }
 }
+
+fun load_unavailableSTT(context: Context): String {
+    return when (PhoneStatusMonitor.getInstance().ttsManager.currentLanguage) {
+        "en" -> context.getString(R.string.stt_unavailable_en)
+        "ro" -> context.getString(R.string.stt_unavailable_ro)
+        else -> context.getString(R.string.stt_unavailable_en)
+    }
+}
+
+fun load_errorSTT(context: Context): String {
+    return context.getString(R.string.stt_error_load_en)
+}
+
+fun load_errorSTTRuntime(context: Context): String {
+    return context.getString(R.string.stt_error_runtime_en)
+}

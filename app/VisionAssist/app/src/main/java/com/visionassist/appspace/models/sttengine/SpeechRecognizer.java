@@ -44,7 +44,7 @@ public class SpeechRecognizer {
     public boolean isReady=false;
 
     public interface RecognitionCallback {
-        void onResult(String recognizedText);
+        void onResult(String recognizedText,boolean isFinalResult);
 
         void onError(String error);
     }
@@ -264,9 +264,9 @@ public class SpeechRecognizer {
 
                         if (!text.isEmpty()) {
                             stopListening();
-                            Log.d(TAG, "Recognized: " + text);
+                            Log.d(TAG, "Result: " + text);
                             if (recognitionCallback != null) {
-                                recognitionCallback.onResult(text);
+                                recognitionCallback.onResult(text,true);
                             }
                         }
                     } catch (Exception e) {
@@ -288,7 +288,7 @@ public class SpeechRecognizer {
                             stopListening();
                             Log.d(TAG, "Final result: " + text);
                             if (recognitionCallback != null) {
-                                recognitionCallback.onResult(text);
+                                recognitionCallback.onResult(text,true);
                             }
                         }
                     } catch (Exception e) {
@@ -301,8 +301,22 @@ public class SpeechRecognizer {
 
                 @Override
                 public void onPartialResult(String hypothesis) {
-                    // Optional: handle partial results
-                    Log.d(TAG, "Partial: " + hypothesis);
+                    try {
+                        JSONObject jsonResult = new JSONObject(hypothesis);
+                        String word = jsonResult.getString("partial");
+
+                        if (!word.isEmpty()) {
+                            Log.d(TAG, "Partial result: " + word);
+                            if (recognitionCallback != null) {
+                                recognitionCallback.onResult(word,false);
+                            }
+                        }
+                    }catch (Exception e) {
+                        Log.e(TAG, "Error parsing final result", e);
+                        if (callback != null) {
+                            callback.onError(e.getMessage());
+                        }
+                    }
                 }
 
                 @Override

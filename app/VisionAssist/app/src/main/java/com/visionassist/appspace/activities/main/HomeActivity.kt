@@ -3,12 +3,10 @@
 package com.visionassist.appspace.activities.main
 
 import android.content.Intent
-import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.provider.MediaStore
 import android.util.Log
 import android.view.KeyEvent
 import androidx.activity.ComponentActivity
@@ -104,30 +102,35 @@ import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
 import com.visionassist.appspace.activities.tabs.home.caption.CaptionActivity
 import com.visionassist.appspace.activities.tabs.home.detection.LiveDetectionActivity
+import com.visionassist.appspace.activities.tabs.home.detection.StaticDetectionActivity
 import com.visionassist.appspace.activities.tabs.home.findmyobjects.FindMyObjectActivity
 import com.visionassist.appspace.activities.tabs.reports.EnvironmentReportsActivity
 import com.visionassist.appspace.activities.tabs.settings.SettingsActivity
 import com.visionassist.appspace.jetpack.managers.ErrorDialogManager
+import com.visionassist.appspace.models.sttengine.SpeechRecognizer
+import com.visionassist.appspace.sound.SoundConstants
 import com.visionassist.appspace.utils.AppConfig
+import com.visionassist.appspace.utils.BackgroundTaskExecutor
 import com.visionassist.appspace.utils.Constants
 import com.visionassist.appspace.utils.PermissionChecker
 import com.visionassist.appspace.utils.haptic_model0
 import com.visionassist.appspace.utils.load_captionTutorial
 import com.visionassist.appspace.utils.load_detectionTutorial
+import com.visionassist.appspace.utils.load_errorSTT
+import com.visionassist.appspace.utils.load_errorSTTRuntime
 import com.visionassist.appspace.utils.load_homeTitle
 import com.visionassist.appspace.utils.load_speakTutorial
 import com.visionassist.appspace.utils.load_syncErrorText
 import com.visionassist.appspace.utils.load_syncStatusText
+import com.visionassist.appspace.utils.load_unavailableSTT
 import com.visionassist.appspace.utils.robotoBold
 import com.visionassist.appspace.utils.robotoExtraBold
 import com.visionassist.appspace.utils.robotoExtraBoldItalic
 import com.visionassist.appspace.utils.robotoSemibold
 import com.visionassist.appspace.utils.vibrate
 import kotlinx.coroutines.delay
-import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
-
 
 class HomeActivity : ComponentActivity() {
     private val TAG = "HomeActivity"
@@ -139,36 +142,48 @@ class HomeActivity : ComponentActivity() {
 
     // Tutorial info button states
     private val speakInfoClickCount = mutableStateOf(1)
+    private var basicInfoClickCount = 1
+    private var basicInfoClickCount2 = 1
 
     // Detection button states
     private val showDetectionOptions = mutableStateOf(false)
     private val selectedDetectionOption = mutableStateOf<DetectionOption?>(null)
     private val detectionIconColor = mutableStateOf(R.color.std_purple_dark)
 
-    // Speech recognition states
+    // Speech recognition parameters
+    private val speechRecognizer = PhoneStatusMonitor.getInstance()
+        .modelManager.speechRecognizer
+    private val soundManager = PhoneStatusMonitor.getInstance()
+        .soundManager
+    private val ttsManager = PhoneStatusMonitor.getInstance()
+        .ttsManager
     private val showSpeechDialog = mutableStateOf(false)
     private val speechText = mutableStateOf("")
     private val speechProcessText = mutableStateOf("")
     private val isSpeaking = mutableStateOf(true)
     private val retrySpeech = mutableStateOf(false)
-    private val cancelSpeech = mutableStateOf(false)
     private val sendSpeech = mutableStateOf(false)
+    private var processText = false
+    private lateinit var matchedIndices: List<Int>
+    private lateinit var classNames: List<String>
 
     // Volume button tracking
-    private var lastVolumeDownPress = 0L
-    private var volumeDownPressCount = 0
-    private var basicInfoClickCount = 1
+    private var locked = false
+    private var uiLocked = false
+    private var handleVolumeDownControl = false
 
-    // Runnable for navigation ot an activity
+    // Runnable for navigation to an activity
     private var onPermissionGranted = {}
+    private var classOpt = 0
 
     // Camera intent parameters
     private lateinit var takePictureLauncher: ActivityResultLauncher<Uri>
     private lateinit var currentPhotoUri: Uri
-    private var classOpt = 0
 
     // Main handler
     private val handler = Handler(Looper.getMainLooper())
+    private lateinit var afterResumeRunnable: Runnable
+    private var hasToExecAfterResume = false
 
     enum class DetectionOption {
         LIVE, STATIC
@@ -187,6 +202,11 @@ class HomeActivity : ComponentActivity() {
         syncStatus.value = dbManager.statusOverview
         if (syncStatus.value == 1) {
             syncDays.value = dbManager.diffDays.toInt()
+        }
+
+        uiLocked=true
+        PhoneStatusMonitor.getInstance().soundManager.play(SoundConstants.OPEN_UP_ID,1f,1f){
+            uiLocked=false
         }
 
         setContent {
@@ -224,22 +244,14 @@ class HomeActivity : ComponentActivity() {
         ) { isSuccess ->
             if (isSuccess) {
                 try {
-                    val bitmap = MediaStore.Images.Media.getBitmap(
-                        contentResolver,
-                        currentPhotoUri
-                    )
-
-                    Log.d(TAG, "Photo captured successfully")
-                    Log.d(TAG, "Bitmap: ${bitmap.width}x${bitmap.height}")
-
-                    navigateToFindMyObjectWithBitmap(bitmap)
+                    navigateToFindMyObjectWithBitmap()
                 } catch (e: IOException) {
                     Log.e(TAG, "Error loading captured image", e)
                     showCameraError()
                 }
             } else {
                 Log.e(TAG, "Image capture failed or cancelled")
-                showCameraError()
+                //showCameraError()
             }
         }
 
@@ -255,18 +267,24 @@ class HomeActivity : ComponentActivity() {
                 AppConfig.blindness,
                 onPermissionGranted
             )
+
+        if (hasToExecAfterResume) {
+            hasToExecAfterResume = false
+            handler.post { afterResumeRunnable }
+        }
     }
 
     private fun handleDetectionClick() {
-        vibrateIfEnabled()
-        showDetectionOptions.value = !showDetectionOptions.value
-        detectionIconColor.value = if (showDetectionOptions.value) {
-            R.color.std_cyan
-        } else {
-            selectedDetectionOption.value = null
-            R.color.std_purple
+        if (!uiLocked) {
+            vibrateIfEnabled()
+            showDetectionOptions.value = !showDetectionOptions.value
+            detectionIconColor.value = if (showDetectionOptions.value) {
+                R.color.std_cyan
+            } else {
+                selectedDetectionOption.value = null
+                R.color.std_purple_dark
+            }
         }
-
     }
 
     private fun handleDetectionOptionSelected(option: DetectionOption?, navigate: Boolean) {
@@ -337,20 +355,16 @@ class HomeActivity : ComponentActivity() {
         }
     }
 
-    private fun navigateToFindMyObjectWithBitmap(bitmap: Bitmap) {
+    private fun navigateToFindMyObjectWithBitmap() {
         try {
             val intent = Intent(
-                this, if (classOpt == 0)
-                    FindMyObjectActivity::class.java
-                else
-                    CaptionActivity::class.java
+                this,
+                when (classOpt) {
+                    0 -> StaticDetectionActivity::class.java
+                    else -> CaptionActivity::class.java
+                }
             )
-
-            val byteArrayOutputStream = ByteArrayOutputStream()
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, byteArrayOutputStream)
-            val byteArray = byteArrayOutputStream.toByteArray()
-
-            intent.putExtra(Constants.EXTRA_IMAGE_BITMAP, byteArray)
+            intent.putExtra(Constants.EXTRA_IMAGE_URI, currentPhotoUri.toString())
             startActivity(intent)
             finish()
         } catch (e: Exception) {
@@ -367,8 +381,10 @@ class HomeActivity : ComponentActivity() {
     }
 
     private fun handleCaptionClick() {
-        vibrateIfEnabled()
-        launchCaptionActivity()
+        if (!uiLocked) {
+            vibrateIfEnabled()
+            launchCaptionActivity()
+        }
     }
 
     private fun launchCaptionActivity() {
@@ -382,173 +398,325 @@ class HomeActivity : ComponentActivity() {
     }
 
     private fun handleDetectionInfoClick() {
-        vibrateIfEnabled()
-
-        // Cycle through tutorial messages
-        titleText.value = load_detectionTutorial(this, getNextInfoStep())
+        if (!uiLocked) {
+            vibrateIfEnabled()
+            titleText.value = load_detectionTutorial(this, getNextInfoStep())
+        }
     }
 
     private fun handleCaptionInfoClick() {
-        vibrateIfEnabled()
-
-        titleText.value = load_captionTutorial(this, getNextInfoStep())
+        if (!uiLocked) {
+            vibrateIfEnabled()
+            titleText.value = load_captionTutorial(this, getNextInfoStep2())
+        }
     }
 
     private fun handleSpeakInfoClick() {
-        vibrateIfEnabled()
+        if (!uiLocked) {
+            vibrateIfEnabled()
 
-        titleText.value = load_speakTutorial(this, speakInfoClickCount.value)
+            titleText.value = load_speakTutorial(this, speakInfoClickCount.value)
 
-        // Reset after showing all messages
-        if (speakInfoClickCount.value == 7) {
-            speakInfoClickCount.value = 0
-        } else
-            speakInfoClickCount.value++
+            // Reset after showing all messages
+            if (speakInfoClickCount.value == 7) {
+                speakInfoClickCount.value = 0
+            } else
+                speakInfoClickCount.value++
+        }
     }
 
     private fun getNextInfoStep(): Int {
         // Simple counter for tutorial steps
-        if (basicInfoClickCount == 3) {
-            basicInfoClickCount = 0
+        if (++basicInfoClickCount == 4) {
+            basicInfoClickCount = 1
             return 0
         } else {
-            basicInfoClickCount++
             return basicInfoClickCount - 1
         }
     }
 
+    private fun getNextInfoStep2(): Int {
+        // Simple counter for tutorial steps
+        if (++basicInfoClickCount2 == 4) {
+            basicInfoClickCount2 = 1
+            return 0
+        } else {
+            return basicInfoClickCount2 - 1
+        }
+    }
+
     private fun handleNavigateHome() {
-        vibrateIfEnabled()
-        // Already on home, do nothing
+        if (!uiLocked) {
+            vibrateIfEnabled()
+            // Already on home, do nothing
+        }
     }
 
     private fun handleNavigateReports() {
-        vibrateIfEnabled()
+        if (!uiLocked) {
+            vibrateIfEnabled()
 
-        val intent = Intent(this, EnvironmentReportsActivity::class.java)
-        startActivity(intent)
-        finish()
-
+            val intent = Intent(this, EnvironmentReportsActivity::class.java)
+            startActivity(intent)
+            finish()
+        }
     }
 
     private fun handleNavigateSettings() {
-        vibrateIfEnabled()
-        val intent = Intent(this, SettingsActivity::class.java)
-        startActivity(intent)
-        finish()
+        if (!uiLocked) {
+            vibrateIfEnabled()
+            val intent = Intent(this, SettingsActivity::class.java)
+            startActivity(intent)
+            finish()
+        }
     }
 
     private fun handleSwipeToLeft() {
-        val intent = Intent(
-            this, if (AppConfig.env_reports)
-                EnvironmentReportsActivity::class.java
-            else
-                SettingsActivity::class.java
-        )
-        startActivity(intent)
-        finish()
+        if (!uiLocked) {
+            val intent = Intent(
+                this, if (AppConfig.env_reports)
+                    EnvironmentReportsActivity::class.java
+                else
+                    SettingsActivity::class.java
+            )
+            startActivity(intent)
+            finish()
+        }
     }
 
-    private fun launchSpeechRecognition() {
-        showSpeechDialog.value = true
+    private fun launchSpeechRecognition(firstTimeSpeak: Boolean) {
+        if (firstTimeSpeak) {
+            if (AppConfig.mainLanguage.code == "ro") {
+                hasToExecAfterResume = true
+                soundManager.play(SoundConstants.STT_ERROR_ID, 0.7f, 0.7f) {
+                    ttsManager.speak(
+                        load_unavailableSTT(this),
+                        AppConfig.tts_pitch,
+                        AppConfig.tts_speech_rate,
+                        false,
+                        null
+                    )
+                }
+                afterResumeRunnable = object : Runnable {
+                    override fun run() {
+                        if (ttsManager.isDoneSpeaking) {
+                            uiLocked = false
+                            locked = false
+                        } else {
+                            handler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS.toLong())
+                        }
+                    }
+                }
+                handler.postDelayed(
+                    afterResumeRunnable,
+                    SoundConstants.getDuration(SoundConstants.STT_ERROR_ID).toLong() + 500
+                )
+            } else
+                if (speechRecognizer == null) {
+                    soundManager.play(SoundConstants.STT_ERROR_ID, 0.7f, 0.7f) {
+                        ttsManager.speak(
+                            load_errorSTT(this),
+                            AppConfig.tts_pitch,
+                            AppConfig.tts_speech_rate,
+                            false,
+                            null
+                        )
+                    }
+                    afterResumeRunnable = object : Runnable {
+                        override fun run() {
+                            if (ttsManager.isDoneSpeaking) {
+                                uiLocked = false
+                                locked = false
+                            } else {
+                                handler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS.toLong())
+                            }
+                        }
+                    }
+                    handler.postDelayed(
+                        afterResumeRunnable,
+                        SoundConstants.getDuration(SoundConstants.STT_ERROR_ID).toLong() + 500
+                    )
+                } else {
+                    retrySpeech.value = false
+                    sendSpeech.value = false
+                    showSpeechDialog.value = true
+                    speakingProcess()
+                }
+        } else {
+            speakingProcess()
+        }
+    }
+
+    private fun speakingProcess() {
         isSpeaking.value = true
-        speechText.value = ""
-        speechProcessText.value = ""
-
-        // Start speech recognition
-        val speechRecognizer = PhoneStatusMonitor.getInstance()
-            .modelManager.speechRecognizer
-
-        speechRecognizer.startListening(object :
-            com.visionassist.appspace.models.sttengine.SpeechRecognizer.RecognitionCallback {
-            override fun onResult(recognizedText: String) {
-                handler.post {
-                    speechText.value = recognizedText
-                    isSpeaking.value = false
-                    sendSpeech.value = true
+        speechText.value = "Listening..."
+        soundManager.play(SoundConstants.STT_SPEAK_OPEN_ID, 0.7f, 0.7f) {
+            speechRecognizer.startListening(object :
+                SpeechRecognizer.RecognitionCallback {
+                override fun onResult(recognizedText: String, isFinalResult: Boolean) {
+                    if (isFinalResult) {
+                        isSpeaking.value = false
+                        speechText.value = "$recognizedText."
+                        sendSpeech.value = true
+                        retrySpeech.value = true
+                        locked = false
+                        vibrateIfEnabled()
+                    } else {
+                        speechText.value = recognizedText
+                    }
                 }
-            }
 
-            override fun onError(error: String) {
-                handler.post {
-                    Log.e(TAG, "Speech recognition error: $error")
-                    showSpeechDialog.value = false
+                override fun onError(error: String) {
+                    hasToExecAfterResume = true
+                    soundManager.play(SoundConstants.STT_ERROR_ID, 0.7f, 0.7f) {
+                        ttsManager.speak(
+                            load_errorSTTRuntime(PhoneStatusMonitor.getInstance().currentContext),
+                            AppConfig.tts_pitch,
+                            AppConfig.tts_speech_rate,
+                            false,
+                            null
+                        )
+                    }
+                    afterResumeRunnable = object : Runnable {
+                        override fun run() {
+                            if (ttsManager.isDoneSpeaking) {
+                                handleSpeechDialogTap()
+                            } else {
+                                handler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS.toLong())
+                            }
+                        }
+                    }
+                    handler.postDelayed(
+                        afterResumeRunnable,
+                        SoundConstants.getDuration(SoundConstants.STT_ERROR_ID).toLong() + 500
+                    )
                 }
-            }
-        })
+            })
+        }
     }
 
     private fun processRecognizedSpeech() {
-        speechProcessText.value = "Matching detector classes..."
+        speechProcessText.value = "Matching known objects..."
 
-        val speechRecognizer = PhoneStatusMonitor.getInstance()
-            .modelManager.speechRecognizer
+        var finishedLoading = false
+        val backgroundTask = BackgroundTaskExecutor.getInstance()
+        backgroundTask.executeAsync(
+            {
+                matchedIndices = speechRecognizer.processRecognizedText(speechText.value)
+                if (!matchedIndices.isEmpty()) {
+                    val yoloDetector = PhoneStatusMonitor.getInstance().modelManager.detector
+                    classNames = matchedIndices.map { yoloDetector.getClassName(it) }
+                }
+                return@executeAsync 0
+            },
+            object : BackgroundTaskExecutor.TaskCallback<Int> {
+                override fun onSuccess(result: Int) {
+                    finishedLoading = true
+                }
 
-        val matchedIndices = speechRecognizer.processRecognizedText(speechText.value)
+                override fun onError(e: Exception) {
+                    finishedLoading = true
+                }
+            }
+        )
 
+        val checkRunnable = object : Runnable {
+            override fun run() {
+                if (finishedLoading) {
+                    processTextOutput()
+                } else {
+                    handler.postDelayed(this, 500)
+                }
+            }
+        }
+        handler.postDelayed(checkRunnable, 2500)
+    }
+
+    private fun processTextOutput() {
         if (matchedIndices.isEmpty()) {
             speechProcessText.value = "No matched known classes"
             retrySpeech.value = true
+            sendSpeech.value = false
+            locked = false
+            vibrateIfEnabled()
         } else {
-            val yoloDetector = PhoneStatusMonitor.getInstance()
-                .modelManager.detector
-
-            val classNames = matchedIndices.map { yoloDetector.getClassName(it) }
             speechProcessText.value = "Matched: ${classNames.joinToString(", ")}"
-
-            // Now allow user to proceed to FindMyObjectActivity
-            // TODO: Navigate with matched indices
+            retrySpeech.value = true
+            processText = true
+            sendSpeech.value = true
+            locked = false
+            vibrateIfEnabled()
         }
+    }
+
+    private fun sendProcessedSpeech() {
+        val intent = Intent(this, FindMyObjectActivity::class.java)
+
+        val indicesList = ArrayList<Int>(matchedIndices)
+        intent.putIntegerArrayListExtra(Constants.EXTRA_MATCHED_INDICES, indicesList)
+        startActivity(intent)
+        finish()
     }
 
     private fun handleSpeechDialogTap() {
         // Cancel speech recognition
+        locked = true
         showSpeechDialog.value = false
-        resetSpeechStates()
+        handler.postDelayed({
+            uiLocked = false
+            retrySpeech.value = false
+            sendSpeech.value = false
+            isSpeaking.value = false
+            speechText.value = ""
+            speechProcessText.value = ""
+            locked = false
+        }, Constants.ANIMATION_DELAY.toLong())
     }
 
     private fun resetSpeechStates() {
-        isSpeaking.value = true
-        speechText.value = ""
         speechProcessText.value = ""
+        speechText.value = ""
+        //cancelSpeech.value = true
         retrySpeech.value = false
-        cancelSpeech.value = false
         sendSpeech.value = false
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         when (keyCode) {
             KeyEvent.KEYCODE_VOLUME_UP -> {
-                if (retrySpeech.value) {
-                    // Retry speech recognition
-                    resetSpeechStates()
-                    launchSpeechRecognition()
-                } else {
-                    // Launch static detection
-                    launchStaticDetection()
+                if (!locked) {
+                    //uiLocked=true
+                    if (retrySpeech.value) {
+                        // Retry speech recognition
+                        locked = true
+                        resetSpeechStates()
+                        launchSpeechRecognition(false)
+                    } else {
+                        uiLocked = true
+                        locked = true
+                        // Launch static detection
+                        launchStaticDetection()
+                    }
                 }
                 return true
             }
 
             KeyEvent.KEYCODE_VOLUME_DOWN -> {
-                val currentTime = System.currentTimeMillis()
-
-                if (currentTime - lastVolumeDownPress < 500) {
-                    // Double press - launch speech recognition
-                    volumeDownPressCount = 0
-                    launchSpeechRecognition()
-                } else {
-                    volumeDownPressCount = 1
-                    lastVolumeDownPress = currentTime
-
-                    // Wait to see if second press comes
-                    handler.postDelayed({
-                        if (volumeDownPressCount == 1) {
-                            // Single press
-                            handleSingleVolumeDown()
-                        }
-                        volumeDownPressCount = 0
-                    }, 500)
+                if (!locked) {
+                    uiLocked = true
+                    if (!handleVolumeDownControl) {
+                        if (!showSpeechDialog.value)
+                            handleVolumeDownControl = true
+                        handler.removeCallbacksAndMessages(null)
+                        handler.postDelayed(
+                            { handleSingleVolumeDown() }, Constants.VOLUME_DOWN_DELAY_MS.toLong()
+                        )
+                    } else {
+                        handler.removeCallbacksAndMessages(null)
+                        locked = true
+                        handleVolumeDownControl = false
+                        launchSpeechRecognition(true)
+                    }
                 }
                 return true
             }
@@ -558,15 +726,13 @@ class HomeActivity : ComponentActivity() {
 
     private fun handleSingleVolumeDown() {
         when {
-            cancelSpeech.value -> {
-                // Stop speech recognition
-                showSpeechDialog.value = false
-                resetSpeechStates()
-            }
-
             sendSpeech.value -> {
+                locked = true
                 // Process recognized text
-                processRecognizedSpeech()
+                if (!processText)
+                    processRecognizedSpeech()
+                else
+                    sendProcessedSpeech()
             }
 
             else -> {
@@ -591,14 +757,10 @@ class HomeActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
         handler.removeCallbacksAndMessages(null)
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        handler.removeCallbacksAndMessages(null)
+        soundManager.releaseCallback()
+        ttsManager.stopSpeaking()
     }
 }
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -651,7 +813,7 @@ fun HomeScreen(
 
                     val swipeEndX = change.position.x
                     val swipeDistance = swipeEndX - swipeStartX
-                    val swipeThreshold = 100f // Minimum swipe distance
+                    val swipeThreshold = 50f // Minimum swipe distance
 
                     when {
                         // ✅ Swipe LEFT (right to left)
@@ -666,6 +828,8 @@ fun HomeScreen(
     ) {
         val screenHeight = maxHeight
         val screenWidth = maxWidth
+        val navbarHeight = 90.dp / maxHeight
+        val sectionMain = 1.0f - navbarHeight
 
         // Background image
         Image(
@@ -679,7 +843,7 @@ fun HomeScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.913f)
+                .fillMaxHeight(sectionMain)
         ) {
             Box(modifier = Modifier.height(screenHeight * 0.045f))
 
@@ -698,7 +862,7 @@ fun HomeScreen(
                     .padding(horizontal = 24.dp)
             )
 
-            Box(modifier = Modifier.height(screenWidth * 0.10f))
+            Box(modifier = Modifier.height(screenWidth * 0.05f))
 
             // Detection Button with options
             DetectionButtonSection(
@@ -743,7 +907,7 @@ fun HomeScreen(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .fillMaxHeight(0.087f),
+                .fillMaxHeight(navbarHeight),
         ) {
             BottomNavigationBar(
                 onNavigateHome = onNavigateHome,
@@ -917,11 +1081,11 @@ fun DetectionButtonSection(
             visible = showOptions,
             enter = slideInHorizontally(
                 initialOffsetX = { it },
-                animationSpec = tween(Constants.ANIMATION_DELAY)
+                animationSpec = tween(250)
             ),
             exit = slideOutHorizontally(
                 targetOffsetX = { it },
-                animationSpec = tween(Constants.ANIMATION_DELAY)
+                animationSpec = tween(250)
             ),
             modifier = Modifier
                 .offset(
@@ -944,16 +1108,16 @@ fun DetectionButtonSection(
             visible = showOptions,
             enter = slideInVertically(
                 initialOffsetY = { it },
-                animationSpec = tween(Constants.ANIMATION_DELAY)
+                animationSpec = tween(250)
             ),
             exit = slideOutVertically(
                 targetOffsetY = { it },
-                animationSpec = tween(Constants.ANIMATION_DELAY)
+                animationSpec = tween(250)
             ),
             modifier = Modifier
                 .offset(
                     x = detectionX,
-                    y = buttonHeight - optionWidth - 4.dp
+                    y = buttonHeight - optionWidth - 8.dp
                 )
         ) {
             OptionButton(
@@ -1069,7 +1233,7 @@ fun OptionButton(
             ),
             colors = ButtonDefaults.buttonColors(
                 containerColor = if (isSelected) {
-                    colorResource(R.color.std_purple)
+                    colorResource(R.color.std_purple_dark)
                 } else {
                     colorResource(R.color.std_cyan)
                 },
@@ -1125,7 +1289,7 @@ fun MainActionButton(
                 .background(colorResource(iconColor))
                 .pointerInput(Unit) {
                     detectTapGestures(
-                        onPress = {
+                        onTap  = {
                             onIconPress()
                         }
                     )
@@ -1165,37 +1329,42 @@ fun CaptionButtonSection(
     onCaptionClick: () -> Unit,
     onInfoClick: () -> Unit
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height((Constants.STD_BUTTON_PAGE_HEIGHT).dp)
     ) {
-
-        Box(modifier = Modifier.width(screenWidth * 0.2f))
-
-        // Caption Button
-        MainActionButton(
-            shape = RoundedCornerShape(
-                topStart = 5.dp,
-                topEnd = 5.dp,
-                bottomStart = 31.dp,
-                bottomEnd = 31.dp
-            ),
-            predefinedIcon = Icons.Filled.TextFields,
-            text = "Caption",
-            iconColor = R.color.std_purple_dark,
-            screenWidth = screenWidth,
-            onClick = onCaptionClick,
-            onIconPress = {}, // No special behavior
-        )
-
-        // Info button
-        if (showInfoButton) {
-            Spacer(modifier = Modifier.width(15.dp))
-            InfoButtonWithPulse(
-                onClick = onInfoClick,
-                isPulsing = true
+        Row(
+            modifier = Modifier
+                .offset(x = screenWidth*0.23f)
+                .fillMaxWidth(0.77f),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Caption Button
+            MainActionButton(
+                shape = RoundedCornerShape(
+                    topStart = 5.dp,
+                    topEnd = 5.dp,
+                    bottomStart = 31.dp,
+                    bottomEnd = 31.dp
+                ),
+                predefinedIcon = Icons.Filled.TextFields,
+                text = "Caption",
+                iconColor = R.color.std_purple_dark,
+                screenWidth = screenWidth,
+                onClick = onCaptionClick,
+                onIconPress = {}, // No special behavior
             )
+
+            // Info button
+            if (showInfoButton) {
+                Spacer(modifier = Modifier.width(15.dp))
+                InfoButtonWithPulse(
+                    onClick = onInfoClick,
+                    isPulsing = true
+                )
+            }
         }
     }
 }
@@ -1429,7 +1598,7 @@ fun SpeechRecognitionDialog(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Gray.copy(alpha = Constants.BACKGROUND_OPACITY))
+                .background(Color.Gray.copy(alpha = 0.8f))
                 .pointerInput(Unit) {
                     detectTapGestures {
                         onTap()
@@ -1480,7 +1649,7 @@ fun SpeechRecognitionDialog(
                             color = if (isSpeaking) {
                                 Color.White
                             } else {
-                                colorResource(R.color.std_purple_dark)
+                                colorResource(R.color.std_light_purple)
                             },
                             textAlign = TextAlign.Center
                         )
@@ -1501,12 +1670,12 @@ fun SpeechRecognitionDialog(
                     ) {
                         Text(
                             text = speechText,
-                            fontSize = Constants.STD_FONT_SIZE.sp, // Small font
+                            fontSize = Constants.STD_SLIDER_INFO_SIZE.sp, // Small font
                             fontFamily = robotoSemibold,
                             color = if (isSpeaking) {
                                 Color.White
                             } else {
-                                colorResource(R.color.std_purple_dark)
+                                colorResource(R.color.std_light_purple)
                             },
                             textAlign = TextAlign.Center
                         )
@@ -1597,7 +1766,7 @@ fun HomeActivityWithSpeakingDialogPreview() {
         selectedDetectionOption = HomeActivity.DetectionOption.LIVE,
         showSpeechDialog = true,
         speechText = "Where is my phone, tablet, apple, and laptop",
-        speechProcessText = "Processing the speech",
+        speechProcessText = "ddd",
         isSpeaking = false,
         onDetectionClick = {},
         onDetectionOptionSelected = { _, _ -> },

@@ -179,6 +179,10 @@
     <string name="findmyobj7_en">Press anytime, anywhere on ~screen~ to disable the Find My Object feature</string>
     <string name="sync_error_en">Sync failed, make sure you have network access and restart the app to solve this</string>
     <string name="sync_error_ro">Sincronizarea a eșuat, asigură-te că ai acces la rețea și repornește aplicația pentru a rezolva acest lucru</string>
+    <string name="stt_unavailable_en">The Find My Object feature is currently not supported for the romanian language</string>
+    <string name="stt_unavailable_ro">Feature-ul Find My Object, nu este suportat momentan pentru limba română</string>
+    <string name="stt_error_load_en">The Find My Object feature is currently unavailable, due to initial loading error</string>
+    <string name="stt_error_runtime_en">The Find My Object feature is currently unavailable, due to en runtime error</string>
 
 
     <!-- Common values -->
