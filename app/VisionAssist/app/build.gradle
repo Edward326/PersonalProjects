@@ -84,6 +84,7 @@ dependencies {
     implementation libs.material.icons.core
     implementation libs.material.icons.extended
     implementation libs.animation
+    implementation libs.firebase.crashlytics.buildtools
 
     // Camera and image processing
     def camerax_version = "1.5.1"
@@ -135,4 +136,9 @@ dependencies {
 
     // Coroutines
     implementation libs.kotlinx.coroutines.android
+
+    // CameraX dependencies
+    implementation libs.guava
+    // To use CallbackToFutureAdapter
+    implementation libs.concurrent.futures
 }
