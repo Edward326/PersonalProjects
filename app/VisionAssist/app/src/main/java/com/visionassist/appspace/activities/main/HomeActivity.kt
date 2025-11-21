@@ -100,10 +100,10 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
+import com.visionassist.appspace.activities.tabs.home.findmyobjects.FindMyObjectActivity
 import com.visionassist.appspace.activities.tabs.home.caption.CaptionActivity
 import com.visionassist.appspace.activities.tabs.home.detection.LiveDetectionActivity
 import com.visionassist.appspace.activities.tabs.home.detection.StaticDetectionActivity
-import com.visionassist.appspace.activities.tabs.home.findmyobjects.FindMyObjectActivity
 import com.visionassist.appspace.activities.tabs.reports.EnvironmentReportsActivity
 import com.visionassist.appspace.activities.tabs.settings.SettingsActivity
 import com.visionassist.appspace.jetpack.managers.ErrorDialogManager
@@ -163,8 +163,7 @@ class HomeActivity : ComponentActivity() {
     private val isSpeaking = mutableStateOf(true)
     private val retrySpeech = mutableStateOf(false)
     private val sendSpeech = mutableStateOf(false)
-    private var processText = false
-    private lateinit var matchedIndices: List<Int>
+    private lateinit var matchedIndices: List<SpeechRecognizer.MatchedObject>
     private lateinit var classNames: List<String>
 
     // Volume button tracking
@@ -204,9 +203,9 @@ class HomeActivity : ComponentActivity() {
             syncDays.value = dbManager.diffDays.toInt()
         }
 
-        uiLocked=true
-        PhoneStatusMonitor.getInstance().soundManager.play(SoundConstants.OPEN_UP_ID,1f,1f){
-            uiLocked=false
+        uiLocked = true
+        PhoneStatusMonitor.getInstance().soundManager.play(SoundConstants.OPEN_UP_ID, 1f, 1f) {
+            uiLocked = false
         }
 
         setContent {
@@ -251,7 +250,8 @@ class HomeActivity : ComponentActivity() {
                 }
             } else {
                 Log.e(TAG, "Image capture failed or cancelled")
-                //showCameraError()
+                uiLocked = false
+                locked = false
             }
         }
 
@@ -270,7 +270,7 @@ class HomeActivity : ComponentActivity() {
 
         if (hasToExecAfterResume) {
             hasToExecAfterResume = false
-            handler.post { afterResumeRunnable }
+            handler.post(afterResumeRunnable)
         }
     }
 
@@ -547,6 +547,22 @@ class HomeActivity : ComponentActivity() {
         }
     }
 
+    private fun formatRecognizedText(text: String): String {
+        if (text.isBlank()) return text
+
+        // Replace [unk] with ??
+        var formatted = text.replace("[unk]", "??")
+
+        // Capitalize first letter if it's not ??
+        if (formatted.isNotEmpty() && !formatted.startsWith("??")) {
+            formatted = formatted.replaceFirstChar {
+                if (it.isLowerCase()) it.titlecase() else it.toString()
+            }
+        }
+
+        return formatted
+    }
+
     private fun speakingProcess() {
         isSpeaking.value = true
         speechText.value = "Listening..."
@@ -556,13 +572,16 @@ class HomeActivity : ComponentActivity() {
                 override fun onResult(recognizedText: String, isFinalResult: Boolean) {
                     if (isFinalResult) {
                         isSpeaking.value = false
-                        speechText.value = "$recognizedText."
+                        speechText.value = formatRecognizedText(recognizedText)
+                        handler.postDelayed({ processRecognizedSpeech() }, 1000)
+
+                        /*
                         sendSpeech.value = true
                         retrySpeech.value = true
                         locked = false
-                        vibrateIfEnabled()
+                        vibrateIfEnabled()*/
                     } else {
-                        speechText.value = recognizedText
+                        speechText.value = formatRecognizedText(recognizedText)
                     }
                 }
 
@@ -603,9 +622,9 @@ class HomeActivity : ComponentActivity() {
         backgroundTask.executeAsync(
             {
                 matchedIndices = speechRecognizer.processRecognizedText(speechText.value)
+
                 if (!matchedIndices.isEmpty()) {
-                    val yoloDetector = PhoneStatusMonitor.getInstance().modelManager.detector
-                    classNames = matchedIndices.map { yoloDetector.getClassName(it) }
+                    classNames = matchedIndices.map { it.matchedWord }
                 }
                 return@executeAsync 0
             },
@@ -629,7 +648,7 @@ class HomeActivity : ComponentActivity() {
                 }
             }
         }
-        handler.postDelayed(checkRunnable, 2500)
+        handler.postDelayed(checkRunnable, 2000)
     }
 
     private fun processTextOutput() {
@@ -642,7 +661,6 @@ class HomeActivity : ComponentActivity() {
         } else {
             speechProcessText.value = "Matched: ${classNames.joinToString(", ")}"
             retrySpeech.value = true
-            processText = true
             sendSpeech.value = true
             locked = false
             vibrateIfEnabled()
@@ -650,16 +668,22 @@ class HomeActivity : ComponentActivity() {
     }
 
     private fun sendProcessedSpeech() {
-        val intent = Intent(this, FindMyObjectActivity::class.java)
+        val classIndices = IntArray(matchedIndices.size) { matchedIndices[it].classIndex }
+        val matchedWords = Array(matchedIndices.size) { matchedIndices[it].matchedWord }
 
-        val indicesList = ArrayList<Int>(matchedIndices)
-        intent.putIntegerArrayListExtra(Constants.EXTRA_MATCHED_INDICES, indicesList)
+        val intent = Intent(this, FindMyObjectActivity::class.java).apply {
+            putExtra(Constants.EXTRA_MATCHED_INDICES, classIndices)
+            putExtra(Constants.EXTRA_SYNONYMS_WORDS, matchedWords)
+        }
         startActivity(intent)
         finish()
     }
 
     private fun handleSpeechDialogTap() {
         // Cancel speech recognition
+        handler.removeCallbacksAndMessages(null)
+        soundManager.releaseCallback()
+        speechRecognizer.stopListening()
         locked = true
         showSpeechDialog.value = false
         handler.postDelayed({
@@ -729,10 +753,7 @@ class HomeActivity : ComponentActivity() {
             sendSpeech.value -> {
                 locked = true
                 // Process recognized text
-                if (!processText)
-                    processRecognizedSpeech()
-                else
-                    sendProcessedSpeech()
+                sendProcessedSpeech()
             }
 
             else -> {
@@ -1289,7 +1310,7 @@ fun MainActionButton(
                 .background(colorResource(iconColor))
                 .pointerInput(Unit) {
                     detectTapGestures(
-                        onTap  = {
+                        onTap = {
                             onIconPress()
                         }
                     )
@@ -1336,7 +1357,7 @@ fun CaptionButtonSection(
     ) {
         Row(
             modifier = Modifier
-                .offset(x = screenWidth*0.23f)
+                .offset(x = screenWidth * 0.23f)
                 .fillMaxWidth(0.77f),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
@@ -1524,7 +1545,7 @@ fun BottomNavigationBar(
     showReports: Boolean
 ) {
     NavigationBar(
-        containerColor = Color.White
+        containerColor = colorResource(R.color.std_light_purple)
     ) {
         NavigationBarItem(
             icon = {
@@ -1536,18 +1557,18 @@ fun BottomNavigationBar(
             label = {
                 Text(
                     text = "Home",
-                    fontSize = Constants.STD_FONT_SIZE_LW.sp,
-                    fontFamily = robotoSemibold
+                    fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
+                    fontFamily = robotoExtraBold
                 )
 
             },
             selected = true,
             colors = NavigationBarItemColors(
-                selectedIconColor = Color.White.copy(0.7f),
-                unselectedIconColor = Color(0xFF49454F),
+                selectedIconColor = Color.White,
+                unselectedIconColor = Color(0xFF828188),
                 selectedIndicatorColor = colorResource(R.color.std_purple),
                 selectedTextColor = Color.Black,
-                unselectedTextColor = Color(0xFF49454F),
+                unselectedTextColor = Color(0xFF828188),
                 disabledIconColor = Color.White,
                 disabledTextColor = Color.White
             ),
@@ -1562,9 +1583,24 @@ fun BottomNavigationBar(
                         contentDescription = "Reports"
                     )
                 },
-                label = { Text("Reports") },
+                label = {
+                    Text(
+                        "Reports",
+                        fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
+                        fontFamily = robotoExtraBold
+                    )
+                },
                 selected = false,
-                onClick = onNavigateReports
+                onClick = onNavigateReports,
+                colors = NavigationBarItemColors(
+                    selectedIconColor = Color.White,
+                    unselectedIconColor = Color(0xFF828188),
+                    selectedIndicatorColor = colorResource(R.color.std_purple),
+                    selectedTextColor = Color.Black,
+                    unselectedTextColor = Color(0xFF828188),
+                    disabledIconColor = Color.White,
+                    disabledTextColor = Color.White
+                )
             )
         }
 
@@ -1575,9 +1611,24 @@ fun BottomNavigationBar(
                     contentDescription = "Settings"
                 )
             },
-            label = { Text("Settings") },
+            label = {
+                Text(
+                    "Settings",
+                    fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
+                    fontFamily = robotoExtraBold
+                )
+            },
             selected = false,
-            onClick = onNavigateSettings
+            onClick = onNavigateSettings,
+            colors = NavigationBarItemColors(
+                selectedIconColor = Color.White,
+                unselectedIconColor = Color(0xFF615E65),
+                selectedIndicatorColor = colorResource(R.color.std_purple),
+                selectedTextColor = Color.Black,
+                unselectedTextColor = Color(0xFF828188),
+                disabledIconColor = Color.White,
+                disabledTextColor = Color.White
+            )
         )
     }
 }

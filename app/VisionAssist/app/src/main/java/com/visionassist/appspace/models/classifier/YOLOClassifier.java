@@ -5,6 +5,8 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.util.Log;
+import android.util.Pair;
+
 import com.visionassist.appspace.utils.AppConfig;
 import com.visionassist.appspace.utils.Constants;
 import com.visionassist.appspace.utils.FileUtils;
@@ -71,7 +73,7 @@ public class YOLOClassifier {
         }
     }
 
-    public String detectScene(Bitmap bitmap) {
+    public int detectScene(Bitmap bitmap) {
         try {
             Log.d(TAG, "Starting scene classification on image: " + bitmap.getWidth() + "x" + bitmap.getHeight());
 
@@ -82,7 +84,7 @@ public class YOLOClassifier {
 
             if (inputArray == null) {
                 Log.e(TAG, "Failed to preprocess image");
-                return "unknown";
+                return -1;
             }
 
             // Step 2: Run inference
@@ -92,25 +94,25 @@ public class YOLOClassifier {
 
             if (output == null) {
                 Log.e(TAG, "Inference failed");
-                return "unknown";
+                return -1;
             }
 
             // Step 3: Get class with maximum confidence
             long startPostprocess = System.currentTimeMillis();
-            String detectedScene = getTopClass(output);
+            int detectedScene = getTopClass(output);
             long postprocessTime = System.currentTimeMillis() - startPostprocess;
 
             Log.d(TAG, "Preprocessing completed in " + preprocessTime + "ms");
             Log.d(TAG, "Inference completed in " + inferenceTime + "ms");
             Log.d(TAG, "Post-processing completed in " + postprocessTime + "ms");
             Log.d(TAG, "Total time for inference: " + (preprocessTime + inferenceTime + postprocessTime) + "ms");
-            Log.d(TAG, "Scene classification completed:\nScene found: " + detectedScene);
+            Log.d(TAG, "Scene classification completed:\nScene id found: " + detectedScene);
 
             return detectedScene;
 
         } catch (Exception e) {
             Log.e(TAG, "Error during scene classification", e);
-            return "unknown";
+            return -1;
         }
     }
 
@@ -220,10 +222,10 @@ public class YOLOClassifier {
         }
     }
 
-    private String getTopClass(float[] classScores) {
+    private int getTopClass(float[] classScores) {
         if (classScores == null || classScores.length == 0) {
             Log.e(TAG, "Invalid class scores");
-            return "unknown";
+            return -1;
         }
 
         // Find the index with maximum confidence
@@ -239,11 +241,10 @@ public class YOLOClassifier {
 
         // Get class name from map
         String className = classNames.getOrDefault(maxIndex, "unknown");
-
         Log.d(TAG, String.format("Top prediction: class_id=%d, name=%s, confidence=%.3f",
                 maxIndex, className, maxConfidence));
 
-        return className;
+        return maxIndex;
     }
 
     /**

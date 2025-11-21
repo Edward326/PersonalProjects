@@ -37,6 +37,9 @@ public class SpeechRecognizer {
     // Map of class index -> list of synonyms
     private Map<Integer, List<String>> objectSynonyms;
 
+    // Constrained vocabulary JSON for Vosk
+    private String vocabularyJson;
+
     // Recognition listener callback
     private RecognitionCallback recognitionCallback;
 
@@ -47,6 +50,25 @@ public class SpeechRecognizer {
         void onResult(String recognizedText,boolean isFinalResult);
 
         void onError(String error);
+    }
+
+    public static class MatchedObject {
+        public final int classIndex;      // Index in COCO dataset (0-79)
+        public final int synonymIndex;    // Index in synonym array for this class
+        public final String matchedWord;  // The actual word that was matched
+
+        public MatchedObject(int classIndex, int synonymIndex, String matchedWord) {
+            this.classIndex = classIndex;
+            this.synonymIndex = synonymIndex;
+            this.matchedWord = matchedWord;
+        }
+
+        @Override
+        public String toString() {
+            return "MatchedObject{classIndex=" + classIndex +
+                    ", synonymIndex=" + synonymIndex +
+                    ", matchedWord='" + matchedWord + "'}";
+        }
     }
 
     public SpeechRecognizer(Context context) {
@@ -70,6 +92,12 @@ public class SpeechRecognizer {
                 return -1;
             }
             Log.d(TAG, "Loaded synonyms for " + objectSynonyms.size() + " object classes");
+
+            if (buildVocabulary() != 0) {
+                Log.e(TAG, "Failed to build vocabulary");
+                return -1;
+            }
+            Log.d(TAG, "Built constrained vocabulary successfully");
 
             loadVoskModel();
 
@@ -144,6 +172,49 @@ public class SpeechRecognizer {
 
         } catch (Exception e) {
             Log.e(TAG, "Failed to load object synonyms", e);
+            return -1;
+        }
+    }
+
+    private int buildVocabulary() {
+        try {
+            Log.d(TAG, "Building constrained vocabulary...");
+
+            // Use HashSet to avoid duplicates
+            Set<String> vocabularySet = new HashSet<>();
+
+            // 1. Add all object synonyms
+            for (Map.Entry<Integer, List<String>> entry : objectSynonyms.entrySet()) {
+                for (String synonym : entry.getValue()) {
+                    String word = synonym.toLowerCase().trim();
+                    if (!word.isEmpty()) {
+                        vocabularySet.add(word);
+                    }
+                }
+            }
+
+            // 2. Add ALL words from useless_words.txt
+            // These include essential command words, articles, pronouns, etc.
+            // Even though they're "useless" for matching objects, they're important
+            // for Vosk to recognize natural speech patterns
+            for (String word : uselessWords) {
+                vocabularySet.add(word.toLowerCase().trim());
+            }
+
+            // Convert to JSONArray
+            JSONArray vocabArray = new JSONArray();
+            for (String word : vocabularySet) {
+                vocabArray.put(word);
+            }
+
+            // Add unknown token fallback
+            vocabArray.put("[unk]");
+
+            // Convert to JSON string
+            vocabularyJson = vocabArray.toString();
+            return 0;
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to build vocabulary", e);
             return -1;
         }
     }
@@ -251,7 +322,7 @@ public class SpeechRecognizer {
         this.recognitionCallback = callback;
 
         try {
-            Recognizer recognizer = new Recognizer(model, SAMPLE_RATE);
+            Recognizer recognizer = new Recognizer(model, SAMPLE_RATE,vocabularyJson);
 
             speechService = new SpeechService(recognizer, SAMPLE_RATE);
 
@@ -355,7 +426,7 @@ public class SpeechRecognizer {
         }
     }
 
-    public List<Integer> processRecognizedText(String recognizedText) {
+    public List<MatchedObject> processRecognizedText(String recognizedText) {
         if (recognizedText == null || recognizedText.trim().isEmpty()) {
             Log.w(TAG, "Empty recognized text");
             return new ArrayList<>();
@@ -380,8 +451,8 @@ public class SpeechRecognizer {
         Log.d(TAG, "Meaningful words after filtering: " + meaningfulWords);
 
         // Step 3: Match words with object synonyms
-        List<Integer> matchedIndices = new ArrayList<>();
-        Set<Integer> uniqueIndices = new HashSet<>(); // Avoid duplicates
+        List<MatchedObject> matchedObjects = new ArrayList<>();
+        Set<Integer> uniqueClassIndices = new HashSet<>(); // Avoid duplicates
 
         for (String word : meaningfulWords) {
             // Search through all object synonyms
@@ -389,13 +460,15 @@ public class SpeechRecognizer {
                 int classIndex = entry.getKey();
                 List<String> synonyms = entry.getValue();
 
-                // Check if word matches any synonym
-                if (synonyms.contains(word)) {
-                    if (!uniqueIndices.contains(classIndex)) {
-                        matchedIndices.add(classIndex);
-                        uniqueIndices.add(classIndex);
+                // Check if word matches any synonym and get its index
+                int synonymIndex = synonyms.indexOf(word);
+                if (synonymIndex != -1) {
+                    if (!uniqueClassIndices.contains(classIndex)) {
+                        matchedObjects.add(new MatchedObject(classIndex, synonymIndex, word));
+                        uniqueClassIndices.add(classIndex);
 
-                        Log.d(TAG, "Matched \"" + word + "\" -> class " + classIndex);
+                        Log.d(TAG, "Matched \"" + word + "\" -> class " + classIndex +
+                                ", synonym index " + synonymIndex);
                     }
                     break; // Move to next word
                 }
@@ -408,20 +481,22 @@ public class SpeechRecognizer {
             int classIndex = entry.getKey();
             List<String> synonyms = entry.getValue();
 
-            for (String synonym : synonyms) {
+            for (int i = 0; i < synonyms.size(); i++) {
+                String synonym = synonyms.get(i);
                 if (synonym.contains(" ") && fullText.contains(synonym)) {
-                    if (!uniqueIndices.contains(classIndex)) {
-                        matchedIndices.add(classIndex);
-                        uniqueIndices.add(classIndex);
+                    if (!uniqueClassIndices.contains(classIndex)) {
+                        matchedObjects.add(new MatchedObject(classIndex, i, synonym));
+                        uniqueClassIndices.add(classIndex);
 
-                        Log.d(TAG, "Matched phrase \"" + synonym + "\" -> class " + classIndex);
+                        Log.d(TAG, "Matched phrase \"" + synonym + "\" -> class " + classIndex +
+                                ", synonym index " + i);
                     }
                 }
             }
         }
 
-        Log.d(TAG, "Final matched indices: " + matchedIndices);
-        return matchedIndices;
+        Log.d(TAG, "Final matched objects: " + matchedObjects);
+        return matchedObjects;
     }
 
     public Model getModel() {

@@ -5,6 +5,7 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.util.Log;
 import com.visionassist.appspace.utils.*;
@@ -91,7 +92,7 @@ public class YOLODetector {
 
             if (inputArray == null) {
                 Log.e(TAG, "Failed to preprocess image");
-                return new DetectionResult(new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
+                return new DetectionResult(new ArrayList<>(), new ArrayList<>(), new ArrayList<>(),new ArrayList<>());
             }
 
             // Step 2: Run inference
@@ -102,7 +103,7 @@ public class YOLODetector {
 
             if (output == null) {
                 Log.e(TAG, "Inference failed");
-                return new DetectionResult(new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
+                return new DetectionResult(new ArrayList<>(), new ArrayList<>(), new ArrayList<>(),new ArrayList<>());
             }
 
             // Step 3: Post-process results
@@ -119,7 +120,7 @@ public class YOLODetector {
             return result;
         } catch (Exception e) {
             Log.e(TAG, "Error during object detection", e);
-            return new DetectionResult(new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
+            return new DetectionResult(new ArrayList<>(), new ArrayList<>(), new ArrayList<>(),new ArrayList<>());
         }
     }
 
@@ -248,6 +249,7 @@ public class YOLODetector {
         List<RectF> boundingBoxes = new ArrayList<>();
         List<Float> confidences = new ArrayList<>();
         List<String> labels = new ArrayList<>();
+        List<Integer> class_indices = new ArrayList<>();
 
         final float DEBUG_CONFIDENCE_THRESHOLD = 0.001f;
         int highConfCount = 0;
@@ -297,6 +299,7 @@ public class YOLODetector {
                             boundingBoxes.add(bbox);
                             confidences.add(maxClassConf);
                             labels.add(className);
+                            class_indices.add(bestClass);
                             //Log.d(TAG, String.format("Valid detection: %s (%.3f) at [%.1f,%.1f,%.1f,%.1f]",
                             //        className, maxClassConf, bbox.left, bbox.top, bbox.right, bbox.bottom));
                         }
@@ -315,16 +318,19 @@ public class YOLODetector {
         List<RectF> finalBoxes = new ArrayList<>();
         List<Float> finalConfidences = new ArrayList<>();
         List<String> finalLabels = new ArrayList<>();
+        List<Integer> finalClassIndices = new ArrayList<>();
 
         for (int idx : keepIndices) {
             finalBoxes.add(boundingBoxes.get(idx));
             finalConfidences.add(confidences.get(idx));
             finalLabels.add(labels.get(idx));
+            finalClassIndices.add(class_indices.get(idx));
         }
+
 
         Log.d(TAG, String.format("NMS: %d -> %d detections", boundingBoxes.size(), finalBoxes.size()));
 
-        return new DetectionResult(finalBoxes, finalConfidences, finalLabels);
+        return new DetectionResult(finalBoxes, finalConfidences, finalLabels,finalClassIndices);
     }
 
     private RectF convertCoordinates(float left, float top, float right, float bottom,
@@ -407,47 +413,137 @@ public class YOLODetector {
     }
 
     public Bitmap drawDetections(Bitmap originalBitmap, DetectionResult detectionResult) {
-        // Same as PyTorch version
+        if (originalBitmap == null || detectionResult == null) {
+            Log.e(TAG, "Cannot draw detections: null inputs");
+            return originalBitmap;
+        }
+
+        // Create mutable copy
         Bitmap mutableBitmap = originalBitmap.copy(Bitmap.Config.ARGB_8888, true);
         Canvas canvas = new Canvas(mutableBitmap);
 
-        Paint boxPaint = new Paint();
-        boxPaint.setColor(Constants.BBOX_COLOR);
-        boxPaint.setStyle(Paint.Style.STROKE);
-        boxPaint.setStrokeWidth(Constants.BBOX_STROKE_WIDTH);
+        int screenWidth = mutableBitmap.getWidth();
 
-        Paint textPaint = new Paint();
-        textPaint.setColor(Constants.TEXT_COLOR);
-        textPaint.setTextSize(Constants.TEXT_SIZE);
-        textPaint.setAntiAlias(true);
+        // Parse colors from AppConfig (format: "#RRGGBB")
+        int bboxColor = parseColor(AppConfig.bbox_color);
+        int labelColor = parseColor(AppConfig.label_color);
+        int labelBckColor = parseColor(AppConfig.label_bck_color);
 
-        Paint backgroundPaint = new Paint();
-        backgroundPaint.setColor(Constants.TEXT_BACKGROUND_COLOR);
-        backgroundPaint.setStyle(Paint.Style.FILL);
-
-        List<RectF> boxes = detectionResult.getBoundingBoxes();
-        List<Float> confidences = detectionResult.getConfidences();
+        // Get detection data
+        List<RectF> boundingBoxes = detectionResult.getBoundingBoxes();
         List<String> labels = detectionResult.getLabels();
+        List<Float> confidences = detectionResult.getConfidences();
 
-        for (int i = 0; i < boxes.size(); i++) {
-            RectF box = boxes.get(i);
-            float confidence = confidences.get(i);
+        // Draw each detection
+        for (int i = 0; i < boundingBoxes.size(); i++) {
+            RectF bbox = boundingBoxes.get(i);
             String label = labels.get(i);
+            int confidence = Math.round(confidences.get(i) * 100);
 
-            canvas.drawRect(box, boxPaint);
-
-            String text = label + " " + String.format("%.2f", confidence);
-            float textWidth = textPaint.measureText(text);
-            float textHeight = textPaint.getTextSize();
-
-            canvas.drawRect(box.left, box.top - textHeight - 4,
-                    box.left + textWidth + 8, box.top, backgroundPaint);
-
-            canvas.drawText(text, box.left + 4, box.top - 4, textPaint);
+            drawBoundingBox(
+                    canvas,
+                    bbox,
+                    label,
+                    confidence,
+                    bboxColor,
+                    labelColor,
+                    labelBckColor,
+                    screenWidth,
+                    AppConfig.isBold,
+                    AppConfig.show_confidence
+            );
         }
 
         return mutableBitmap;
     }
+
+    /**
+     * Parse color string from AppConfig format (#RRGGBB) to int
+     */
+    private int parseColor(String colorString) {
+        try {
+            if (colorString == null || colorString.isEmpty()) {
+                return 0xFF00FF00; // Default green
+            }
+            // Android Color.parseColor equivalent
+            return android.graphics.Color.parseColor(colorString);
+        } catch (Exception e) {
+            Log.e(TAG, "Error parsing color: " + colorString, e);
+            return 0xFF00FF00; // Default green
+        }
+    }
+
+    /**
+     * Draw single bounding box with label
+     * Based on UserAccessibility1Activity.kt implementation
+     */
+    private void drawBoundingBox(
+            Canvas canvas,
+            RectF rect,
+            String label,
+            int confidence,
+            int bboxColor,
+            int textColor,
+            int bgColor,
+            int screenWidth,
+            boolean isBold,
+            boolean showConfidence
+    ) {
+        // Calculate stroke width (2% of screen width)
+        float strokeWidth = screenWidth * Constants.BBOX_STROKE_WIDTH_SCREEN;
+
+        // Draw bounding box
+        Paint boxPaint = new Paint();
+        boxPaint.setColor(bboxColor);
+        boxPaint.setStyle(Paint.Style.STROKE);
+        boxPaint.setStrokeWidth(strokeWidth);
+        canvas.drawRect(rect, boxPaint);
+
+        // Calculate text size (6% of screen width)
+        float textSize = screenWidth * Constants.TEXT_SIZE_WIDTH_SCREEN;
+
+        // Prepare label text
+        String labelText = showConfidence ? label + " " + confidence + "%" : label;
+
+        // Setup text paint
+        Paint textPaint = new Paint();
+        textPaint.setColor(textColor);
+        textPaint.setTextSize(textSize);
+        textPaint.setFakeBoldText(isBold);
+        textPaint.setAntiAlias(true);
+
+        // Measure text bounds
+        Rect textBounds = new Rect();
+        textPaint.getTextBounds(labelText, 0, labelText.length(), textBounds);
+
+        // Setup background paint
+        Paint bgPaint = new Paint();
+        bgPaint.setColor(bgColor);
+        bgPaint.setStyle(Paint.Style.FILL);
+
+        // Calculate background rectangle with padding
+        float paddingHorizontal = 16f;
+        float paddingVertical = 8f;
+
+        RectF textBgRect = new RectF(
+                rect.left,
+                rect.top - textBounds.height() - paddingVertical * 2,
+                rect.left + textBounds.width() + paddingHorizontal * 2,
+                rect.top
+        );
+
+        // Draw background
+        canvas.drawRect(textBgRect, bgPaint);
+
+        // Draw text
+        canvas.drawText(
+                labelText,
+                rect.left + paddingHorizontal,
+                rect.top - paddingVertical,
+                textPaint
+        );
+    }
+
 
     public String getClassName(int i){
         return classNames.getOrDefault(i,"unknown");

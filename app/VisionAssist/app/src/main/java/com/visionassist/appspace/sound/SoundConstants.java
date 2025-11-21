@@ -13,6 +13,7 @@ public class SoundConstants {
     public static final int STT_SPEAK_OPEN_ID = R.raw.stt_speak_opened;
     public static final int STT_SPEAK_CLOSE_ID = R.raw.stt_speak_closed;
     public static final int OPEN_UP_ID = R.raw.home_startup;
+    public static final int FIND_MY_OBJECT_DONE_ID = R.raw.findmyobject_found;
 
     // ==================== SOUND DURATIONS (ms) ====================
     // Navigation durations
@@ -22,6 +23,7 @@ public class SoundConstants {
     public static final int STT_SPEAK_OPEN_MS = 1000;
     public static final int STT_SPEAK_CLOSE_MS = 1000;
     public static final int OPEN_UP_MS = 3000;
+    public static final int FIND_MY_OBJECT_DONE_MS = 2000;
 
 
     // ==================== SOUND TO DURATION MAPPING ====================
@@ -37,6 +39,12 @@ public class SoundConstants {
         }
         if (soundResId == STT_SPEAK_CLOSE_ID) {
             return STT_SPEAK_CLOSE_MS;
+        }
+        if (soundResId == OPEN_UP_ID) {
+            return OPEN_UP_MS;
+        }
+        if (soundResId == FIND_MY_OBJECT_DONE_ID) {
+            return FIND_MY_OBJECT_DONE_MS;
         }
 
         // Default duration if sound not found

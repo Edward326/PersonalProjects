@@ -65,6 +65,7 @@ public class SoundManager {
         loadSound(SoundConstants.STT_SPEAK_OPEN_ID);
         loadSound(SoundConstants.STT_SPEAK_CLOSE_ID);
         loadSound(SoundConstants.OPEN_UP_ID);
+        loadSound(SoundConstants.FIND_MY_OBJECT_DONE_ID);
 
         Log.d(TAG, "All sounds loaded successfully (" + soundMap.size() + " sounds)");
     }

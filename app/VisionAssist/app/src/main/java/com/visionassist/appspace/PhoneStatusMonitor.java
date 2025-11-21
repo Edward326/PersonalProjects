@@ -306,7 +306,7 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
         new Handler(Looper.getMainLooper()).postDelayed(() -> System.exit(0), 500);
     }
 
-    private void startMonitoring() {
+    public void startMonitoring() {
         if (!isMonitoring) {
             isMonitoring = true;
             errorShown = false;
@@ -315,7 +315,7 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
         }
     }
 
-    private void stopMonitoring() {
+    public void stopMonitoring() {
         if (isMonitoring) {
             isMonitoring = false;
             handler.removeCallbacks(monitoringRunnable);

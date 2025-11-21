@@ -25,11 +25,8 @@ public class Constants {
     public static final float NMS_THRESHOLD = 0.45f;
 
     // Drawing Configuration
-    public static final int BBOX_COLOR = Color.GREEN;
-    public static final float BBOX_STROKE_WIDTH = 16.0f;
-    public static final int TEXT_COLOR = Color.WHITE;
-    public static final int TEXT_BACKGROUND_COLOR = Color.BLACK;
-    public static final float TEXT_SIZE = 24.0f;
+    public static final float BBOX_STROKE_WIDTH_SCREEN = 0.02f;
+    public static final float TEXT_SIZE_WIDTH_SCREEN = 0.06f;
 
     // Text-to-Speech Configuration
     public static final float TTS_SPEECH_RATE = 1.0f;
@@ -49,7 +46,8 @@ public class Constants {
     public static final String EXTRA_USERACC_OPTION = "useracc_option";
     public static final String EXTRA_HCACHING_OPTION = "hcaching_option";
     public static final String EXTRA_IMAGE_URI = "image_uri";
-    public static final String EXTRA_MATCHED_INDICES = "bitmap_bytearray";
+    public static final String EXTRA_MATCHED_INDICES = "class_indices";
+    public static final String EXTRA_SYNONYMS_WORDS = "synonyms_words";
 
     // Battery and Temperature Checks
     public static final boolean APPLY_BATTERY_CHECK = true;
@@ -140,6 +138,9 @@ public class Constants {
     public static final float STD_TITLE_SUBTITLE_MARGIN_TOP=0.045f;
     public static final float STD_SUBTITLE_BODY_MARGIN_TOP=0.04f;
     public static final float STD_NAV_MARGIN_BOTTOM=0.10f;
+
+    // CameraX activities parameters
+    public static final int DEFAULT_FPS = 10;
 
     // UserAccessibility1Activity params
     public static final int PREVIEW_UPDATE_DELAY = 1000;

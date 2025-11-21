@@ -184,6 +184,13 @@
     <string name="stt_error_load_en">The Find My Object feature is currently unavailable, due to initial loading error</string>
     <string name="stt_error_runtime_en">The Find My Object feature is currently unavailable, due to en runtime error</string>
 
+    <!-- FindMyObjectActivity -->
+    <string name="detection_result">Detection Result</string>
+    <string name="looking_for">Looking for: %s</string>
+    <string name="objects_found">Found %d objects</string>
+    <string name="fps_label">FPS</string>
+    <string name="detection_speed">Detection Speed</string>
+
 
     <!-- Common values -->
     <string name="forward_arrow">Forward arrow</string>
