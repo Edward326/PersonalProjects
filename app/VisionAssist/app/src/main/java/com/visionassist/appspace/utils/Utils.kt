@@ -1,14 +1,23 @@
 package com.visionassist.appspace.utils
 
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.util.Log
+import androidx.compose.runtime.MutableState
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.core.content.ContextCompat.getSystemService
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 data class Language(
     var code: String,
@@ -562,4 +571,76 @@ fun load_errorSTT(context: Context): String {
 
 fun load_errorSTTRuntime(context: Context): String {
     return context.getString(R.string.stt_error_runtime_en)
+}
+
+fun startBatteryLevelCheck(
+    keepRunning: MutableState<Boolean>,
+    showWarning: MutableState<Boolean>,
+    avgBatteryMoreUsed: MutableState<Float>
+) {
+    val context = PhoneStatusMonitor.getInstance().currentContext
+    var previousTimestamp = System.currentTimeMillis()
+    var previousLevel = Utils.returnBatteryLevel(context)
+    var previousDiff = 0L
+
+    val batteryReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (!keepRunning.value) {
+                context?.unregisterReceiver(this)
+                return
+            }
+
+            val currentTimestamp = System.currentTimeMillis()
+            val currentLevel = Utils.returnBatteryLevel(context!!)
+            val currentDiff = currentTimestamp - previousTimestamp
+
+            if (previousDiff > 0 && currentLevel < previousLevel) {
+                // Calculate consumption rate ratio
+                val ratio = currentDiff.toFloat() / previousDiff.toFloat()
+
+                if (ratio < Constants.BATTERY_USAGE_THRESHOLD) {
+                    // Battery is draining faster than previous interval
+                    // Update average
+                    val currentAvg = avgBatteryMoreUsed.value
+                    if (currentAvg == 0f) {
+                        avgBatteryMoreUsed.value = ratio
+                    } else {
+                        avgBatteryMoreUsed.value = (currentAvg + ratio) / 2f
+                    }
+
+                    // Show warning
+                    showWarning.value = true
+
+                    // Hide warning after delay
+                    CoroutineScope(Dispatchers.Main).launch {
+                        delay(Constants.BATTERY_WARNING_DISPLAY_MS)
+                        showWarning.value = false
+                    }
+
+                    Log.d("BatteryCheck", "Battery usage increased: ratio=$ratio, avg=${avgBatteryMoreUsed.value}")
+                }
+            }
+
+            previousTimestamp = currentTimestamp
+            previousLevel = currentLevel
+            previousDiff = currentDiff
+        }
+    }
+
+    // Register receiver
+    val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+    context.registerReceiver(batteryReceiver, filter)
+
+    // Monitor keepRunning state in coroutine
+    CoroutineScope(Dispatchers.Default).launch {
+        while (keepRunning.value) {
+            delay(Constants.WAIT_CHECK)
+        }
+        // Unregister when stopped
+        try {
+            context.unregisterReceiver(batteryReceiver)
+        } catch (e: Exception) {
+            Log.e("BatteryCheck", "Error unregistering receiver", e)
+        }
+    }
 }

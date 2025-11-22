@@ -31,7 +31,6 @@ public class Constants {
     // Text-to-Speech Configuration
     public static final float TTS_SPEECH_RATE = 1.0f;
     public static final float TTS_PITCH = 1.0f;
-    public static final float CAPTION_TEXT_SIZE = 25.0f;
 
     // Profile Storage Configuration - NEW
     public static final String PROFILE_FOLDER_NAME = "visionassist_data";
@@ -141,6 +140,8 @@ public class Constants {
 
     // CameraX activities parameters
     public static final int DEFAULT_FPS = 10;
+    public static final float BATTERY_USAGE_THRESHOLD = 0.7f;
+    public static final long BATTERY_WARNING_DISPLAY_MS = 10000;
 
     // UserAccessibility1Activity params
     public static final int PREVIEW_UPDATE_DELAY = 1000;

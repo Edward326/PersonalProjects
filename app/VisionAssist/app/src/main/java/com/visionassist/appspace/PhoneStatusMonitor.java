@@ -31,6 +31,7 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
 
     private Context appContext;
     private Handler handler;
+    private Handler monitoredHandler;
     private Runnable monitoringRunnable;
     private boolean isMonitoring = false;
     private int activeActivityCount = 0;
@@ -282,6 +283,7 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
 
     public void exitApp() {
         stopMonitoring();
+        if(monitoredHandler!=null)monitoredHandler.removeCallbacksAndMessages(null);
         handler.removeCallbacksAndMessages(null);
         modelManager.cleanup();
         // Crucial: Shut down the TTS engine first
@@ -306,8 +308,9 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
         new Handler(Looper.getMainLooper()).postDelayed(() -> System.exit(0), 500);
     }
 
-    public void startMonitoring() {
+    public void startMonitoring(Handler monitoredHandlerReff) {
         if (!isMonitoring) {
+            monitoredHandler=monitoredHandlerReff;
             isMonitoring = true;
             errorShown = false;
             handler.post(monitoringRunnable);
@@ -317,6 +320,7 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
 
     public void stopMonitoring() {
         if (isMonitoring) {
+            if(monitoredHandler!=null)monitoredHandler=null;
             isMonitoring = false;
             handler.removeCallbacks(monitoringRunnable);
             Log.d(TAG, "Monitoring stopped");
