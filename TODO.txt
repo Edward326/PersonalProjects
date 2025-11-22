@@ -1,7 +1,3 @@
-testat:
--testat cazuri proaste stt
--tesatt pe diferite limbi
-
 -implementat core-ul aplicatiei:
 	-HomeActivity+findmyobject,BlindHomeActivity+findmyobject
 	-activitati pentru detection(low eyesight:live/static | blind), caption(low eysight | blind)
