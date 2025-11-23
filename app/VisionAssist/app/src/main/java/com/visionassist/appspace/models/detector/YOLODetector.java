@@ -81,50 +81,50 @@ public class YOLODetector {
         }
     }
 
-    public DetectionResult detectObjects(Bitmap bitmap) {
+    public DetectionResult detectObjects(Bitmap bitmap,String threadInfo) {
         try {
-            Log.d(TAG, "Starting detection on image: " + bitmap.getWidth() + "x" + bitmap.getHeight());
+            Log.d(TAG, "["+threadInfo+"]"+"Starting detection on image: " + bitmap.getWidth() + "x" + bitmap.getHeight());
 
             // Step 1: Preprocess image
             long startPreprocess = System.currentTimeMillis();
-            float[] inputArray = preprocessImage(bitmap);
+            float[] inputArray = preprocessImage(bitmap,threadInfo);
             long preprocessTime = System.currentTimeMillis() - startPreprocess;
 
             if (inputArray == null) {
-                Log.e(TAG, "Failed to preprocess image");
+                Log.e(TAG, "["+threadInfo+"]"+"Failed to preprocess image");
                 return new DetectionResult(new ArrayList<>(), new ArrayList<>(), new ArrayList<>(),new ArrayList<>());
             }
 
             // Step 2: Run inference
             long startInference = System.currentTimeMillis();
-            float[] output = runInference(inputArray);
+            float[] output = runInference(inputArray,threadInfo);
             long inferenceTime = System.currentTimeMillis() - startInference;
 
 
             if (output == null) {
-                Log.e(TAG, "Inference failed");
+                Log.e(TAG, "["+threadInfo+"]"+"Inference failed");
                 return new DetectionResult(new ArrayList<>(), new ArrayList<>(), new ArrayList<>(),new ArrayList<>());
             }
 
             // Step 3: Post-process results
             long startPostprocess = System.currentTimeMillis();
-            DetectionResult result = postprocessOutput(output, bitmap.getWidth(), bitmap.getHeight());
+            DetectionResult result = postprocessOutput(output, bitmap.getWidth(), bitmap.getHeight(),threadInfo);
             long postprocessTime = System.currentTimeMillis() - startPostprocess;
 
-            Log.d(TAG, "Preprocessing completed in " + preprocessTime + "ms");
-            Log.d(TAG, "Inference completed in " + inferenceTime + "ms");
-            Log.d(TAG, "Post-processing completed in " + postprocessTime + "ms");
-            Log.d(TAG, "Total time for inference: " + (preprocessTime + inferenceTime + postprocessTime) + "ms");
-            Log.d(TAG, "Detection completed:\nObjects found(" + result.getDetectionCount() + ")\n" + result.listBoundingBoxes());
+            Log.d(TAG, "["+threadInfo+"]"+"Preprocessing completed in " + preprocessTime + "ms");
+            Log.d(TAG, "["+threadInfo+"]"+"Inference completed in " + inferenceTime + "ms");
+            Log.d(TAG, "["+threadInfo+"]"+"Post-processing completed in " + postprocessTime + "ms");
+            Log.d(TAG, "["+threadInfo+"]"+"Total time for inference: " + (preprocessTime + inferenceTime + postprocessTime) + "ms");
+            Log.d(TAG, "["+threadInfo+"]"+"Detection completed:\nObjects found(" + result.getDetectionCount() + ")\n" + result.listBoundingBoxes());
 
             return result;
         } catch (Exception e) {
-            Log.e(TAG, "Error during object detection", e);
+            Log.e(TAG, "["+threadInfo+"]"+"Error during object detection", e);
             return new DetectionResult(new ArrayList<>(), new ArrayList<>(), new ArrayList<>(),new ArrayList<>());
         }
     }
 
-    private float[] preprocessImage(Bitmap bitmap) {
+    private float[] preprocessImage(Bitmap bitmap,String threadInfo) {
         try {
             // Resize bitmap with padding (same as PyTorch version)
             Bitmap resizedBitmap = resizeBitmapWithPadding(bitmap, Constants.DETECTOR_INPUT_SIZE, Constants.DETECTOR_INPUT_SIZE);
@@ -154,7 +154,7 @@ public class YOLODetector {
             return inputArray;
 
         } catch (Exception e) {
-            Log.e(TAG, "Error preprocessing image", e);
+            Log.e(TAG, "["+threadInfo+"]"+"Error preprocessing image", e);
             return null;
         }
     }
@@ -201,7 +201,7 @@ public class YOLODetector {
         return targetBitmap;
     }
 
-    private float[] runInference(float[] inputArray) {
+    private float[] runInference(float[] inputArray,String threadInfo) {
         try {
             // Create input tensor: shape [1, 3, 640, 640]
             long[] shape = {1, 3, Constants.DETECTOR_INPUT_SIZE, Constants.DETECTOR_INPUT_SIZE};
@@ -237,12 +237,12 @@ public class YOLODetector {
             return flatOutput;
 
         } catch (Exception e) {
-            Log.e(TAG, "Error during inference", e);
+            Log.e(TAG, "["+threadInfo+"]"+"Error during inference", e);
             return null;
         }
     }
 
-    private DetectionResult postprocessOutput(float[] output, int originalWidth, int originalHeight) {
+    private DetectionResult postprocessOutput(float[] output, int originalWidth, int originalHeight,String threadInfo) {
         // THIS IS EXACTLY THE SAME AS YOUR PYTORCH VERSION
         // The output format is identical: [84, 8400]
 
@@ -308,7 +308,7 @@ public class YOLODetector {
             }
         }
 
-        Log.d(TAG, String.format("Detection summary: %d high-conf (>%.3f), %d valid boxes, %d passed threshold",
+        Log.d(TAG, String.format("["+threadInfo+"]"+"Detection summary: %d high-conf (>%.3f), %d valid boxes, %d passed threshold",
                 highConfCount, DEBUG_CONFIDENCE_THRESHOLD, validBoxCount, boundingBoxes.size()));
 
         // Apply Non-Maximum Suppression (same as PyTorch version)
@@ -328,7 +328,7 @@ public class YOLODetector {
         }
 
 
-        Log.d(TAG, String.format("NMS: %d -> %d detections", boundingBoxes.size(), finalBoxes.size()));
+        Log.d(TAG, String.format("["+threadInfo+"]"+"NMS: %d -> %d detections", boundingBoxes.size(), finalBoxes.size()));
 
         return new DetectionResult(finalBoxes, finalConfidences, finalLabels,finalClassIndices);
     }

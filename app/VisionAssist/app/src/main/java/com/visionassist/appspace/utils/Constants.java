@@ -8,7 +8,7 @@ public class Constants {
     public static final String YOLO_MODEL_DETECTOR_FILE = "yolov8s_mobile.onnx";
     public static final String DETECTOR_CLASSES_FILE_EN = "detector_class_names_en.txt";
     public static final String DETECTOR_CLASSES_FILE_RO = "detector_class_names_ro.txt";
-    public static final String YOLO_MODEL_CLASSIFIER_FILE = "yolov8m_cls_mobile.onnx";
+    public static final String YOLO_MODEL_CLASSIFIER_FILE = "yolov8n_cls_mobile.onnx";
     public static final String CLASSIFIER_CLASSES_FILE_EN = "classifier_class_names_en.txt";
     public static final String CLASSIFIER_CLASSES_FILE_RO = "classifier_class_names_ro.txt";
     public static final String BLIP_MODEL_FILE = "blip_captioner_quantized.onnx";
@@ -25,8 +25,8 @@ public class Constants {
     public static final float NMS_THRESHOLD = 0.45f;
 
     // Drawing Configuration
-    public static final float BBOX_STROKE_WIDTH_SCREEN = 0.02f;
-    public static final float TEXT_SIZE_WIDTH_SCREEN = 0.06f;
+    public static final float BBOX_STROKE_WIDTH_SCREEN = 0.01f;
+    public static final float TEXT_SIZE_WIDTH_SCREEN = 0.03f;
 
     // Text-to-Speech Configuration
     public static final float TTS_SPEECH_RATE = 1.0f;
@@ -87,6 +87,8 @@ public class Constants {
 
     // Error codes, followed by shutdown
     public static final int REGISTER_CAMERA_LAUNCHER=-3;
+    public static final int STD_CAMERA_FAIL=-6;
+    public static final int CAMERA_FAIL_CONVERT_IMGPROXY=-5;
     public static final int CAMERA_MAKE_PHOTO=-4;
     public static final int ERROR_READ_DELAY = 8000;
     public static final int EXCEPTION_CLASS_ERROR = -1;
@@ -142,6 +144,7 @@ public class Constants {
     public static final int DEFAULT_FPS = 20;
     public static final float BATTERY_USAGE_THRESHOLD = 0.7f;
     public static final long BATTERY_WARNING_DISPLAY_MS = 10000;
+    public static final int CAMERA_RECOVERY_MS = 200;
 
     // UserAccessibility1Activity params
     public static final int PREVIEW_UPDATE_DELAY = 1000;

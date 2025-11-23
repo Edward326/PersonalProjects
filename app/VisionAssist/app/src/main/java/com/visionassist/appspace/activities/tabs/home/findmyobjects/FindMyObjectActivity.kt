@@ -2,7 +2,6 @@
 
 package com.visionassist.appspace.activities.tabs.home.findmyobjects
 
-import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.RectF
 import android.os.Bundle
@@ -65,12 +64,12 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
-import com.visionassist.appspace.activities.main.HomeActivity
 import com.visionassist.appspace.activities.tabs.reports.EnvironmentReportsManagerKt
 import com.visionassist.appspace.jetpack.design.BackArrowLargeFab
 import com.visionassist.appspace.jetpack.design.CustomSlider
 import com.visionassist.appspace.jetpack.design.NextArrowLargeFab
 import com.visionassist.appspace.jetpack.design.ThumbStyle
+import com.visionassist.appspace.jetpack.managers.ErrorDialogManager
 import com.visionassist.appspace.models.classifier.YOLOClassifier
 import com.visionassist.appspace.models.detector.DetectionResult
 import com.visionassist.appspace.models.detector.YOLODetector
@@ -98,9 +97,8 @@ class FindMyObjectActivity : ComponentActivity() {
     private val TAG = "FindMyObjectActivity"
 
     // Models
-    private val monitor = PhoneStatusMonitor.getInstance()
-    private val detector: YOLODetector= monitor.modelManager.detector
-    private val classifier: YOLOClassifier = monitor.modelManager.classifier
+    private val detector: YOLODetector = PhoneStatusMonitor.getInstance().modelManager.detector
+    private val classifier: YOLOClassifier = PhoneStatusMonitor.getInstance().modelManager.classifier
 
     // Detection data
     private lateinit var objectsToFind: MutableMap<Int, String>
@@ -115,7 +113,6 @@ class FindMyObjectActivity : ComponentActivity() {
     private val stopDetection = AtomicBoolean(false)
     private val resultsReady = AtomicBoolean(false)
     private val displayReady = AtomicBoolean(false)
-    private var frameDelayMs = (1000/ Constants.DEFAULT_FPS) // Default 10 FPS
 
     // Results
     private var resultBitmap: Bitmap? = null
@@ -128,7 +125,6 @@ class FindMyObjectActivity : ComponentActivity() {
 
     // Compose states
     private val showResult = mutableStateOf(false)
-    private val currentFPS = mutableStateOf(Constants.DEFAULT_FPS)
     private val showBatteryWarning = mutableStateOf(false)
     private val avgBatteryMoreUsed = mutableStateOf(0f)
     private val batteryCheckRunning = mutableStateOf(false)
@@ -144,19 +140,11 @@ class FindMyObjectActivity : ComponentActivity() {
                 showResult = showResult.value,
                 resultBitmap = resultBitmap,
                 hasMoreObjects = remainingClassIndices.isNotEmpty(),
-                currentFPS = currentFPS.value,
                 showBatteryWarning = showBatteryWarning.value,
-                onFPSChange = { fps ->
-                    currentFPS.value = fps
-                    if (AppConfig.haptics) {
-                        vibrate(haptic_model0())
-                    }
-                    frameDelayMs = 1000 / fps
-                },
                 onBackClick = ::handleBackClick,
                 onNextClick = if (remainingClassIndices.isNotEmpty()) ::handleNextClick else null,
                 onCameraReady = { previewView ->
-                        startCameraX(previewView)
+                    startCameraX(previewView)
                 }
             )
         }
@@ -196,7 +184,7 @@ class FindMyObjectActivity : ComponentActivity() {
         preview.surfaceProvider = previewView.surfaceProvider
 
         imageCapture = ImageCapture.Builder()
-            .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
+            .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
             .build()
 
         val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
@@ -214,7 +202,7 @@ class FindMyObjectActivity : ComponentActivity() {
 
     private fun startDetectionProcess() {
         // Start phone status monitoring
-        monitor.startMonitoring(mainHandler)
+        PhoneStatusMonitor.getInstance().startMonitoring(mainHandler){resultsReady.set(true);batteryCheckRunning.value=false}
         // Start battery level check
         batteryCheckRunning.value = true
         startBatteryLevelCheck(batteryCheckRunning, showBatteryWarning, avgBatteryMoreUsed)
@@ -227,19 +215,19 @@ class FindMyObjectActivity : ComponentActivity() {
     }
 
     private fun startDetectionLoop() {
+        // Launch detection thread
+        launchDetectionThread()
+
         mainHandler.post(object : Runnable {
             override fun run() {
-                if (stopDetection.get() ) {
+                if (stopDetection.get()) {
                     // Stop loop and show results
                     showResults()
                     return
                 }
 
-                // Launch detection thread
-                launchDetectionThread()
-
                 // Schedule next iteration
-                mainHandler.postDelayed(this, frameDelayMs.toLong())
+                mainHandler.postDelayed(this, 500)
             }
         })
     }
@@ -250,6 +238,7 @@ class FindMyObjectActivity : ComponentActivity() {
         BackgroundTaskExecutor.getInstance().executeAsync(
             {
                 // Capture image
+                val currentThreadNo="Thread_"+threadCount.get()
                 val bitmap = captureImageSync() ?: return@executeAsync null
 
                 var sceneClassId = -1
@@ -261,7 +250,7 @@ class FindMyObjectActivity : ComponentActivity() {
                     BackgroundTaskExecutor.getInstance().executeAsync(
                         {
                             val classifierStart = System.currentTimeMillis()
-                            sceneClassId = classifier.detectScene(bitmap)
+                            sceneClassId = classifier.detectScene(bitmap,currentThreadNo)
                             classifierLatency = System.currentTimeMillis() - classifierStart
                             null
                         },
@@ -271,7 +260,7 @@ class FindMyObjectActivity : ComponentActivity() {
                             }
 
                             override fun onError(e: Exception) {
-                                Log.e(TAG, "Classifier error", e)
+                                Log.e(TAG, currentThreadNo+"Classifier error", e)
                                 classifierLatch.countDown()
                             }
                         }
@@ -282,7 +271,7 @@ class FindMyObjectActivity : ComponentActivity() {
 
                 // Run detector
                 val detectorStart = System.currentTimeMillis()
-                val detectionResult = detector.detectObjects(bitmap)
+                val detectionResult = detector.detectObjects(bitmap,currentThreadNo)
                 val detectorLatency = System.currentTimeMillis() - detectorStart
 
                 // Check if found target objects
@@ -302,10 +291,10 @@ class FindMyObjectActivity : ComponentActivity() {
                 try {
                     val finished = classifierLatch.await(1, TimeUnit.SECONDS)
                     if (!finished) {
-                        Log.w(TAG, "Classifier timeout after 3 seconds")
+                        Log.w(TAG, currentThreadNo+"Classifier timeout after 3 seconds")
                     }
                 } catch (e: InterruptedException) {
-                    Log.e(TAG, "Wait interrupted", e)
+                    Log.e(TAG, currentThreadNo+"Wait interrupted", e)
                 }
 
                 // Now classifier is done, return result
@@ -353,6 +342,12 @@ class FindMyObjectActivity : ComponentActivity() {
                 object : ImageCapture.OnImageCapturedCallback() {
                     override fun onCaptureSuccess(image: ImageProxy) {
                         try {
+                            if (!resultsReady.get()) {
+                                mainHandler.postDelayed({
+                                    launchDetectionThread()
+                                }, Constants.CAMERA_RECOVERY_MS.toLong())  // 200ms camera recovery time
+                            }
+
                             // Convert ImageProxy to Bitmap using ImageUtils
                             val bitmap = ImageUtils.imageProxyToBitmap(image)
                             captureResult.complete(bitmap)
@@ -362,6 +357,7 @@ class FindMyObjectActivity : ComponentActivity() {
                             }
                         } catch (e: Exception) {
                             Log.e(TAG, "Error converting ImageProxy to Bitmap", e)
+                            showCameraError(Constants.CAMERA_FAIL_CONVERT_IMGPROXY)
                             captureResult.complete(null)
                         } finally {
                             // CRITICAL: Always close ImageProxy to free memory
@@ -386,6 +382,7 @@ class FindMyObjectActivity : ComponentActivity() {
             null
         } catch (e: Exception) {
             Log.e(TAG, "Error capturing image synchronously", e)
+            showCameraError(Constants.STD_CAMERA_FAIL)
             null
         }
     }
@@ -421,11 +418,17 @@ class FindMyObjectActivity : ComponentActivity() {
                 val synonym = objectsToFind[classIdx] ?: detector.getClassName(classIdx)
                 filteredLabels.add(synonym)
 
-                Log.d(TAG, "Filtered detection: $synonym (class $classIdx) with confidence ${originalConfidences[i]}")
+                Log.d(
+                    TAG,
+                    "Filtered detection: $synonym (class $classIdx) with confidence ${originalConfidences[i]}"
+                )
             }
         }
 
-        Log.d(TAG, "Filtered ${filteredLabels.size} detections from ${originalClassIndices.size} total")
+        Log.d(
+            TAG,
+            "Filtered ${filteredLabels.size} detections from ${originalClassIndices.size} total"
+        )
 
         // Return new DetectionResult with only matched objects
         return DetectionResult(
@@ -443,8 +446,8 @@ class FindMyObjectActivity : ComponentActivity() {
                         (2)
             }
             if (classifierLatency > 0) {
-                avgClassifierLatency = (avgClassifierLatency  + classifierLatency) /
-                            (2)
+                avgClassifierLatency = (avgClassifierLatency + classifierLatency) /
+                        (2)
             }
         }
     }
@@ -452,7 +455,7 @@ class FindMyObjectActivity : ComponentActivity() {
     private fun processFoundObjects(result: ThreadResult) {
         // Signal stop
         stopDetection.set(true)
-        monitor.stopMonitoring()
+        PhoneStatusMonitor.getInstance().stopMonitoring()
         batteryCheckRunning.value = false
 
         // Remove found classes
@@ -464,13 +467,17 @@ class FindMyObjectActivity : ComponentActivity() {
             }
         }
 
+        val listIndices=result.detectionResult?.classIndices as List<Int>
         // Write environment report
         if (AppConfig.env_reports) {
-            val batteryUsageIncrease = 1f - avgBatteryMoreUsed.value
+            val batteryUsageIncrease = if (avgBatteryMoreUsed.value > 0f) {
+                1f-avgBatteryMoreUsed.value
+            } else {
+                0f
+            }
             EnvironmentReportsManagerKt.writeDetectionReport(
                 this,
-                result.sceneClassId,
-                foundSynonyms,
+                result.sceneClassId, listIndices,
                 threadCount.get(),
                 avgDetectorLatency,
                 avgClassifierLatency,
@@ -497,22 +504,20 @@ class FindMyObjectActivity : ComponentActivity() {
                     return
                 }
                 // Schedule next iteration
-                mainHandler.postDelayed(this, 1000)
+                mainHandler.postDelayed(this, 500)
             }
         })
     }
 
     private fun handleBackClick() {
         finish()
-        startActivity(Intent(this, HomeActivity::class.java))
+        //startActivity(Intent(this, HomeActivity::class.java))
     }
 
-    private fun reloadDetectionPhase(){
+    private fun reloadDetectionPhase() {
         // Reset states
         showResult.value = false
         resultBitmap = null
-        currentFPS.value= Constants.DEFAULT_FPS
-        frameDelayMs=1000/currentFPS.value
     }
 
     private fun handleNextClick() {
@@ -520,6 +525,14 @@ class FindMyObjectActivity : ComponentActivity() {
             reloadDetectionPhase()
             startDetectionProcess()
         }
+    }
+
+    override fun onPause(){
+        super.onPause()
+        PhoneStatusMonitor.getInstance().stopMonitoring()
+        batteryCheckRunning.value=false
+        mainHandler.removeCallbacksAndMessages(null)
+        stopDetection.set(true)
     }
 
     override fun onResume() {
@@ -530,6 +543,21 @@ class FindMyObjectActivity : ComponentActivity() {
                 startDetectionProcess()
             }
         }
+        else
+        {
+            if (stopDetection.get() && !showResult.value) {
+                Log.d(TAG, "Activity resumed - restarting detection")
+                reloadDetectionPhase()
+                startDetectionProcess()
+            }
+        }
+    }
+
+    private fun showCameraError(reason: Int) {
+        val monitor = PhoneStatusMonitor.getInstance()
+        val errorDialog = ErrorDialogManager(monitor.currentActivity)
+        errorDialog.setupDialog(reason)
+        monitor.shutdownApp(errorDialog, monitor.currentContext)
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
@@ -554,7 +582,7 @@ class FindMyObjectActivity : ComponentActivity() {
         super.onDestroy()
         stopDetection.set(true)
         batteryCheckRunning.value = false
-        monitor.stopMonitoring()
+        PhoneStatusMonitor.getInstance().stopMonitoring()
         cameraProvider?.unbindAll()
         cameraExecutor.shutdown()
     }
@@ -573,29 +601,24 @@ fun FindMyObjectScreen(
     showResult: Boolean,
     resultBitmap: Bitmap?,
     hasMoreObjects: Boolean,
-    currentFPS: Int,
     showBatteryWarning: Boolean,
-    onFPSChange: (Int) -> Unit,
     onBackClick: () -> Unit,
     onNextClick: (() -> Unit)?,
     onCameraReady: (PreviewView) -> Unit
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val screenHeight=maxHeight
-        val screenWidth=maxWidth
+        val screenHeight = maxHeight
+        val screenWidth = maxWidth
 
         if (!showResult) {
             // Detection phase - Camera + FPS Slider
             DetectionPhase(
-                screenHeight=screenHeight,screenWidth=screenWidth,
-                currentFPS = currentFPS,
-                onFPSChange = onFPSChange,
                 onCameraReady = onCameraReady
             )
         } else {
             // Result phase - Result image + Navigation
             ResultPhase(
-                screenHeight=screenHeight,screenWidth=screenWidth,
+                screenHeight = screenHeight, screenWidth = screenWidth,
                 resultBitmap = resultBitmap,
                 hasMoreObjects = hasMoreObjects,
                 onBackClick = onBackClick,
@@ -617,9 +640,6 @@ fun FindMyObjectScreen(
 
 @Composable
 fun DetectionPhase(
-    screenHeight: Dp,screenWidth: Dp,
-    currentFPS: Int,
-    onFPSChange: (Int) -> Unit,
     onCameraReady: (PreviewView) -> Unit
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
@@ -634,6 +654,7 @@ fun DetectionPhase(
             modifier = Modifier.fillMaxSize()
         )
 
+        /*
         // FPS Slider at bottom
         Box(
             modifier = Modifier
@@ -645,7 +666,7 @@ fun DetectionPhase(
                 currentFPS = currentFPS,
                 onFPSChange = onFPSChange
             )
-        }
+        }*/
     }
 }
 
@@ -660,7 +681,7 @@ fun FPSSliderWithStops(
 
     // Animated height for smooth expansion
     val containerHeight by animateDpAsState(
-        targetValue = if (isExpanded) screenHeight*0.18f else screenHeight*0.05f,
+        targetValue = if (isExpanded) screenHeight * 0.18f else screenHeight * 0.05f,
         animationSpec = tween(durationMillis = 250),
         label = "fps_container_height"
     )
@@ -685,7 +706,7 @@ fun FPSSliderWithStops(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(screenHeight*0.05f)
+                    .height(screenHeight * 0.05f)
                     .clickable { isExpanded = !isExpanded }
                     .padding(horizontal = 20.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -763,7 +784,7 @@ fun FPSSliderWithStops(
                             val rounded = newValue.toInt()
                             if (rounded != fps && rounded in 10..60) {
                                 fps = rounded
-                                showText=fps>30
+                                showText = fps > 30
                                 onFPSChange(fps)
                             }
                         },
@@ -782,15 +803,14 @@ fun FPSSliderWithStops(
                         stepsColor = colorResource(R.color.purple_light)
                     )
                     // FPS range indicator
-                    if(!showText) {
+                    if (!showText) {
                         Text(
                             text = "Always prefer lower FPS for less battery consumption",
                             fontSize = Constants.STD_FONT_SIZE.sp,
                             color = colorResource(R.color.checked_green),
                             fontFamily = robotoBold
                         )
-                    }
-                    else
+                    } else
                         Text(
                             text = "Higher FPS will lead to higher battery consumption",
                             fontSize = Constants.STD_FONT_SIZE.sp,
@@ -812,7 +832,7 @@ fun BatteryWarningNotification() {
                 color = colorResource(R.color.notification_white), // Semi-transparent black
                 shape = RoundedCornerShape(28.dp)
             )
-            .padding(horizontal=24.dp,vertical=12.dp),
+            .padding(horizontal = 24.dp, vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Icon(
@@ -823,7 +843,7 @@ fun BatteryWarningNotification() {
         )
 
         Text(
-            text = "The application detected an higher usage of battery than usual, you can solve this by lowering the FPS from the bottom section",
+            text = "The application detected an higher usage of battery than usual",
             color = colorResource(R.color.notification_text_gray),
             fontSize = Constants.STD_FONT_SIZE.sp,
             modifier = Modifier
@@ -837,7 +857,7 @@ fun BatteryWarningNotification() {
 
 @Composable
 fun ResultPhase(
-    screenHeight: Dp,screenWidth: Dp,
+    screenHeight: Dp, screenWidth: Dp,
     resultBitmap: Bitmap?,
     hasMoreObjects: Boolean,
     onBackClick: () -> Unit,

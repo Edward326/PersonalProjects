@@ -19,7 +19,7 @@ object EnvironmentReportsManagerKt {
     fun writeDetectionReport(
         context: Context,
         sceneClassId: Int,
-        detectedObjects: List<String>,
+        detectedObjects: List<Int>,
         threadCount: Int,
         avgDetectorLatency: Long,
         avgClassifierLatency: Long,
@@ -58,7 +58,7 @@ object EnvironmentReportsManagerKt {
 
                 // Write comprehensive log entry
                 val logEntry = String.format(
-                    "[%s] SceneID: %d | Objects: [%s] | Threads used: %d | " +
+                    "[%s] SceneID: %d | ObjectsID: [%s] | Threads used: %d | " +
                             "DetectorAvg: %dms | ClassifierAvg: %dms | BatteryUsageIncrease: %s%n",
                     timestamp,
                     sceneClassId,

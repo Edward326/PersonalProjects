@@ -169,6 +169,7 @@ class HomeActivity : ComponentActivity() {
 
     // Volume button tracking
     private var locked = false
+    private var lockedVolumeDown = false
     private var uiLocked = false
     private var handleVolumeDownControl = false
 
@@ -184,6 +185,7 @@ class HomeActivity : ComponentActivity() {
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var afterResumeRunnable: Runnable
     private var hasToExecAfterResume = false
+    private var returnFromFindMyObject = false
 
     enum class DetectionOption {
         LIVE, STATIC
@@ -209,7 +211,7 @@ class HomeActivity : ComponentActivity() {
             uiLocked = false
         }
 
-        Log.d(TAG, FileUtils.readProfileFileAsString(this,Constants.ENV_REPORTS_FILE_NAME))
+        //Log.d(TAG, FileUtils.readProfileFileAsString(this, Constants.ENV_REPORTS_FILE_NAME))
 
         setContent {
             HomeScreen(
@@ -274,6 +276,11 @@ class HomeActivity : ComponentActivity() {
         if (hasToExecAfterResume) {
             hasToExecAfterResume = false
             handler.post(afterResumeRunnable)
+        }
+
+        if(returnFromFindMyObject){
+            returnFromFindMyObject=false
+            handleSpeechDialogTap()
         }
     }
 
@@ -567,6 +574,7 @@ class HomeActivity : ComponentActivity() {
     }
 
     private fun speakingProcess() {
+        lockedVolumeDown=false
         isSpeaking.value = true
         speechText.value = "Listening..."
         soundManager.play(SoundConstants.STT_SPEAK_OPEN_ID, 0.7f, 0.7f) {
@@ -659,6 +667,7 @@ class HomeActivity : ComponentActivity() {
             speechProcessText.value = "No matched known classes"
             retrySpeech.value = true
             sendSpeech.value = false
+            lockedVolumeDown=true
             locked = false
             vibrateIfEnabled()
         } else {
@@ -678,8 +687,10 @@ class HomeActivity : ComponentActivity() {
             putExtra(Constants.EXTRA_MATCHED_INDICES, classIndices)
             putExtra(Constants.EXTRA_SYNONYMS_WORDS, matchedWords)
         }
+        returnFromFindMyObject=true
         startActivity(intent)
-        finish()
+
+        //finish()
     }
 
     private fun handleSpeechDialogTap() {
@@ -688,6 +699,7 @@ class HomeActivity : ComponentActivity() {
         soundManager.releaseCallback()
         speechRecognizer.stopListening()
         locked = true
+        lockedVolumeDown=false
         showSpeechDialog.value = false
         handler.postDelayed({
             uiLocked = false
@@ -760,8 +772,9 @@ class HomeActivity : ComponentActivity() {
             }
 
             else -> {
+                if (!lockedVolumeDown)
                 // Launch caption activity
-                launchCaptionActivity()
+                    launchCaptionActivity()
             }
         }
     }
