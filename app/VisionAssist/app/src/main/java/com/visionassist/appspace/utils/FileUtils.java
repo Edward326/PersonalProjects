@@ -375,4 +375,33 @@ public class FileUtils {
 
         return classNames;
     }
+
+    public static String readProfileFileAsString(Context context, String fileName) {
+        try {
+            File file = new File(getProfileDirectory(context), fileName);
+
+            if (!file.exists()) {
+                Log.w(TAG, "File does not exist: " + file.getAbsolutePath());
+                return null;
+            }
+
+            StringBuilder sb = new StringBuilder();
+
+            try (FileInputStream fis = new FileInputStream(file);
+                 InputStreamReader isr = new InputStreamReader(fis);
+                 BufferedReader reader = new BufferedReader(isr)) {
+
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    sb.append(line).append('\n');
+                }
+            }
+
+            Log.d(TAG, "Read " + sb.length() + " characters from: " + fileName);
+            return sb.toString();
+        } catch (IOException e) {
+            Log.e(TAG, "Error reading file: " + fileName, e);
+            return null;
+        }
+    }
 }

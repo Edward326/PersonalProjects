@@ -38,9 +38,6 @@ object EnvironmentReportsManagerKt {
                 Constants.ENV_REPORTS_FILE_NAME
             )
 
-            // Ensure parent directory exists
-            reportFile.parentFile?.mkdirs()
-
             // Append to file
             BufferedWriter(FileWriter(reportFile, true)).use { writer ->
                 // Format timestamp
@@ -57,12 +54,12 @@ object EnvironmentReportsManagerKt {
                 }
 
                 // Format battery usage increase as percentage
-                val batteryPercent = String.format("%.1f%%", batteryUsageIncrease * 100)
+                val batteryPercent = String.format("%.5f%%", batteryUsageIncrease * 100)
 
                 // Write comprehensive log entry
                 val logEntry = String.format(
-                    "[%s] SceneID: %d | Objects: %s | Threads: %d | " +
-                            "DetectorAvg: %dms | ClassifierAvg: %dms | BatteryIncrease: %s%n",
+                    "[%s] SceneID: %d | Objects: [%s] | Threads used: %d | " +
+                            "DetectorAvg: %dms | ClassifierAvg: %dms | BatteryUsageIncrease: %s%n",
                     timestamp,
                     sceneClassId,
                     objectsList,

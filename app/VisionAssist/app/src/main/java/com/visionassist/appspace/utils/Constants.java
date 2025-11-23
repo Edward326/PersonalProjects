@@ -139,7 +139,7 @@ public class Constants {
     public static final float STD_NAV_MARGIN_BOTTOM=0.10f;
 
     // CameraX activities parameters
-    public static final int DEFAULT_FPS = 10;
+    public static final int DEFAULT_FPS = 20;
     public static final float BATTERY_USAGE_THRESHOLD = 0.7f;
     public static final long BATTERY_WARNING_DISPLAY_MS = 10000;
 

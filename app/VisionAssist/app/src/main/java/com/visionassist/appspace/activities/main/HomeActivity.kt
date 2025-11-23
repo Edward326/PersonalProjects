@@ -112,6 +112,7 @@ import com.visionassist.appspace.sound.SoundConstants
 import com.visionassist.appspace.utils.AppConfig
 import com.visionassist.appspace.utils.BackgroundTaskExecutor
 import com.visionassist.appspace.utils.Constants
+import com.visionassist.appspace.utils.FileUtils
 import com.visionassist.appspace.utils.PermissionChecker
 import com.visionassist.appspace.utils.haptic_model0
 import com.visionassist.appspace.utils.load_captionTutorial
@@ -207,6 +208,8 @@ class HomeActivity : ComponentActivity() {
         PhoneStatusMonitor.getInstance().soundManager.play(SoundConstants.OPEN_UP_ID, 1f, 1f) {
             uiLocked = false
         }
+
+        Log.d(TAG, FileUtils.readProfileFileAsString(this,Constants.ENV_REPORTS_FILE_NAME))
 
         setContent {
             HomeScreen(

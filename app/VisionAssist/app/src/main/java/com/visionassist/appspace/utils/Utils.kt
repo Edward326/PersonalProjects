@@ -199,11 +199,11 @@ fun load_errorText(context: Context): String {
     }
 }
 
-fun load_errorTextBlind(context: Context,exitCode: Int): String {
+fun load_errorTextBlind(context: Context, exitCode: Int): String {
     return when (AppConfig.mainLanguage.code) {
-        "en" -> context.getString(R.string.exit_error2_en)+exitCode.toString()
-        "ro" -> context.getString(R.string.exit_error2_ro)+exitCode.toString()
-        else -> context.getString(R.string.exit_error2_en)+exitCode.toString()
+        "en" -> context.getString(R.string.exit_error2_en) + exitCode.toString()
+        "ro" -> context.getString(R.string.exit_error2_ro) + exitCode.toString()
+        else -> context.getString(R.string.exit_error2_en) + exitCode.toString()
     }
 }
 
@@ -211,11 +211,14 @@ fun haptic_model0(): LongArray {
     return longArrayOf(0, 250)
 }
 
-fun vibrate(pattern: LongArray){
-    val vibrator = getSystemService(PhoneStatusMonitor.getInstance().currentContext, Vibrator::class.java) as Vibrator
+fun vibrate(pattern: LongArray) {
+    val vibrator = getSystemService(
+        PhoneStatusMonitor.getInstance().currentContext,
+        Vibrator::class.java
+    ) as Vibrator
     if (Constants.API_LEVEL >= Build.VERSION_CODES.O) {
         vibrator.vibrate(
-            VibrationEffect.createWaveform(pattern,-1)
+            VibrationEffect.createWaveform(pattern, -1)
         )
     }
 }
@@ -293,7 +296,7 @@ fun load_passChangedSuccess(emailInput: String): String {
 }
 
 fun load_profileImportedSuccess(): String {
-    return  when (AppConfig.mainLanguage.code) {
+    return when (AppConfig.mainLanguage.code) {
         "en" -> "Profile imported successfully"
         "ro" -> "Profilul a fost importat cu succes"
         else -> "Profile imported successfully"
@@ -301,7 +304,7 @@ fun load_profileImportedSuccess(): String {
 }
 
 fun load_emailAlreadyExists(context: Context): String {
-    return  when (AppConfig.mainLanguage.code) {
+    return when (AppConfig.mainLanguage.code) {
         "en" -> context.getString(R.string.already_exists_account_en)
         "ro" -> context.getString(R.string.already_exists_account_ro)
         else -> context.getString(R.string.already_exists_account_en)
@@ -309,7 +312,7 @@ fun load_emailAlreadyExists(context: Context): String {
 }
 
 fun load_invalidEmail(context: Context): String {
-    return  when (AppConfig.mainLanguage.code) {
+    return when (AppConfig.mainLanguage.code) {
         "en" -> context.getString(R.string.invalid_email_en)
         "ro" -> context.getString(R.string.invalid_email_ro)
         else -> context.getString(R.string.invalid_email_en)
@@ -317,7 +320,7 @@ fun load_invalidEmail(context: Context): String {
 }
 
 fun load_genericErrorNew(context: Context): String {
-    return  when (AppConfig.mainLanguage.code) {
+    return when (AppConfig.mainLanguage.code) {
         "en" -> context.getString(R.string.generic_error2_en)
         "ro" -> context.getString(R.string.generic_error2_ro)
         else -> context.getString(R.string.generic_error2_en)
@@ -325,7 +328,7 @@ fun load_genericErrorNew(context: Context): String {
 }
 
 fun load_invalidCombination(context: Context): String {
-    return  when (AppConfig.mainLanguage.code) {
+    return when (AppConfig.mainLanguage.code) {
         "en" -> context.getString(R.string.invalid_chars_en)
         "ro" -> context.getString(R.string.invalid_chars_ro)
         else -> context.getString(R.string.invalid_chars_en)
@@ -333,7 +336,7 @@ fun load_invalidCombination(context: Context): String {
 }
 
 fun load_contributeResearch(context: Context): String {
-    return  when (AppConfig.mainLanguage.code) {
+    return when (AppConfig.mainLanguage.code) {
         "en" -> context.getString(R.string.contribute_en)
         "ro" -> context.getString(R.string.contribute_ro)
         else -> context.getString(R.string.contribute_en)
@@ -341,7 +344,7 @@ fun load_contributeResearch(context: Context): String {
 }
 
 fun load_whatsYourName(context: Context): String {
-    return  when (AppConfig.mainLanguage.code) {
+    return when (AppConfig.mainLanguage.code) {
         "en" -> context.getString(R.string.hello_en)
         "ro" -> context.getString(R.string.hello_ro)
         else -> context.getString(R.string.hello_en)
@@ -349,7 +352,7 @@ fun load_whatsYourName(context: Context): String {
 }
 
 fun load_howOldAreYou(context: Context): String {
-    return  when (AppConfig.mainLanguage.code) {
+    return when (AppConfig.mainLanguage.code) {
         "en" -> context.getString(R.string.old_en)
         "ro" -> context.getString(R.string.old_ro)
         else -> context.getString(R.string.old_en)
@@ -357,7 +360,7 @@ fun load_howOldAreYou(context: Context): String {
 }
 
 fun load_whatTypeOfVision(context: Context): String {
-    return  when (AppConfig.mainLanguage.code) {
+    return when (AppConfig.mainLanguage.code) {
         "en" -> context.getString(R.string.visual_condition_en)
         "ro" -> context.getString(R.string.visual_condition_ro)
         else -> context.getString(R.string.visual_condition_en)
@@ -381,14 +384,14 @@ fun load_disagreeButton(): String {
 }
 
 fun load_aboutSubtitle(context: Context): String {
-    return  when (AppConfig.mainLanguage.code) {
+    return when (AppConfig.mainLanguage.code) {
         "en" -> context.getString(R.string.about_en)
         "ro" -> context.getString(R.string.about_ro)
         else -> context.getString(R.string.about_en)
     }
 }
 
-fun load_pitchSpeed(context: Context,case: Boolean): String {
+fun load_pitchSpeed(context: Context, case: Boolean): String {
     return if (case) {
         when (AppConfig.mainLanguage.code) {
             "en" -> context.getString(R.string.tts_pitch_en)
@@ -405,7 +408,7 @@ fun load_pitchSpeed(context: Context,case: Boolean): String {
 }
 
 fun load_infoBB(context: Context): String {
-    return  when (AppConfig.mainLanguage.code) {
+    return when (AppConfig.mainLanguage.code) {
         "en" -> context.getString(R.string.bbox_info_en)
         "ro" -> context.getString(R.string.bbox_info_ro)
         else -> context.getString(R.string.bbox_info_en)
@@ -597,16 +600,17 @@ fun startBatteryLevelCheck(
             if (previousDiff > 0 && currentLevel < previousLevel) {
                 // Calculate consumption rate ratio
                 val ratio = currentDiff.toFloat() / previousDiff.toFloat()
-
-                if (ratio < Constants.BATTERY_USAGE_THRESHOLD) {
-                    // Battery is draining faster than previous interval
-                    // Update average
+                // Update average
+                if (ratio < 1.0f) {
                     val currentAvg = avgBatteryMoreUsed.value
                     if (currentAvg == 0f) {
                         avgBatteryMoreUsed.value = ratio
                     } else {
                         avgBatteryMoreUsed.value = (currentAvg + ratio) / 2f
                     }
+                }
+                if (ratio < Constants.BATTERY_USAGE_THRESHOLD) {
+                    // Battery is draining faster than previous interval
 
                     // Show warning
                     showWarning.value = true
@@ -617,7 +621,10 @@ fun startBatteryLevelCheck(
                         showWarning.value = false
                     }
 
-                    Log.d("BatteryCheck", "Battery usage increased: ratio=$ratio, avg=${avgBatteryMoreUsed.value}")
+                    Log.d(
+                        "BatteryCheck",
+                        "Battery usage increased: ratio=$ratio, avg=${avgBatteryMoreUsed.value}"
+                    )
                 }
             }
 
@@ -634,7 +641,7 @@ fun startBatteryLevelCheck(
     // Monitor keepRunning state in coroutine
     CoroutineScope(Dispatchers.Default).launch {
         while (keepRunning.value) {
-            delay(Constants.WAIT_CHECK)
+            delay(1000)
         }
         // Unregister when stopped
         try {
