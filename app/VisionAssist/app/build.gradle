@@ -83,7 +83,6 @@ dependencies {
     implementation libs.material3
     implementation libs.material.icons.core
     implementation libs.material.icons.extended
-    implementation libs.animation
 
     // Camera and image processing
     def camerax_version = "1.5.1"
