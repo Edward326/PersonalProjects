@@ -1,6 +1,7 @@
 package com.visionassist.appspace;
 
 import static com.visionassist.appspace.utils.UtilsKt.load_errorTextBlind;
+
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -11,12 +12,15 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.util.Pair;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+
 import com.visionassist.appspace.database.DBManager;
 import com.visionassist.appspace.jetpack.managers.ErrorDialogManager;
 import com.visionassist.appspace.models.ModelManager;
 import com.visionassist.appspace.models.ttsengine.TTSManager;
+import com.visionassist.appspace.sound.SoundManager;
 import com.visionassist.appspace.utils.AppConfig;
 import com.visionassist.appspace.utils.Constants;
 import com.visionassist.appspace.utils.Utils;
@@ -27,7 +31,9 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
 
     private Context appContext;
     private Handler handler;
+    private Handler monitoredHandler;
     private Runnable monitoringRunnable;
+    private Runnable monitoredRunnable;
     private boolean isMonitoring = false;
     private int activeActivityCount = 0;
     private Activity currentActivity;
@@ -37,6 +43,7 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
     public boolean profileLoaded = false;
     public boolean isReturningFromPermissions = false;
     private TTSManager ttsManager;
+    private SoundManager soundManager;
     private DBManager dbManager;
     private ModelManager modelManager;
     @SuppressLint("StaticFieldLeak")
@@ -48,6 +55,7 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
         this.dbManager = new DBManager(this.appContext);
         this.modelManager = new ModelManager();
         this.ttsManager = new TTSManager(this.appContext);
+        this.soundManager=new SoundManager(this.appContext);
         setupMonitoringRunnable();
     }
 
@@ -74,6 +82,8 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
     public TTSManager getTTSManager() {
         return ttsManager;
     }
+
+    public SoundManager getSoundManager(){return soundManager;}
 
     public Activity getCurrentActivity() {
         return currentActivity;
@@ -128,7 +138,7 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
                 public void run() {
                     if (ttsManager.isReady()) {
                         // SUCCESS: TTS is ready. Get the localized message based on the active language.
-                        String currentLangCode = ttsManager.tts.getVoice().getLocale().getLanguage();
+                        String currentLangCode = ttsManager.getCurrentLanguage();
                         finalErrorMessage[0] = UtilsKt.load_batteryLowText(appContext, currentLangCode);
                         showErrorAndShutdown(finalErrorMessage[0]);
                     } else {
@@ -157,7 +167,7 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
                 public void run() {
                     if (ttsManager.isReady()) {
                         // SUCCESS: TTS is ready. Get the localized message based on the active language.
-                        String currentLangCode = ttsManager.tts.getVoice().getLocale().getLanguage();
+                        String currentLangCode = ttsManager.getCurrentLanguage();
                         finalErrorMessage[0] = UtilsKt.load_tempErrorText(appContext, currentLangCode);
                         showErrorAndShutdown(finalErrorMessage[0]);
                     } else {
@@ -179,7 +189,7 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
 
         // 1. Show the AlertDialog on the main thread (No Exit button)
         currentActivity.runOnUiThread(() -> new AlertDialog.Builder(currentActivity)
-                .setTitle(UtilsKt.load_criticalWarning(appContext, ttsManager.tts.getVoice().getLocale().getLanguage()))
+                .setTitle(UtilsKt.load_criticalWarning(appContext, ttsManager.getCurrentLanguage()))
                 .setMessage(message)
                 .setCancelable(false) // User cannot dismiss this
                 .show());
@@ -274,12 +284,16 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
 
     public void exitApp() {
         stopMonitoring();
+        if(monitoredHandler!=null)monitoredHandler.removeCallbacksAndMessages(null);
+        if(monitoredRunnable!=null)monitoredRunnable.run();
         handler.removeCallbacksAndMessages(null);
         modelManager.cleanup();
         // Crucial: Shut down the TTS engine first
         if (ttsManager != null) {
             ttsManager.shutdown();
         }
+
+        soundManager.release();
 
         if (currentActivity != null) {
             // Close all activities associated with this application
@@ -296,8 +310,10 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
         new Handler(Looper.getMainLooper()).postDelayed(() -> System.exit(0), 500);
     }
 
-    private void startMonitoring() {
+    public void startMonitoring(Handler monitoredHandlerReff,Runnable runnable) {
         if (!isMonitoring) {
+            monitoredHandler=monitoredHandlerReff;
+            monitoredRunnable=runnable;
             isMonitoring = true;
             errorShown = false;
             handler.post(monitoringRunnable);
@@ -305,10 +321,12 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
         }
     }
 
-    private void stopMonitoring() {
+    public void stopMonitoring() {
         if (isMonitoring) {
+            if(monitoredHandler!=null)monitoredHandler=null;
             isMonitoring = false;
             handler.removeCallbacks(monitoringRunnable);
+            if(monitoredRunnable!=null)monitoredRunnable=null;
             Log.d(TAG, "Monitoring stopped");
         }
     }

@@ -161,6 +161,36 @@
     <string name="env_reports_info_en">Environment reports~The application will use another model when making detections, to help identify the main scene, in order to record the objects found in that environment.\n\nThis will make statistics about objects encountered in every scene\n\nDisadvantages:\n-inference may be slower because of an added model</string>
     <string name="env_reports_info_ro">Rapoarte de mediu~Aplicaţia va folosi un alt model la efectuarea detectărilor, pentru a ajuta la identificarea scenei principale, în scopul de a înregistra obiectele găsite în acel mediu.\n\nAcest lucru va crea o statistică despre obiectele întâlnite în fiecare scenă\n\nDezavantaje:\n-inferenţa poate fi mai lentă din cauza unui model adăugat</string>
 
+    <!-- HomeActivity -->
+    <string name="detect1_en">Press ~volume up~ button to launch static detection activity</string>
+    <string name="detect1_ro">Apasă butonul de ~volum sus~ pentru a lansa activitatea de detecție</string>
+    <string name="detect2_en">The detection activity could be ~shortcut~ on lock screen, feature available in settings</string>
+    <string name="detect2_ro">Activitatea de detecție poate fi accesata din ecranul de blocare, poți activa acest lucru din setări</string>
+    <string name="caption1_en">Press ~volume down~ button to launch caption activity</string>
+    <string name="caption1_ro">Apasă butonul de ~volum jos~ pentru a lansa activitatea de caption</string>
+    <string name="caption2_en">The caption activity could be ~shortcut~ on lock screen, feature available in settings</string>
+    <string name="caption2_ro">Activitatea de caption poate fi accesata din ecranul de blocare, poți activa acest lucru din setări</string>
+    <string name="findmyobj1_en">Rapidly press ~volume down~ button twice to enable the Find My Object feature</string>
+    <string name="findmyobj2_en">When the model will listen, ~words~ recognised will be prompted on screen in white</string>
+    <string name="findmyobj3_en">When the model detected that you are done speaking, ~caption~ will change color in dark purple</string>
+    <string name="findmyobj4_en">After sentence is recognized, press ~volume down~ to send the caption to processing</string>
+    <string name="findmyobj5_en">After processing is done, if known model objects are detected, press ~volume up~ to launch camera</string>
+    <string name="findmyobj6_en">Press ~volume up~ to retry speaking</string>
+    <string name="findmyobj7_en">Press anytime, anywhere on ~screen~ to disable the Find My Object feature</string>
+    <string name="sync_error_en">Sync failed, make sure you have network access and restart the app to solve this</string>
+    <string name="sync_error_ro">Sincronizarea a eșuat, asigură-te că ai acces la rețea și repornește aplicația pentru a rezolva acest lucru</string>
+    <string name="stt_unavailable_en">The Find My Object feature is currently not supported for the romanian language</string>
+    <string name="stt_unavailable_ro">Feature-ul Find My Object, nu este suportat momentan pentru limba română</string>
+    <string name="stt_error_load_en">The Find My Object feature is currently unavailable, due to initial loading error</string>
+    <string name="stt_error_runtime_en">The Find My Object feature is currently unavailable, due to en runtime error</string>
+
+    <!-- FindMyObjectActivity -->
+    <string name="detection_result">Detection Result</string>
+    <string name="looking_for">Looking for: %s</string>
+    <string name="objects_found">Found %d objects</string>
+    <string name="fps_label">FPS</string>
+    <string name="detection_speed">Detection Speed</string>
+
 
     <!-- Common values -->
     <string name="forward_arrow">Forward arrow</string>

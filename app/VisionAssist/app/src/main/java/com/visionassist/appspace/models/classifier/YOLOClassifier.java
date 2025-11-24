@@ -5,6 +5,8 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.util.Log;
+import android.util.Pair;
+
 import com.visionassist.appspace.utils.AppConfig;
 import com.visionassist.appspace.utils.Constants;
 import com.visionassist.appspace.utils.FileUtils;
@@ -71,50 +73,50 @@ public class YOLOClassifier {
         }
     }
 
-    public String detectScene(Bitmap bitmap) {
+    public int detectScene(Bitmap bitmap,String threadInfo) {
         try {
-            Log.d(TAG, "Starting scene classification on image: " + bitmap.getWidth() + "x" + bitmap.getHeight());
+            Log.d(TAG, "["+threadInfo+"]"+"scene classification on image: " + bitmap.getWidth() + "x" + bitmap.getHeight());
 
             // Step 1: Preprocess image to 224x224
             long startPreprocess = System.currentTimeMillis();
-            float[] inputArray = preprocessImage(bitmap);
+            float[] inputArray = preprocessImage(bitmap,threadInfo);
             long preprocessTime = System.currentTimeMillis() - startPreprocess;
 
             if (inputArray == null) {
-                Log.e(TAG, "Failed to preprocess image");
-                return "unknown";
+                Log.e(TAG, "["+threadInfo+"]"+"Failed to preprocess image");
+                return -1;
             }
 
             // Step 2: Run inference
             long startInference = System.currentTimeMillis();
-            float[] output = runInference(inputArray);
+            float[] output = runInference(inputArray,threadInfo);
             long inferenceTime = System.currentTimeMillis() - startInference;
 
             if (output == null) {
-                Log.e(TAG, "Inference failed");
-                return "unknown";
+                Log.e(TAG, "["+threadInfo+"]"+"Inference failed");
+                return -1;
             }
 
             // Step 3: Get class with maximum confidence
             long startPostprocess = System.currentTimeMillis();
-            String detectedScene = getTopClass(output);
+            int detectedScene = getTopClass(output,threadInfo);
             long postprocessTime = System.currentTimeMillis() - startPostprocess;
 
-            Log.d(TAG, "Preprocessing completed in " + preprocessTime + "ms");
-            Log.d(TAG, "Inference completed in " + inferenceTime + "ms");
-            Log.d(TAG, "Post-processing completed in " + postprocessTime + "ms");
-            Log.d(TAG, "Total time for inference: " + (preprocessTime + inferenceTime + postprocessTime) + "ms");
-            Log.d(TAG, "Scene classification completed:\nScene found: " + detectedScene);
+            Log.d(TAG, "["+threadInfo+"]"+"Preprocessing completed in " + preprocessTime + "ms");
+            Log.d(TAG, "["+threadInfo+"]"+"Inference completed in " + inferenceTime + "ms");
+            Log.d(TAG, "["+threadInfo+"]"+"Post-processing completed in " + postprocessTime + "ms");
+            Log.d(TAG, "["+threadInfo+"]"+"Total time for inference: " + (preprocessTime + inferenceTime + postprocessTime) + "ms");
+            Log.d(TAG, "["+threadInfo+"]"+"Scene classification completed:\nScene id found: " + detectedScene);
 
             return detectedScene;
 
         } catch (Exception e) {
-            Log.e(TAG, "Error during scene classification", e);
-            return "unknown";
+            Log.e(TAG, "["+threadInfo+"]"+"Error during scene classification", e);
+            return -1;
         }
     }
 
-    private float[] preprocessImage(Bitmap bitmap) {
+    private float[] preprocessImage(Bitmap bitmap, String threadInfo) {
         try {
             // Resize bitmap to 224x224 with padding (maintaining aspect ratio)
             Bitmap resizedBitmap = resizeBitmapWithPadding(bitmap, Constants.CLASSIFIER_INPUT_SIZE, Constants.CLASSIFIER_INPUT_SIZE);
@@ -144,7 +146,7 @@ public class YOLOClassifier {
             return inputArray;
 
         } catch (Exception e) {
-            Log.e(TAG, "Error preprocessing image", e);
+            Log.e(TAG, "["+threadInfo+"]"+"Error preprocessing image", e);
             return null;
         }
     }
@@ -185,7 +187,7 @@ public class YOLOClassifier {
         return targetBitmap;
     }
 
-    private float[] runInference(float[] inputArray) {
+    private float[] runInference(float[] inputArray,String threadInfo) {
         try {
             // Create input tensor: shape [1, 3, 224, 224]
             long[] shape = {1, 3, Constants.CLASSIFIER_INPUT_SIZE, Constants.CLASSIFIER_INPUT_SIZE};
@@ -215,15 +217,15 @@ public class YOLOClassifier {
             return classScores;
 
         } catch (Exception e) {
-            Log.e(TAG, "Error during inference", e);
+            Log.e(TAG, "["+threadInfo+"]"+"Error during inference", e);
             return null;
         }
     }
 
-    private String getTopClass(float[] classScores) {
+    private int getTopClass(float[] classScores,String threadInfo) {
         if (classScores == null || classScores.length == 0) {
-            Log.e(TAG, "Invalid class scores");
-            return "unknown";
+            Log.e(TAG, "["+threadInfo+"]"+"Invalid class scores");
+            return -1;
         }
 
         // Find the index with maximum confidence
@@ -239,11 +241,10 @@ public class YOLOClassifier {
 
         // Get class name from map
         String className = classNames.getOrDefault(maxIndex, "unknown");
-
-        Log.d(TAG, String.format("Top prediction: class_id=%d, name=%s, confidence=%.3f",
+        Log.d(TAG, String.format("["+threadInfo+"]"+"Top prediction: class_id=%d, name=%s, confidence=%.3f",
                 maxIndex, className, maxConfidence));
 
-        return className;
+        return maxIndex;
     }
 
     /**

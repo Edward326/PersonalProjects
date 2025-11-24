@@ -328,8 +328,8 @@ class UserInfoActivity : ComponentActivity() {
     private fun showContributionDialog() {
         infoNotificationManager.showNotificationTwoButtons(
             load_contributeResearch(this),
-            load_agreeButton(this),
-            load_disagreeButton(this),
+            load_agreeButton(),
+            load_disagreeButton(),
             { handleAgreeClick() },
             { handleDisagreeClick() }
         )

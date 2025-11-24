@@ -8,7 +8,7 @@ public class Constants {
     public static final String YOLO_MODEL_DETECTOR_FILE = "yolov8s_mobile.onnx";
     public static final String DETECTOR_CLASSES_FILE_EN = "detector_class_names_en.txt";
     public static final String DETECTOR_CLASSES_FILE_RO = "detector_class_names_ro.txt";
-    public static final String YOLO_MODEL_CLASSIFIER_FILE = "yolov8m_cls_mobile.onnx";
+    public static final String YOLO_MODEL_CLASSIFIER_FILE = "yolov8n_cls_mobile.onnx";
     public static final String CLASSIFIER_CLASSES_FILE_EN = "classifier_class_names_en.txt";
     public static final String CLASSIFIER_CLASSES_FILE_RO = "classifier_class_names_ro.txt";
     public static final String BLIP_MODEL_FILE = "blip_captioner_quantized.onnx";
@@ -25,16 +25,12 @@ public class Constants {
     public static final float NMS_THRESHOLD = 0.45f;
 
     // Drawing Configuration
-    public static final int BBOX_COLOR = Color.GREEN;
-    public static final float BBOX_STROKE_WIDTH = 16.0f;
-    public static final int TEXT_COLOR = Color.WHITE;
-    public static final int TEXT_BACKGROUND_COLOR = Color.BLACK;
-    public static final float TEXT_SIZE = 24.0f;
+    public static final float BBOX_STROKE_WIDTH_SCREEN = 0.01f;
+    public static final float TEXT_SIZE_WIDTH_SCREEN = 0.04f;
 
     // Text-to-Speech Configuration
     public static final float TTS_SPEECH_RATE = 1.0f;
     public static final float TTS_PITCH = 1.0f;
-    public static final float CAPTION_TEXT_SIZE = 25.0f;
 
     // Profile Storage Configuration - NEW
     public static final String PROFILE_FOLDER_NAME = "visionassist_data";
@@ -43,22 +39,20 @@ public class Constants {
     public static final String ENV_REPORTS_FILE_NAME = "env_reports.txt";
 
     // Intent Extras
-    public static final String EXTRA_IMAGE_PATH = "extra_image_path";
-    public static final String EXTRA_CAPTION_TEXT = "extra_caption_text";
     public static final String EXTRA_PERMISSION_OPTION = "permission_option";
     public static final String EXTRA_WELCOME_OPTION = "welcome_option";
     public static final String EXTRA_USERINFO_OPTION = "userinfo_option";
     public static final String EXTRA_USERACC_OPTION = "useracc_option";
     public static final String EXTRA_HCACHING_OPTION = "hcaching_option";
+    public static final String EXTRA_IMAGE_URI = "image_uri";
+    public static final String EXTRA_MATCHED_INDICES = "class_indices";
+    public static final String EXTRA_SYNONYMS_WORDS = "synonyms_words";
 
     // Battery and Temperature Checks
     public static final boolean APPLY_BATTERY_CHECK = true;
     public static final int MIN_BATTERY_LEVEL = 15;
     public static final boolean APPLY_TEMPERATURE_CHECK = true;
     public static final int MAX_PHONE_TEMPERATURE = 45;
-
-    // Monitoring settings
-    public static final long WAIT_CHECK = 5000;
 
     // API Level of the device
     public static final int API_LEVEL = Build.VERSION.SDK_INT;
@@ -68,6 +62,7 @@ public class Constants {
     public static final int RETRY_TTS_DELAY_MS = 1000;
     public static final int LOAD_CHECK_DELAY_MS = 1000;
     public static final int MAX_LANGUAGE_CHECK_ATTEMPTS = 3;
+    public static final int VOLUME_DOWN_DELAY_MS = 1000;
 
     // TTS Repeat Configuration
     public static final long REPEAT_DELAY = 2000; // 2 seconds wait for volume button
@@ -88,6 +83,10 @@ public class Constants {
     public static final float BACKGROUND_OPACITY = 0.5f;
 
     // Error codes, followed by shutdown
+    public static final int REGISTER_CAMERA_LAUNCHER=-3;
+    public static final int STD_CAMERA_FAIL=-6;
+    public static final int CAMERA_FAIL_CONVERT_IMGPROXY=-5;
+    public static final int CAMERA_MAKE_PHOTO=-4;
     public static final int ERROR_READ_DELAY = 8000;
     public static final int EXCEPTION_CLASS_ERROR = -1;
     public static final int DIR_DELETE_ERROR = 0;
@@ -95,10 +94,6 @@ public class Constants {
     public static final int FILE_WRITE_ERROR = 2;
     public static final int DETECTOR_LOAD_ERROR = 3;
     public static final int CAPTIONER_LOAD_ERROR = 4;
-    public static final int TRANSLATER_LOAD_ERROR = 5;
-    public static final int CLASSIFIER_LOAD_ERROR = 6;
-    public static final int STT_LOAD_ERROR = 7;
-    public static final int ASSETS_ERROR = 8;
 
     // Error codes, used in load_profile_activity
     public static final int LOAD_PROFILE_EXCEPTION = -2;
@@ -141,6 +136,15 @@ public class Constants {
     public static final float STD_TITLE_SUBTITLE_MARGIN_TOP=0.045f;
     public static final float STD_SUBTITLE_BODY_MARGIN_TOP=0.04f;
     public static final float STD_NAV_MARGIN_BOTTOM=0.10f;
+
+    // CameraX activities parameters
+    public static final long WAIT_CHECK = 5000;
+    public static final float BATTERY_USAGE_THRESHOLD = 0.7f;
+    public static final long BATTERY_WARNING_DISPLAY_MS = 10000;
+    public static final int CAMERA_RECOVERY_MS = 200;
+    public static final float BBOX_MIN_DISTANCE = 86f;
+    public static final float BBOX_RESIZE_MAX = 30f;
+    public static final float TEXT_RESIZE_MAX = 0.06f;
 
     // UserAccessibility1Activity params
     public static final int PREVIEW_UPDATE_DELAY = 1000;

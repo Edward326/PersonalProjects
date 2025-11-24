@@ -4,8 +4,6 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
-import android.media.AudioAttributes;
-import android.media.SoundPool;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -15,11 +13,10 @@ import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
 import android.speech.tts.Voice;
 import android.util.Log;
-
-import com.visionassist.appspace.R;
+import com.visionassist.appspace.PhoneStatusMonitor;
+import com.visionassist.appspace.sound.SoundConstants;
 import com.visionassist.appspace.utils.Constants;
 import com.visionassist.appspace.utils.Language;
-
 import java.util.Locale;
 import java.util.Set;
 
@@ -27,7 +24,6 @@ public class TTSManager implements TextToSpeech.OnInitListener {
     private static final String TAG = "TTSManager";
     private static final String UTTERANCE_ID = "TTS_VISION_ASSIST";
     private static final String UTTERANCE_ID_REPEAT = "TTS_VISION_ASSIST_REPEAT";
-
 
     public TextToSpeech tts;
     private Context context;
@@ -47,34 +43,12 @@ public class TTSManager implements TextToSpeech.OnInitListener {
     private boolean changeSpeed = false;
     private boolean isRepeating = false;
 
-    private SoundPool soundPool;
-    private int repeatCueSoundId = 0;
-    private static final int REPEAT_CUE_RES_ID = R.raw.repeat_alert;
     private Handler ttsDelayHandler = new Handler(Looper.getMainLooper());
 
     public TTSManager(Context context) {
         this.context = context;
         this.vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
-        initSoundPool(context);
         tts = new TextToSpeech(context, this);
-    }
-
-    private void initSoundPool(Context context) {
-        AudioAttributes audioAttributes = new AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                .build();
-        soundPool = new SoundPool.Builder()
-                .setMaxStreams(1)
-                .setAudioAttributes(audioAttributes)
-                .build();
-        try {
-            repeatCueSoundId = soundPool.load(context, REPEAT_CUE_RES_ID, 1);
-            Log.d(TAG, "SoundPool loaded sound with ID: " + repeatCueSoundId);
-        } catch (Exception e) {
-            Log.e(TAG, "Error loading the sound resoruce");
-            repeatCueSoundId = 0;
-        }
     }
 
     @Override
@@ -433,9 +407,11 @@ public class TTSManager implements TextToSpeech.OnInitListener {
         Log.d(TAG, "Speaking initiated. Repeat enabled: " + repeat);
         Log.d(TAG, "Text: " + text);
 
-        if (repeat && soundPool != null && repeatCueSoundId != 0) {
-            soundPool.play(repeatCueSoundId, 0.7f, 0.7f, 1, 0, 1.0f);
-            ttsDelayHandler.postDelayed(() -> startSpeakingAction(text, pitch, speed, vibrationPattern, UTTERANCE_ID), 2000);
+        if (repeat) {
+            PhoneStatusMonitor.getInstance().getSoundManager().play(
+                    SoundConstants.TTS_REPEAT_ID,
+                    0.7f,0.7f,
+                    ()->startSpeakingAction(text, pitch, speed, vibrationPattern, UTTERANCE_ID));
         } else {
             startSpeakingAction(text, pitch, speed, vibrationPattern, UTTERANCE_ID);
         }
@@ -444,19 +420,18 @@ public class TTSManager implements TextToSpeech.OnInitListener {
     public void shutdown() {
         cancelRepeatDelay();
         ttsDelayHandler.removeCallbacksAndMessages(null);
+        PhoneStatusMonitor.getInstance().getSoundManager().releaseCallback();
         if (tts != null) {
             tts.stop();
             tts.shutdown();
             isInitialized = false;
-        }
-        if (soundPool != null) {
-            soundPool.release();
         }
         isDoneSpeaking = true;
         isRepeating = false;
     }
 
     public void stopSpeaking() {
+        PhoneStatusMonitor.getInstance().getSoundManager().releaseCallback();
         ttsDelayHandler.removeCallbacksAndMessages(null);
         if (tts.isSpeaking()) {
             tts.stop();
@@ -478,5 +453,9 @@ public class TTSManager implements TextToSpeech.OnInitListener {
             return tts.getVoice().getLocale();
         }
         return Locale.getDefault();
+    }
+
+    public String getCurrentLanguage(){
+        return tts.getVoice().getLocale().getLanguage();
     }
 }
