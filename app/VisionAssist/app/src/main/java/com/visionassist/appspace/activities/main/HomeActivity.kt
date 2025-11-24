@@ -127,6 +127,7 @@ import com.visionassist.appspace.utils.load_unavailableSTT
 import com.visionassist.appspace.utils.robotoBold
 import com.visionassist.appspace.utils.robotoExtraBold
 import com.visionassist.appspace.utils.robotoExtraBoldItalic
+import com.visionassist.appspace.utils.robotoLight
 import com.visionassist.appspace.utils.robotoSemibold
 import com.visionassist.appspace.utils.vibrate
 import kotlinx.coroutines.delay
@@ -207,8 +208,10 @@ class HomeActivity : ComponentActivity() {
         }
 
         uiLocked = true
+        locked = true
         PhoneStatusMonitor.getInstance().soundManager.play(SoundConstants.OPEN_UP_ID, 1f, 1f) {
             uiLocked = false
+            locked=false
         }
 
         //Log.d(TAG, FileUtils.readProfileFileAsString(this, Constants.ENV_REPORTS_FILE_NAME))
@@ -1603,7 +1606,7 @@ fun BottomNavigationBar(
                     Text(
                         "Reports",
                         fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
-                        fontFamily = robotoExtraBold
+                        fontFamily = robotoLight
                     )
                 },
                 selected = false,
@@ -1631,7 +1634,7 @@ fun BottomNavigationBar(
                 Text(
                     "Settings",
                     fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
-                    fontFamily = robotoExtraBold
+                    fontFamily = robotoLight
                 )
             },
             selected = false,

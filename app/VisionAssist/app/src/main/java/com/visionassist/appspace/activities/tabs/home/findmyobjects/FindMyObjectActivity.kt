@@ -2,12 +2,14 @@
 
 package com.visionassist.appspace.activities.tabs.home.findmyobjects
 
+import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.graphics.RectF
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.util.Size
 import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -18,11 +20,16 @@ import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -32,29 +39,35 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -79,9 +92,7 @@ import com.visionassist.appspace.utils.Constants
 import com.visionassist.appspace.utils.ImageUtils
 import com.visionassist.appspace.utils.PermissionChecker
 import com.visionassist.appspace.utils.haptic_model0
-import com.visionassist.appspace.utils.robotoBold
 import com.visionassist.appspace.utils.robotoExtraBold
-import com.visionassist.appspace.utils.robotoSemibold
 import com.visionassist.appspace.utils.startBatteryLevelCheck
 import com.visionassist.appspace.utils.vibrate
 import java.util.concurrent.CompletableFuture
@@ -98,36 +109,55 @@ class FindMyObjectActivity : ComponentActivity() {
 
     // Models
     private val detector: YOLODetector = PhoneStatusMonitor.getInstance().modelManager.detector
-    private val classifier: YOLOClassifier = PhoneStatusMonitor.getInstance().modelManager.classifier
+    private val classifier: YOLOClassifier =
+        PhoneStatusMonitor.getInstance().modelManager.classifier
 
     // Detection data
     private lateinit var objectsToFind: MutableMap<Int, String>
     private lateinit var remainingClassIndices: MutableList<Int>
+
+    // Results
+    private var originalBitmap: Bitmap? = null
+    private val resultBitmap = mutableStateOf<Bitmap?>(null)
+    private var detectionResult: DetectionResult? = null
+    private val threadCount = AtomicInteger(0)
+    private var avgDetectorLatency = 0L
+    private var avgClassifierLatency = 0L
 
     // Camera
     private var cameraProvider: ProcessCameraProvider? = null
     private var imageCapture: ImageCapture? = null
     private lateinit var cameraExecutor: ExecutorService
 
-    // State
+    // Threads Control States
     private val stopDetection = AtomicBoolean(false)
     private val resultsReady = AtomicBoolean(false)
     private val displayReady = AtomicBoolean(false)
 
-    // Results
-    private var resultBitmap: Bitmap? = null
-    private val threadCount = AtomicInteger(0)
-    private var avgDetectorLatency = 0L
-    private var avgClassifierLatency = 0L
-
     // Handlers
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val updateHandler = Handler(Looper.getMainLooper())
+    private var updateRunnable: Runnable? = null
 
     // Compose states
     private val showResult = mutableStateOf(false)
     private val showBatteryWarning = mutableStateOf(false)
+
+    // Monitor parameters
     private val avgBatteryMoreUsed = mutableStateOf(0f)
     private val batteryCheckRunning = mutableStateOf(false)
+
+    // Resize bbox + text parameters
+    private var currentBBoxOffset = 0f
+    private var currentTextRatio = Constants.TEXT_SIZE_WIDTH_SCREEN
+
+    data class ThreadResult(
+        val detectionResult: DetectionResult?,
+        val bitmap: Bitmap?,
+        val sceneClassId: Int,
+        val detectorLatency: Long,
+        val classifierLatency: Long
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -138,15 +168,33 @@ class FindMyObjectActivity : ComponentActivity() {
         setContent {
             FindMyObjectScreen(
                 showResult = showResult.value,
-                resultBitmap = resultBitmap,
+                resultBitmap = resultBitmap.value,
                 hasMoreObjects = remainingClassIndices.isNotEmpty(),
                 showBatteryWarning = showBatteryWarning.value,
                 onBackClick = ::handleBackClick,
                 onNextClick = if (remainingClassIndices.isNotEmpty()) ::handleNextClick else null,
                 onCameraReady = { previewView ->
                     startCameraX(previewView)
-                }
+                },
+                onBBoxResize = ::handleBBoxResize,
+                onTextResize = ::handleTextResize
             )
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (PhoneStatusMonitor.getInstance().isReturningFromPermissions) {
+            PermissionChecker.checkAndRequestPermissions(this, false) {
+                reloadDetectionPhase()
+                startDetectionProcess()
+            }
+        } else {
+            if (stopDetection.get() && !showResult.value) {
+                Log.d(TAG, "Activity resumed - restarting detection")
+                reloadDetectionPhase()
+                startDetectionProcess()
+            }
         }
     }
 
@@ -163,6 +211,60 @@ class FindMyObjectActivity : ComponentActivity() {
         }
 
         Log.d(TAG, "Objects to find (detector_class:synonym): $objectsToFind")
+    }
+
+    private fun handleBBoxResize(offsetDp: Float) {
+        currentBBoxOffset = offsetDp
+
+        // Cancel any pending update
+        updateRunnable?.let { updateHandler.removeCallbacks(it) }
+
+        // Schedule new update with delay
+        updateRunnable = Runnable {
+            redrawDetections()
+        }
+        updateHandler.postDelayed(updateRunnable!!, Constants.PREVIEW_UPDATE_DELAY.toLong())
+    }
+
+    private fun handleTextResize(textSizeRatio: Float) {
+        currentTextRatio = textSizeRatio
+
+        // Cancel any pending update
+        updateRunnable?.let { updateHandler.removeCallbacks(it) }
+
+        // Schedule new update with delay
+        updateRunnable = Runnable {
+            redrawDetections()
+        }
+        updateHandler.postDelayed(updateRunnable!!, Constants.PREVIEW_UPDATE_DELAY.toLong())
+    }
+
+    private fun redrawDetections() {
+        BackgroundTaskExecutor.getInstance().executeAsync(
+            {
+                // Use the smart drawing method that handles everything
+                detector.drawDetectionsWithSmartResize(
+                    originalBitmap,
+                    detectionResult,
+                    currentBBoxOffset,  // Current bbox offset
+                    currentTextRatio,   // Current text ratio (can be null for default)
+                    resources.displayMetrics
+                )
+            },
+            object : BackgroundTaskExecutor.TaskCallback<Bitmap?> {
+                override fun onSuccess(result: Bitmap?) {
+                    if (result != null) {
+                        resultBitmap.value = result
+                        // Trigger recomposition
+                        showResult.value = true
+                    }
+                }
+
+                override fun onError(e: Exception) {
+                    Log.e(TAG, "Error redrawing detections", e)
+                }
+            }
+        )
     }
 
     private fun startCameraX(previewView: PreviewView) {
@@ -183,8 +285,12 @@ class FindMyObjectActivity : ComponentActivity() {
         val preview = Preview.Builder().build()
         preview.surfaceProvider = previewView.surfaceProvider
 
+        val screenWidth = resources.displayMetrics.widthPixels
+        val screenHeight = resources.displayMetrics.heightPixels
+
         imageCapture = ImageCapture.Builder()
             .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+            .setTargetResolution(Size(screenWidth, screenHeight))
             .build()
 
         val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
@@ -202,7 +308,9 @@ class FindMyObjectActivity : ComponentActivity() {
 
     private fun startDetectionProcess() {
         // Start phone status monitoring
-        PhoneStatusMonitor.getInstance().startMonitoring(mainHandler){resultsReady.set(true);batteryCheckRunning.value=false}
+        PhoneStatusMonitor.getInstance().startMonitoring(mainHandler) {
+            resultsReady.set(true);batteryCheckRunning.value = false
+        }
         // Start battery level check
         batteryCheckRunning.value = true
         startBatteryLevelCheck(batteryCheckRunning, showBatteryWarning, avgBatteryMoreUsed)
@@ -238,7 +346,7 @@ class FindMyObjectActivity : ComponentActivity() {
         BackgroundTaskExecutor.getInstance().executeAsync(
             {
                 // Capture image
-                val currentThreadNo="Thread_"+threadCount.get()
+                val currentThreadNo = "Thread_" + threadCount.get()
                 val bitmap = captureImageSync() ?: return@executeAsync null
 
                 var sceneClassId = -1
@@ -250,7 +358,7 @@ class FindMyObjectActivity : ComponentActivity() {
                     BackgroundTaskExecutor.getInstance().executeAsync(
                         {
                             val classifierStart = System.currentTimeMillis()
-                            sceneClassId = classifier.detectScene(bitmap,currentThreadNo)
+                            sceneClassId = classifier.detectScene(bitmap, currentThreadNo)
                             classifierLatency = System.currentTimeMillis() - classifierStart
                             null
                         },
@@ -260,7 +368,7 @@ class FindMyObjectActivity : ComponentActivity() {
                             }
 
                             override fun onError(e: Exception) {
-                                Log.e(TAG, currentThreadNo+"Classifier error", e)
+                                Log.e(TAG, currentThreadNo + "Classifier error", e)
                                 classifierLatch.countDown()
                             }
                         }
@@ -271,7 +379,7 @@ class FindMyObjectActivity : ComponentActivity() {
 
                 // Run detector
                 val detectorStart = System.currentTimeMillis()
-                val detectionResult = detector.detectObjects(bitmap,currentThreadNo)
+                val detectionResult = detector.detectObjects(bitmap, currentThreadNo)
                 val detectorLatency = System.currentTimeMillis() - detectorStart
 
                 // Check if found target objects
@@ -285,22 +393,19 @@ class FindMyObjectActivity : ComponentActivity() {
                 // Filter detection result
                 val filteredResult = filterDetectionResult(detectionResult, foundClasses)
 
-                // Draw bounding boxes
-                val resultBmp = detector.drawDetections(bitmap, filteredResult)
-
                 try {
                     val finished = classifierLatch.await(1, TimeUnit.SECONDS)
                     if (!finished) {
-                        Log.w(TAG, currentThreadNo+"Classifier timeout after 3 seconds")
+                        Log.w(TAG, currentThreadNo + "Classifier timeout after 3 seconds")
                     }
                 } catch (e: InterruptedException) {
-                    Log.e(TAG, currentThreadNo+"Wait interrupted", e)
+                    Log.e(TAG, currentThreadNo + "Wait interrupted", e)
                 }
 
                 // Now classifier is done, return result
                 ThreadResult(
                     filteredResult,
-                    resultBmp,
+                    bitmap,
                     sceneClassId,
                     detectorLatency,
                     classifierLatency
@@ -343,9 +448,12 @@ class FindMyObjectActivity : ComponentActivity() {
                     override fun onCaptureSuccess(image: ImageProxy) {
                         try {
                             if (!resultsReady.get()) {
-                                mainHandler.postDelayed({
-                                    launchDetectionThread()
-                                }, Constants.CAMERA_RECOVERY_MS.toLong())  // 200ms camera recovery time
+                                mainHandler.postDelayed(
+                                    {
+                                        launchDetectionThread()
+                                    },
+                                    Constants.CAMERA_RECOVERY_MS.toLong()
+                                )  // 200ms camera recovery time
                             }
 
                             // Convert ImageProxy to Bitmap using ImageUtils
@@ -467,11 +575,11 @@ class FindMyObjectActivity : ComponentActivity() {
             }
         }
 
-        val listIndices=result.detectionResult?.classIndices as List<Int>
+        val listIndices = result.detectionResult?.classIndices as List<Int>
         // Write environment report
         if (AppConfig.env_reports) {
             val batteryUsageIncrease = if (avgBatteryMoreUsed.value > 0f) {
-                1f-avgBatteryMoreUsed.value
+                1f - avgBatteryMoreUsed.value
             } else {
                 0f
             }
@@ -485,8 +593,15 @@ class FindMyObjectActivity : ComponentActivity() {
             )
         }
 
+
+        originalBitmap = result.bitmap
+        detectionResult = result.detectionResult
+
         // Set result bitmap
-        resultBitmap = result.bitmap
+        resultBitmap.value = detector.drawDetections(originalBitmap, detectionResult)
+
+        currentBBoxOffset = 0f
+        currentTextRatio = Constants.TEXT_SIZE_WIDTH_SCREEN
 
         // Signal display ready
         displayReady.set(true)
@@ -510,6 +625,9 @@ class FindMyObjectActivity : ComponentActivity() {
     }
 
     private fun handleBackClick() {
+        if (AppConfig.haptics) {
+            vibrate(haptic_model0())
+        }
         finish()
         //startActivity(Intent(this, HomeActivity::class.java))
     }
@@ -517,39 +635,17 @@ class FindMyObjectActivity : ComponentActivity() {
     private fun reloadDetectionPhase() {
         // Reset states
         showResult.value = false
-        resultBitmap = null
+        originalBitmap = null
+        detectionResult = null
     }
 
     private fun handleNextClick() {
+        if (AppConfig.haptics) {
+            vibrate(haptic_model0())
+        }
         PermissionChecker.checkAndRequestPermissions(this, false) {
             reloadDetectionPhase()
             startDetectionProcess()
-        }
-    }
-
-    override fun onPause(){
-        super.onPause()
-        PhoneStatusMonitor.getInstance().stopMonitoring()
-        batteryCheckRunning.value=false
-        mainHandler.removeCallbacksAndMessages(null)
-        stopDetection.set(true)
-    }
-
-    override fun onResume() {
-        super.onResume()
-        if (PhoneStatusMonitor.getInstance().isReturningFromPermissions) {
-            PermissionChecker.checkAndRequestPermissions(this, false) {
-                reloadDetectionPhase()
-                startDetectionProcess()
-            }
-        }
-        else
-        {
-            if (stopDetection.get() && !showResult.value) {
-                Log.d(TAG, "Activity resumed - restarting detection")
-                reloadDetectionPhase()
-                startDetectionProcess()
-            }
         }
     }
 
@@ -578,22 +674,20 @@ class FindMyObjectActivity : ComponentActivity() {
         }
     }
 
+    override fun onPause() {
+        super.onPause()
+        PhoneStatusMonitor.getInstance().stopMonitoring()
+        batteryCheckRunning.value = false
+        mainHandler.removeCallbacksAndMessages(null)
+        updateHandler.removeCallbacksAndMessages(null)
+        stopDetection.set(true)
+    }
+
     override fun onDestroy() {
         super.onDestroy()
-        stopDetection.set(true)
-        batteryCheckRunning.value = false
-        PhoneStatusMonitor.getInstance().stopMonitoring()
         cameraProvider?.unbindAll()
         cameraExecutor.shutdown()
     }
-
-    data class ThreadResult(
-        val detectionResult: DetectionResult?,
-        val bitmap: Bitmap?,
-        val sceneClassId: Int,
-        val detectorLatency: Long,
-        val classifierLatency: Long
-    )
 }
 
 @Composable
@@ -604,7 +698,9 @@ fun FindMyObjectScreen(
     showBatteryWarning: Boolean,
     onBackClick: () -> Unit,
     onNextClick: (() -> Unit)?,
-    onCameraReady: (PreviewView) -> Unit
+    onCameraReady: (PreviewView) -> Unit,
+    onBBoxResize: (Float) -> Unit,
+    onTextResize: (Float) -> Unit
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val screenHeight = maxHeight
@@ -617,12 +713,14 @@ fun FindMyObjectScreen(
             )
         } else {
             // Result phase - Result image + Navigation
-            ResultPhase(
+            ResultPhaseWithSettings(
                 screenHeight = screenHeight, screenWidth = screenWidth,
                 resultBitmap = resultBitmap,
                 hasMoreObjects = hasMoreObjects,
                 onBackClick = onBackClick,
-                onNextClick = onNextClick
+                onNextClick = onNextClick,
+                onBBoxResize = onBBoxResize,
+                onTextResize = onTextResize
             )
         }
 
@@ -654,172 +752,6 @@ fun DetectionPhase(
             modifier = Modifier.fillMaxSize()
         )
 
-        /*
-        // FPS Slider at bottom
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-        ) {
-            FPSSliderWithStops(
-                screenHeight=screenHeight,
-                currentFPS = currentFPS,
-                onFPSChange = onFPSChange
-            )
-        }*/
-    }
-}
-
-@Composable
-fun FPSSliderWithStops(
-    screenHeight: Dp,
-    currentFPS: Int,
-    onFPSChange: (Int) -> Unit
-) {
-    var fps by remember { mutableIntStateOf(currentFPS) }
-    var isExpanded by remember { mutableStateOf(false) }
-
-    // Animated height for smooth expansion
-    val containerHeight by animateDpAsState(
-        targetValue = if (isExpanded) screenHeight * 0.18f else screenHeight * 0.05f,
-        animationSpec = tween(durationMillis = 250),
-        label = "fps_container_height"
-    )
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(containerHeight)
-            .background(
-                color = colorResource(R.color.notification_button_white), // Semi-transparent black
-                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
-            )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // ============================================
-            // CLICKABLE BAR (Always visible)
-            // ============================================
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(screenHeight * 0.05f)
-                    .clickable { isExpanded = !isExpanded }
-                    .padding(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Left side: FPS value
-                Row(
-                    horizontalArrangement = Arrangement.Start,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "$fps",
-                        fontSize = Constants.STD_SUBTITLE_SIZE.sp,
-                        color = colorResource(R.color.std_purple),
-                        fontFamily = robotoExtraBold
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "FPS",
-                        fontSize = Constants.STD_ERROR_FONT_SIZE.sp,
-                        color = colorResource(R.color.std_purple),
-                        fontFamily = robotoSemibold
-                    )
-                }
-
-                // Right side: Label + Arrow icon
-                Row(
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Adjust the accuracy",
-                        fontSize = Constants.STD_ERROR_FONT_SIZE.sp,
-                        color = colorResource(R.color.std_cyan),
-                        fontFamily = robotoSemibold
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Icon(
-                        imageVector = if (isExpanded)
-                            Icons.Default.KeyboardArrowDown
-                        else
-                            Icons.Default.KeyboardArrowUp,
-                        contentDescription = if (isExpanded) "Collapse" else "Expand",
-                        tint = colorResource(R.color.std_cyan),
-                        modifier = Modifier.size(Constants.STD_INFO_BUTTON_SIZE.dp)
-                    )
-                }
-            }
-
-            var showText by remember { mutableStateOf(false) }
-            // ============================================
-            // EXPANDABLE SLIDER SECTION
-            // ============================================
-            AnimatedVisibility(
-                visible = isExpanded,
-                enter = slideInVertically(
-                    initialOffsetY = { -it },
-                    animationSpec = tween(250)
-                ),
-                exit = slideOutVertically(
-                    targetOffsetY = { it },
-                    animationSpec = tween(250)
-                )
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp, bottom = 16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    // Slider with 6 stops: 10, 20, 30, 40, 50, 60
-                    CustomSlider(
-                        value = fps.toFloat(),
-                        onValueChange = { newValue ->
-                            val rounded = newValue.toInt()
-                            if (rounded != fps && rounded in 10..60) {
-                                fps = rounded
-                                showText = fps > 30
-                                onFPSChange(fps)
-                            }
-                        },
-                        valueRange = 10f..60f,
-                        steps = 5, // 6 stops
-                        thumbStyle = ThumbStyle.DOUBLE_BAR,
-                        thumbColor = colorResource(R.color.std_purple),
-                        thumbWidth = 8.dp,
-                        thumbHeight = 55.dp,
-                        thumbBarSpacing = 4.dp,
-                        trackHeight = 25.dp,
-                        activeTrackColor = Color.White,
-                        inactiveTrackColor = Color.White,
-                        trackShadow = 5.dp,
-                        modifier = Modifier.fillMaxWidth(0.85f),
-                        stepsColor = colorResource(R.color.purple_light)
-                    )
-                    // FPS range indicator
-                    if (!showText) {
-                        Text(
-                            text = "Always prefer lower FPS for less battery consumption",
-                            fontSize = Constants.STD_FONT_SIZE.sp,
-                            color = colorResource(R.color.checked_green),
-                            fontFamily = robotoBold
-                        )
-                    } else
-                        Text(
-                            text = "Higher FPS will lead to higher battery consumption",
-                            fontSize = Constants.STD_FONT_SIZE.sp,
-                            color = colorResource(R.color.error_red),
-                            fontFamily = robotoBold
-                        )
-                }
-            }
-        }
     }
 }
 
@@ -856,12 +788,15 @@ fun BatteryWarningNotification() {
 }
 
 @Composable
-fun ResultPhase(
-    screenHeight: Dp, screenWidth: Dp,
+fun ResultPhaseWithSettings(
+    screenHeight: Dp,
+    screenWidth: Dp,
     resultBitmap: Bitmap?,
     hasMoreObjects: Boolean,
     onBackClick: () -> Unit,
-    onNextClick: (() -> Unit)?
+    onNextClick: (() -> Unit)?,
+    onBBoxResize: (Float) -> Unit,
+    onTextResize: (Float) -> Unit
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         // Result image
@@ -869,67 +804,389 @@ fun ResultPhase(
             Image(
                 bitmap = resultBitmap.asImageBitmap(),
                 contentDescription = "Detection Result",
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Fit
             )
         }
 
-        // Navigation buttons at bottom
-        val bottomSpace = screenHeight * Constants.STD_NAV_MARGIN_BOTTOM
-        if (hasMoreObjects) {
-            // Navigation Buttons (not animated, always visible at bottom)
-            Row(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = bottomSpace),
-                horizontalArrangement = Arrangement.spacedBy(screenWidth * 0.08f),
-            ) {
-                BackArrowLargeFab(
-                    onClick = onBackClick
-                )
+        // Settings Panel at bottom
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+        ) {
+            SettingsPanel(
+                screenHeight = screenHeight,
+                screenWidth = screenWidth,
+                hasMoreObjects = hasMoreObjects,
+                onBackClick = onBackClick,
+                onNextClick = onNextClick,
+                onBBoxResize = onBBoxResize,
+                onTextResize = onTextResize
+            )
+        }
+    }
+}
 
-                NextArrowLargeFab(
-                    onClick = onNextClick as () -> Unit,
-                )
+@Composable
+fun SettingsPanel(
+    screenHeight: Dp,
+    screenWidth: Dp,
+    hasMoreObjects: Boolean,
+    onBackClick: () -> Unit,
+    onNextClick: (() -> Unit)?,
+    onBBoxResize: (Float) -> Unit,
+    onTextResize: (Float) -> Unit
+) {
+    var isExpanded by remember { mutableStateOf(false) }
+    var currentSliderSection by remember { mutableIntStateOf(1) } // 1 = BBox, 2 = Text
+
+    var bboxOffset by remember { mutableFloatStateOf(0f) }
+    var textSizeRatio by remember { mutableFloatStateOf(Constants.TEXT_SIZE_WIDTH_SCREEN) }
+
+    // Animated offsets for slide animations
+    val navigationOffsetY by animateDpAsState(
+        targetValue = if (isExpanded) screenHeight * 0.246f else 0.dp,
+        animationSpec = tween(
+            durationMillis = 250,
+            delayMillis = if (isExpanded) 0 else 250,
+            easing = FastOutSlowInEasing
+        ),
+        label = "navigation_offset"
+    )
+
+    val sliderOffsetY by animateDpAsState(
+        targetValue = if (isExpanded) 0.dp else screenHeight * 0.246f,
+        animationSpec = tween(
+            durationMillis = 250,
+            delayMillis = if (!isExpanded) 0 else 250,
+            easing = FastOutSlowInEasing
+        ),
+        label = "slider_offset"
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(screenHeight * 0.246f)
+    ) {
+        // ============================================
+        // COLUMN 1: NAVIGATION + SETTINGS BUTTON
+        // (No background, slides down when expanded)
+        // ============================================
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+                .offset(y = navigationOffsetY)
+                .padding(bottom = 43.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            if (hasMoreObjects) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(screenWidth * 0.08f)
+                    ) {
+                        BackArrowLargeFab(onClick = onBackClick)
+                        NextArrowLargeFab(onClick = onNextClick as () -> Unit)
+                    }
+                }
+            } else {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    BackArrowLargeFab(onClick = onBackClick)
+                }
             }
-        } else {
-            // Back Button (not animated, always visible at bottom)
+
+            Spacer(modifier = Modifier.height(15.dp))
+
+            // Settings button (triggers expansion)
+            ExtendedFloatingActionButton(
+                onClick = {
+                    isExpanded = true
+                    if (AppConfig.haptics) vibrate(haptic_model0())
+                },
+                containerColor = colorResource(R.color.std_purple),
+                contentColor = Color.White,
+                shape = RoundedCornerShape(
+                    topStart = 0.dp,
+                    topEnd = 0.dp,
+                    bottomEnd = 16.dp,
+                    bottomStart = 16.dp
+                ),
+                modifier = Modifier
+                    .width(Constants.NAV_BUTTONS_WIDTH.dp * 2 + screenWidth * 0.08f)
+                    .height(Constants.NAV_BUTTONS_HEIGHT.dp /2)
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Settings,
+                        contentDescription = "Settings",
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(5.dp))
+                    Text(
+                        text = "Adjust Detection",
+                        fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
+                        fontFamily = robotoExtraBold
+                    )
+                }
+            }
+        }
+
+        // ============================================
+        // COLUMN 2: SLIDER PANEL
+        // (Has background, slides up when expanded)
+        // ============================================
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+                .offset(y = sliderOffsetY)
+                .background(
+                    color = colorResource(R.color.notification_button_white),
+                    shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+                )
+                .padding(bottom = 43.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Close button at top
             Box(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = bottomSpace)
+                    .fillMaxWidth()
+                    .height(screenHeight * 0.03f)
+                    .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                    .background(colorResource(R.color.std_purple))
+                    .clickable {
+                        isExpanded = false
+                        if (AppConfig.haptics) vibrate(haptic_model0())
+                    },
+                contentAlignment = Alignment.Center
             ) {
-                BackArrowLargeFab(
-                    onClick = onBackClick
-                )
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowDown,
+                        contentDescription = "Collapse",
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Section selector tabs
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth(0.85f)
+                    .height(screenHeight * 0.045f),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // BBox tab
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(
+                            if (currentSliderSection == 1)
+                                colorResource(R.color.std_cyan)
+                            else
+                                Color(0xFFDCD8E0)
+                        )
+                        .clickable {
+                            currentSliderSection = 1
+                            if (AppConfig.haptics) vibrate(haptic_model0())
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Box Size",
+                        color = if (currentSliderSection == 1)
+                            Color.White
+                        else
+                            colorResource(R.color.std_purple),
+                        fontSize = Constants.STD_FONT_SIZE.sp,
+                        fontFamily = robotoExtraBold
+                    )
+                }
+
+                // Text tab
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(
+                            if (currentSliderSection == 2)
+                                colorResource(R.color.std_cyan)
+                            else
+                                Color(0xFFDCD8E0)
+                        )
+                        .clickable {
+                            currentSliderSection = 2
+                            if (AppConfig.haptics) vibrate(haptic_model0())
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Text Size",
+                        color = if (currentSliderSection == 2)
+                            Color.White
+                        else
+                            colorResource(R.color.std_purple),
+                        fontSize = Constants.STD_FONT_SIZE.sp,
+                        fontFamily = robotoExtraBold
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(5.dp))
+
+            // Animated slider content
+            AnimatedContent(
+                targetState = currentSliderSection,
+                transitionSpec = {
+                    slideInHorizontally(
+                        initialOffsetX = { if (targetState > initialState)  it else -it },
+                        animationSpec = tween(durationMillis = Constants.ANIMATION_DELAY)
+                    ) togetherWith slideOutHorizontally(
+                        targetOffsetX = { if (targetState > initialState) -it else it },
+                        animationSpec = tween(durationMillis = Constants.ANIMATION_DELAY)
+                    )
+                },
+                label = "slider_section"
+            ) { section ->
+                when (section) {
+                    1 -> {
+                        // BBox size slider
+                        BBoxSizeSlider(
+                            bboxOffset = bboxOffset,
+                            onBBoxChange = { newOffset ->
+                                bboxOffset = newOffset
+                                if (AppConfig.haptics) {
+                                    vibrate(haptic_model0())
+                                }
+                                onBBoxResize(newOffset)
+                            }
+                        )
+                    }
+
+                    2 -> {
+                        // Text size slider
+                        TextSizeSlider(
+                            textSizeRatio = textSizeRatio,
+                            onTextChange = { newRatio ->
+                                textSizeRatio = newRatio
+                                if (AppConfig.haptics) {
+                                    vibrate(haptic_model0())
+                                }
+                                onTextResize(newRatio)
+                            }
+                        )
+                    }
+                }
             }
         }
     }
 }
 
-/*
-@Preview(
-    name = "FindMyObjectPreview Both Sections",
-    showBackground = true,
-    widthDp = 412,
-    heightDp = 917
-)
 @Composable
-fun FindMyObjectPreview() {
-    val imageWidth = 412f
-    val imageHeight = 917f
-    val mutableBitmap = createBitmap(imageWidth.toInt(), imageHeight.toInt())
-    val canvas = Canvas(mutableBitmap)
-    canvas.drawColor(android.graphics.Color.DKGRAY)
-    FindMyObjectScreen(
-        showResult = false,
-        resultBitmap = null,
-        hasMoreObjects = true,
-        currentFPS = 30,
-        showBatteryWarning = true,
-        onFPSChange = {},
-        onCameraReady = {},
-        onNextClick = {},
-        onBackClick = {}
-    )
+fun BBoxSizeSlider(
+    bboxOffset: Float,
+    onBBoxChange: (Float) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth(0.85f)
+            .padding(horizontal = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Current value display
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "+${(bboxOffset / Constants.BBOX_RESIZE_MAX * 100).toInt()} %",
+                color = colorResource(R.color.std_cyan),
+                fontSize = Constants.STD_SUBTITLE_SIZE.sp,
+                fontFamily = robotoExtraBold
+            )
+        }
+
+        CustomSlider(
+            value = bboxOffset,
+            onValueChange = onBBoxChange,
+            valueRange = 0f..Constants.BBOX_RESIZE_MAX,
+            steps = 0,
+            thumbStyle = ThumbStyle.BAR,  // ROUND, BAR, or DOUBLE_BAR
+            thumbColor = colorResource(R.color.std_purple),
+            thumbWidth = 8.dp,
+            thumbHeight = 55.dp,
+            trackHeight = 20.dp,
+            activeTrackColor = Color.White,
+            inactiveTrackColor = Color.White,
+            trackShadow = 5.dp,
+            modifier = Modifier.fillMaxWidth(0.9f)
+        )
+    }
 }
-*/
+
+@SuppressLint("DefaultLocale")
+@Composable
+fun TextSizeSlider(
+    textSizeRatio: Float,
+    onTextChange: (Float) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth(0.85f)
+            .padding(horizontal = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Current value display
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "+${((textSizeRatio- Constants.TEXT_SIZE_WIDTH_SCREEN)/ Constants.TEXT_RESIZE_MAX * 100).toInt()} %",
+                color = colorResource(R.color.std_cyan),
+                fontSize = Constants.STD_SUBTITLE_SIZE.sp,
+                fontFamily = robotoExtraBold
+            )
+        }
+
+        CustomSlider(
+            value = textSizeRatio,
+            onValueChange = onTextChange,
+            valueRange = Constants.TEXT_SIZE_WIDTH_SCREEN..Constants.TEXT_RESIZE_MAX,
+            steps = 4,
+            thumbStyle = ThumbStyle.BAR,  // ROUND, BAR, or DOUBLE_BAR
+            thumbColor = colorResource(R.color.std_purple),
+            thumbWidth = 8.dp,
+            thumbHeight = 55.dp,
+            trackHeight = 20.dp,
+            activeTrackColor = Color.White,
+            inactiveTrackColor = Color.White,
+            trackShadow = 5.dp,
+            modifier = Modifier.fillMaxWidth(0.75f),
+            stepsColor = colorResource(R.color.purple_light)
+        )
+    }
+}

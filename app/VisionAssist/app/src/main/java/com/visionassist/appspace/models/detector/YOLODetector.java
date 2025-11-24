@@ -7,6 +7,7 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.RectF;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import com.visionassist.appspace.utils.*;
 import java.io.IOException;
@@ -455,6 +456,314 @@ public class YOLODetector {
         }
 
         return mutableBitmap;
+    }
+
+    public Bitmap drawDetectionsWithSmartResize(
+            Bitmap originalBitmap,
+            DetectionResult detectionResult,
+            float offsetDp,
+            Float textSizeRatio,
+            DisplayMetrics displayMetrics
+    ) {
+        if (originalBitmap == null || detectionResult == null) {
+            Log.e(TAG, "Cannot draw detections: null inputs");
+            return originalBitmap;
+        }
+
+        // Create mutable copy
+        Bitmap mutableBitmap = originalBitmap.copy(Bitmap.Config.ARGB_8888, true);
+        Canvas canvas = new Canvas(mutableBitmap);
+
+        int screenWidth = mutableBitmap.getWidth();
+        int screenHeight = mutableBitmap.getHeight();
+
+        // Convert DP to PX
+        float offsetPx = offsetDp * displayMetrics.density;
+        float minDistancePx = Constants.BBOX_MIN_DISTANCE * displayMetrics.density;
+
+        // Use default text size if not provided
+        float textRatio = (textSizeRatio != null) ? textSizeRatio : Constants.TEXT_SIZE_WIDTH_SCREEN;
+
+        // Parse colors from AppConfig
+        int bboxColor = parseColor(AppConfig.bbox_color);
+        int labelColor = parseColor(AppConfig.label_color);
+        int labelBckColor = parseColor(AppConfig.label_bck_color);
+
+        // Get detection data
+        List<RectF> originalBBoxes = detectionResult.getBoundingBoxes();
+        List<String> labels = detectionResult.getLabels();
+        List<Float> confidences = detectionResult.getConfidences();
+
+        // Track processed bboxes and their text areas for collision detection
+        List<RectF> processedBBoxes = new ArrayList<>();
+        List<RectF> processedTextAreas = new ArrayList<>();
+
+        // Process each detection
+        for (int i = 0; i < originalBBoxes.size(); i++) {
+            RectF originalBox = originalBBoxes.get(i);
+            String label = labels.get(i);
+            int confidence = Math.round(confidences.get(i) * 100);
+
+            // Step 1: Try to expand bbox
+            RectF expandedBox = tryExpandBBox(
+                    originalBox,
+                    offsetPx,
+                    screenWidth,
+                    screenHeight,
+                    processedBBoxes,
+                    minDistancePx
+            );
+
+            // Step 2: Calculate text size and area
+            String labelText = AppConfig.show_confidence ? label + " " + confidence + "%" : label;
+            float textSize = screenWidth * textRatio;
+
+            // Create Paint to measure text
+            Paint textPaint = new Paint();
+            textPaint.setTextSize(textSize);
+            textPaint.setFakeBoldText(AppConfig.isBold);
+            textPaint.setAntiAlias(true);
+
+            Rect textBounds = new Rect();
+            textPaint.getTextBounds(labelText, 0, labelText.length(), textBounds);
+
+            float paddingHorizontal = 16f;
+            float paddingVertical = 8f;
+
+            // Text area positioned above bbox
+            RectF textArea = new RectF(
+                    expandedBox.left,
+                    expandedBox.top - textBounds.height() - paddingVertical * 2,
+                    expandedBox.left + textBounds.width() + paddingHorizontal * 2,
+                    expandedBox.top
+            );
+
+            // Step 3: Check if text area is valid (within screen and no collisions)
+            RectF finalTextArea = adjustTextArea(
+                    textArea,
+                    expandedBox,
+                    screenWidth,
+                    screenHeight,
+                    processedBBoxes,
+                    processedTextAreas,
+                    minDistancePx,
+                    textPaint,
+                    labelText,
+                    paddingHorizontal,
+                    paddingVertical
+            );
+
+            // Step 4: Draw bbox and text
+            drawBoundingBoxWithCustomText(
+                    canvas,
+                    expandedBox,
+                    labelText,
+                    finalTextArea,
+                    bboxColor,
+                    labelColor,
+                    labelBckColor,
+                    screenWidth,
+                    textPaint,
+                    paddingHorizontal,
+                    paddingVertical
+            );
+
+            // Step 5: Add to processed lists
+            processedBBoxes.add(expandedBox);
+            processedTextAreas.add(finalTextArea);
+        }
+
+        Log.d(TAG, String.format("Drew %d detections with offsetDp=%.1f, textRatio=%.3f",
+                originalBBoxes.size(), offsetDp, textRatio));
+
+        return mutableBitmap;
+    }
+
+    private RectF tryExpandBBox(
+            RectF originalBox,
+            float offsetPx,
+            int screenWidth,
+            int screenHeight,
+            List<RectF> processedBBoxes,
+            float minDistancePx
+    ) {
+        // Try to expand
+        float testLeft = Math.max(0, originalBox.left - offsetPx);
+        float testTop = Math.max(0, originalBox.top - offsetPx);
+        float testRight = Math.min(screenWidth, originalBox.right + offsetPx);
+        float testBottom = Math.min(screenHeight, originalBox.bottom + offsetPx);
+
+        RectF expandedBox = new RectF(testLeft, testTop, testRight, testBottom);
+
+        // Check against already processed bboxes
+        for (RectF processedBox : processedBBoxes) {
+            if (isBoxTooClose(expandedBox, processedBox, minDistancePx)) {
+                // Can't expand, return original
+                return new RectF(originalBox);
+            }
+        }
+
+        // Expansion is valid
+        return expandedBox;
+    }
+
+    private boolean isBoxTooClose(RectF box1, RectF box2, float minDistance) {
+        // Calculate distances between boxes
+        float horizontalGap;
+        float verticalGap;
+
+        // Horizontal gap
+        if (box1.right < box2.left) {
+            horizontalGap = box2.left - box1.right;
+        } else if (box2.right < box1.left) {
+            horizontalGap = box1.left - box2.right;
+        } else {
+            // Overlapping horizontally - definitely too close
+            return true;
+        }
+
+        // Vertical gap
+        if (box1.bottom < box2.top) {
+            verticalGap = box2.top - box1.bottom;
+        } else if (box2.bottom < box1.top) {
+            verticalGap = box1.top - box2.bottom;
+        } else {
+            // Overlapping vertically - definitely too close
+            return true;
+        }
+
+        // If either gap is less than minimum distance, boxes are too close
+        // (We only care about the closest distance)
+        float minGap = Math.min(horizontalGap, verticalGap);
+        return minGap < minDistance;
+    }
+
+    private RectF adjustTextArea(
+            RectF proposedTextArea,
+            RectF bbox,
+            int screenWidth,
+            int screenHeight,
+            List<RectF> processedBBoxes,
+            List<RectF> processedTextAreas,
+            float minDistancePx,
+            Paint textPaint,
+            String labelText,
+            float paddingHorizontal,
+            float paddingVertical
+    ) {
+        RectF textArea = new RectF(proposedTextArea);
+
+        // Check 1: Text area goes off top of screen
+        if (textArea.top < 0) {
+            // Move text below bbox instead
+            textArea.top = bbox.bottom;
+            textArea.bottom = bbox.bottom + (proposedTextArea.bottom - proposedTextArea.top);
+        }
+
+        // Check 2: Text area goes off right of screen
+        if (textArea.right > screenWidth) {
+            float shift = textArea.right - screenWidth;
+            textArea.left -= shift;
+            textArea.right -= shift;
+            // Make sure it doesn't go off left
+            if (textArea.left < 0) {
+                textArea.left = 0;
+                textArea.right = Math.min(screenWidth, textArea.width());
+            }
+        }
+
+        // Check 3: Text area overlaps with processed bboxes
+        boolean hasCollision = false;
+        for (RectF processedBox : processedBBoxes) {
+            if (RectF.intersects(textArea, processedBox) ||
+                    isBoxTooClose(textArea, processedBox, minDistancePx)) {
+                hasCollision = true;
+                break;
+            }
+        }
+
+        // Check 4: Text area overlaps with other text areas
+        if (!hasCollision) {
+            for (RectF processedText : processedTextAreas) {
+                if (RectF.intersects(textArea, processedText) ||
+                        isBoxTooClose(textArea, processedText, minDistancePx)) {
+                    hasCollision = true;
+                    break;
+                }
+            }
+        }
+
+        // If collision detected, try to reduce text size
+        if (hasCollision) {
+            // Reduce text size by 20%
+            float newTextSize = textPaint.getTextSize() * 0.8f;
+            textPaint.setTextSize(newTextSize);
+
+            Rect textBounds = new Rect();
+            textPaint.getTextBounds(labelText, 0, labelText.length(), textBounds);
+
+            // Recalculate text area with smaller size
+            textArea = new RectF(
+                    bbox.left,
+                    bbox.top - textBounds.height() - paddingVertical * 2,
+                    bbox.left + textBounds.width() + paddingHorizontal * 2,
+                    bbox.top
+            );
+
+            // Recheck screen bounds
+            if (textArea.top < 0) {
+                textArea.top = bbox.bottom;
+                textArea.bottom = bbox.bottom + (textBounds.height() + paddingVertical * 2);
+            }
+            if (textArea.right > screenWidth) {
+                float shift = textArea.right - screenWidth;
+                textArea.left = Math.max(0, textArea.left - shift);
+                textArea.right = screenWidth;
+            }
+        }
+
+        return textArea;
+    }
+
+    private void drawBoundingBoxWithCustomText(
+            Canvas canvas,
+            RectF bbox,
+            String labelText,
+            RectF textArea,
+            int bboxColor,
+            int labelColor,
+            int labelBckColor,
+            int screenWidth,
+            Paint textPaint,
+            float paddingHorizontal,
+            float paddingVertical
+    ) {
+        // Calculate stroke width
+        float strokeWidth = screenWidth * Constants.BBOX_STROKE_WIDTH_SCREEN;
+
+        // Draw bounding box
+        Paint boxPaint = new Paint();
+        boxPaint.setColor(bboxColor);
+        boxPaint.setStyle(Paint.Style.STROKE);
+        boxPaint.setStrokeWidth(strokeWidth);
+        canvas.drawRect(bbox, boxPaint);
+
+        // Setup text paint colors
+        textPaint.setColor(labelColor);
+
+        // Draw text background
+        Paint bgPaint = new Paint();
+        bgPaint.setColor(labelBckColor);
+        bgPaint.setStyle(Paint.Style.FILL);
+        canvas.drawRect(textArea, bgPaint);
+
+        // Draw text
+        canvas.drawText(
+                labelText,
+                textArea.left + paddingHorizontal,
+                textArea.bottom - paddingVertical,
+                textPaint
+        );
     }
 
     /**

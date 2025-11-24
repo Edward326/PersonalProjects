@@ -26,7 +26,7 @@ public class Constants {
 
     // Drawing Configuration
     public static final float BBOX_STROKE_WIDTH_SCREEN = 0.01f;
-    public static final float TEXT_SIZE_WIDTH_SCREEN = 0.03f;
+    public static final float TEXT_SIZE_WIDTH_SCREEN = 0.04f;
 
     // Text-to-Speech Configuration
     public static final float TTS_SPEECH_RATE = 1.0f;
@@ -53,9 +53,6 @@ public class Constants {
     public static final int MIN_BATTERY_LEVEL = 15;
     public static final boolean APPLY_TEMPERATURE_CHECK = true;
     public static final int MAX_PHONE_TEMPERATURE = 45;
-
-    // Monitoring settings
-    public static final long WAIT_CHECK = 5000;
 
     // API Level of the device
     public static final int API_LEVEL = Build.VERSION.SDK_INT;
@@ -141,10 +138,13 @@ public class Constants {
     public static final float STD_NAV_MARGIN_BOTTOM=0.10f;
 
     // CameraX activities parameters
-    public static final int DEFAULT_FPS = 20;
+    public static final long WAIT_CHECK = 5000;
     public static final float BATTERY_USAGE_THRESHOLD = 0.7f;
     public static final long BATTERY_WARNING_DISPLAY_MS = 10000;
     public static final int CAMERA_RECOVERY_MS = 200;
+    public static final float BBOX_MIN_DISTANCE = 86f;
+    public static final float BBOX_RESIZE_MAX = 30f;
+    public static final float TEXT_RESIZE_MAX = 0.06f;
 
     // UserAccessibility1Activity params
     public static final int PREVIEW_UPDATE_DELAY = 1000;
