@@ -191,6 +191,41 @@
     <string name="fps_label">FPS</string>
     <string name="detection_speed">Detection Speed</string>
 
+    <!-- BlindHomeActivity -->
+    <string name="talkback_error_en">TalkBack is not enabled. Please enable TalkBack from accessibility settings to use this application.</string>
+    <string name="talkback_error_ro">TalkBack nu este activat. Vă rugăm să activați TalkBack din setările de accesibilitate pentru a utiliza această aplicație.</string>
+    <string name="tutorial_intro_en">Welcome to VisionAssist application. You are now on the home page and the tutorial display is now on the screen. If you want to just exit the tutorial, slide up. But if you want to hear every step, you will press anywhere on the screen.</string>
+    <string name="tutorial_intro_ro">Bun venit la aplicația VisionAssist. Sunteți acum pe pagina de pornire și tutorialul este afișat pe ecran. Dacă doriți să ieșiți din tutorial, glisați în sus. Dar dacă doriți să ascultați fiecare pas, veți apăsa oriunde pe ecran.</string>
+
+    <!-- useless -->
+    <string name="tutorial_detection_en">The detection button allows you to identify objects in your environment using your camera. When you press this button, the app will analyze what the camera sees and tell you what objects are detected. This is useful for identifying items around you.</string>
+    <string name="tutorial_detection_ro">Butonul de detecție vă permite să identificați obiecte din mediul dvs. folosind camera. Când apăsați acest buton, aplicația va analiza ceea ce vede camera și vă va spune ce obiecte sunt detectate. Acest lucru este util pentru identificarea articolelor din jurul dvs.</string>
+    <string name="tutorial_caption_en">The caption button allows you to extract and read text from images. Point your camera at any text, such as documents, signs, or labels, and the app will read the text aloud to you. This helps you access written information independently.</string>
+    <string name="tutorial_caption_ro">Butonul de legendă vă permite să extrageți și să citiți text din imagini. Îndreptați camera către orice text, cum ar fi documente, semne sau etichete, iar aplicația va citi textul cu voce tare. Acest lucru vă ajută să accesați informații scrise în mod independent.</string>
+    <string name="tutorial_findmyobject_en">The find my object feature helps you locate specific items. You can tell the app what you\'re looking for, and it will guide you to find that object using your camera. This is helpful for finding misplaced items like keys, phones, or other belongings.</string>
+    <!-- useless -->
+
+    <string name="tutorial_homepage_nav_en">You are on the home page. Here you can access detection and caption features. At the bottom of the screen, there are two navigation areas. The left side brings you back to home, and the right side takes you to settings. You can also swipe right to go to settings. Now let\'s check the synchronization status.</string>
+    <string name="tutorial_homepage_nav_ro">Sunteți pe pagina de pornire. Aici puteți accesa funcțiile de detectare și legendă. În partea de jos a ecranului, există două zone de navigare. Partea stângă vă aduce înapoi acasă, iar partea dreaptă vă duce la setări. De asemenea, puteți glisa spre dreapta pentru a merge la setări. Acum să verificăm starea sincronizării.</string>
+    <string name="load_syncStatusText_en">Your profile is currently synchronizing with the cloud. This may take a moment. Please wait.</string>
+    <string name="load_syncStatusText_ro">Profilul dvs. se sincronizează în prezent cu cloud-ul. Acest lucru poate dura un moment. Vă rugăm să așteptați.</string>
+    <string name="load_syncErrorText_en">There was an error synchronizing your profile. Please check your internet connection and try again. You can continue using the app with your local profile.</string>
+    <string name="load_syncErrorText_ro">A apărut o eroare la sincronizarea profilului dvs. Vă rugăm să verificați conexiunea la internet și să încercați din nou. Puteți continua să utilizați aplicația cu profilul dvs. local.</string>
+
+    <!-- useless -->
+    <string name="detection_button_desc_en">Detection button. Press to identify objects using your camera.</string>
+    <string name="detection_button_desc_ro">Buton de detectare. Apăsați pentru a identifica obiecte folosind camera.</string>
+    <string name="caption_button_desc_en">Caption button. Press to read text from images using your camera.</string>
+    <string name="caption_button_desc_ro">Buton de legendă. Apăsați pentru a citi text din imagini folosind camera.</string>
+    <string name="navigation_home_desc_en">Home navigation area. You are currently on the home page.</string>
+    <string name="navigation_home_desc_ro">Zona de navigare acasă. În prezent vă aflați pe pagina de pornire.</string>
+    <string name="navigation_settings_desc_en">Settings navigation area. Press or swipe right to go to settings.</string>
+    <string name="navigation_settings_desc_ro">Zona de navigare setări. Apăsați sau glisați spre dreapta pentru a merge la setări.</string>
+    <!-- useless -->
+
+    <string name="navigating_to_settings_en">Navigating to settings.</string>
+    <string name="navigating_to_settings_ro">Navigare către setări.</string>
+
 
     <!-- Common values -->
     <string name="forward_arrow">Forward arrow</string>

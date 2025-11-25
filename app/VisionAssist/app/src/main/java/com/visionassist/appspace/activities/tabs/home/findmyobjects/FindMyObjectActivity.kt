@@ -77,6 +77,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
+import com.visionassist.appspace.activities.tabs.MotionManager
 import com.visionassist.appspace.activities.tabs.reports.EnvironmentReportsManagerKt
 import com.visionassist.appspace.jetpack.design.BackArrowLargeFab
 import com.visionassist.appspace.jetpack.design.CustomSlider
@@ -108,9 +109,11 @@ class FindMyObjectActivity : ComponentActivity() {
     private val TAG = "FindMyObjectActivity"
 
     // Models
-    private val detector: YOLODetector = PhoneStatusMonitor.getInstance().modelManager.detector
+    private lateinit var motionMonitor: MotionManager
+    private lateinit var currentDetectorModel: YOLODetector
     private val classifier: YOLOClassifier =
         PhoneStatusMonitor.getInstance().modelManager.classifier
+    private var canSwitchModels = false
 
     // Detection data
     private lateinit var objectsToFind: MutableMap<Int, String>
@@ -164,6 +167,24 @@ class FindMyObjectActivity : ComponentActivity() {
 
         extractIntentData()
         cameraExecutor = Executors.newSingleThreadExecutor()
+
+        val detectorAcc = PhoneStatusMonitor.getInstance().modelManager.detectorAcc
+        val detectorSpeed = PhoneStatusMonitor.getInstance().modelManager.detectorSpeed
+        if (detectorSpeed != null && detectorAcc != null) canSwitchModels = true
+        currentDetectorModel =
+            detectorAcc ?: PhoneStatusMonitor.getInstance().modelManager.detectorSpeed
+
+        motionMonitor = MotionManager(
+            this,
+            mainHandler
+        ) {
+            if (motionMonitor.linearSpeed > Constants.LINEAR_SPEED_THRESHOLD || motionMonitor.rotationSpeed>Constants.ROTATION_SPEED_THRESHOLD) {
+                currentDetectorModel =detectorSpeed
+            } else {
+                currentDetectorModel =detectorAcc
+            }
+        }
+
 
         setContent {
             FindMyObjectScreen(
@@ -243,7 +264,7 @@ class FindMyObjectActivity : ComponentActivity() {
         BackgroundTaskExecutor.getInstance().executeAsync(
             {
                 // Use the smart drawing method that handles everything
-                detector.drawDetectionsWithSmartResize(
+                currentDetectorModel.drawDetectionsWithSmartResize(
                     originalBitmap,
                     detectionResult,
                     currentBBoxOffset,  // Current bbox offset
@@ -309,8 +330,10 @@ class FindMyObjectActivity : ComponentActivity() {
     private fun startDetectionProcess() {
         // Start phone status monitoring
         PhoneStatusMonitor.getInstance().startMonitoring(mainHandler) {
-            resultsReady.set(true);batteryCheckRunning.value = false
+            resultsReady.set(true);batteryCheckRunning.value = false;motionMonitor.stopMonitoring()
         }
+        if (canSwitchModels)
+            motionMonitor.startMonitoring()
         // Start battery level check
         batteryCheckRunning.value = true
         startBatteryLevelCheck(batteryCheckRunning, showBatteryWarning, avgBatteryMoreUsed)
@@ -341,101 +364,127 @@ class FindMyObjectActivity : ComponentActivity() {
     }
 
     private fun launchDetectionThread() {
-        threadCount.incrementAndGet()
+        val toRun={
+            threadCount.incrementAndGet()
+            if (!resultsReady.get()) {
+                BackgroundTaskExecutor.getInstance().executeAsync(
+                    {
+                        // Capture image
+                        val currentThreadNo = "Thread_" + threadCount.get()
+                        val bitmap = captureImageSync() ?: return@executeAsync null
 
-        BackgroundTaskExecutor.getInstance().executeAsync(
-            {
-                // Capture image
-                val currentThreadNo = "Thread_" + threadCount.get()
-                val bitmap = captureImageSync() ?: return@executeAsync null
+                        var sceneClassId = -1
+                        var classifierLatency = 0L
 
-                var sceneClassId = -1
-                var classifierLatency = 0L
+                        val classifierLatch = CountDownLatch(1)
 
-                val classifierLatch = CountDownLatch(1)
+                        if (AppConfig.env_reports) {
+                            BackgroundTaskExecutor.getInstance().executeAsync(
+                                {
+                                    val classifierStart = System.currentTimeMillis()
+                                    sceneClassId = classifier.detectScene(bitmap, currentThreadNo)
+                                    classifierLatency = System.currentTimeMillis() - classifierStart
+                                    null
+                                },
+                                object : BackgroundTaskExecutor.TaskCallback<Any?> {
+                                    override fun onSuccess(result: Any?) {
+                                        classifierLatch.countDown()
+                                    }
 
-                if (AppConfig.env_reports) {
-                    BackgroundTaskExecutor.getInstance().executeAsync(
-                        {
-                            val classifierStart = System.currentTimeMillis()
-                            sceneClassId = classifier.detectScene(bitmap, currentThreadNo)
-                            classifierLatency = System.currentTimeMillis() - classifierStart
-                            null
-                        },
-                        object : BackgroundTaskExecutor.TaskCallback<Any?> {
-                            override fun onSuccess(result: Any?) {
-                                classifierLatch.countDown()
+                                    override fun onError(e: Exception) {
+                                        Log.e(TAG, currentThreadNo + "Classifier error", e)
+                                        classifierLatch.countDown()
+                                    }
+                                }
+                            )
+                        } else {
+                            classifierLatch.countDown() // Skip waiting if disabled
+                        }
+
+                        // Run detector
+                        val detectorStart = System.currentTimeMillis()
+                        val detectionResult =
+                            currentDetectorModel.detectObjects(bitmap, currentThreadNo)
+                        val detectorLatency = System.currentTimeMillis() - detectorStart
+
+                        // Check if found target objects
+                        val detectedClasses = detectionResult.classIndices
+                        val foundClasses = remainingClassIndices.filter { it in detectedClasses }
+
+                        if (foundClasses.isEmpty()) {
+                            bitmap.recycle()
+                            return@executeAsync ThreadResult(null, null, -1, detectorLatency, 0)
+                        }
+
+                        // Filter detection result
+                        val filteredResult = filterDetectionResult(detectionResult, foundClasses)
+
+                        try {
+                            val finished = classifierLatch.await(1, TimeUnit.SECONDS)
+                            if (!finished) {
+                                Log.w(TAG, currentThreadNo + "Classifier timeout after 3 seconds")
+                            }
+                        } catch (e: InterruptedException) {
+                            Log.e(TAG, currentThreadNo + "Wait interrupted", e)
+                        }
+
+                        // Now classifier is done, return result
+                        ThreadResult(
+                            filteredResult,
+                            bitmap,
+                            sceneClassId,
+                            detectorLatency,
+                            classifierLatency
+                        )
+                    },
+                    object : BackgroundTaskExecutor.TaskCallback<ThreadResult?> {
+                        override fun onSuccess(result: ThreadResult?) {
+                            if (result == null || result.detectionResult == null) {
+                                updateLatencyStats(
+                                    result?.detectorLatency ?: 0,
+                                    result?.classifierLatency ?: 0
+                                )
+                                //threadCount.decrementAndGet()
+                                return
                             }
 
-                            override fun onError(e: Exception) {
-                                Log.e(TAG, currentThreadNo + "Classifier error", e)
-                                classifierLatch.countDown()
+                            // Update latency statistics
+                            updateLatencyStats(result.detectorLatency, result.classifierLatency)
+
+                            // Check if another thread already finished
+                            if (resultsReady.compareAndSet(false, true)) {
+                                processFoundObjects(result)
                             }
                         }
-                    )
-                } else {
-                    classifierLatch.countDown() // Skip waiting if disabled
-                }
 
-                // Run detector
-                val detectorStart = System.currentTimeMillis()
-                val detectionResult = detector.detectObjects(bitmap, currentThreadNo)
-                val detectorLatency = System.currentTimeMillis() - detectorStart
-
-                // Check if found target objects
-                val detectedClasses = detectionResult.classIndices
-                val foundClasses = remainingClassIndices.filter { it in detectedClasses }
-
-                if (foundClasses.isEmpty()) {
-                    return@executeAsync ThreadResult(null, null, -1, detectorLatency, 0)
-                }
-
-                // Filter detection result
-                val filteredResult = filterDetectionResult(detectionResult, foundClasses)
-
-                try {
-                    val finished = classifierLatch.await(1, TimeUnit.SECONDS)
-                    if (!finished) {
-                        Log.w(TAG, currentThreadNo + "Classifier timeout after 3 seconds")
+                        override fun onError(e: Exception) {
+                            Log.e(TAG, "Detection thread error", e)
+                            //threadCount.decrementAndGet()
+                        }
                     }
-                } catch (e: InterruptedException) {
-                    Log.e(TAG, currentThreadNo + "Wait interrupted", e)
-                }
-
-                // Now classifier is done, return result
-                ThreadResult(
-                    filteredResult,
-                    bitmap,
-                    sceneClassId,
-                    detectorLatency,
-                    classifierLatency
                 )
-            },
-            object : BackgroundTaskExecutor.TaskCallback<ThreadResult?> {
-                override fun onSuccess(result: ThreadResult?) {
-                    if (result == null || result.detectionResult == null) {
-                        updateLatencyStats(
-                            result?.detectorLatency ?: 0,
-                            result?.classifierLatency ?: 0
-                        )
-                        return
-                    }
+            }
+        }
 
-                    // Update latency statistics
-                    updateLatencyStats(result.detectorLatency, result.classifierLatency)
-
-                    // Check if another thread already finished
-                    if (resultsReady.compareAndSet(false, true)) {
-                        processFoundObjects(result)
-                    }
-                }
-
-                override fun onError(e: Exception) {
-                    Log.e(TAG, "Detection thread error", e)
-                    //threadCount.decrementAndGet()
+        val runtime = Runtime.getRuntime()
+        val maxMemory = runtime.maxMemory()
+        val usedMemory = runtime.totalMemory() - runtime.freeMemory()
+        var availableMemory: Long =maxMemory - usedMemory
+        val checkRunnable = object : Runnable {
+            override fun run() {
+                if (availableMemory>Constants.MIN_MEM_NEEDED) {
+                    mainHandler.post (toRun )
+                } else {
+                    val runtime = Runtime.getRuntime()
+                    val maxMemory = runtime.maxMemory()
+                    val usedMemory = runtime.totalMemory() - runtime.freeMemory()
+                    availableMemory = maxMemory - usedMemory
+                    Log.w(TAG, "Low memory (${availableMemory / 1_048_576}MB), WAITING FOR RELEASE OR USER EXIT")
+                    mainHandler.postDelayed(this, Constants.WAIT_CHECK)
                 }
             }
-        )
+        }
+        mainHandler.post(checkRunnable)
     }
 
     private fun captureImageSync(): Bitmap? {
@@ -523,7 +572,7 @@ class FindMyObjectActivity : ComponentActivity() {
 
                 // IMPORTANT: Use synonym from objectsToFind, not YOLO label
                 // Example: User said "keys" → Use "keys" not "key"(detector label)
-                val synonym = objectsToFind[classIdx] ?: detector.getClassName(classIdx)
+                val synonym = objectsToFind[classIdx] ?: currentDetectorModel.getClassName(classIdx)
                 filteredLabels.add(synonym)
 
                 Log.d(
@@ -564,6 +613,7 @@ class FindMyObjectActivity : ComponentActivity() {
         // Signal stop
         stopDetection.set(true)
         PhoneStatusMonitor.getInstance().stopMonitoring()
+        motionMonitor.stopMonitoring()
         batteryCheckRunning.value = false
 
         // Remove found classes
@@ -598,7 +648,7 @@ class FindMyObjectActivity : ComponentActivity() {
         detectionResult = result.detectionResult
 
         // Set result bitmap
-        resultBitmap.value = detector.drawDetections(originalBitmap, detectionResult)
+        resultBitmap.value = currentDetectorModel.drawDetections(originalBitmap, detectionResult)
 
         currentBBoxOffset = 0f
         currentTextRatio = Constants.TEXT_SIZE_WIDTH_SCREEN
@@ -634,7 +684,11 @@ class FindMyObjectActivity : ComponentActivity() {
 
     private fun reloadDetectionPhase() {
         // Reset states
+        currentDetectorModel =
+            PhoneStatusMonitor.getInstance().modelManager.detectorAcc ?: PhoneStatusMonitor.getInstance().modelManager.detectorSpeed
         showResult.value = false
+        originalBitmap?.recycle()
+        resultBitmap.value?.recycle()
         originalBitmap = null
         detectionResult = null
     }
@@ -664,7 +718,7 @@ class FindMyObjectActivity : ComponentActivity() {
             }
 
             KeyEvent.KEYCODE_VOLUME_UP -> {
-                if (remainingClassIndices.isNotEmpty()) {
+                if (remainingClassIndices.isNotEmpty() && showResult.value) {
                     handleNextClick()
                 }
                 true
@@ -677,6 +731,7 @@ class FindMyObjectActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
         PhoneStatusMonitor.getInstance().stopMonitoring()
+        motionMonitor.stopMonitoring()
         batteryCheckRunning.value = false
         mainHandler.removeCallbacksAndMessages(null)
         updateHandler.removeCallbacksAndMessages(null)
@@ -922,7 +977,7 @@ fun SettingsPanel(
                 ),
                 modifier = Modifier
                     .width(Constants.NAV_BUTTONS_WIDTH.dp * 2 + screenWidth * 0.08f)
-                    .height(Constants.NAV_BUTTONS_HEIGHT.dp /2)
+                    .height(Constants.NAV_BUTTONS_HEIGHT.dp / 2)
             ) {
                 Row(
                     horizontalArrangement = Arrangement.Center,
@@ -1060,7 +1115,7 @@ fun SettingsPanel(
                 targetState = currentSliderSection,
                 transitionSpec = {
                     slideInHorizontally(
-                        initialOffsetX = { if (targetState > initialState)  it else -it },
+                        initialOffsetX = { if (targetState > initialState) it else -it },
                         animationSpec = tween(durationMillis = Constants.ANIMATION_DELAY)
                     ) togetherWith slideOutHorizontally(
                         targetOffsetX = { if (targetState > initialState) -it else it },
@@ -1165,7 +1220,7 @@ fun TextSizeSlider(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "+${((textSizeRatio- Constants.TEXT_SIZE_WIDTH_SCREEN)/ Constants.TEXT_RESIZE_MAX * 100).toInt()} %",
+                text = "+${((textSizeRatio - Constants.TEXT_SIZE_WIDTH_SCREEN) / Constants.TEXT_RESIZE_MAX * 100).toInt()} %",
                 color = colorResource(R.color.std_cyan),
                 fontSize = Constants.STD_SUBTITLE_SIZE.sp,
                 fontFamily = robotoExtraBold

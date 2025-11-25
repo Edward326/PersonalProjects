@@ -5,7 +5,8 @@ import android.os.Build;
 
 public class Constants {
     // Model Configuration
-    public static final String YOLO_MODEL_DETECTOR_FILE = "yolov8s_mobile.onnx";
+    public static final String YOLO_MODEL_DETECTOR_ACC_FILE = "yolov8s_mobile.onnx";
+    public static final String YOLO_MODEL_DETECTOR_SPEED_FILE = "yolov8n_mobile.onnx";
     public static final String DETECTOR_CLASSES_FILE_EN = "detector_class_names_en.txt";
     public static final String DETECTOR_CLASSES_FILE_RO = "detector_class_names_ro.txt";
     public static final String YOLO_MODEL_CLASSIFIER_FILE = "yolov8n_cls_mobile.onnx";
@@ -21,7 +22,7 @@ public class Constants {
     public static final int CLASSIFIER_INPUT_SIZE = 224;
 
     // Detection Thresholds
-    public static final float CONFIDENCE_THRESHOLD = 0.25f;
+    public static final float CONFIDENCE_THRESHOLD = 0.7f;
     public static final float NMS_THRESHOLD = 0.45f;
 
     // Drawing Configuration
@@ -109,11 +110,11 @@ public class Constants {
     public static final int SUCCESS_NOTIFICATION_DELAY = 5000;
 
     // Number of Models to load in main activity
-    public static final int MODELS_COUNT = 5;
-    public static final int MODELS_OWN_ASSETS_COUNT = 5;
+    public static final int MODELS_COUNT = 6;
 
     // Standard font size and button size
     public static final int LOGO_SIZE = 200;
+    public static final int BLIND_LOGO_SIZE = LOGO_SIZE+50;
     public static final int STD_TITLE_SIZE = 40;
     public static final int STD_SUBTITLE_SIZE = 32;
 
@@ -145,6 +146,9 @@ public class Constants {
     public static final float BBOX_MIN_DISTANCE = 86f;
     public static final float BBOX_RESIZE_MAX = 30f;
     public static final float TEXT_RESIZE_MAX = 0.06f;
+    public static final float LINEAR_SPEED_THRESHOLD=0.8f;
+    public static final float ROTATION_SPEED_THRESHOLD=0.6f;
+    public static final long MIN_MEM_NEEDED=15*1024*1024+5*1024*1024;//15MB+5MB EXTRA
 
     // UserAccessibility1Activity params
     public static final int PREVIEW_UPDATE_DELAY = 1000;
