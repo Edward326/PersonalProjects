@@ -27,6 +27,7 @@ public class YOLODetector {
     private OrtSession ortSession;
     private Map<Integer, String> classNames;
     private Context context;
+    public String type;
 
     // Model parameters
     private static final int NUM_DETECTIONS = 8400;
@@ -42,7 +43,7 @@ public class YOLODetector {
         this.context = context;
     }
 
-    public int loadModel() {
+    public int loadModel(String model_filepath,String type) {
         try {
             Log.d(TAG, "Loading Detector Model YOLO ...");
 
@@ -50,7 +51,7 @@ public class YOLODetector {
             ortEnvironment = OrtEnvironment.getEnvironment();
 
             // Load model from assets
-            String modelPath = FileUtils.assetFilePath(context, Constants.YOLO_MODEL_DETECTOR_FILE);
+            String modelPath = FileUtils.assetFilePath(context, model_filepath);
 
             // Create session options
             OrtSession.SessionOptions options = new OrtSession.SessionOptions();
@@ -60,14 +61,15 @@ public class YOLODetector {
             assert ortEnvironment != null;
             ortSession = ortEnvironment.createSession(modelPath, options);
 
-            Log.d(TAG, "Model loaded successfully");
+            Log.d(TAG, "Model loaded successfully, model selected:"+model_filepath);
+            this.type=type;
 
             loadClassNames();
             Log.d(TAG, "Detector class names loaded: " + classNames.size() + " classes");
 
             return 0;
         } catch (Exception e) {
-            Log.e(TAG, "Failed to load Detector Model YOLO", e);
+            Log.e(TAG, "Failed to load Detector Model YOLO, model selected:"+model_filepath, e);
             return -1;
         }
     }
@@ -84,6 +86,7 @@ public class YOLODetector {
 
     public DetectionResult detectObjects(Bitmap bitmap,String threadInfo) {
         try {
+            Log.d(TAG,"["+threadInfo+"]"+"DETECTION STARTED, MODEL:"+type);
             Log.d(TAG, "["+threadInfo+"]"+"Starting detection on image: " + bitmap.getWidth() + "x" + bitmap.getHeight());
 
             // Step 1: Preprocess image
@@ -543,7 +546,6 @@ public class YOLODetector {
                     textArea,
                     expandedBox,
                     screenWidth,
-                    screenHeight,
                     processedBBoxes,
                     processedTextAreas,
                     minDistancePx,
@@ -642,7 +644,6 @@ public class YOLODetector {
             RectF proposedTextArea,
             RectF bbox,
             int screenWidth,
-            int screenHeight,
             List<RectF> processedBBoxes,
             List<RectF> processedTextAreas,
             float minDistancePx,

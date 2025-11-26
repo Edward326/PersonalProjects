@@ -9,7 +9,6 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.KeyEvent
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts.TakePicture
@@ -98,6 +97,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
+import com.visionassist.appspace.BaseActivity
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
 import com.visionassist.appspace.activities.tabs.home.caption.CaptionActivity
@@ -112,7 +112,6 @@ import com.visionassist.appspace.sound.SoundConstants
 import com.visionassist.appspace.utils.AppConfig
 import com.visionassist.appspace.utils.BackgroundTaskExecutor
 import com.visionassist.appspace.utils.Constants
-import com.visionassist.appspace.utils.FileUtils
 import com.visionassist.appspace.utils.PermissionChecker
 import com.visionassist.appspace.utils.haptic_model0
 import com.visionassist.appspace.utils.load_captionTutorial
@@ -134,7 +133,7 @@ import kotlinx.coroutines.delay
 import java.io.File
 import java.io.IOException
 
-class HomeActivity : ComponentActivity() {
+class HomeActivity : BaseActivity() {
     private val TAG = "HomeActivity"
 
     // State variables
@@ -211,7 +210,7 @@ class HomeActivity : ComponentActivity() {
         locked = true
         PhoneStatusMonitor.getInstance().soundManager.play(SoundConstants.OPEN_UP_ID, 1f, 1f) {
             uiLocked = false
-            locked=false
+            locked = false
         }
 
         //Log.d(TAG, FileUtils.readProfileFileAsString(this, Constants.ENV_REPORTS_FILE_NAME))
@@ -281,8 +280,8 @@ class HomeActivity : ComponentActivity() {
             handler.post(afterResumeRunnable)
         }
 
-        if(returnFromFindMyObject){
-            returnFromFindMyObject=false
+        if (returnFromFindMyObject) {
+            returnFromFindMyObject = false
             handleSpeechDialogTap()
         }
     }
@@ -577,7 +576,7 @@ class HomeActivity : ComponentActivity() {
     }
 
     private fun speakingProcess() {
-        lockedVolumeDown=false
+        lockedVolumeDown = false
         isSpeaking.value = true
         speechText.value = "Listening..."
         soundManager.play(SoundConstants.STT_SPEAK_OPEN_ID, 0.7f, 0.7f) {
@@ -670,7 +669,7 @@ class HomeActivity : ComponentActivity() {
             speechProcessText.value = "No matched known classes"
             retrySpeech.value = true
             sendSpeech.value = false
-            lockedVolumeDown=true
+            lockedVolumeDown = true
             locked = false
             vibrateIfEnabled()
         } else {
@@ -690,7 +689,7 @@ class HomeActivity : ComponentActivity() {
             putExtra(Constants.EXTRA_MATCHED_INDICES, classIndices)
             putExtra(Constants.EXTRA_SYNONYMS_WORDS, matchedWords)
         }
-        returnFromFindMyObject=true
+        returnFromFindMyObject = true
         startActivity(intent)
 
         //finish()
@@ -702,7 +701,7 @@ class HomeActivity : ComponentActivity() {
         soundManager.releaseCallback()
         speechRecognizer.stopListening()
         locked = true
-        lockedVolumeDown=false
+        lockedVolumeDown = false
         showSpeechDialog.value = false
         handler.postDelayed({
             uiLocked = false
@@ -1185,7 +1184,7 @@ fun DetectionButtonSection(
                     bottomStart = 5.dp,
                     bottomEnd = 5.dp
                 ),
-                text = "Detection",
+                text = if (AppConfig.mainLanguage.code == "en") "Detection" else "Detecție",
                 iconRes = R.drawable.detection_icon,
                 iconColor = iconColor,
                 screenWidth = screenWidth,
@@ -1390,7 +1389,7 @@ fun CaptionButtonSection(
                     bottomEnd = 31.dp
                 ),
                 predefinedIcon = Icons.Filled.TextFields,
-                text = "Caption",
+                text = if (AppConfig.mainLanguage.code == "en") "Caption" else "Descriere în text",
                 iconColor = R.color.std_purple_dark,
                 screenWidth = screenWidth,
                 onClick = onCaptionClick,
@@ -1570,12 +1569,12 @@ fun BottomNavigationBar(
             icon = {
                 Icon(
                     imageVector = Icons.Filled.Home,
-                    contentDescription = "Home"
+                    contentDescription = if (AppConfig.mainLanguage.code == "en") "Home" else "Acasă"
                 )
             },
             label = {
                 Text(
-                    text = "Home",
+                    text = if (AppConfig.mainLanguage.code == "en") "Home" else "Acasă",
                     fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
                     fontFamily = robotoExtraBold
                 )
@@ -1599,12 +1598,12 @@ fun BottomNavigationBar(
                 icon = {
                     Icon(
                         imageVector = Icons.Filled.Description,
-                        contentDescription = "Reports"
+                        contentDescription = if (AppConfig.mainLanguage.code == "en") "Reports" else "Rapoarte de mediu"
                     )
                 },
                 label = {
                     Text(
-                        "Reports",
+                        if (AppConfig.mainLanguage.code == "en") "Reports" else "Rapoarte de mediu",
                         fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
                         fontFamily = robotoLight
                     )
@@ -1627,12 +1626,12 @@ fun BottomNavigationBar(
             icon = {
                 Icon(
                     imageVector = Icons.Filled.Settings,
-                    contentDescription = "Settings"
-                )
+                    contentDescription = if (AppConfig.mainLanguage.code == "en") "Settings" else "Setări"
+                    )
             },
             label = {
                 Text(
-                    "Settings",
+                    if (AppConfig.mainLanguage.code == "en") "Settings" else "Setări",
                     fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
                     fontFamily = robotoLight
                 )

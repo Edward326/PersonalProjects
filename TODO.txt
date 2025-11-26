@@ -3,6 +3,8 @@
 	-activitati pentru detection(low eyesight:live/static | blind), caption(low eysight | blind)
 	-EnvirotmentsReports, Settings(low eysight | blind)
 
+-schimbat design meniu
+
 -testarea aplicatiei + debugging
 
 -fine tuning(detector, classifier(indoorcvpr), captioner)
