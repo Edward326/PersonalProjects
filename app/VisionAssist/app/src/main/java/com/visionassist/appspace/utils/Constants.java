@@ -32,6 +32,8 @@ public class Constants {
     // Text-to-Speech Configuration
     public static final float TTS_SPEECH_RATE = 1.0f;
     public static final float TTS_PITCH = 1.0f;
+    public static final float TTS_CHAR_DELAY_EN = 71.42f;
+    public static final float TTS_CHAR_DELAY_RO = 76.92f;
 
     // Profile Storage Configuration - NEW
     public static final String PROFILE_FOLDER_NAME = "visionassist_data";
@@ -149,6 +151,10 @@ public class Constants {
     public static final float LINEAR_SPEED_THRESHOLD=0.8f;
     public static final float ROTATION_SPEED_THRESHOLD=0.6f;
     public static final long MIN_MEM_NEEDED=15*1024*1024+5*1024*1024;//15MB+5MB EXTRA
+
+    // Drag gestures parameters
+    public static final float MIN_HDISTANCE_THRESHOLD=0.2f;
+    public static final float MIN_VDISTANCE_THRESHOLD=0.2f;
 
     // UserAccessibility1Activity params
     public static final int PREVIEW_UPDATE_DELAY = 1000;

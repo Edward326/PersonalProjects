@@ -9,8 +9,10 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.util.Log
 import androidx.compose.runtime.MutableState
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.TextUnit
 import androidx.core.content.ContextCompat.getSystemService
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
@@ -23,6 +25,21 @@ data class Language(
     var code: String,
     var name: String,
     var country: String
+)
+
+enum class DetectionOption {
+    LIVE, STATIC
+}
+
+data class CustomColorSchema(
+    val color: Color,
+    val fontSize: TextUnit,
+    val fontFamily: FontFamily
+)
+
+data class TypewriterColorSchema(
+    val wordColorSchema: CustomColorSchema,
+    val outlinedWordColorSchema: CustomColorSchema
 )
 
 val robotoRegular = FontFamily(
@@ -495,6 +512,14 @@ fun load_homeTitle(): String {
     }
 }
 
+fun load_tutorialDialog(context: Context): String {
+    return when (PhoneStatusMonitor.getInstance().ttsManager.currentLanguage) {
+        "en" -> context.getString(R.string.intro_dialog_en)
+        "ro" -> context.getString(R.string.intro_dialog_ro)
+        else -> context.getString(R.string.intro_dialog_en)
+    }
+}
+
 fun load_detectionTutorial(context: Context, step: Int): String {
     return if (AppConfig.mainLanguage.code == "en") {
         when (step) {
@@ -507,6 +532,22 @@ fun load_detectionTutorial(context: Context, step: Int): String {
             1 -> context.getString(R.string.detect1_ro)
             2 -> context.getString(R.string.detect2_ro)
             else -> load_homeTitle()
+        }
+    }
+}
+
+fun load_detectionTutorialSpeak(context: Context, step: Int): String {
+    return if (PhoneStatusMonitor.getInstance().ttsManager.currentLanguage == "en") {
+        when (step) {
+            1 -> context.getString(R.string.detect1_en)
+            2 -> context.getString(R.string.detect2_en)
+            else -> ""
+        }
+    } else {
+        when (step) {
+            1 -> context.getString(R.string.detect1_ro)
+            2 -> context.getString(R.string.detect2_ro)
+            else -> ""
         }
     }
 }
@@ -527,11 +568,23 @@ fun load_captionTutorial(context: Context, step: Int): String {
     }
 }
 
-fun load_speakTutorial(context: Context, step: Int): String {
-    if (AppConfig.mainLanguage.code != "en") {
-        return load_homeTitle()
+fun load_captionTutorialSpeak(context: Context, step: Int): String {
+    return if (PhoneStatusMonitor.getInstance().ttsManager.currentLanguage == "en") {
+        when (step) {
+            3 -> context.getString(R.string.caption1_en)
+            4 -> context.getString(R.string.caption2_en)
+            else -> ""
+        }
+    } else {
+        when (step) {
+            3 -> context.getString(R.string.caption1_ro)
+            4 -> context.getString(R.string.caption2_ro)
+            else -> ""
+        }
     }
+}
 
+fun load_speakTutorial(context: Context, step: Int): String {
     return when (step) {
         1 -> context.getString(R.string.findmyobj1_en)
         2 -> context.getString(R.string.findmyobj2_en)
@@ -544,8 +597,29 @@ fun load_speakTutorial(context: Context, step: Int): String {
     }
 }
 
+fun load_speakTutorialSpeak(context: Context, step: Int): String {
+    return when (step) {
+        5 -> context.getString(R.string.findmyobj1_en)
+        6 -> context.getString(R.string.findmyobj2_en)
+        7 -> context.getString(R.string.findmyobj3_en)
+        8 -> context.getString(R.string.findmyobj4_en)
+        9 -> context.getString(R.string.findmyobj5_en)
+        10 -> context.getString(R.string.findmyobj6_en)
+        11 -> context.getString(R.string.findmyobj7_en)
+        else -> ""
+    }
+}
+
 fun load_syncStatusText(days: Int): String {
     return if (AppConfig.mainLanguage.code == "en") {
+        "$days days since last sync"
+    } else {
+        "$days zile de la ultima sincronizare"
+    }
+}
+
+fun load_syncStatusTextSpeech(days: Int): String {
+    return if (PhoneStatusMonitor.getInstance().ttsManager.currentLanguage == "en") {
         "$days days since last sync"
     } else {
         "$days zile de la ultima sincronizare"
@@ -557,6 +631,30 @@ fun load_syncErrorText(context: Context): String {
         "en" -> context.getString(R.string.sync_error_en)
         "ro" -> context.getString(R.string.sync_error_ro)
         else -> context.getString(R.string.sync_error_en)
+    }
+}
+
+fun load_syncErrorSpeech(context: Context): String {
+    return when (PhoneStatusMonitor.getInstance().ttsManager.currentLanguage) {
+        "en" -> context.getString(R.string.sync_error_en)
+        "ro" -> context.getString(R.string.sync_error_ro)
+        else -> context.getString(R.string.sync_error_en)
+    }
+}
+
+fun load_homePageIntro(context: Context): String {
+    return when (PhoneStatusMonitor.getInstance().ttsManager.currentLanguage) {
+        "en" -> context.getString(R.string.home_page_intro_en)
+        "ro" -> context.getString(R.string.home_page_intro_ro)
+        else -> context.getString(R.string.home_page_intro_en)
+    }
+}
+
+fun load_navigateToSettings(context: Context): String {
+    return when (AppConfig.mainLanguage.code) {
+        "en" -> context.getString(R.string.navigating_to_settings_en)
+        "ro" -> context.getString(R.string.navigating_to_settings_ro)
+        else -> context.getString(R.string.navigating_to_settings_en)
     }
 }
 
@@ -574,6 +672,14 @@ fun load_errorSTT(context: Context): String {
 
 fun load_errorSTTRuntime(context: Context): String {
     return context.getString(R.string.stt_error_runtime_en)
+}
+
+fun load_talkbackError(context: Context): String {
+    return when (PhoneStatusMonitor.getInstance().ttsManager.currentLanguage) {
+        "en" -> context.getString(R.string.talkback_error_en)
+        "ro" -> context.getString(R.string.talkback_error_ro)
+        else -> context.getString(R.string.talkback_error_en)
+    }
 }
 
 fun startBatteryLevelCheck(

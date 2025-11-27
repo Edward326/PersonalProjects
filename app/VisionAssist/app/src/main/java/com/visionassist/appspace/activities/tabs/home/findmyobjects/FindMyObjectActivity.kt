@@ -227,7 +227,7 @@ class FindMyObjectActivity : ComponentActivity() {
         remainingClassIndices = mutableListOf()
 
         for (i in classIndices.indices) {
-            objectsToFind.put(classIndices[i], matchedWords[i])
+            objectsToFind[classIndices[i]] = matchedWords[i]
             remainingClassIndices.add(classIndices[i])
         }
 

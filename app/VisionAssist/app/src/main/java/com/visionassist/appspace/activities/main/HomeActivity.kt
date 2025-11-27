@@ -100,9 +100,9 @@ import androidx.core.content.FileProvider
 import com.visionassist.appspace.BaseActivity
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
-import com.visionassist.appspace.activities.tabs.home.caption.CaptionActivity
 import com.visionassist.appspace.activities.tabs.home.detection.LiveDetectionActivity
 import com.visionassist.appspace.activities.tabs.home.detection.StaticDetectionActivity
+import com.visionassist.appspace.activities.tabs.home.caption.CaptionActivity
 import com.visionassist.appspace.activities.tabs.home.findmyobjects.FindMyObjectActivity
 import com.visionassist.appspace.activities.tabs.reports.EnvironmentReportsActivity
 import com.visionassist.appspace.activities.tabs.settings.SettingsActivity
@@ -112,7 +112,10 @@ import com.visionassist.appspace.sound.SoundConstants
 import com.visionassist.appspace.utils.AppConfig
 import com.visionassist.appspace.utils.BackgroundTaskExecutor
 import com.visionassist.appspace.utils.Constants
+import com.visionassist.appspace.utils.CustomColorSchema
+import com.visionassist.appspace.utils.DetectionOption
 import com.visionassist.appspace.utils.PermissionChecker
+import com.visionassist.appspace.utils.TypewriterColorSchema
 import com.visionassist.appspace.utils.haptic_model0
 import com.visionassist.appspace.utils.load_captionTutorial
 import com.visionassist.appspace.utils.load_detectionTutorial
@@ -138,8 +141,6 @@ class HomeActivity : BaseActivity() {
 
     // State variables
     private val titleText = mutableStateOf("")
-    private val syncStatus = mutableStateOf(0) // 0=hidden, 1=show days, 2=error
-    private val syncDays = mutableStateOf(0)
 
     // Tutorial info button states
     private val speakInfoClickCount = mutableStateOf(1)
@@ -182,14 +183,13 @@ class HomeActivity : BaseActivity() {
     private lateinit var currentPhotoUri: Uri
 
     // Main handler
-    private val handler = Handler(Looper.getMainLooper())
+    private val mainHandler = Handler(Looper.getMainLooper())
     private lateinit var afterResumeRunnable: Runnable
     private var hasToExecAfterResume = false
     private var returnFromFindMyObject = false
 
-    enum class DetectionOption {
-        LIVE, STATIC
-    }
+    private var syncStatus: Int = 0
+    private var syncDays: Int = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -201,10 +201,8 @@ class HomeActivity : BaseActivity() {
 
         // Get sync status
         val dbManager = PhoneStatusMonitor.getInstance().dbManager
-        syncStatus.value = dbManager.statusOverview
-        if (syncStatus.value == 1) {
-            syncDays.value = dbManager.diffDays.toInt()
-        }
+        syncStatus = dbManager.statusOverview
+        syncDays = if (syncStatus > 0) dbManager.diffDays.toInt() else 0
 
         uiLocked = true
         locked = true
@@ -218,8 +216,8 @@ class HomeActivity : BaseActivity() {
         setContent {
             HomeScreen(
                 titleText = titleText.value,
-                syncStatus = syncStatus.value,
-                syncDays = syncDays.value,
+                syncStatus = syncStatus,
+                syncDays = syncDays,
                 showDetectionOptions = showDetectionOptions.value,
                 detectionIconColor = detectionIconColor.value,
                 selectedDetectionOption = selectedDetectionOption.value,
@@ -277,7 +275,7 @@ class HomeActivity : BaseActivity() {
 
         if (hasToExecAfterResume) {
             hasToExecAfterResume = false
-            handler.post(afterResumeRunnable)
+            mainHandler.post(afterResumeRunnable)
         }
 
         if (returnFromFindMyObject) {
@@ -485,6 +483,7 @@ class HomeActivity : BaseActivity() {
 
     private fun handleSwipeToLeft() {
         if (!uiLocked) {
+            vibrateIfEnabled()
             val intent = Intent(
                 this, if (AppConfig.env_reports)
                     EnvironmentReportsActivity::class.java
@@ -515,11 +514,11 @@ class HomeActivity : BaseActivity() {
                             uiLocked = false
                             locked = false
                         } else {
-                            handler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS.toLong())
+                            mainHandler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS.toLong())
                         }
                     }
                 }
-                handler.postDelayed(
+                mainHandler.postDelayed(
                     afterResumeRunnable,
                     SoundConstants.getDuration(SoundConstants.STT_ERROR_ID).toLong() + 500
                 )
@@ -540,11 +539,11 @@ class HomeActivity : BaseActivity() {
                                 uiLocked = false
                                 locked = false
                             } else {
-                                handler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS.toLong())
+                                mainHandler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS.toLong())
                             }
                         }
                     }
-                    handler.postDelayed(
+                    mainHandler.postDelayed(
                         afterResumeRunnable,
                         SoundConstants.getDuration(SoundConstants.STT_ERROR_ID).toLong() + 500
                     )
@@ -586,7 +585,7 @@ class HomeActivity : BaseActivity() {
                     if (isFinalResult) {
                         isSpeaking.value = false
                         speechText.value = formatRecognizedText(recognizedText)
-                        handler.postDelayed({ processRecognizedSpeech() }, 1000)
+                        mainHandler.postDelayed({ processRecognizedSpeech() }, 1000)
 
                         /*
                         sendSpeech.value = true
@@ -614,11 +613,11 @@ class HomeActivity : BaseActivity() {
                             if (ttsManager.isDoneSpeaking) {
                                 handleSpeechDialogTap()
                             } else {
-                                handler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS.toLong())
+                                mainHandler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS.toLong())
                             }
                         }
                     }
-                    handler.postDelayed(
+                    mainHandler.postDelayed(
                         afterResumeRunnable,
                         SoundConstants.getDuration(SoundConstants.STT_ERROR_ID).toLong() + 500
                     )
@@ -657,11 +656,11 @@ class HomeActivity : BaseActivity() {
                 if (finishedLoading) {
                     processTextOutput()
                 } else {
-                    handler.postDelayed(this, 500)
+                    mainHandler.postDelayed(this, 500)
                 }
             }
         }
-        handler.postDelayed(checkRunnable, 2000)
+        mainHandler.postDelayed(checkRunnable, 2000)
     }
 
     private fun processTextOutput() {
@@ -697,13 +696,13 @@ class HomeActivity : BaseActivity() {
 
     private fun handleSpeechDialogTap() {
         // Cancel speech recognition
-        handler.removeCallbacksAndMessages(null)
+        mainHandler.removeCallbacksAndMessages(null)
         soundManager.releaseCallback()
         speechRecognizer.stopListening()
         locked = true
         lockedVolumeDown = false
         showSpeechDialog.value = false
-        handler.postDelayed({
+        mainHandler.postDelayed({
             uiLocked = false
             retrySpeech.value = false
             sendSpeech.value = false
@@ -748,12 +747,12 @@ class HomeActivity : BaseActivity() {
                     if (!handleVolumeDownControl) {
                         if (!showSpeechDialog.value)
                             handleVolumeDownControl = true
-                        handler.removeCallbacksAndMessages(null)
-                        handler.postDelayed(
+                        mainHandler.removeCallbacksAndMessages(null)
+                        mainHandler.postDelayed(
                             { handleSingleVolumeDown() }, Constants.VOLUME_DOWN_DELAY_MS.toLong()
                         )
                     } else {
-                        handler.removeCallbacksAndMessages(null)
+                        mainHandler.removeCallbacksAndMessages(null)
                         locked = true
                         handleVolumeDownControl = false
                         launchSpeechRecognition(true)
@@ -795,7 +794,7 @@ class HomeActivity : BaseActivity() {
 
     override fun onPause() {
         super.onPause()
-        handler.removeCallbacksAndMessages(null)
+        mainHandler.removeCallbacksAndMessages(null)
         soundManager.releaseCallback()
         ttsManager.stopSpeaking()
     }
@@ -809,13 +808,13 @@ fun HomeScreen(
     syncDays: Int,
     showDetectionOptions: Boolean,
     detectionIconColor: Int,
-    selectedDetectionOption: HomeActivity.DetectionOption?,
+    selectedDetectionOption: DetectionOption?,
     showSpeechDialog: Boolean,
     speechText: String,
     speechProcessText: String,
     isSpeaking: Boolean,
     onDetectionClick: () -> Unit,
-    onDetectionOptionSelected: (HomeActivity.DetectionOption?, navigate: Boolean) -> Unit,
+    onDetectionOptionSelected: (DetectionOption?, navigate: Boolean) -> Unit,
     onCaptionClick: () -> Unit,
     onDetectionInfoClick: () -> Unit,
     onCaptionInfoClick: () -> Unit,
@@ -827,157 +826,162 @@ fun HomeScreen(
     navigateFun: () -> Unit,
     onSwipeToLeft: () -> Unit
 ) {
-    var swipeStartX by remember { mutableStateOf(0f) }
-
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .pointerInput(Unit) {
-                detectDragGestures(
-                    onDragStart = { offset ->
-                        swipeStartX = offset.x
-                    },
-                    onDrag = { _, _ -> },
-                    onDragEnd = {
-                        // Drag ended - calculate swipe
-                    },
-                    onDragCancel = {
-                        swipeStartX = 0f
-                    }
-                )
-            }
-            .pointerInput(Unit) {
-                detectHorizontalDragGestures { change, dragAmount ->
-                    change.consume()
-
-                    val swipeEndX = change.position.x
-                    val swipeDistance = swipeEndX - swipeStartX
-                    val swipeThreshold = 50f // Minimum swipe distance
-
-                    when {
-                        // ✅ Swipe LEFT (right to left)
-                        swipeDistance < -swipeThreshold -> {
-                            Log.d("HomeScreen", "Swipe LEFT detected")
-                            onSwipeToLeft() // Navigate to Settings
-                            swipeStartX = 0f
-                        }
-                    }
-                }
-            }
     ) {
         val screenHeight = maxHeight
         val screenWidth = maxWidth
         val navbarHeight = 90.dp / maxHeight
         val sectionMain = 1.0f - navbarHeight
 
-        // Background image
-        Image(
-            painter = painterResource(R.drawable.app_background),
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
-        )
-
-        // Main content
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(sectionMain)
-        ) {
-            Box(modifier = Modifier.height(screenHeight * 0.045f))
-
-            // Logo
-            Image(
-                painter = painterResource(R.drawable.vision_assist_logo),
-                contentDescription = "app logo",
-                modifier = Modifier.size(Constants.LOGO_SIZE.dp)
-            )
-
-            // Title with typewriter animation
-            TypewriterText(
-                text = titleText,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
-            )
-
-            Box(modifier = Modifier.height(screenWidth * 0.05f))
-
-            // Detection Button with options
-            DetectionButtonSection(
-                showOptions = showDetectionOptions,
-                iconColor = detectionIconColor,
-                selectedOption = selectedDetectionOption,
-                screenWidth = screenWidth,
-                showInfoButton = AppConfig.showTutorial,
-                onDetectionClick = onDetectionClick,
-                onIconPress = onDetectionClick,
-                onOptionSelected = onDetectionOptionSelected,
-                onInfoClick = onDetectionInfoClick,
-                navigate = navigateFun
-            )
-
-
-            Box(modifier = Modifier.height(screenHeight * 0.04f))
-
-            // Caption Button
-            CaptionButtonSection(
-                screenWidth = screenWidth,
-                showInfoButton = AppConfig.showTutorial,
-                onCaptionClick = onCaptionClick,
-                onInfoClick = onCaptionInfoClick
-            )
-
-            //Box(modifier = Modifier.height(screenHeight * 0.21f))
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            SyncStatusSection(
-                syncStatus = syncStatus,
-                syncDays = syncDays,
-                showInfoButton = AppConfig.showTutorial && AppConfig.mainLanguage.code == "en",
-                onInfoClick = onSpeakInfoClick
-            )
-        }
-
-
-        // Bottom Navigation Bar
         Box(
             modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .fillMaxHeight(navbarHeight),
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    var swipeStartX = 0f
+                    detectHorizontalDragGestures(
+                        onDragStart = {
+                            swipeStartX = 0f
+                        },
+                        onDragEnd = {
+                            val threshold = (screenWidth * Constants.MIN_HDISTANCE_THRESHOLD).toPx()
+                            when {
+                                swipeStartX <= -threshold -> {
+                                    onSwipeToLeft()
+                                }
+                            }
+                            swipeStartX = 0f
+                        },
+                        onHorizontalDrag = { _, dragAmount ->
+                            swipeStartX += dragAmount
+                        }
+                    )
+                }
         ) {
-            BottomNavigationBar(
-                onNavigateHome = onNavigateHome,
-                onNavigateReports = onNavigateReports,
-                onNavigateSettings = onNavigateSettings,
-                showReports = AppConfig.env_reports
+            // Background image
+            Image(
+                painter = painterResource(R.drawable.app_background),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+
+            // Main content
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(sectionMain)
+            ) {
+                Box(modifier = Modifier.height(screenHeight * 0.045f))
+
+                // Logo
+                Image(
+                    painter = painterResource(R.drawable.vision_assist_logo),
+                    contentDescription = "app logo",
+                    modifier = Modifier.size(Constants.LOGO_SIZE.dp)
+                )
+
+                // Title with typewriter animation
+                TypewriterText(
+                    text = titleText,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp),
+                    colorSchema = TypewriterColorSchema(
+                        wordColorSchema = CustomColorSchema(
+                            color = colorResource(R.color.std_purple),
+                            fontFamily = robotoSemibold,
+                            fontSize = Constants.STD_SUBTITLE_SIZE.sp
+                        ),
+                        outlinedWordColorSchema = CustomColorSchema(
+                            color = colorResource(R.color.std_purple_dark),
+                            fontFamily = robotoExtraBold,
+                            fontSize = Constants.STD_SUBTITLE_SIZE.sp
+                        )
+                    )
+                )
+
+                Box(modifier = Modifier.height(screenWidth * 0.05f))
+
+                // Detection Button with options
+                DetectionButtonSection(
+                    showOptions = showDetectionOptions,
+                    iconColor = detectionIconColor,
+                    selectedOption = selectedDetectionOption,
+                    screenWidth = screenWidth,
+                    showInfoButton = AppConfig.showTutorial,
+                    onDetectionClick = onDetectionClick,
+                    onIconPress = onDetectionClick,
+                    onOptionSelected = onDetectionOptionSelected,
+                    onInfoClick = onDetectionInfoClick,
+                    navigate = navigateFun
+                )
+
+
+                Box(modifier = Modifier.height(screenHeight * 0.04f))
+
+                // Caption Button
+                CaptionButtonSection(
+                    screenWidth = screenWidth,
+                    showInfoButton = AppConfig.showTutorial,
+                    onCaptionClick = onCaptionClick,
+                    onInfoClick = onCaptionInfoClick
+                )
+
+                //Box(modifier = Modifier.height(screenHeight * 0.21f))
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                SyncStatusSection(
+                    syncStatus = syncStatus,
+                    syncDays = syncDays,
+                    showInfoButton = AppConfig.showTutorial && AppConfig.mainLanguage.code == "en",
+                    onInfoClick = onSpeakInfoClick
+                )
+            }
+
+
+            // Bottom Navigation Bar
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .fillMaxHeight(navbarHeight),
+            ) {
+                BottomNavigationBar(
+                    onNavigateHome = onNavigateHome,
+                    onNavigateReports = onNavigateReports,
+                    onNavigateSettings = onNavigateSettings,
+                    showReports = AppConfig.env_reports
+                )
+            }
+
+            // Speech Recognition Dialog
+            SpeechRecognitionDialog(
+                isVisible = showSpeechDialog,
+                speechText = speechText,
+                processText = speechProcessText,
+                isSpeaking = isSpeaking,
+                onTap = onSpeechDialogTap
             )
         }
-
-        // Speech Recognition Dialog
-        SpeechRecognitionDialog(
-            isVisible = showSpeechDialog,
-            speechText = speechText,
-            processText = speechProcessText,
-            isSpeaking = isSpeaking,
-            onTap = onSpeechDialogTap
-        )
     }
 }
 
 @Composable
 fun TypewriterText(
     text: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    colorSchema: TypewriterColorSchema,
+    textShowSpeed: Long = 70
 ) {
     var displayedText by remember { mutableStateOf("") }
 
     LaunchedEffect(text) {
         displayedText = ""
         text.forEachIndexed { index, _ ->
-            delay(70) // Typing speed
+            delay(textShowSpeed) // Typing speed
             displayedText = text.take(index + 1)
         }
     }
@@ -991,9 +995,9 @@ fun TypewriterText(
                 1 -> {
                     withStyle(
                         style = SpanStyle(
-                            color = colorResource(R.color.std_purple),
-                            fontFamily = robotoSemibold,
-                            fontSize = Constants.STD_SUBTITLE_SIZE.sp
+                            color = colorSchema.wordColorSchema.color,
+                            fontFamily = colorSchema.wordColorSchema.fontFamily,
+                            fontSize = colorSchema.wordColorSchema.fontSize
                         )
                     ) {
                         append(parts[0])
@@ -1003,27 +1007,27 @@ fun TypewriterText(
                 3 -> {
                     withStyle(
                         style = SpanStyle(
-                            color = colorResource(R.color.std_purple),
-                            fontFamily = robotoSemibold,
-                            fontSize = Constants.STD_SUBTITLE_SIZE.sp
+                            color = colorSchema.wordColorSchema.color,
+                            fontFamily = colorSchema.wordColorSchema.fontFamily,
+                            fontSize = colorSchema.wordColorSchema.fontSize
                         )
                     ) {
                         append(parts[0])
                     }
                     withStyle(
                         style = SpanStyle(
-                            color = colorResource(R.color.std_purple_dark),
-                            fontFamily = robotoExtraBold,
-                            fontSize = Constants.STD_SUBTITLE_SIZE.sp
+                            color = colorSchema.outlinedWordColorSchema.color,
+                            fontFamily = colorSchema.outlinedWordColorSchema.fontFamily,
+                            fontSize = colorSchema.outlinedWordColorSchema.fontSize
                         )
                     ) {
                         append(parts[1])
                     }
                     withStyle(
                         style = SpanStyle(
-                            color = colorResource(R.color.std_purple),
-                            fontFamily = robotoSemibold,
-                            fontSize = Constants.STD_SUBTITLE_SIZE.sp
+                            color = colorSchema.wordColorSchema.color,
+                            fontFamily = colorSchema.wordColorSchema.fontFamily,
+                            fontSize = colorSchema.wordColorSchema.fontSize
                         )
                     ) {
                         append(parts[2])
@@ -1041,12 +1045,12 @@ fun TypewriterText(
 fun DetectionButtonSection(
     showOptions: Boolean,
     iconColor: Int,
-    selectedOption: HomeActivity.DetectionOption?,
+    selectedOption: DetectionOption?,
     screenWidth: Dp,
     showInfoButton: Boolean,
     onDetectionClick: () -> Unit,
     onIconPress: () -> Unit,
-    onOptionSelected: (HomeActivity.DetectionOption?, navigate: Boolean) -> Unit,
+    onOptionSelected: (DetectionOption?, navigate: Boolean) -> Unit,
     onInfoClick: () -> Unit,
     navigate: () -> Unit
 ) {
@@ -1059,7 +1063,7 @@ fun DetectionButtonSection(
     val density = LocalDensity.current
 
     // Helper function to determine which button is being hovered
-    fun getHoveredOption(position: Offset): HomeActivity.DetectionOption? {
+    fun getHoveredOption(position: Offset): DetectionOption? {
         if (!showOptions) return null
 
         with(density) {
@@ -1072,7 +1076,7 @@ fun DetectionButtonSection(
             if (position.x in staticLeft..staticRight &&
                 position.y in staticTop..staticBottom
             ) {
-                return HomeActivity.DetectionOption.STATIC
+                return DetectionOption.STATIC
             }
 
             // Live button bounds (above detection, rotated)
@@ -1084,7 +1088,7 @@ fun DetectionButtonSection(
             if (position.x in liveLeft..liveRight &&
                 position.y in liveTop..liveBottom
             ) {
-                return HomeActivity.DetectionOption.LIVE
+                return DetectionOption.LIVE
             }
         }
 
@@ -1134,8 +1138,8 @@ fun DetectionButtonSection(
         ) {
             OptionButton(
                 text = "Static",
-                isSelected = selectedOption == HomeActivity.DetectionOption.STATIC,
-                onClick = { onOptionSelected(HomeActivity.DetectionOption.STATIC, true) },
+                isSelected = selectedOption == DetectionOption.STATIC,
+                onClick = { onOptionSelected(DetectionOption.STATIC, true) },
                 width = optionWidth,
                 height = buttonHeight,
                 isRotated = false
@@ -1161,8 +1165,8 @@ fun DetectionButtonSection(
         ) {
             OptionButton(
                 text = "Live",
-                isSelected = selectedOption == HomeActivity.DetectionOption.LIVE,
-                onClick = { onOptionSelected(HomeActivity.DetectionOption.LIVE, true) },
+                isSelected = selectedOption == DetectionOption.LIVE,
+                onClick = { onOptionSelected(DetectionOption.LIVE, true) },
                 width = optionWidth,
                 height = buttonHeight,
                 isRotated = true
@@ -1202,7 +1206,53 @@ fun DetectionButtonSection(
     }
 }
 
-// === UNIFIED OPTION BUTTON (handles both regular and rotated) ===
+@Composable
+fun CaptionButtonSection(
+    screenWidth: Dp,
+    showInfoButton: Boolean,
+    onCaptionClick: () -> Unit,
+    onInfoClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height((Constants.STD_BUTTON_PAGE_HEIGHT).dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .offset(x = screenWidth * 0.23f)
+                .fillMaxWidth(0.77f),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Caption Button
+            MainActionButton(
+                shape = RoundedCornerShape(
+                    topStart = 5.dp,
+                    topEnd = 5.dp,
+                    bottomStart = 31.dp,
+                    bottomEnd = 31.dp
+                ),
+                predefinedIcon = Icons.Filled.TextFields,
+                text = if (AppConfig.mainLanguage.code == "en") "Caption" else "Descriere textuală",
+                iconColor = R.color.std_purple_dark,
+                screenWidth = screenWidth,
+                onClick = onCaptionClick,
+                onIconPress = onCaptionClick, // No special behavior
+            )
+
+            // Info button
+            if (showInfoButton) {
+                Spacer(modifier = Modifier.width(15.dp))
+                InfoButtonWithPulse(
+                    onClick = onInfoClick,
+                    isPulsing = true
+                )
+            }
+        }
+    }
+}
+
 @Composable
 fun OptionButton(
     text: String,
@@ -1358,53 +1408,6 @@ fun MainActionButton(
             fontFamily = robotoBold,
             color = colorResource(R.color.std_purple_dark)
         )
-    }
-}
-
-@Composable
-fun CaptionButtonSection(
-    screenWidth: Dp,
-    showInfoButton: Boolean,
-    onCaptionClick: () -> Unit,
-    onInfoClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height((Constants.STD_BUTTON_PAGE_HEIGHT).dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .offset(x = screenWidth * 0.23f)
-                .fillMaxWidth(0.77f),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Caption Button
-            MainActionButton(
-                shape = RoundedCornerShape(
-                    topStart = 5.dp,
-                    topEnd = 5.dp,
-                    bottomStart = 31.dp,
-                    bottomEnd = 31.dp
-                ),
-                predefinedIcon = Icons.Filled.TextFields,
-                text = if (AppConfig.mainLanguage.code == "en") "Caption" else "Descriere în text",
-                iconColor = R.color.std_purple_dark,
-                screenWidth = screenWidth,
-                onClick = onCaptionClick,
-                onIconPress = {}, // No special behavior
-            )
-
-            // Info button
-            if (showInfoButton) {
-                Spacer(modifier = Modifier.width(15.dp))
-                InfoButtonWithPulse(
-                    onClick = onInfoClick,
-                    isPulsing = true
-                )
-            }
-        }
     }
 }
 
@@ -1627,7 +1630,7 @@ fun BottomNavigationBar(
                 Icon(
                     imageVector = Icons.Filled.Settings,
                     contentDescription = if (AppConfig.mainLanguage.code == "en") "Settings" else "Setări"
-                    )
+                )
             },
             label = {
                 Text(
@@ -1798,7 +1801,7 @@ fun HomeActivityWithOptionsPreview() {
         syncDays = 5,
         showDetectionOptions = true,
         detectionIconColor = R.color.std_cyan,
-        selectedDetectionOption = HomeActivity.DetectionOption.LIVE,
+        selectedDetectionOption = DetectionOption.LIVE,
         showSpeechDialog = false,
         speechText = "",
         speechProcessText = "",
@@ -1832,7 +1835,7 @@ fun HomeActivityWithSpeakingDialogPreview() {
         syncDays = 5,
         showDetectionOptions = false,
         detectionIconColor = R.color.std_purple_dark,
-        selectedDetectionOption = HomeActivity.DetectionOption.LIVE,
+        selectedDetectionOption = DetectionOption.LIVE,
         showSpeechDialog = true,
         speechText = "Where is my phone, tablet, apple, and laptop",
         speechProcessText = "ddd",

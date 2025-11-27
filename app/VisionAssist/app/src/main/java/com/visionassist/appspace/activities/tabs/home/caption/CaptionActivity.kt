@@ -1,6 +1,6 @@
 @file:Suppress("COMPOSE_APPLIER_CALL_MISMATCH")
 
-package com.visionassist.appspace.activities.tabs.reports
+package com.visionassist.appspace.activities.tabs.home.caption
 
 import android.content.Intent
 import android.net.Uri
@@ -100,10 +100,9 @@ import androidx.core.content.FileProvider
 import com.visionassist.appspace.BaseActivity
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
-import com.visionassist.appspace.activities.tabs.home.caption.CaptionActivity
 import com.visionassist.appspace.activities.tabs.home.detection.LiveDetectionActivity
-import com.visionassist.appspace.activities.tabs.home.detection.StaticDetectionActivity
 import com.visionassist.appspace.activities.tabs.home.findmyobjects.FindMyObjectActivity
+import com.visionassist.appspace.activities.tabs.reports.EnvironmentReportsActivity
 import com.visionassist.appspace.activities.tabs.settings.SettingsActivity
 import com.visionassist.appspace.jetpack.managers.ErrorDialogManager
 import com.visionassist.appspace.models.sttengine.SpeechRecognizer
@@ -135,7 +134,7 @@ import kotlinx.coroutines.delay
 import java.io.File
 import java.io.IOException
 
-class EnvironmentReportsActivity : BaseActivity() {
+class CaptionActivity : BaseActivity() {
     private val TAG = "HomeActivity"
 
     // State variables
@@ -538,7 +537,10 @@ class EnvironmentReportsActivity : BaseActivity() {
                                 uiLocked = false
                                 locked = false
                             } else {
-                                mainHandler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS.toLong())
+                                mainHandler.postDelayed(
+                                    this,
+                                    Constants.LOAD_CHECK_DELAY_MS.toLong()
+                                )
                             }
                         }
                     }
@@ -612,7 +614,10 @@ class EnvironmentReportsActivity : BaseActivity() {
                             if (ttsManager.isDoneSpeaking) {
                                 handleSpeechDialogTap()
                             } else {
-                                mainHandler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS.toLong())
+                                mainHandler.postDelayed(
+                                    this,
+                                    Constants.LOAD_CHECK_DELAY_MS.toLong()
+                                )
                             }
                         }
                     }
