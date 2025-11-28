@@ -197,12 +197,12 @@
     <string name="intro_dialog_en">You have now on the screen the tutorial dialog, tap anywhere and the next prompt will show up visually and auditive, by swiping up you will close the dialog</string>
     <string name="intro_dialog_ro">Acum aveți pe ecran dialogul tutorial, atingeți oriunde și următorul prompt va apărea vizual și auditiv, glisând în sus veți închide dialogul</string>
     <string name="home_page_intro_en">
-        You are now on the home page and the tutorial display has closed up.
+        You are now on the application home page, after this prompt the tutorial dialog will close.
         In the middle section you have the detection and caption buttons, tap anywhere near them to launch their pages.
         Below the buttons is the navigation bar, tap it or tap above it, or you can swipe from right to left to navigate to settings page
     </string>
     <string name="home_page_intro_ro">
-        Acum vă aflați pe pagina principală, iar afișajul tutorialului s-a închis.
+        Acum vă aflați pe pagina principală a aplicației, iar ecranul de tutorial se va închide după acest prompt.
         În secțiunea din mijloc aveți butoanele de detectare și legendă; atingeți oriunde lângă ele pentru a lansa paginile corespunzătoare.
         Sub butoane se află bara de navigare; atingeți-o sau atingeți deasupra ei sau puteți glisa de la dreapta la stânga pentru a naviga la pagina de setări
     </string>

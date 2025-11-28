@@ -18,7 +18,7 @@ public abstract class BaseActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
 
         // Check if app was killed and restored
-        if (PhoneStatusMonitor.getInstance().profileLoaded) {
+        if (!PhoneStatusMonitor.getInstance().profileLoaded) {
             Log.w(TAG, "App state lost due to process death, restarting from MainActivity");
             restartFromMainActivity();
         }

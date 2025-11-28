@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.util.Log
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityManager
 import androidx.activity.compose.setContent
@@ -99,6 +100,7 @@ class BlindHomeActivity : BaseActivity() {
     private lateinit var classNames: List<String>
 
     // Volume button tracking
+    private var requestToStop = false
     private var locked = false
     private var lockedVolumeDown = false
     private var uiLocked = false
@@ -117,6 +119,7 @@ class BlindHomeActivity : BaseActivity() {
     private var waitForTalkback = false
     private var tutorialStep = -1
     private var alreadyMenu = false
+    private var playSound = true
 
     private var syncStatus: Int = 0
     private var syncDays: Int = 0
@@ -164,7 +167,10 @@ class BlindHomeActivity : BaseActivity() {
                 onPermissionGranted
             )
 
-        if (waitForTalkback) checkTutorialAndProceed()
+        if (waitForTalkback) {
+            waitForTalkback = false
+            checkTutorialAndProceed()
+        }
 
         if (hasToExecAfterResume) {
             hasToExecAfterResume = false
@@ -173,12 +179,14 @@ class BlindHomeActivity : BaseActivity() {
 
         if (returnFromFindMyObject) {
             returnFromFindMyObject = false
+            playSound = false
             handleSpeechDialogTap()
         }
     }
 
     private fun handleSpeechDialogTap() {
         // Cancel speech recognition
+        requestToStop = true
         cancelAllHandlers()
         mainHandler.removeCallbacksAndMessages(null)
         soundManager.releaseCallback()
@@ -186,9 +194,17 @@ class BlindHomeActivity : BaseActivity() {
         locked = true
         lockedVolumeDown = false
 
-        soundManager.play(SoundConstants.STT_SPEAK_CLOSE_ID, 0.7f, 0.7f) {
-            showSpeechDialog.value = false
-            mainHandler.postDelayed({
+        val waitTime =
+            if (playSound)
+                Constants.ANIMATION_DELAY.toLong() + SoundConstants.STT_SPEAK_CLOSE_MS.toLong() - Constants.ANIMATION_DELAY.toLong()
+            else
+                Constants.ANIMATION_DELAY.toLong()
+
+        if (playSound)
+            soundManager.play(SoundConstants.STT_SPEAK_CLOSE_ID, 0.7f, 0.7f) {}
+        showSpeechDialog.value = false
+        mainHandler.postDelayed(
+            {
                 uiLocked = false
                 retrySpeech.value = false
                 sendSpeech.value = false
@@ -196,8 +212,10 @@ class BlindHomeActivity : BaseActivity() {
                 speechText.value = ""
                 speechProcessText.value = ""
                 locked = false
-            }, Constants.ANIMATION_DELAY.toLong())
-        }
+                playSound = true
+            },
+            waitTime
+        )
     }
 
     private fun checkTalkBackAndProceed() {
@@ -221,7 +239,7 @@ class BlindHomeActivity : BaseActivity() {
                 if (ttsManager.isDoneSpeaking) {
                     mainHandler.post(afterTTSSpeech)
                 } else {
-                    mainHandler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS.toLong())
+                    mainHandler.postDelayed(this, 500)
                 }
             }
         }
@@ -245,6 +263,7 @@ class BlindHomeActivity : BaseActivity() {
         tutorialStep++
         if (tutorialStep == 5)
             if (AppConfig.mainLanguage.code != "en") {
+                tutorialStep--
                 if (!alreadyMenu)
                     speakMenuAndCloseTutorial()
                 else
@@ -252,32 +271,33 @@ class BlindHomeActivity : BaseActivity() {
                 return
             }
         if (tutorialStep == 12) {
+            tutorialStep--
             if (!alreadyMenu)
                 speakMenuAndCloseTutorial()
             else
                 closeTutorial()
             return
         }
-
-        var textToSpeak = ""
-        when (tutorialStep) {
+        val textToSpeak: String = when (tutorialStep) {
             0 -> {
-                textToSpeak = load_tutorialDialog(this)
+                load_tutorialDialog(this)
             }
 
             1, 2 -> {
-                textToSpeak = load_detectionTutorialSpeak(this, tutorialStep)
+                load_detectionTutorialSpeak(this, tutorialStep).replace("~", "")
             }
 
             3, 4 -> {
-                textToSpeak = load_captionTutorialSpeak(this, tutorialStep)
+                load_captionTutorialSpeak(this, tutorialStep).replace("~", "")
             }
 
-            else -> load_speakTutorialSpeak(this, tutorialStep)
+            else -> load_speakTutorialSpeak(this, tutorialStep).replace("~", "")
         }
 
         ttsManager.speak(textToSpeak, AppConfig.tts_pitch, AppConfig.tts_speech_rate, true, null)
-        currentTutorialText.value = textToSpeak
+        mainHandler.postDelayed({
+            currentTutorialText.value = textToSpeak
+        }, SoundConstants.TTS_REPEAT_MS.toLong())
     }
 
     private fun handleTutorialClick() {
@@ -300,11 +320,13 @@ class BlindHomeActivity : BaseActivity() {
     }
 
     private fun homePageDescription() {
+        val textBefore =
+            if (ttsManager.currentLocale.language == "en") "Account status: " else "Status cont: "
         when (syncStatus) {
             0 -> unlockUI()
             1 -> {
                 ttsManager.speak(
-                    load_syncStatusTextSpeech(syncDays),
+                    textBefore + load_syncStatusTextSpeech(syncDays),
                     AppConfig.tts_pitch,
                     AppConfig.tts_speech_rate,
                     true,
@@ -315,7 +337,7 @@ class BlindHomeActivity : BaseActivity() {
 
             2 -> {
                 ttsManager.speak(
-                    load_syncErrorSpeech(this),
+                    textBefore + load_syncErrorSpeech(this),
                     AppConfig.tts_pitch,
                     AppConfig.tts_speech_rate,
                     true,
@@ -329,6 +351,7 @@ class BlindHomeActivity : BaseActivity() {
     private fun unlockUI() {
         uiLocked = false
         locked = false
+        Log.i(TAG, "UI unlocked")
     }
 
     private fun checkPhoneStatusAndNavigate(onSuccess: () -> Unit) {
@@ -430,6 +453,7 @@ class BlindHomeActivity : BaseActivity() {
 
             else -> {
                 if (!lockedVolumeDown) {
+                    uiLocked = false
                     // Launch caption activity
                     ttsManager.speak(
                         if (ttsManager.currentLanguage == "en")
@@ -446,6 +470,7 @@ class BlindHomeActivity : BaseActivity() {
     }
 
     private fun launchSpeechRecognition(firstTimeSpeak: Boolean) {
+        requestToStop = false
         if (firstTimeSpeak) {
             if (AppConfig.mainLanguage.code == "ro") {
                 hasToExecAfterResume = true
@@ -535,7 +560,7 @@ class BlindHomeActivity : BaseActivity() {
             speechRecognizer.startListening(object :
                 SpeechRecognizer.RecognitionCallback {
                 override fun onResult(recognizedText: String, isFinalResult: Boolean) {
-                    if (isFinalResult) {
+                    if (isFinalResult && !requestToStop) {
                         isSpeaking.value = false
                         speechText.value = formatRecognizedText(recognizedText)
                         //vibrate(haptic_model0())
@@ -547,7 +572,8 @@ class BlindHomeActivity : BaseActivity() {
                         vibrateIfEnabled()
                         */
                     } else {
-                        speechText.value = formatRecognizedText(recognizedText)
+                        if (!isFinalResult)
+                            speechText.value = formatRecognizedText(recognizedText)
                     }
                 }
 
@@ -669,7 +695,7 @@ class BlindHomeActivity : BaseActivity() {
                         resetSpeechStates()
                         launchSpeechRecognition(false)
                     } else {
-                        uiLocked = true
+                        //uiLocked = true
                         locked = true
                         // Launch static detection
                         ttsManager.speak(

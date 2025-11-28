@@ -657,7 +657,7 @@ class LoadProfileActivity : ComponentActivity() {
                     }
                 }
             }
-            if (profileJson.getBoolean("env_reports")) {
+            if (!profileJson.getBoolean("blindness") && profileJson.getBoolean("env_reports")) {
                 val hashCacheFile = findProfileFileInFolder(uri, Constants.ENV_REPORTS_FILE_NAME)
                 if (hashCacheFile != null) {
                     if (!copyFileToAppDirectory(hashCacheFile, Constants.ENV_REPORTS_FILE_NAME)) {

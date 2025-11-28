@@ -153,8 +153,8 @@ public class Constants {
     public static final long MIN_MEM_NEEDED=15*1024*1024+5*1024*1024;//15MB+5MB EXTRA
 
     // Drag gestures parameters
-    public static final float MIN_HDISTANCE_THRESHOLD=0.2f;
-    public static final float MIN_VDISTANCE_THRESHOLD=0.2f;
+    public static final float MIN_HDISTANCE_THRESHOLD=0.15f;
+    public static final float MIN_VDISTANCE_THRESHOLD=0.15f;
 
     // UserAccessibility1Activity params
     public static final int PREVIEW_UPDATE_DELAY = 1000;

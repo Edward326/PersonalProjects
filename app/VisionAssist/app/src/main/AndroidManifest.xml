@@ -104,11 +104,15 @@
             android:screenOrientation="portrait" />
 
         <activity
+            android:name=".activities.tabs.home.detection.StaticDetectionActivity"
+            android:screenOrientation="portrait" />
+
+        <activity
             android:name=".activities.tabs.home.detection.LiveDetectionActivity"
             android:screenOrientation="portrait" />
 
         <activity
-            android:name=".activities.tabs.home.detection.StaticDetectionActivity"
+            android:name=".activities.tabs.home.detection.LiveCameraXActivity"
             android:screenOrientation="portrait" />
 
         <activity
@@ -116,7 +120,31 @@
             android:screenOrientation="portrait" />
 
         <activity
+            android:name=".activities.tabs.reports.EnvironmentReportsActivity"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".activities.tabs.settings.SettingsActivity"
+            android:screenOrientation="portrait" />
+
+        <activity
             android:name=".activities.tabs.home.findmyobjects.FindMyObjectActivity"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".activities.tabs.home.detection.DetectionCameraXActivity"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".activities.tabs.home.caption.CaptionCameraXActivity"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".activities.tabs.settings.BlindSettingsActivity"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".activities.tabs.home.findmyobjects.BlindFindMyObjectActivity"
             android:screenOrientation="portrait" />
 
 

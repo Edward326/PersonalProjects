@@ -11,11 +11,11 @@ public class AppConfig {
     public static String visual_condition;
     public static float tts_speech_rate=Constants.TTS_SPEECH_RATE;
     public static float tts_pitch=Constants.TTS_PITCH;
-    public static String bbox_color;
-    public static String label_color;
-    public static String label_bck_color;
-    public static boolean isBold;
-    public static boolean show_confidence;
+    public static String bbox_color="#00FF00";
+    public static String label_color="#FFFFFF";
+    public static String label_bck_color="#000000";
+    public static boolean isBold=true;
+    public static boolean show_confidence=true;
     public static String caption_color;
     public static String caption_bck_color;
     public static boolean haptics;

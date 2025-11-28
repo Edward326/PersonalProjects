@@ -34,9 +34,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.core.content.ContextCompat
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.activities.tabs.MotionManager
-import com.visionassist.appspace.activities.tabs.reports.EnvironmentReportsManagerKt
 import com.visionassist.appspace.jetpack.managers.ErrorDialogManager
-import com.visionassist.appspace.models.classifier.YOLOClassifier
 import com.visionassist.appspace.models.detector.DetectionResult
 import com.visionassist.appspace.models.detector.YOLODetector
 import com.visionassist.appspace.sound.SoundConstants
@@ -49,7 +47,6 @@ import com.visionassist.appspace.utils.haptic_model0
 import com.visionassist.appspace.utils.startBatteryLevelCheck
 import com.visionassist.appspace.utils.vibrate
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -63,8 +60,6 @@ class BlindFindMyObjectActivity : ComponentActivity() {
     // Models
     private lateinit var motionMonitor: MotionManager
     private lateinit var currentDetectorModel: YOLODetector
-    private val classifier: YOLOClassifier =
-        PhoneStatusMonitor.getInstance().modelManager.classifier
     private var canSwitchModels = false
 
     // Detection data
@@ -76,7 +71,6 @@ class BlindFindMyObjectActivity : ComponentActivity() {
     private var resultInText = mutableListOf<String>()
     private val threadCount = AtomicInteger(0)
     private var avgDetectorLatency = 0L
-    private var avgClassifierLatency = 0L
 
     // Camera
     private var cameraProvider: ProcessCameraProvider? = null
@@ -106,13 +100,12 @@ class BlindFindMyObjectActivity : ComponentActivity() {
         .ttsManager
     private var isSpeakingPhase = false
     private var currentSentenceIndex = 0
+    private var locked = false
 
     data class ThreadResult(
         val detectionResult: DetectionResult?,
         val bitmap: Bitmap?,
-        val sceneClassId: Int,
-        val detectorLatency: Long,
-        val classifierLatency: Long
+        val detectorLatency: Long
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -200,16 +193,16 @@ class BlindFindMyObjectActivity : ComponentActivity() {
     }
 
     private fun onResultReadyText() {
+        locked = true
         vibrate(haptic_model0())
         soundManager.play(SoundConstants.FIND_MY_OBJECT_DONE_ID, 0.7f, 0.7f) {
             val resultList = resultInText.toList()
-            isSpeakingPhase = false
             val textToSpeak1 =
                 if (resultList.lastIndex + 1 > 1)
                     "The application detected ${resultList.lastIndex + 1} objects in your environment"
                 else
                     "The application detected an single object in your environment"
-
+            isSpeakingPhase = true
             ttsManager.speak(
                 textToSpeak1,
                 AppConfig.tts_pitch,
@@ -245,6 +238,7 @@ class BlindFindMyObjectActivity : ComponentActivity() {
         soundManager.play(SoundConstants.FIND_MY_OBJECT_DONE_ID, 0.7f, 0.7f) {
             currentSentenceIndex = 0
             isSpeakingPhase = false
+            locked=false
         }
     }
 
@@ -346,34 +340,6 @@ class BlindFindMyObjectActivity : ComponentActivity() {
                         val currentThreadNo = "Thread_" + threadCount.get()
                         val bitmap = captureImageSync() ?: return@executeAsync null
 
-                        var sceneClassId = -1
-                        var classifierLatency = 0L
-
-                        val classifierLatch = CountDownLatch(1)
-
-                        if (AppConfig.env_reports) {
-                            BackgroundTaskExecutor.getInstance().executeAsync(
-                                {
-                                    val classifierStart = System.currentTimeMillis()
-                                    sceneClassId = classifier.detectScene(bitmap, currentThreadNo)
-                                    classifierLatency = System.currentTimeMillis() - classifierStart
-                                    null
-                                },
-                                object : BackgroundTaskExecutor.TaskCallback<Any?> {
-                                    override fun onSuccess(result: Any?) {
-                                        classifierLatch.countDown()
-                                    }
-
-                                    override fun onError(e: Exception) {
-                                        Log.e(TAG, currentThreadNo + "Classifier error", e)
-                                        classifierLatch.countDown()
-                                    }
-                                }
-                            )
-                        } else {
-                            classifierLatch.countDown() // Skip waiting if disabled
-                        }
-
                         // Run detector
                         val detectorStart = System.currentTimeMillis()
                         val detectionResult =
@@ -386,43 +352,31 @@ class BlindFindMyObjectActivity : ComponentActivity() {
 
                         if (foundClasses.isEmpty()) {
                             bitmap.recycle()
-                            return@executeAsync ThreadResult(null, null, -1, detectorLatency, 0)
+                            return@executeAsync ThreadResult(null, null, detectorLatency)
                         }
 
                         // Filter detection result
                         val filteredResult = filterDetectionResult(detectionResult, foundClasses)
 
-                        try {
-                            val finished = classifierLatch.await(1, TimeUnit.SECONDS)
-                            if (!finished) {
-                                Log.w(TAG, currentThreadNo + "Classifier timeout after 3 seconds")
-                            }
-                        } catch (e: InterruptedException) {
-                            Log.e(TAG, currentThreadNo + "Wait interrupted", e)
-                        }
-
                         // Now classifier is done, return result
                         ThreadResult(
                             filteredResult,
                             bitmap,
-                            sceneClassId,
                             detectorLatency,
-                            classifierLatency
                         )
                     },
                     object : BackgroundTaskExecutor.TaskCallback<ThreadResult?> {
                         override fun onSuccess(result: ThreadResult?) {
                             if (result == null || result.detectionResult == null) {
                                 updateLatencyStats(
-                                    result?.detectorLatency ?: 0,
-                                    result?.classifierLatency ?: 0
+                                    result?.detectorLatency ?: 0
                                 )
                                 //threadCount.decrementAndGet()
                                 return
                             }
 
                             // Update latency statistics
-                            updateLatencyStats(result.detectorLatency, result.classifierLatency)
+                            updateLatencyStats(result.detectorLatency)
 
                             // Check if another thread already finished
                             if (resultsReady.compareAndSet(false, true)) {
@@ -572,14 +526,10 @@ class BlindFindMyObjectActivity : ComponentActivity() {
         )
     }
 
-    private fun updateLatencyStats(detectorLatency: Long, classifierLatency: Long) {
+    private fun updateLatencyStats(detectorLatency: Long) {
         synchronized(this) {
             if (detectorLatency > 0) {
                 avgDetectorLatency = (avgDetectorLatency + detectorLatency) /
-                        (2)
-            }
-            if (classifierLatency > 0) {
-                avgClassifierLatency = (avgClassifierLatency + classifierLatency) /
                         (2)
             }
         }
@@ -601,31 +551,13 @@ class BlindFindMyObjectActivity : ComponentActivity() {
             }
         }
 
-        val listIndices = result.detectionResult?.classIndices as List<Int>
-        // Write environment report
-        if (AppConfig.env_reports) {
-            val batteryUsageIncrease = if (avgBatteryMoreUsed.value > 0f) {
-                1f - avgBatteryMoreUsed.value
-            } else {
-                0f
-            }
-            EnvironmentReportsManagerKt.writeDetectionReport(
-                this,
-                result.sceneClassId, listIndices,
-                threadCount.get(),
-                avgDetectorLatency,
-                avgClassifierLatency,
-                batteryUsageIncrease
-            )
-        }
-
         // Set result bitmap
         resultBitmap.value =
             currentDetectorModel.drawDetections(result.bitmap, result.detectionResult)
         resultInText = generateSpatialDescriptions(
             result.bitmap!!.width,
             result.bitmap.height,
-            result.detectionResult
+            result.detectionResult!!
         )
 
         // Signal display ready
@@ -647,11 +579,17 @@ class BlindFindMyObjectActivity : ComponentActivity() {
     }
 
     private fun handleBackClick() {
+        if (locked) return
         soundManager.releaseCallback()
         ttsManager.stopSpeaking()
-        vibrate(haptic_model0())
-
-        finish()
+        ttsManager.speak(
+            "Returning to home page",
+            AppConfig.tts_pitch,
+            AppConfig.tts_speech_rate,
+            false,
+            haptic_model0()
+        )
+        waitForTTSSpeech { finish() }
         //startActivity(Intent(this, HomeActivity::class.java))
     }
 
@@ -665,6 +603,8 @@ class BlindFindMyObjectActivity : ComponentActivity() {
     }
 
     private fun handleNextClick() {
+        if (locked) return
+
         soundManager.releaseCallback()
         ttsManager.stopSpeaking()
         vibrate(haptic_model0())
@@ -832,18 +772,17 @@ class BlindFindMyObjectActivity : ComponentActivity() {
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         return when (keyCode) {
-            KeyEvent.KEYCODE_VOLUME_DOWN -> {
+            KeyEvent.KEYCODE_VOLUME_UP -> {
                 handleBackClick()
                 true
             }
 
-            KeyEvent.KEYCODE_VOLUME_UP -> {
+            KeyEvent.KEYCODE_VOLUME_DOWN -> {
                 if (isSpeakingPhase)
                     ttsManager.onVolumeDownPressed()
-
-                if (remainingClassIndices.isNotEmpty() && showResult.value) {
-                    handleNextClick()
-                }
+                else
+                    if (remainingClassIndices.isNotEmpty() && showResult.value)
+                        handleNextClick()
                 true
             }
 

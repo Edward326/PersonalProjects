@@ -169,6 +169,7 @@ class HomeActivity : BaseActivity() {
     private lateinit var classNames: List<String>
 
     // Volume button tracking
+    private var requestToStop = false
     private var locked = false
     private var lockedVolumeDown = false
     private var uiLocked = false
@@ -496,6 +497,7 @@ class HomeActivity : BaseActivity() {
     }
 
     private fun launchSpeechRecognition(firstTimeSpeak: Boolean) {
+        requestToStop=false
         if (firstTimeSpeak) {
             if (AppConfig.mainLanguage.code == "ro") {
                 hasToExecAfterResume = true
@@ -539,7 +541,10 @@ class HomeActivity : BaseActivity() {
                                 uiLocked = false
                                 locked = false
                             } else {
-                                mainHandler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS.toLong())
+                                mainHandler.postDelayed(
+                                    this,
+                                    Constants.LOAD_CHECK_DELAY_MS.toLong()
+                                )
                             }
                         }
                     }
@@ -582,7 +587,7 @@ class HomeActivity : BaseActivity() {
             speechRecognizer.startListening(object :
                 SpeechRecognizer.RecognitionCallback {
                 override fun onResult(recognizedText: String, isFinalResult: Boolean) {
-                    if (isFinalResult) {
+                    if (isFinalResult && !requestToStop) {
                         isSpeaking.value = false
                         speechText.value = formatRecognizedText(recognizedText)
                         mainHandler.postDelayed({ processRecognizedSpeech() }, 1000)
@@ -593,7 +598,8 @@ class HomeActivity : BaseActivity() {
                         locked = false
                         vibrateIfEnabled()*/
                     } else {
-                        speechText.value = formatRecognizedText(recognizedText)
+                        if (!isFinalResult)
+                            speechText.value = formatRecognizedText(recognizedText)
                     }
                 }
 
@@ -613,7 +619,10 @@ class HomeActivity : BaseActivity() {
                             if (ttsManager.isDoneSpeaking) {
                                 handleSpeechDialogTap()
                             } else {
-                                mainHandler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS.toLong())
+                                mainHandler.postDelayed(
+                                    this,
+                                    Constants.LOAD_CHECK_DELAY_MS.toLong()
+                                )
                             }
                         }
                     }
@@ -696,6 +705,7 @@ class HomeActivity : BaseActivity() {
 
     private fun handleSpeechDialogTap() {
         // Cancel speech recognition
+        requestToStop = true
         mainHandler.removeCallbacksAndMessages(null)
         soundManager.releaseCallback()
         speechRecognizer.stopListening()
@@ -1401,12 +1411,13 @@ fun MainActionButton(
                 )
             }
         }
-        Spacer(modifier = Modifier.width(buttonWidth * 0.05f))
+        Spacer(modifier = Modifier.width(buttonWidth * 0.025f))
         Text(
             text = text,
             fontSize = Constants.STD_SUBTITLE_SIZE.sp,
             fontFamily = robotoBold,
-            color = colorResource(R.color.std_purple_dark)
+            color = colorResource(R.color.std_purple_dark),
+            lineHeight = 30.sp
         )
     }
 }
