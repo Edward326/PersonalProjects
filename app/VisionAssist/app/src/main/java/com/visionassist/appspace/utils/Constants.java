@@ -112,7 +112,7 @@ public class Constants {
     public static final int SUCCESS_NOTIFICATION_DELAY = 5000;
 
     // Number of Models to load in main activity
-    public static final int MODELS_COUNT = 6;
+    public static final int MODELS_COUNT = 5;
 
     // Standard font size and button size
     public static final int LOGO_SIZE = 200;

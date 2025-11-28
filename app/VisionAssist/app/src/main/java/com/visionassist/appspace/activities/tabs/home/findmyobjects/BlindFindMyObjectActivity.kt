@@ -37,6 +37,7 @@ import com.visionassist.appspace.activities.tabs.MotionManager
 import com.visionassist.appspace.jetpack.managers.ErrorDialogManager
 import com.visionassist.appspace.models.detector.DetectionResult
 import com.visionassist.appspace.models.detector.YOLODetector
+import com.visionassist.appspace.models.detector.YOLODetectorPool
 import com.visionassist.appspace.sound.SoundConstants
 import com.visionassist.appspace.utils.AppConfig
 import com.visionassist.appspace.utils.BackgroundTaskExecutor
@@ -59,7 +60,8 @@ class BlindFindMyObjectActivity : ComponentActivity() {
 
     // Models
     private lateinit var motionMonitor: MotionManager
-    private lateinit var currentDetectorModel: YOLODetector
+    private lateinit var currentDetectorModel: YOLODetectorPool
+    private var preferNanoModel = false
     private var canSwitchModels = false
 
     // Detection data
@@ -114,22 +116,15 @@ class BlindFindMyObjectActivity : ComponentActivity() {
         extractIntentData()
         cameraExecutor = Executors.newSingleThreadExecutor()
 
-        val detectorAcc = PhoneStatusMonitor.getInstance().modelManager.detectorAcc
-        val detectorSpeed = PhoneStatusMonitor.getInstance().modelManager.detectorSpeed
-        if (detectorSpeed != null && detectorAcc != null) canSwitchModels = true
-        currentDetectorModel =
-            detectorAcc ?: PhoneStatusMonitor.getInstance().modelManager.detectorSpeed
+        currentDetectorModel = PhoneStatusMonitor.getInstance().modelManager.detector
 
         motionMonitor = MotionManager(
             this,
             mainHandler
         ) {
-            if (motionMonitor.linearSpeed > Constants.LINEAR_SPEED_THRESHOLD || motionMonitor.rotationSpeed > Constants.ROTATION_SPEED_THRESHOLD) {
-                currentDetectorModel = detectorSpeed
-            } else {
-                currentDetectorModel = detectorAcc
-            }
+            preferNanoModel = motionMonitor.linearSpeed > Constants.LINEAR_SPEED_THRESHOLD || motionMonitor.rotationSpeed>Constants.ROTATION_SPEED_THRESHOLD
         }
+
 
         setContent {
             BlindFindMyObjectScreen(
@@ -336,14 +331,21 @@ class BlindFindMyObjectActivity : ComponentActivity() {
             if (!resultsReady.get()) {
                 BackgroundTaskExecutor.getInstance().executeAsync(
                     {
-                        // Capture image
                         val currentThreadNo = "Thread_" + threadCount.get()
+                        val detectorWrapper = currentDetectorModel.acquireDetector(
+                            preferNanoModel,  // Prefer nano if moving fast
+                            5  // 5 second timeout
+                        )
+                        if(detectorWrapper==null)
+                            return@executeAsync ThreadResult(null, null, 0)
+
+                        val detector = detectorWrapper.detector
+
                         val bitmap = captureImageSync() ?: return@executeAsync null
 
                         // Run detector
                         val detectorStart = System.currentTimeMillis()
-                        val detectionResult =
-                            currentDetectorModel.detectObjects(bitmap, currentThreadNo)
+                        val detectionResult = detector.detectObjects(bitmap, currentThreadNo)
                         val detectorLatency = System.currentTimeMillis() - detectorStart
 
                         // Check if found target objects
@@ -351,12 +353,14 @@ class BlindFindMyObjectActivity : ComponentActivity() {
                         val foundClasses = remainingClassIndices.filter { it in detectedClasses }
 
                         if (foundClasses.isEmpty()) {
+                            currentDetectorModel.releaseDetector(detectorWrapper)
                             bitmap.recycle()
                             return@executeAsync ThreadResult(null, null, detectorLatency)
                         }
 
                         // Filter detection result
-                        val filteredResult = filterDetectionResult(detectionResult, foundClasses)
+                        val filteredResult = filterDetectionResult(detectionResult, foundClasses, detector )
+                        currentDetectorModel.releaseDetector(detectorWrapper)
 
                         // Now classifier is done, return result
                         ThreadResult(
@@ -476,7 +480,8 @@ class BlindFindMyObjectActivity : ComponentActivity() {
 
     private fun filterDetectionResult(
         original: DetectionResult,
-        foundClasses: List<Int>
+        foundClasses: List<Int>,
+        detector: YOLODetector
     ): DetectionResult {
         // Get original detection data
         val originalBoxes = original.boundingBoxes
@@ -502,7 +507,7 @@ class BlindFindMyObjectActivity : ComponentActivity() {
 
                 // IMPORTANT: Use synonym from objectsToFind, not YOLO label
                 // Example: User said "keys" → Use "keys" not "key"(detector label)
-                val synonym = objectsToFind[classIdx] ?: currentDetectorModel.getClassName(classIdx)
+                val synonym = objectsToFind[classIdx] ?: detector.getClassName(classIdx)
                 filteredLabels.add(synonym)
 
                 Log.d(
@@ -553,7 +558,7 @@ class BlindFindMyObjectActivity : ComponentActivity() {
 
         // Set result bitmap
         resultBitmap.value =
-            currentDetectorModel.drawDetections(result.bitmap, result.detectionResult)
+            YOLODetector.drawDetections(result.bitmap, result.detectionResult)
         resultInText = generateSpatialDescriptions(
             result.bitmap!!.width,
             result.bitmap.height,
@@ -595,9 +600,6 @@ class BlindFindMyObjectActivity : ComponentActivity() {
 
     private fun reloadDetectionPhase() {
         // Reset states
-        currentDetectorModel =
-            PhoneStatusMonitor.getInstance().modelManager.detectorAcc
-                ?: PhoneStatusMonitor.getInstance().modelManager.detectorSpeed
         showResult.value = false
         resultBitmap.value?.recycle()
     }

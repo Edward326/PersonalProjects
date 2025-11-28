@@ -3,24 +3,21 @@ package com.visionassist.appspace.models;
 import static com.visionassist.appspace.utils.UtilsKt.load_sceneClassifierError;
 import static com.visionassist.appspace.utils.UtilsKt.load_speechRecognizerError;
 import static com.visionassist.appspace.utils.UtilsKt.load_translaterError;
-
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
-
 import com.visionassist.appspace.PhoneStatusMonitor;
 import com.visionassist.appspace.database.NetworkUtils;
 import com.visionassist.appspace.jetpack.managers.ErrorDialogManager;
 import com.visionassist.appspace.jetpack.managers.InfoNotificationManager;
 import com.visionassist.appspace.models.captioner.BLIPModel;
 import com.visionassist.appspace.models.classifier.YOLOClassifier;
-import com.visionassist.appspace.models.detector.YOLODetector;
+import com.visionassist.appspace.models.detector.YOLODetectorPool;
 import com.visionassist.appspace.models.sttengine.SpeechRecognizer;
 import com.visionassist.appspace.models.translator.CaptionTranslator;
 import com.visionassist.appspace.utils.AppConfig;
 import com.visionassist.appspace.utils.BackgroundTaskExecutor;
 import com.visionassist.appspace.utils.Constants;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,8 +25,7 @@ public class ModelManager {
     private static final String TAG = "ModelManager";
 
     // Model instances
-    private YOLODetector detector;
-    private YOLODetector detectorSpeed;
+    private YOLODetectorPool detector;
     private BLIPModel captioner;
     private YOLOClassifier classifier;
     private SpeechRecognizer speechRecognizer;
@@ -44,8 +40,6 @@ public class ModelManager {
 
     // Error tracking
     private int loadedModelsCount = 0;
-    private int detectorModelsCount = 0;
-    private boolean waitingForOtherDetector = false;
 
     // Translator download state
     private Runnable translatorDownloadNotification = null;
@@ -69,8 +63,9 @@ public class ModelManager {
         this.pendingNotifications.clear();
 
         // Start loading models in sequence
-        loadDetectorAcc();
-        loadDetectorSpeed();
+        //loadDetectorAcc();
+        //loadDetectorSpeed();
+        loadDetector();
         loadCaptioner();
         loadClassifier();
         loadSpeechRecognizer();
@@ -78,103 +73,30 @@ public class ModelManager {
         waitForAll();
     }
 
-    private void loadDetectorAcc() {
+    private void loadDetector() {
         executor.executeAsync(
                 () -> {
-                    detector = new YOLODetector(PhoneStatusMonitor.getInstance().getCurrentActivity());
-                    return detector.loadModel(Constants.YOLO_MODEL_DETECTOR_ACC_FILE,"S");
+                    detector = new YOLODetectorPool(PhoneStatusMonitor.getInstance().getCurrentActivity());
+                    // Determine motion state (use gyroscope/accelerometer data if available)
+                    boolean success = detector.initialize();
+                    return success ? 0 : -1;
                 },
                 new BackgroundTaskExecutor.TaskCallback<>() {
                     @Override
                     public void onSuccess(Integer result) {
                         if (result == -1) {
-                            Log.e(TAG, "Detector failed to load, model selected:" + Constants.YOLO_MODEL_DETECTOR_ACC_FILE);
-                            // Check back up alternative
-                            if (detectorModelsCount == 1) {
-                                detector = null;
-                                loadedModelsCount++;
-                            } else {
-                                detector = null;
-                                if (waitingForOtherDetector)
-                                    handleCriticalError(Constants.DETECTOR_LOAD_ERROR);
-                                else {
-                                    waitingForOtherDetector = true;
-                                    loadedModelsCount++;
-                                }
-                            }
+                            Log.e(TAG, "Detector pool failed to initialize");
+                            handleCriticalError(Constants.DETECTOR_LOAD_ERROR);
                         } else {
-                            Log.d(TAG, "Detector loaded successfully, model selected:" + Constants.YOLO_MODEL_DETECTOR_ACC_FILE);
-                            detectorModelsCount++;
+                            Log.d(TAG, "Detector pool initialized successfully");
                             loadedModelsCount++;
                         }
                     }
 
                     @Override
                     public void onError(Exception e) {
-                        Log.e(TAG, "Detector loading exception, model selected:" + Constants.YOLO_MODEL_DETECTOR_ACC_FILE, e);
-                        if (detectorModelsCount == 1) {
-                            detector = null;
-                            loadedModelsCount++;
-                        } else {
-                            detector = null;
-                            if (waitingForOtherDetector)
-                                handleCriticalError(Constants.DETECTOR_LOAD_ERROR);
-                            else {
-                                waitingForOtherDetector = true;
-                                loadedModelsCount++;
-                            }
-                        }
-                    }
-                }
-        );
-    }
-
-    private void loadDetectorSpeed() {
-        executor.executeAsync(
-                () -> {
-                    detectorSpeed = new YOLODetector(PhoneStatusMonitor.getInstance().getCurrentActivity());
-                    return detectorSpeed.loadModel(Constants.YOLO_MODEL_DETECTOR_SPEED_FILE,"N");
-                },
-                new BackgroundTaskExecutor.TaskCallback<>() {
-                    @Override
-                    public void onSuccess(Integer result) {
-                        if (result == -1) {
-                            Log.e(TAG, "Detector failed to load, model selected:" + Constants.YOLO_MODEL_DETECTOR_SPEED_FILE);
-                            // Check back up alternative
-                            if (detectorModelsCount == 1) {
-                                detectorSpeed = null;
-                                loadedModelsCount++;
-                            } else {
-                                detectorSpeed = null;
-                                if (waitingForOtherDetector)
-                                    handleCriticalError(Constants.DETECTOR_LOAD_ERROR);
-                                else {
-                                    waitingForOtherDetector = true;
-                                    loadedModelsCount++;
-                                }
-                            }
-                        } else {
-                            Log.d(TAG, "Detector loaded successfully, model selected:" + Constants.YOLO_MODEL_DETECTOR_SPEED_FILE);
-                            detectorModelsCount++;
-                            loadedModelsCount++;
-                        }
-                    }
-
-                    @Override
-                    public void onError(Exception e) {
-                        Log.e(TAG, "Detector loading exception, model selected:" + Constants.YOLO_MODEL_DETECTOR_SPEED_FILE, e);
-                        if (detectorModelsCount == 1) {
-                            detectorSpeed = null;
-                            loadedModelsCount++;
-                        } else {
-                            detectorSpeed = null;
-                            if (waitingForOtherDetector)
-                                handleCriticalError(Constants.DETECTOR_LOAD_ERROR);
-                            else {
-                                waitingForOtherDetector = true;
-                                loadedModelsCount++;
-                            }
-                        }
+                        Log.e(TAG, "Error loading detector pool", e);
+                        handleCriticalError(Constants.DETECTOR_LOAD_ERROR);
                     }
                 }
         );
@@ -481,12 +403,8 @@ public class ModelManager {
         phoneMonitor.shutdownApp(errorDialog, phoneMonitor.getCurrentActivity());
     }
 
-    public YOLODetector getDetectorAcc() {
+    public YOLODetectorPool getDetector() {
         return detector;
-    }
-
-    public YOLODetector getDetectorSpeed() {
-        return detectorSpeed;
     }
 
     public BLIPModel getCaptioner() {
@@ -513,7 +431,7 @@ public class ModelManager {
 
         if (detector != null) {
             try {
-                detector.close();
+                detector.cleanup();
                 Log.d(TAG, "Detector closed");
             } catch (Exception e) {
                 Log.e(TAG, "Error closing detector", e);

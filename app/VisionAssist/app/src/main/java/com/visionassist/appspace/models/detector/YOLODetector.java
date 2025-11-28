@@ -416,7 +416,7 @@ public class YOLODetector {
         return unionArea > 0 ? intersectionArea / unionArea : 0.0f;
     }
 
-    public Bitmap drawDetections(Bitmap originalBitmap, DetectionResult detectionResult) {
+    public static Bitmap drawDetections(Bitmap originalBitmap, DetectionResult detectionResult) {
         if (originalBitmap == null || detectionResult == null) {
             Log.e(TAG, "Cannot draw detections: null inputs");
             return originalBitmap;
@@ -461,7 +461,7 @@ public class YOLODetector {
         return mutableBitmap;
     }
 
-    public Bitmap drawDetectionsWithSmartResize(
+    public static Bitmap drawDetectionsWithSmartResize(
             Bitmap originalBitmap,
             DetectionResult detectionResult,
             float offsetDp,
@@ -581,7 +581,7 @@ public class YOLODetector {
         return mutableBitmap;
     }
 
-    private RectF tryExpandBBox(
+    private static RectF tryExpandBBox(
             RectF originalBox,
             float offsetPx,
             int screenWidth,
@@ -609,7 +609,7 @@ public class YOLODetector {
         return expandedBox;
     }
 
-    private boolean isBoxTooClose(RectF box1, RectF box2, float minDistance) {
+    private static boolean isBoxTooClose(RectF box1, RectF box2, float minDistance) {
         // Calculate distances between boxes
         float horizontalGap;
         float verticalGap;
@@ -640,7 +640,7 @@ public class YOLODetector {
         return minGap < minDistance;
     }
 
-    private RectF adjustTextArea(
+    private static RectF adjustTextArea(
             RectF proposedTextArea,
             RectF bbox,
             int screenWidth,
@@ -726,7 +726,7 @@ public class YOLODetector {
         return textArea;
     }
 
-    private void drawBoundingBoxWithCustomText(
+    private static void drawBoundingBoxWithCustomText(
             Canvas canvas,
             RectF bbox,
             String labelText,
@@ -770,7 +770,7 @@ public class YOLODetector {
     /**
      * Parse color string from AppConfig format (#RRGGBB) to int
      */
-    private int parseColor(String colorString) {
+    private static int parseColor(String colorString) {
         try {
             if (colorString == null || colorString.isEmpty()) {
                 return 0xFF00FF00; // Default green
@@ -787,7 +787,7 @@ public class YOLODetector {
      * Draw single bounding box with label
      * Based on UserAccessibility1Activity.kt implementation
      */
-    private void drawBoundingBox(
+    private static void drawBoundingBox(
             Canvas canvas,
             RectF rect,
             String label,
@@ -853,7 +853,6 @@ public class YOLODetector {
                 textPaint
         );
     }
-
 
     public String getClassName(int i){
         return classNames.getOrDefault(i,"unknown");
