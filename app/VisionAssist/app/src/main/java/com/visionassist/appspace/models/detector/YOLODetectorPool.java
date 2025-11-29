@@ -178,7 +178,7 @@ public class YOLODetectorPool {
         long availableMemory = maxMemory - usedMemory;
 
         // Subtract reserved memory
-        long usableMemory = (long) (availableMemory - (availableMemory*0.4f));
+        long usableMemory = (long) (availableMemory - (availableMemory * 0.4f));
 
         return new MemoryInfo(
                 maxMemory,
@@ -348,6 +348,9 @@ public class YOLODetectorPool {
     ) {
         // Calculate max instances that fit in memory
         long maxNanoInstances = memory.usableMemory / MODEL_NANO_SIZE;
+
+        if (2 * MODEL_NANO_SIZE + MODEL_ACC_SIZE >= memory.usableMemory)
+            return new PoolConfiguration(1, 1);
 
         // Adjust based on motion state
         int nanoInstances;
