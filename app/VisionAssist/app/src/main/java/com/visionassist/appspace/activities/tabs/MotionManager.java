@@ -8,6 +8,8 @@ import android.hardware.SensorManager;
 import android.os.Handler;
 import android.util.Log;
 
+import java.util.Arrays;
+
 public class MotionManager implements SensorEventListener {
     private static final String TAG = "MotionManager";
 
@@ -52,12 +54,8 @@ public class MotionManager implements SensorEventListener {
         isMonitoring = true;
 
         // Reset arrays
-        for (int i = 0; i < ACC_WINDOW_SIZE; i++) {
-            recentAccelerations[i] = 0f;
-        }
-        for (int i = 0; i < GYRO_WINDOW_SIZE; i++) {
-            recentRotations[i] = 0f;
-        }
+        Arrays.fill(recentAccelerations, 0f);
+        Arrays.fill(recentRotations, 0f);
         accIndex = 0;
         gyroIndex = 0;
 
@@ -87,9 +85,8 @@ public class MotionManager implements SensorEventListener {
 
         // Combine both: use the maximum of the two
         // This way, either walking OR rotating will trigger fast model
-        float combinedSpeed = Math.max(linearSpeed, rotationSpeed * 2.0f);
 
-        return combinedSpeed;
+        return Math.max(linearSpeed, rotationSpeed * 2.0f);
     }
 
     /**
@@ -171,9 +168,7 @@ public class MotionManager implements SensorEventListener {
     }
 
     private void notifyActivity() {
-        callbackHandler.post(() -> {
-            callbackRunnable.run();
-        });
+        callbackHandler.post(() -> callbackRunnable.run());
     }
 
     @Override

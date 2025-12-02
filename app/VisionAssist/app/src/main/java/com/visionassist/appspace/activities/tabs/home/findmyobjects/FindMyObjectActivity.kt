@@ -13,6 +13,7 @@ import android.util.Size
 import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
@@ -77,6 +78,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
+import com.visionassist.appspace.activities.tabs.LightManager
 import com.visionassist.appspace.activities.tabs.MotionManager
 import com.visionassist.appspace.activities.tabs.reports.EnvironmentReportsManagerKt
 import com.visionassist.appspace.jetpack.design.BackArrowLargeFab
@@ -111,6 +113,7 @@ class FindMyObjectActivity : ComponentActivity() {
 
     // Models
     private lateinit var motionMonitor: MotionManager
+    private lateinit var lightMonitor: LightManager
     private lateinit var currentDetectorModel: YOLODetectorPool
     private var preferNanoModel = false
     private val classifier: YOLOClassifier =
@@ -133,6 +136,8 @@ class FindMyObjectActivity : ComponentActivity() {
     private var cameraProvider: ProcessCameraProvider? = null
     private var imageCapture: ImageCapture? = null
     private lateinit var cameraExecutor: ExecutorService
+    private var currentCamera: Camera? = null
+    private var isFlashlightOn = false
 
     // Threads Control States
     private val stopDetection = AtomicBoolean(false)
@@ -176,9 +181,20 @@ class FindMyObjectActivity : ComponentActivity() {
             this,
             mainHandler
         ) {
-            preferNanoModel = motionMonitor.linearSpeed > Constants.LINEAR_SPEED_THRESHOLD || motionMonitor.rotationSpeed>Constants.ROTATION_SPEED_THRESHOLD
+            preferNanoModel =
+                motionMonitor.linearSpeed > Constants.LINEAR_SPEED_THRESHOLD || motionMonitor.rotationSpeed > Constants.ROTATION_SPEED_THRESHOLD
         }
 
+        lightMonitor= LightManager(
+            this,
+            mainHandler
+        ) {
+            if (lightMonitor.isDark) {
+                turnFlashlightOn()
+            } else {
+                turnFlashlightOff()
+            }
+        }
 
         setContent {
             FindMyObjectScreen(
@@ -226,6 +242,32 @@ class FindMyObjectActivity : ComponentActivity() {
         }
 
         Log.d(TAG, "Objects to find (detector_class:synonym): $objectsToFind")
+    }
+
+    private fun turnFlashlightOn() {
+        try {
+            if (currentCamera?.cameraInfo?.hasFlashUnit() == true && !isFlashlightOn) {
+                currentCamera?.cameraControl?.enableTorch(true)
+                isFlashlightOn = true
+                Log.d(TAG, "🔦 Flashlight turned ON via CameraX")
+            } else {
+                Log.w(TAG, "Cannot turn ON flashlight: hasFlash=${currentCamera?.cameraInfo?.hasFlashUnit()}, isOn=$isFlashlightOn")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error turning flashlight ON via CameraX", e)
+        }
+    }
+
+    private fun turnFlashlightOff() {
+        try {
+            if (currentCamera?.cameraInfo?.hasFlashUnit() == true && isFlashlightOn) {
+                currentCamera?.cameraControl?.enableTorch(false)
+                isFlashlightOn = false
+                Log.d(TAG, "🔦 Flashlight turned OFF via CameraX")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error turning flashlight OFF via CameraX", e)
+        }
     }
 
     private fun handleBBoxResize(offsetDp: Float) {
@@ -306,13 +348,14 @@ class FindMyObjectActivity : ComponentActivity() {
         imageCapture = ImageCapture.Builder()
             .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
             .setTargetResolution(Size(screenWidth, screenHeight))
+            .setFlashMode(ImageCapture.FLASH_MODE_OFF)
             .build()
 
         val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
         try {
             cameraProvider?.unbindAll()
-            cameraProvider?.bindToLifecycle(
+            currentCamera=cameraProvider?.bindToLifecycle(
                 this, cameraSelector, preview, imageCapture
             )
             Log.d(TAG, "Camera bound")
@@ -324,10 +367,11 @@ class FindMyObjectActivity : ComponentActivity() {
     private fun startDetectionProcess() {
         // Start phone status monitoring
         PhoneStatusMonitor.getInstance().startMonitoring(mainHandler) {
-            resultsReady.set(true);batteryCheckRunning.value = false;motionMonitor.stopMonitoring()
+            resultsReady.set(true);batteryCheckRunning.value = false;motionMonitor.stopMonitoring();lightMonitor.stopMonitoring();turnFlashlightOff()
         }
         if (canSwitchModels)
             motionMonitor.startMonitoring()
+        lightMonitor.startMonitoring()
         // Start battery level check
         batteryCheckRunning.value = true
         startBatteryLevelCheck(batteryCheckRunning, showBatteryWarning, avgBatteryMoreUsed)
@@ -358,7 +402,7 @@ class FindMyObjectActivity : ComponentActivity() {
     }
 
     private fun launchDetectionThread() {
-        val toRun={
+        val toRun = {
             threadCount.incrementAndGet()
             if (!resultsReady.get()) {
                 BackgroundTaskExecutor.getInstance().executeAsync(
@@ -369,7 +413,7 @@ class FindMyObjectActivity : ComponentActivity() {
                             preferNanoModel,  // Prefer nano if moving fast
                             5  // 5 second timeout
                         )
-                        if(detectorWrapper==null)
+                        if (detectorWrapper == null)
                             return@executeAsync ThreadResult(null, null, -1, 0, 0)
 
                         val detector = detectorWrapper.detector
@@ -420,7 +464,8 @@ class FindMyObjectActivity : ComponentActivity() {
                         }
 
                         // Filter detection result
-                        val filteredResult = filterDetectionResult(detectionResult, foundClasses,detector)
+                        val filteredResult =
+                            filterDetectionResult(detectionResult, foundClasses, detector)
                         currentDetectorModel.releaseDetector(detectorWrapper)
 
                         try {
@@ -473,17 +518,20 @@ class FindMyObjectActivity : ComponentActivity() {
         val runtime = Runtime.getRuntime()
         val maxMemory = runtime.maxMemory()
         val usedMemory = runtime.totalMemory() - runtime.freeMemory()
-        var availableMemory: Long =maxMemory - usedMemory
+        var availableMemory: Long = maxMemory - usedMemory
         val checkRunnable = object : Runnable {
             override fun run() {
-                if (availableMemory>Constants.MIN_MEM_NEEDED) {
-                    mainHandler.post (toRun )
+                if (availableMemory > currentDetectorModel.ACTUAL_THREAD_MEM_USED_MB) {
+                    mainHandler.post(toRun)
                 } else {
                     val runtime = Runtime.getRuntime()
                     val maxMemory = runtime.maxMemory()
                     val usedMemory = runtime.totalMemory() - runtime.freeMemory()
                     availableMemory = maxMemory - usedMemory
-                    Log.w(TAG, "Low memory (${availableMemory / 1_048_576}MB), WAITING FOR RELEASE OR USER EXIT")
+                    Log.w(
+                        TAG,
+                        "Low memory (${availableMemory / 1_048_576}MB), WAITING FOR RELEASE OR USER EXIT"
+                    )
                     mainHandler.postDelayed(this, Constants.WAIT_CHECK)
                 }
             }
@@ -618,7 +666,7 @@ class FindMyObjectActivity : ComponentActivity() {
         // Signal stop
         stopDetection.set(true)
         PhoneStatusMonitor.getInstance().stopMonitoring()
-        motionMonitor.stopMonitoring()
+        motionMonitor.stopMonitoring();lightMonitor.stopMonitoring();turnFlashlightOff()
         batteryCheckRunning.value = false
 
         // Remove found classes
@@ -734,7 +782,7 @@ class FindMyObjectActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
         PhoneStatusMonitor.getInstance().stopMonitoring()
-        motionMonitor.stopMonitoring()
+        motionMonitor.stopMonitoring();lightMonitor.stopMonitoring();turnFlashlightOff()
         batteryCheckRunning.value = false
         mainHandler.removeCallbacksAndMessages(null)
         updateHandler.removeCallbacksAndMessages(null)

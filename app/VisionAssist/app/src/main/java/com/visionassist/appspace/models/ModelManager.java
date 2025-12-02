@@ -63,8 +63,6 @@ public class ModelManager {
         this.pendingNotifications.clear();
 
         // Start loading models in sequence
-        //loadDetectorAcc();
-        //loadDetectorSpeed();
         loadDetector();
         loadCaptioner();
         loadClassifier();

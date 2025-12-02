@@ -1,12 +1,8 @@
 package com.visionassist.appspace.models.detector;
 
 import android.content.Context;
-import android.hardware.camera2.CameraAccessException;
-import android.hardware.camera2.CameraCharacteristics;
-import android.hardware.camera2.CameraManager;
-import android.hardware.camera2.params.StreamConfigurationMap;
 import android.util.Log;
-import android.util.Size;
+import com.visionassist.appspace.utils.AppConfig;
 import com.visionassist.appspace.utils.Constants;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Semaphore;
@@ -47,11 +43,10 @@ public class YOLODetectorPool {
     private String failureReason = null;
 
     // Memory constants (in bytes)
-    private static final long MB = 1_048_576L;
-    private static final long MODEL_NANO_SIZE = 13 * MB;
-    private static final long MODEL_ACC_SIZE = 43 * MB;
-    // Reserve for app operations
-    // Classifier, Captioner, etc.
+    public static final long MB = 1_048_576L;
+    private static final long THREAD_MEM_USED = 14 * MB;
+    public long ACTUAL_THREAD_MEM_USED_MB;
+    private static final int STD_NO_THREADS=2;
 
     public YOLODetectorPool(Context context) {
         this.context = context;
@@ -59,6 +54,10 @@ public class YOLODetectorPool {
         this.accModelsAvailable = new ConcurrentLinkedQueue<>();
         this.allNanoInstances = new ConcurrentLinkedQueue<>();
         this.allAccInstances = new ConcurrentLinkedQueue<>();
+        if (AppConfig.env_reports)
+            this.ACTUAL_THREAD_MEM_USED_MB = THREAD_MEM_USED + 2 * MB;// + classifier mem needed
+        else
+            this.ACTUAL_THREAD_MEM_USED_MB = THREAD_MEM_USED;
     }
 
     public boolean initialize() {
@@ -78,10 +77,6 @@ public class YOLODetectorPool {
             // Step 1: Calculate available memory
             MemoryInfo memoryInfo = calculateAvailableMemory();
             logMemoryInfo(memoryInfo);
-
-            // Step 2: Calculate per-thread memory requirements
-            long perThreadMemory = calculatePerThreadMemory();
-            Log.d(TAG, "Per-thread memory requirement: " + (perThreadMemory / MB) + " MB");
 
             // Step 3: Calculate optimal pool sizes
             PoolConfiguration config = calculateOptimalPoolSizes(
@@ -190,193 +185,30 @@ public class YOLODetectorPool {
         );
     }
 
-    private long calculatePerThreadMemory() {
-        Size cameraResolution = getBackCameraResolution();
-
-        int cameraWidth = cameraResolution.getWidth();
-        int cameraHeight = cameraResolution.getHeight();
-
-        Log.d(TAG, "Camera resolution: " + cameraWidth + "x" + cameraHeight);
-
-        // Bitmap size (ARGB_8888 = 4 bytes per pixel)
-        long bitmapSize = (long) cameraWidth * cameraHeight * 4;
-
-        // Input tensor (640x640x3 float32)
-        long inputTensorSize = 640L * 640L * 3L * 4L;
-
-        // Output tensor (8400x85 float32)
-        long outputTensorSize = 8400L * 85L * 4L;
-
-        // Preprocessing overhead (resize buffer + normalization)
-        long preprocessOverhead = 640L * 640L * 4L + 500_000L;
-
-        // Postprocessing overhead (NMS arrays)
-        long postprocessOverhead = 1_000_000L;
-
-        // Thread stack
-        long threadStack = MB;
-
-        long total = bitmapSize + inputTensorSize + outputTensorSize +
-                preprocessOverhead + postprocessOverhead + threadStack;
-
-        Log.d(TAG, "Per-thread breakdown:");
-        Log.d(TAG, "  Bitmap (" + cameraWidth + "x" + cameraHeight + "): " + (bitmapSize / MB) + " MB");
-        Log.d(TAG, "  Input tensor: " + (inputTensorSize / MB) + " MB");
-        Log.d(TAG, "  Output tensor: " + (outputTensorSize / MB) + " MB");
-        Log.d(TAG, "  Overhead: " + ((preprocessOverhead + postprocessOverhead + threadStack) / MB) + " MB");
-        Log.d(TAG, "  TOTAL per thread: " + (total / MB) + " MB");
-
-        return total;
-    }
-
-    private Size getBackCameraResolution() {
-        try {
-            CameraManager cameraManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
-
-            if (cameraManager == null) {
-                Log.w(TAG, "CameraManager not available, using default resolution");
-                return new Size(1920, 1080);  // Default fallback
-            }
-
-            // Get all camera IDs
-            String[] cameraIds = cameraManager.getCameraIdList();
-
-            // Find back camera
-            for (String cameraId : cameraIds) {
-                CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraId);
-
-                // Check if this is back camera
-                Integer facing = characteristics.get(CameraCharacteristics.LENS_FACING);
-                if (facing != null && facing == CameraCharacteristics.LENS_FACING_BACK) {
-
-                    // Get stream configuration map
-                    StreamConfigurationMap map = characteristics.get(
-                            CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP
-                    );
-
-                    if (map == null) {
-                        Log.w(TAG, "Stream configuration map not available");
-                        continue;
-                    }
-
-                    // Get available output sizes for ImageCapture
-                    // We want JPEG sizes since that's what ImageCapture uses
-                    Size[] outputSizes = map.getOutputSizes(android.graphics.ImageFormat.JPEG);
-
-                    if (outputSizes == null || outputSizes.length == 0) {
-                        Log.w(TAG, "No output sizes available");
-                        continue;
-                    }
-
-                    // Find the resolution that matches what your app requests
-                    // In BlindFindMyObjectActivity, you use setTargetResolution(Size(screenWidth, screenHeight))
-                    // CameraX will pick the closest available resolution
-
-                    // Strategy: Get the largest resolution that's reasonable (not 4K which is overkill)
-                    Size bestSize = findBestCameraResolution(outputSizes);
-
-                    Log.d(TAG, "Back camera found: " + cameraId);
-                    Log.d(TAG, "Selected resolution: " + bestSize.getWidth() + "x" + bestSize.getHeight());
-
-                    return bestSize;
-                }
-            }
-
-            Log.w(TAG, "Back camera not found, using default resolution");
-            return new Size(1920, 1080);  // Default fallback
-
-        } catch (CameraAccessException e) {
-            Log.e(TAG, "Error accessing camera", e);
-            return new Size(1920, 1080);  // Default fallback
-        } catch (Exception e) {
-            Log.e(TAG, "Unexpected error getting camera resolution", e);
-            return new Size(1920, 1080);  // Default fallback
-        }
-    }
-
-    private Size findBestCameraResolution(Size[] availableSizes) {
-        // Sort by total pixels (descending)
-        java.util.Arrays.sort(availableSizes, (s1, s2) -> {
-            long pixels1 = (long) s1.getWidth() * s1.getHeight();
-            long pixels2 = (long) s2.getWidth() * s2.getHeight();
-            return Long.compare(pixels2, pixels1);
-        });
-
-        Log.d(TAG, "Available camera resolutions:");
-        for (Size size : availableSizes) {
-            Log.d(TAG, "  " + size.getWidth() + "x" + size.getHeight() +
-                    " (" + String.format("%.1f", (size.getWidth() * size.getHeight() / 1_000_000.0)) + " MP)");
-        }
-
-        // Target Full HD (1920x1080 = 2.07 MP)
-        final long TARGET_PIXELS = 1920L * 1080L;
-
-        // Find closest to Full HD
-        Size bestSize = availableSizes[0];
-        long bestDiff = Long.MAX_VALUE;
-
-        for (Size size : availableSizes) {
-            long pixels = (long) size.getWidth() * size.getHeight();
-
-            // Skip if too small (less than 0.5 MP)
-            if (pixels < 500_000) {
-                continue;
-            }
-
-            // Skip if too large (more than 8 MP - that's 4K territory)
-            if (pixels > 8_000_000) {
-                continue;
-            }
-
-            long diff = Math.abs(pixels - TARGET_PIXELS);
-            if (diff < bestDiff) {
-                bestDiff = diff;
-                bestSize = size;
-            }
-
-            // If we found exact Full HD, use it
-            if (size.getWidth() == 1920 && size.getHeight() == 1080) {
-                return size;
-            }
-        }
-
-        return bestSize;
-    }
-
     private PoolConfiguration calculateOptimalPoolSizes(
             MemoryInfo memory
     ) {
         // Calculate max instances that fit in memory
-        long maxNanoInstances = memory.usableMemory / MODEL_NANO_SIZE;
+        long modelInstances = memory.usableMemory / ACTUAL_THREAD_MEM_USED_MB;
 
-        if (2 * MODEL_NANO_SIZE + MODEL_ACC_SIZE >= memory.usableMemory)
-            return new PoolConfiguration(1, 1);
-
-        // Adjust based on motion state
-        int nanoInstances;
-        int accInstances;
-
-        // Conservative allocation
-        nanoInstances = (int) Math.min(maxNanoInstances, 2);
-        accInstances = (int) ((memory.usableMemory - nanoInstances * MODEL_NANO_SIZE) / MODEL_ACC_SIZE);
-
-        return new PoolConfiguration(nanoInstances, accInstances);
+        if(modelInstances>=STD_NO_THREADS+2)
+            return new PoolConfiguration(2, STD_NO_THREADS);
+        else
+        {
+            if(modelInstances<2)
+                return new PoolConfiguration(0,0);
+            else {
+                if(modelInstances<3)
+                return new PoolConfiguration(2,1);
+                else
+                    return new PoolConfiguration(2,((int)modelInstances)-2);
+            }
+        }
     }
 
     private boolean validateConfiguration(PoolConfiguration config) {
         if (config.nanoInstances < 1 && config.accInstances < 1) {
             Log.e(TAG, "Cannot create any model instances!");
-            return false;
-        }
-
-        long totalMemoryNeeded = (config.nanoInstances * MODEL_NANO_SIZE) +
-                (config.accInstances * MODEL_ACC_SIZE);
-
-        MemoryInfo memory = calculateAvailableMemory();
-
-        if (totalMemoryNeeded > memory.usableMemory) {
-            Log.w(TAG, "Configuration requires " + (totalMemoryNeeded / MB) + " MB but only " +
-                    (memory.usableMemory / MB) + " MB available");
             return false;
         }
 
@@ -594,8 +426,6 @@ public class YOLODetectorPool {
         Log.d(TAG, "Pool Configuration:");
         Log.d(TAG, "  Nano instances:     " + config.nanoInstances);
         Log.d(TAG, "  Accuracy instances: " + config.accInstances);
-        Log.d(TAG, "  Total memory needed: " +
-                ((config.nanoInstances * MODEL_NANO_SIZE + config.accInstances * MODEL_ACC_SIZE) / MB) + " MB");
     }
 
     private record MemoryInfo(long maxMemory, long totalMemory, long freeMemory, long usedMemory,

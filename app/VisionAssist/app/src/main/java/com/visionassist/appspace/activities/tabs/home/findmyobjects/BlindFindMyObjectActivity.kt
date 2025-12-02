@@ -12,6 +12,7 @@ import android.util.Size
 import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
@@ -33,6 +34,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.core.content.ContextCompat
 import com.visionassist.appspace.PhoneStatusMonitor
+import com.visionassist.appspace.activities.tabs.LightManager
 import com.visionassist.appspace.activities.tabs.MotionManager
 import com.visionassist.appspace.jetpack.managers.ErrorDialogManager
 import com.visionassist.appspace.models.detector.DetectionResult
@@ -60,6 +62,7 @@ class BlindFindMyObjectActivity : ComponentActivity() {
 
     // Models
     private lateinit var motionMonitor: MotionManager
+    private lateinit var lightMonitor: LightManager
     private lateinit var currentDetectorModel: YOLODetectorPool
     private var preferNanoModel = false
     private var canSwitchModels = false
@@ -78,6 +81,8 @@ class BlindFindMyObjectActivity : ComponentActivity() {
     private var cameraProvider: ProcessCameraProvider? = null
     private var imageCapture: ImageCapture? = null
     private lateinit var cameraExecutor: ExecutorService
+    private var currentCamera: Camera? = null
+    private var isFlashlightOn = false
 
     // Threads Control States
     private val stopDetection = AtomicBoolean(false)
@@ -125,6 +130,16 @@ class BlindFindMyObjectActivity : ComponentActivity() {
             preferNanoModel = motionMonitor.linearSpeed > Constants.LINEAR_SPEED_THRESHOLD || motionMonitor.rotationSpeed>Constants.ROTATION_SPEED_THRESHOLD
         }
 
+        lightMonitor= LightManager(
+            this,
+            mainHandler
+        ) {
+            if (lightMonitor.isDark) {
+                turnFlashlightOn()
+            } else {
+                turnFlashlightOff()
+            }
+        }
 
         setContent {
             BlindFindMyObjectScreen(
@@ -172,6 +187,32 @@ class BlindFindMyObjectActivity : ComponentActivity() {
         }
 
         Log.d(TAG, "Objects to find (detector_class:synonym): $objectsToFind")
+    }
+
+    private fun turnFlashlightOn() {
+        try {
+            if (currentCamera?.cameraInfo?.hasFlashUnit() == true && !isFlashlightOn) {
+                currentCamera?.cameraControl?.enableTorch(true)
+                isFlashlightOn = true
+                Log.d(TAG, "🔦 Flashlight turned ON via CameraX")
+            } else {
+                Log.w(TAG, "Cannot turn ON flashlight: hasFlash=${currentCamera?.cameraInfo?.hasFlashUnit()}, isOn=$isFlashlightOn")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error turning flashlight ON via CameraX", e)
+        }
+    }
+
+    private fun turnFlashlightOff() {
+        try {
+            if (currentCamera?.cameraInfo?.hasFlashUnit() == true && isFlashlightOn) {
+                currentCamera?.cameraControl?.enableTorch(false)
+                isFlashlightOn = false
+                Log.d(TAG, "🔦 Flashlight turned OFF via CameraX")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error turning flashlight OFF via CameraX", e)
+        }
     }
 
     private fun waitForTTSSpeech(afterTTSSpeech: Runnable) {
@@ -277,7 +318,7 @@ class BlindFindMyObjectActivity : ComponentActivity() {
 
         try {
             cameraProvider?.unbindAll()
-            cameraProvider?.bindToLifecycle(
+            currentCamera=cameraProvider?.bindToLifecycle(
                 this, cameraSelector, preview, imageCapture
             )
             Log.d(TAG, "Camera bound")
@@ -291,10 +332,11 @@ class BlindFindMyObjectActivity : ComponentActivity() {
             // Start phone status monitoring
             PhoneStatusMonitor.getInstance().startMonitoring(mainHandler) {
                 resultsReady.set(true); batteryCheckRunning.value =
-                false; motionMonitor.stopMonitoring()
+                false; motionMonitor.stopMonitoring();lightMonitor.stopMonitoring();turnFlashlightOff()
             }
             if (canSwitchModels)
                 motionMonitor.startMonitoring()
+            lightMonitor.startMonitoring()
             // Start battery level check
             batteryCheckRunning.value = true
             startBatteryLevelCheck(batteryCheckRunning, showBatteryWarning, avgBatteryMoreUsed)
@@ -403,7 +445,7 @@ class BlindFindMyObjectActivity : ComponentActivity() {
         var availableMemory: Long = maxMemory - usedMemory
         val checkRunnable = object : Runnable {
             override fun run() {
-                if (availableMemory > Constants.MIN_MEM_NEEDED) {
+                if (availableMemory > currentDetectorModel.ACTUAL_THREAD_MEM_USED_MB) {
                     mainHandler.post(toRun)
                 } else {
                     val runtime = Runtime.getRuntime()
@@ -544,7 +586,7 @@ class BlindFindMyObjectActivity : ComponentActivity() {
         // Signal stop
         stopDetection.set(true)
         PhoneStatusMonitor.getInstance().stopMonitoring()
-        motionMonitor.stopMonitoring()
+        motionMonitor.stopMonitoring();lightMonitor.stopMonitoring();turnFlashlightOff()
         batteryCheckRunning.value = false
 
         // Remove found classes
@@ -796,7 +838,7 @@ class BlindFindMyObjectActivity : ComponentActivity() {
         super.onPause()
         soundManager.releaseCallback()
         ttsManager.stopSpeaking()
-        PhoneStatusMonitor.getInstance().stopMonitoring()
+        PhoneStatusMonitor.getInstance().stopMonitoring();lightMonitor.stopMonitoring();turnFlashlightOff()
         motionMonitor.stopMonitoring()
         batteryCheckRunning.value = false
         mainHandler.removeCallbacksAndMessages(null)
