@@ -19,7 +19,27 @@ class InfoNotificationManager(
     private var secondButtonLabelState = mutableStateOf("Cancel")
     private var onFirstButtonClickAction: (() -> Unit)? = null
     private var onSecondButtonClickAction: (() -> Unit)? = null
+    private var disableButtons=mutableStateOf(false)
     private var composeView: ComposeView? = null
+
+    /**
+     * Show the info notification
+     * Compatible with Java Runnable (void return type)
+     */
+    fun showNotificationSimple(
+        message: String
+    ) {
+        messageState.value = message
+        twoButtonsState.value = false
+        disableButtons.value=true
+
+        // Lazy initialization of ComposeView
+        if (composeView == null) {
+            attachDialogToActivity()
+        }
+
+        isVisibleState.value = true
+    }
 
     /**
      * Show the info notification with a single OK button
@@ -95,7 +115,8 @@ class InfoNotificationManager(
                     firstButtonLabel = firstButtonLabelState.value,
                     secondButtonLabel = secondButtonLabelState.value,
                     onFirstButtonClick = { onFirstButtonClickAction?.invoke() },
-                    onSecondButtonClick = { onSecondButtonClickAction?.invoke() }
+                    onSecondButtonClick = { onSecondButtonClickAction?.invoke() },
+                    buttonsDisabled = disableButtons.value
                 )
             }
 

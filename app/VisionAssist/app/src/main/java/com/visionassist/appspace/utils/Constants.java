@@ -1,6 +1,5 @@
 package com.visionassist.appspace.utils;
 
-import android.graphics.Color;
 import android.os.Build;
 
 public class Constants {
@@ -86,7 +85,9 @@ public class Constants {
     public static final float BACKGROUND_OPACITY = 0.5f;
 
     // Error codes, followed by shutdown
-    public static final int REGISTER_CAMERA_LAUNCHER=-3;
+    public static final int DETECTOR_NO_OBJECTS_FOUND=-9;
+    public static final int DETECTOR_AQUIRE_FAILED=-8;
+    public static final int INTENT_URI_IS_NULL=-7;
     public static final int STD_CAMERA_FAIL=-6;
     public static final int CAMERA_FAIL_CONVERT_IMGPROXY=-5;
     public static final int CAMERA_MAKE_PHOTO=-4;
@@ -150,7 +151,6 @@ public class Constants {
     public static final float TEXT_RESIZE_MAX = 0.06f;
     public static final float LINEAR_SPEED_THRESHOLD=0.8f;
     public static final float ROTATION_SPEED_THRESHOLD=0.6f;
-    public static final long MIN_MEM_NEEDED=15*1024*1024+5*1024*1024;//15MB+5MB EXTRA
 
     // Drag gestures parameters
     public static final float MIN_HDISTANCE_THRESHOLD=0.15f;

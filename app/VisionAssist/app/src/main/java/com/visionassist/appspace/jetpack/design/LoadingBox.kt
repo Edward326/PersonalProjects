@@ -3,6 +3,8 @@
 package com.visionassist.appspace.jetpack.design
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -15,9 +17,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LinearProgressIndicator
@@ -26,20 +26,16 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.visionassist.appspace.R
 import com.visionassist.appspace.utils.Constants
-import com.visionassist.appspace.utils.robotoRegular
 import com.visionassist.appspace.utils.robotoSemibold
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -48,19 +44,23 @@ fun LoadingComponent(
     modifier: Modifier = Modifier,
     isVisible: Boolean = true,
     loadingText: String,
+    animSpec: Pair<EnterTransition, ExitTransition> =
+        Pair(
+            fadeIn(
+                initialAlpha = 0f,
+                animationSpec = tween(durationMillis = Constants.ANIMATION_DELAY)
+            ),
+            fadeOut(
+                targetAlpha = 0f,
+                animationSpec = tween(durationMillis = 0)  // ← Instant exit, no glitch!
+            )
+        )
 ) {
     // AnimatedVisibility with fade animation
     AnimatedVisibility(
         visible = isVisible,
-        enter = fadeIn(
-            // Duration of fade in animation (in milliseconds)
-            initialAlpha = 0f,
-            animationSpec = tween(durationMillis = Constants.ANIMATION_DELAY)
-        ),
-        exit = fadeOut(
-            targetAlpha = 0f,
-            animationSpec = tween(durationMillis = 0)  // ← Instant exit, no glitch!
-        )
+        enter = animSpec.component1(),
+        exit = animSpec.component2()
     ) {
         // Full screen white overlay with 50% opacity
         Box(
@@ -105,7 +105,7 @@ fun LoadingComponent(
 @Composable
 fun LoadingComponentPreview() {
 
-    MaterialTheme{
+    MaterialTheme {
         Image(
             painter = painterResource(id = R.drawable.welcome_background),
             contentDescription = null,

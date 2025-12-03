@@ -211,7 +211,7 @@
 
     <!-- StaticDetectionActivity -->
     <string name="scanning_scene_en">Scanning the scene...</string>
-    <string name="scanning_scene_ro">Scanez scena în care te aflii...</string>
+    <string name="scanning_scene_ro">Se scanează scena în care te aflii...</string>
     <string name="no_objects_found_en">No objects detected in the image.</string>
     <string name="no_objects_found_ro">Nu au fost detectate obiecte în imagine.</string>
 

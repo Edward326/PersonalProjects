@@ -17,11 +17,16 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -42,11 +47,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -61,13 +66,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
+import androidx.core.graphics.createBitmap
+import androidx.core.net.toUri
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
 import com.visionassist.appspace.activities.main.HomeActivity
@@ -96,14 +106,13 @@ import java.io.IOException
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
-import androidx.core.net.toUri
-import androidx.core.graphics.createBitmap
 
 class StaticDetectionActivity : ComponentActivity() {
     private val TAG = "StaticDetectionActivity"
 
     // Models
-    private lateinit var currentDetectorModel: YOLODetectorPool
+    private val currentDetectorModel: YOLODetectorPool =
+        PhoneStatusMonitor.getInstance().modelManager.detector
     private val classifier: YOLOClassifier =
         PhoneStatusMonitor.getInstance().modelManager.classifier
 
@@ -116,14 +125,14 @@ class StaticDetectionActivity : ComponentActivity() {
     private var sceneClassId = -1
 
     // States
-    private val stopDetection = AtomicBoolean(false)
     private val displayReady = AtomicBoolean(false)
-    private var detectionErrorType = DetectionErrorType.NONE
 
     // UI States
     private val showLoading = mutableStateOf(true)
     private val loadingText = mutableStateOf("")
     private val showResult = mutableStateOf(false)
+    private val showClassificationDialog = mutableStateOf(false)
+    private val classificationText = mutableStateOf("")
 
     // Handlers
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -135,13 +144,8 @@ class StaticDetectionActivity : ComponentActivity() {
     private lateinit var takePictureLauncher: ActivityResultLauncher<Uri>
     private var currentPhotoUri: Uri? = null
 
-    // Error types
-    enum class DetectionErrorType {
-        NONE,
-        NO_DETECTOR_AVAILABLE,
-        NO_OBJECTS_FOUND,
-        IMAGE_LOAD_ERROR
-    }
+    private var currentBBoxOffset = 0f
+    private var currentTextRatio = Constants.TEXT_SIZE_WIDTH_SCREEN
 
     // Thread result
     data class ThreadResult(
@@ -150,18 +154,14 @@ class StaticDetectionActivity : ComponentActivity() {
         val sceneClassId: Int,
         val detectorLatency: Long,
         val classifierLatency: Long,
-        val errorType: DetectionErrorType = DetectionErrorType.NONE
+        val errorType: Int
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Initialize models
-        currentDetectorModel = PhoneStatusMonitor.getInstance().modelManager.detector
-
         // Initialize notification manager
         infoNotificationManager = InfoNotificationManager(this)
-
         // Register camera launcher
         registerCameraLauncher()
 
@@ -173,6 +173,8 @@ class StaticDetectionActivity : ComponentActivity() {
                 showLoading = showLoading.value,
                 loadingText = loadingText.value,
                 showResult = showResult.value,
+                showClassificationDialog = showClassificationDialog.value,
+                classificationText = classificationText.value,
                 resultBitmap = resultBitmap.value,
                 onHomeClick = ::handleHomeClick,
                 onPhotoClick = ::handlePhotoClick,
@@ -181,15 +183,17 @@ class StaticDetectionActivity : ComponentActivity() {
             )
         }
 
-        // Start detection process
-        val imageUriString = intent.getStringExtra(Constants.EXTRA_IMAGE_URI)
-        if (imageUriString != null) {
-            val imageUri = imageUriString.toUri()
-            loadAndDetectImage(imageUri)
-        } else {
-            Log.e(TAG, "No image URI provided!")
-            showError(DetectionErrorType.IMAGE_LOAD_ERROR)
-        }
+        mainHandler.postDelayed({
+            // Start detection process
+            val imageUriString = intent.getStringExtra(Constants.EXTRA_IMAGE_URI)
+            if (imageUriString != null) {
+                val imageUri = imageUriString.toUri()
+                loadAndDetectImage(imageUri)
+            } else {
+                Log.e(TAG, "No image URI provided!")
+                showError(Constants.INTENT_URI_IS_NULL)
+            }
+        }, 1500)
     }
 
     @Suppress("DEPRECATION")
@@ -201,24 +205,33 @@ class StaticDetectionActivity : ComponentActivity() {
                 try {
                     // Reset states
                     showResult.value = false
+                    showLoading.value = true
+                    displayReady.set(false)
+
                     originalBitmap?.recycle()
                     resultBitmap.value?.recycle()
                     originalBitmap = null
                     detectionResult = null
-                    stopDetection.set(false)
-                    displayReady.set(false)
-
-                    // Show loading and restart detection
-                    showLoading.value = true
-                    loadingText.value = load_scanningScene(this)
 
                     loadAndDetectImage(currentPhotoUri!!)
                 } catch (e: IOException) {
                     Log.e(TAG, "Error loading new captured image", e)
-                    showError(DetectionErrorType.IMAGE_LOAD_ERROR)
+                    showError(Constants.INTENT_URI_IS_NULL)
                 }
             } else {
                 Log.e(TAG, "Image capture failed or cancelled")
+            }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+
+        if (PhoneStatusMonitor.getInstance().isReturningFromPermissions) {
+            PermissionChecker.checkAndRequestPermissions(this, false) {
+                checkPhoneStatusAndNavigate {
+                    launchCamera()
+                }
             }
         }
     }
@@ -234,10 +247,7 @@ class StaticDetectionActivity : ComponentActivity() {
 
                     if (bitmap == null) {
                         Log.e(TAG, "Failed to decode bitmap from URI")
-                        return@executeAsync ThreadResult(
-                            null, null, -1, 0, 0,
-                            DetectionErrorType.IMAGE_LOAD_ERROR
-                        )
+                        return@executeAsync null
                     }
 
                     Log.d(TAG, "Image loaded: ${bitmap.width}x${bitmap.height}")
@@ -246,54 +256,36 @@ class StaticDetectionActivity : ComponentActivity() {
                     runDetection(bitmap)
                 } catch (e: Exception) {
                     Log.e(TAG, "Error loading image", e)
-                    ThreadResult(
-                        null, null, -1, 0, 0,
-                        DetectionErrorType.IMAGE_LOAD_ERROR
-                    )
+                    return@executeAsync null
                 }
             },
             object : BackgroundTaskExecutor.TaskCallback<ThreadResult?> {
                 override fun onSuccess(result: ThreadResult?) {
                     if (result == null) {
-                        showError(DetectionErrorType.IMAGE_LOAD_ERROR)
+                        showError(Constants.INTENT_URI_IS_NULL)
                         return
                     }
 
                     when (result.errorType) {
-                        DetectionErrorType.NONE -> {
-                            // Success - process results
-                            if (result.detectionResult != null) {
-                                processFoundObjects(result)
-                            } else {
-                                showNoObjectsFound()
-                            }
+                        Constants.DETECTOR_AQUIRE_FAILED -> {
+                            showError(Constants.DETECTOR_AQUIRE_FAILED)
                         }
 
-                        DetectionErrorType.NO_DETECTOR_AVAILABLE -> {
-                            showError(DetectionErrorType.NO_DETECTOR_AVAILABLE)
-                        }
-
-                        DetectionErrorType.NO_OBJECTS_FOUND -> {
+                        Constants.DETECTOR_NO_OBJECTS_FOUND -> {
                             showNoObjectsFound()
                         }
 
-                        DetectionErrorType.IMAGE_LOAD_ERROR -> {
-                            showError(DetectionErrorType.IMAGE_LOAD_ERROR)
-                        }
+                        else -> processFoundObjects(result)
                     }
-
-                    displayReady.set(true)
-                    stopDetection.set(true)
                 }
 
                 override fun onError(e: Exception) {
                     Log.e(TAG, "Detection error", e)
-                    showError(DetectionErrorType.IMAGE_LOAD_ERROR)
-                    displayReady.set(true)
-                    stopDetection.set(true)
+                    showError(Constants.INTENT_URI_IS_NULL)
                 }
             }
         )
+        showResults()
     }
 
     private fun runDetection(bitmap: Bitmap): ThreadResult {
@@ -308,7 +300,7 @@ class StaticDetectionActivity : ComponentActivity() {
             bitmap.recycle()
             return ThreadResult(
                 null, null, -1, 0, 0,
-                DetectionErrorType.NO_DETECTOR_AVAILABLE
+                Constants.DETECTOR_AQUIRE_FAILED
             )
         }
 
@@ -365,8 +357,8 @@ class StaticDetectionActivity : ComponentActivity() {
             }
 
             return ThreadResult(
-                null, null, sceneId, detectorLatency, classifierLatency,
-                DetectionErrorType.NO_OBJECTS_FOUND
+                null, null, -1, detectorLatency, classifierLatency,
+                Constants.DETECTOR_NO_OBJECTS_FOUND
             )
         }
 
@@ -386,14 +378,11 @@ class StaticDetectionActivity : ComponentActivity() {
             sceneId,
             detectorLatency,
             classifierLatency,
-            DetectionErrorType.NONE
+            Constants.ANIMATION_DELAY
         )
     }
 
     private fun processFoundObjects(result: ThreadResult) {
-        // Stop detection
-        stopDetection.set(true)
-
         // Update latency stats
         updateLatencyStats(result.detectorLatency, result.classifierLatency)
 
@@ -415,12 +404,14 @@ class StaticDetectionActivity : ComponentActivity() {
         detectionResult = result.detectionResult
         sceneClassId = result.sceneClassId
 
-        // Draw detections with default settings (0 offset, default text size)
         resultBitmap.value = YOLODetector.drawDetections(
             originalBitmap,
             detectionResult
         )
 
+
+        currentBBoxOffset = 0f
+        currentTextRatio = Constants.TEXT_SIZE_WIDTH_SCREEN
         // Signal ready
         displayReady.set(true)
     }
@@ -445,11 +436,10 @@ class StaticDetectionActivity : ComponentActivity() {
         mainHandler.post(object : Runnable {
             override fun run() {
                 if (displayReady.get()) {
-                    if (resultBitmap.value != null) {
-                        // Success - show results
-                        showLoading.value = false
+                    // Success - show results
+                    showLoading.value = false
+                    mainHandler.postDelayed({
                         showResult.value = true
-
                         if (AppConfig.haptics) {
                             vibrate(haptic_model0())
                         }
@@ -459,11 +449,7 @@ class StaticDetectionActivity : ComponentActivity() {
                             val sceneName = classifier.getClassName(sceneClassId)
                             showClassificationNotification(sceneName)
                         }
-                    } else {
-                        // Error occurred
-                        showLoading.value = false
-                    }
-                    return
+                    }, Constants.ANIMATION_DELAY.toLong())
                 }
                 // Schedule next iteration
                 mainHandler.postDelayed(this, 500)
@@ -471,77 +457,65 @@ class StaticDetectionActivity : ComponentActivity() {
         })
     }
 
-    private fun showError(errorType: DetectionErrorType) {
-        detectionErrorType = errorType
-        displayReady.set(true)
+    private fun showError(errorType: Int) {
+        //displayReady.set(true)
+        showLoading.value = false
 
-        mainHandler.postDelayed({
-            showLoading.value = false
-
-            if(errorType==DetectionErrorType.IMAGE_LOAD_ERROR
-                ||errorType==DetectionErrorType.NO_DETECTOR_AVAILABLE)
-                showErrorDialog()
-
-            // Show error dialog and exit after delay
-            infoNotificationManager.showNotification(
-                load_noObjectsFound(this),
-                {
-                    finish()
-                },
-                "OK"
-            )
-
-            // Auto-exit after delay
-            mainHandler.postDelayed({
-                finish()
-            }, Constants.ERROR_READ_DELAY.toLong())
-        }, 500)
+        mainHandler.postDelayed(
+            {
+                showErrorDialog(errorType)
+            }, Constants.ANIMATION_DELAY.toLong()
+        )
     }
 
-    private fun showErrorDialog() {
+    private fun showErrorDialog(errorType: Int) {
         val monitor = PhoneStatusMonitor.getInstance()
         val errorDialog = ErrorDialogManager(monitor.currentActivity)
-        errorDialog.setupDialog(Constants.DETECTOR_LOAD_ERROR)
+        errorDialog.setupDialog(errorType)
         monitor.shutdownApp(errorDialog, monitor.currentContext)
     }
 
     private fun showNoObjectsFound() {
+        showLoading.value = false
         mainHandler.postDelayed({
-            showLoading.value = false
-
             val message = load_noObjectsFound(this)
 
             // Show info dialog and exit after delay
-            infoNotificationManager.showNotification(
+            infoNotificationManager.showNotificationTwoButtons(
                 message,
+                if (AppConfig.mainLanguage.code == "en") "Retry" else "Reîncearcă",
+                "OK",
                 {
+                    if (AppConfig.haptics) {
+                        vibrate(haptic_model0())
+                    }
+                    PermissionChecker.checkAndRequestPermissions(this, false) {
+                        // Check phone status
+                        checkPhoneStatusAndNavigate {
+                            launchCamera()
+                            mainHandler.removeCallbacksAndMessages(null)
+                        }
+                    }
+                },
+                {
+                    if (AppConfig.haptics) {
+                        vibrate(haptic_model0())
+                    }
+                    val intent = Intent(this, HomeActivity::class.java)
+                    startActivity(intent)
                     finish()
                 },
-                "OK"
             )
-
-            // Auto-exit after delay
-            mainHandler.postDelayed({
-                finish()
-            }, Constants.ERROR_READ_DELAY.toLong())
-        }, 500)
+        }, Constants.ANIMATION_DELAY.toLong())
     }
 
     private fun showClassificationNotification(sceneName: String) {
-        val message = load_classificationSuccess(sceneName)
-
-        infoNotificationManager.showNotification(
-            message,
-            {
-                infoNotificationManager.hideNotification()
-            },
-            "OK"
-        )
-
+        classificationText.value = load_classificationSuccess(sceneName)
+        showClassificationDialog.value = true
         // Auto-hide after delay
         mainHandler.postDelayed({
-            infoNotificationManager.hideNotification()
-        }, Constants.ERROR_READ_DELAY.toLong())
+            showClassificationDialog.value = false
+        }, 5000)
     }
 
     private fun handleHomeClick() {
@@ -604,7 +578,9 @@ class StaticDetectionActivity : ComponentActivity() {
         monitor.shutdownApp(errorDialog, this)
     }
 
-    private fun handleBBoxResize(offset: Float) {
+    private fun handleBBoxResize(offsetDp: Float) {
+        currentBBoxOffset = offsetDp
+
         // Cancel any pending update
         updateRunnable?.let { updateHandler.removeCallbacks(it) }
 
@@ -615,7 +591,9 @@ class StaticDetectionActivity : ComponentActivity() {
         updateHandler.postDelayed(updateRunnable!!, Constants.PREVIEW_UPDATE_DELAY.toLong())
     }
 
-    private fun handleTextResize(ratio: Float) {
+    private fun handleTextResize(textSizeRatio: Float) {
+        currentTextRatio = textSizeRatio
+
         // Cancel any pending update
         updateRunnable?.let { updateHandler.removeCallbacks(it) }
 
@@ -627,40 +605,31 @@ class StaticDetectionActivity : ComponentActivity() {
     }
 
     private fun redrawDetections() {
-        if (originalBitmap != null && detectionResult != null) {
-            BackgroundTaskExecutor.getInstance().executeAsync(
-                {
-                    YOLODetector.drawDetections(
-                        originalBitmap,
-                        detectionResult
-                    )
-                },
-                object : BackgroundTaskExecutor.TaskCallback<Bitmap?> {
-                    override fun onSuccess(result: Bitmap?) {
+        BackgroundTaskExecutor.getInstance().executeAsync(
+            {
+                // Use the smart drawing method that handles everything
+                YOLODetector.drawDetectionsWithSmartResize(
+                    originalBitmap,
+                    detectionResult,
+                    currentBBoxOffset,  // Current bbox offset
+                    currentTextRatio,   // Current text ratio (can be null for default)
+                    resources.displayMetrics
+                )
+            },
+            object : BackgroundTaskExecutor.TaskCallback<Bitmap?> {
+                override fun onSuccess(result: Bitmap?) {
+                    if (result != null) {
                         resultBitmap.value = result
-                    }
-
-                    override fun onError(e: Exception) {
-                        Log.e(TAG, "Error redrawing detections", e)
+                        // Trigger recomposition
+                        showResult.value = true
                     }
                 }
-            )
-        }
-    }
 
-    override fun onResume() {
-        super.onResume()
-
-        if (PhoneStatusMonitor.getInstance().isReturningFromPermissions) {
-            PermissionChecker.checkAndRequestPermissions(this, false) {
-                // Permissions granted
+                override fun onError(e: Exception) {
+                    Log.e(TAG, "Error redrawing detections", e)
+                }
             }
-        }
-
-        // Start showing results if ready
-        if (!displayReady.get()) {
-            showResults()
-        }
+        )
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
@@ -695,6 +664,8 @@ fun StaticDetectionScreen(
     showLoading: Boolean,
     loadingText: String,
     showResult: Boolean,
+    showClassificationDialog: Boolean,
+    classificationText: String,
     resultBitmap: Bitmap?,
     onHomeClick: () -> Unit,
     onPhotoClick: () -> Unit,
@@ -703,29 +674,52 @@ fun StaticDetectionScreen(
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val screenHeight = maxHeight
-        val screenWidth = maxWidth
 
         // Background: Black or Result Image
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black)
         ) {
-            if (showResult && resultBitmap != null) {
-                Image(
-                    bitmap = resultBitmap.asImageBitmap(),
-                    contentDescription = "Detection Result",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Fit
+            Image(
+                painter = painterResource(R.drawable.app_background),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+            if (showResult) {
+                if (resultBitmap != null)
+                    Image(
+                        bitmap = resultBitmap.asImageBitmap(),
+                        contentDescription = "Detection Result",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit
+                    )
+            }
+            // Loading overlay
+            LoadingComponent(
+                isVisible = showLoading,
+                loadingText = loadingText,
+                animSpec = Pair(
+                    fadeIn(
+                        initialAlpha = 0f,
+                        animationSpec = tween(durationMillis = 0)
+                    ),
+                    fadeOut(
+                        targetAlpha = 0f,
+                        animationSpec = tween(durationMillis = Constants.ANIMATION_DELAY)
+                    )
                 )
+            )
+
+            AnimatedVisibility(
+                visible = showClassificationDialog,
+                enter = slideInVertically(initialOffsetY = { -it }),
+                exit = slideOutVertically(targetOffsetY = { -it }),
+                modifier = Modifier.align(Alignment.TopCenter)
+            ) {
+                SceneClassifiedNotification(classificationText)
             }
         }
-
-        // Loading overlay
-        LoadingComponent(
-            isVisible = showLoading,
-            loadingText = loadingText
-        )
 
         // Bottom panel (navigation + settings)
         if (showResult) {
@@ -736,7 +730,6 @@ fun StaticDetectionScreen(
             ) {
                 SettingsPanel(
                     screenHeight = screenHeight,
-                    screenWidth = screenWidth,
                     onHomeClick = onHomeClick,
                     onPhotoClick = onPhotoClick,
                     onBBoxResize = onBBoxResize,
@@ -748,9 +741,42 @@ fun StaticDetectionScreen(
 }
 
 @Composable
+fun SceneClassifiedNotification(
+    text: String
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth(0.8f)
+            .background(
+                color = colorResource(R.color.notification_white), // Semi-transparent black
+                shape = RoundedCornerShape(28.dp)
+            )
+            .padding(horizontal = 24.dp, vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Info,
+            contentDescription = "Info",
+            modifier = Modifier.size(24.dp),
+            tint = colorResource(R.color.std_purple)
+        )
+
+        Text(
+            text,
+            color = colorResource(R.color.notification_text_gray),
+            fontSize = Constants.STD_FONT_SIZE.sp,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            textAlign = TextAlign.Center,
+            lineHeight = 20.sp
+        )
+    }
+}
+
+@Composable
 fun SettingsPanel(
     screenHeight: Dp,
-    screenWidth: Dp,
     onHomeClick: () -> Unit,
     onPhotoClick: () -> Unit,
     onBBoxResize: (Float) -> Unit,
@@ -802,52 +828,24 @@ fun SettingsPanel(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(screenWidth * 0.08f)
-                ) {
-                    // Photo button (left)
-                    PhotoButton(onClick = onPhotoClick)
+                // Home button (left)
+                HomeButton(onClick = onHomeClick, imageVector = Icons.Filled.Home)
 
-                    // Home button (center, larger)
-                    HomeButton(onClick = onHomeClick)
-                }
-            }
+                Spacer(Modifier.width(22.5.dp))
 
-            Spacer(modifier = Modifier.height(15.dp))
+                // Photo button (center, larger)
+                PhotoButton(onClick = onPhotoClick)
 
-            ExtendedFloatingActionButton(
-                onClick = {
-                    isExpanded = true
-                    if (AppConfig.haptics) vibrate(haptic_model0())
-                },
-                containerColor = colorResource(R.color.std_purple),
-                contentColor = Color.White,
-                shape = RoundedCornerShape(
-                    topStart = 0.dp,
-                    topEnd = 0.dp,
-                    bottomEnd = 16.dp,
-                    bottomStart = 16.dp
-                ),
-                modifier = Modifier
-                    .width(Constants.NAV_BUTTONS_WIDTH.dp * 2 + screenWidth * 0.08f)
-                    .height(Constants.NAV_BUTTONS_HEIGHT.dp / 2)
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Settings,
-                        contentDescription = "Settings",
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(5.dp))
-                    Text(
-                        text = "Adjust Detection",
-                        fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
-                        fontFamily = robotoExtraBold
-                    )
-                }
+                Spacer(Modifier.width(22.5.dp))
+
+                // Settings button (right)
+                HomeButton(
+                    onClick = {
+                        isExpanded = true
+                        if (AppConfig.haptics) vibrate(haptic_model0())
+                    },
+                    imageVector = Icons.Filled.Settings
+                )
             }
         }
 
@@ -1008,39 +1006,27 @@ fun SettingsPanel(
 }
 
 @Composable
-fun HomeButton(onClick: () -> Unit) {
+fun HomeButton(onClick: () -> Unit, imageVector: ImageVector) {
     Box(
         modifier = Modifier
             .size(
-                width = Constants.NAV_BUTTONS_WIDTH.dp,
-                height = Constants.NAV_BUTTONS_HEIGHT.dp
+                width = Constants.NAV_BUTTONS_WIDTH.dp * 0.6f,
+                height = Constants.NAV_BUTTONS_HEIGHT.dp * 0.8f
             )
-            .clip(RoundedCornerShape(16.dp))
-            .background(colorResource(R.color.std_purple))
+            .clip(RoundedCornerShape(100))
+            .background(colorResource(R.color.std_light_purple))
             .clickable {
                 if (AppConfig.haptics) vibrate(haptic_model0())
                 onClick()
             },
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.Home,
-                contentDescription = "Home",
-                tint = Color.White,
-                modifier = Modifier.size(32.dp)
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Home",
-                color = Color.White,
-                fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
-                fontFamily = robotoExtraBold
-            )
-        }
+        Icon(
+            imageVector = imageVector,
+            contentDescription = "Home",
+            tint = colorResource(R.color.std_purple),
+            modifier = Modifier.size(42.dp)
+        )
     }
 }
 
@@ -1053,7 +1039,7 @@ fun PhotoButton(onClick: () -> Unit) {
                 height = Constants.NAV_BUTTONS_HEIGHT.dp
             )
             .clip(RoundedCornerShape(16.dp))
-            .background(colorResource(R.color.std_cyan))
+            .background(colorResource(R.color.std_light_purple))
             .clickable {
                 if (AppConfig.haptics) vibrate(haptic_model0())
                 onClick()
@@ -1065,17 +1051,10 @@ fun PhotoButton(onClick: () -> Unit) {
             verticalArrangement = Arrangement.Center
         ) {
             Icon(
-                imageVector = Icons.Default.CameraAlt,
+                imageVector = Icons.Filled.PhotoCamera,
                 contentDescription = "Photo",
-                tint = Color.White,
-                modifier = Modifier.size(32.dp)
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Photo",
-                color = Color.White,
-                fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
-                fontFamily = robotoExtraBold
+                tint = colorResource(R.color.std_purple),
+                modifier = Modifier.size(58.dp)
             )
         }
     }
@@ -1098,6 +1077,8 @@ fun StaticDetectionScreenPreview() {
         onHomeClick = {},
         onPhotoClick = {},
         onBBoxResize = {},
-        onTextResize = {}
+        onTextResize = {},
+        classificationText = "",
+        showClassificationDialog = false
     )
 }

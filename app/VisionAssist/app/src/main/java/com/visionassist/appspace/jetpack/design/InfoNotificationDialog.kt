@@ -56,7 +56,8 @@ fun InfoNotificationDialog(
     firstButtonLabel: String = "OK",
     secondButtonLabel: String = "Cancel",
     onFirstButtonClick: () -> Unit = {},
-    onSecondButtonClick: () -> Unit = {}
+    onSecondButtonClick: () -> Unit = {},
+    buttonsDisabled: Boolean=false
 ) {
     // AnimatedVisibility with fade in/out animation
     AnimatedVisibility(
@@ -191,22 +192,24 @@ fun InfoNotificationDialog(
                             }
                         }
                     } else {
-                        // Single OK Button
-                        Button(
-                            onClick = onFirstButtonClick,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(Constants.STD_BUTTON_HEIGHT.dp),
-                            shape = RoundedCornerShape(28.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = colorResource(R.color.notification_button_white),
-                                contentColor = colorResource(R.color.std_purple)
-                            )
-                        ) {
-                            Text(
-                                text = firstButtonLabel,
-                                fontSize = Constants.STD_BUTTON_FONT_SIZE.sp
-                            )
+                        if(!buttonsDisabled) {
+                            // Single OK Button
+                            Button(
+                                onClick = onFirstButtonClick,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(Constants.STD_BUTTON_HEIGHT.dp),
+                                shape = RoundedCornerShape(28.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = colorResource(R.color.notification_button_white),
+                                    contentColor = colorResource(R.color.std_purple)
+                                )
+                            ) {
+                                Text(
+                                    text = firstButtonLabel,
+                                    fontSize = Constants.STD_BUTTON_FONT_SIZE.sp
+                                )
+                            }
                         }
                     }
                 }
