@@ -757,3 +757,27 @@ fun startBatteryLevelCheck(
         }
     }
 }
+
+fun load_scanningScene(context: Context): String {
+    return when (AppConfig.mainLanguage.code) {
+        "en" -> context.getString(R.string.scanning_scene_en)
+        "ro" -> context.getString(R.string.scanning_scene_ro)
+        else -> "Scanning the scene..."
+    }
+}
+
+fun load_noObjectsFound(context: Context): String {
+    return when (AppConfig.mainLanguage.code) {
+        "en" -> context.getString(R.string.no_objects_found_en)
+        "ro" -> context.getString(R.string.no_objects_found_ro)
+        else -> "No objects detected in the image."
+    }
+}
+
+fun load_classificationSuccess(sceneName: String): String {
+    return when (AppConfig.mainLanguage.code) {
+        "en" -> "Image classified successfully: $sceneName"
+        "ro" -> "Imagine clasificată cu succes: $sceneName"
+        else -> "Image classified successfully: $sceneName"
+    }
+}

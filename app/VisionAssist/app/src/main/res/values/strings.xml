@@ -209,6 +209,12 @@
     <string name="navigating_to_settings_en">Navigating to settings page</string>
     <string name="navigating_to_settings_ro">Navigare către pagina de setări</string>
 
+    <!-- StaticDetectionActivity -->
+    <string name="scanning_scene_en">Scanning the scene...</string>
+    <string name="scanning_scene_ro">Scanez scena în care te aflii...</string>
+    <string name="no_objects_found_en">No objects detected in the image.</string>
+    <string name="no_objects_found_ro">Nu au fost detectate obiecte în imagine.</string>
+
 
     <!-- Common values -->
     <string name="forward_arrow">Forward arrow</string>

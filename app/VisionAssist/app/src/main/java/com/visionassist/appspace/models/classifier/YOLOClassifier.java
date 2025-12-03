@@ -5,8 +5,6 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.util.Log;
-import android.util.Pair;
-
 import com.visionassist.appspace.utils.AppConfig;
 import com.visionassist.appspace.utils.Constants;
 import com.visionassist.appspace.utils.FileUtils;
@@ -245,6 +243,10 @@ public class YOLOClassifier {
                 maxIndex, className, maxConfidence));
 
         return maxIndex;
+    }
+
+    public String getClassName(int classId) {
+        return classNames.getOrDefault(classId, "unknown");
     }
 
     /**

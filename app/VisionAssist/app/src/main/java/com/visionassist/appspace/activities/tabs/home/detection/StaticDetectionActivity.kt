@@ -3,41 +3,33 @@
 package com.visionassist.appspace.activities.tabs.home.detection
 
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.KeyEvent
+import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.ActivityResultLauncher
-import androidx.activity.result.contract.ActivityResultContracts.TakePicture
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -48,296 +40,538 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material.icons.filled.SyncProblem
-import androidx.compose.material.icons.filled.TextFields
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemColors
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.colorResource
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
-import com.visionassist.appspace.BaseActivity
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
-import com.visionassist.appspace.activities.tabs.home.caption.CaptionActivity
-import com.visionassist.appspace.activities.tabs.home.findmyobjects.FindMyObjectActivity
-import com.visionassist.appspace.activities.tabs.reports.EnvironmentReportsActivity
-import com.visionassist.appspace.activities.tabs.settings.SettingsActivity
+import com.visionassist.appspace.activities.main.HomeActivity
+import com.visionassist.appspace.activities.tabs.home.findmyobjects.BBoxSizeSlider
+import com.visionassist.appspace.activities.tabs.home.findmyobjects.TextSizeSlider
+import com.visionassist.appspace.activities.tabs.reports.EnvironmentReportsManagerKt
+import com.visionassist.appspace.jetpack.design.LoadingComponent
 import com.visionassist.appspace.jetpack.managers.ErrorDialogManager
-import com.visionassist.appspace.models.sttengine.SpeechRecognizer
-import com.visionassist.appspace.sound.SoundConstants
+import com.visionassist.appspace.jetpack.managers.InfoNotificationManager
+import com.visionassist.appspace.models.classifier.YOLOClassifier
+import com.visionassist.appspace.models.detector.DetectionResult
+import com.visionassist.appspace.models.detector.YOLODetector
+import com.visionassist.appspace.models.detector.YOLODetectorPool
 import com.visionassist.appspace.utils.AppConfig
 import com.visionassist.appspace.utils.BackgroundTaskExecutor
 import com.visionassist.appspace.utils.Constants
-import com.visionassist.appspace.utils.CustomColorSchema
-import com.visionassist.appspace.utils.DetectionOption
 import com.visionassist.appspace.utils.PermissionChecker
-import com.visionassist.appspace.utils.TypewriterColorSchema
 import com.visionassist.appspace.utils.haptic_model0
-import com.visionassist.appspace.utils.load_captionTutorial
-import com.visionassist.appspace.utils.load_detectionTutorial
-import com.visionassist.appspace.utils.load_errorSTT
-import com.visionassist.appspace.utils.load_errorSTTRuntime
-import com.visionassist.appspace.utils.load_homeTitle
-import com.visionassist.appspace.utils.load_speakTutorial
-import com.visionassist.appspace.utils.load_syncErrorText
-import com.visionassist.appspace.utils.load_syncStatusText
-import com.visionassist.appspace.utils.load_unavailableSTT
-import com.visionassist.appspace.utils.robotoBold
+import com.visionassist.appspace.utils.load_classificationSuccess
+import com.visionassist.appspace.utils.load_noObjectsFound
+import com.visionassist.appspace.utils.load_scanningScene
 import com.visionassist.appspace.utils.robotoExtraBold
-import com.visionassist.appspace.utils.robotoExtraBoldItalic
-import com.visionassist.appspace.utils.robotoLight
-import com.visionassist.appspace.utils.robotoSemibold
 import com.visionassist.appspace.utils.vibrate
-import kotlinx.coroutines.delay
 import java.io.File
 import java.io.IOException
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import androidx.core.net.toUri
+import androidx.core.graphics.createBitmap
 
-class StaticDetectionActivity : BaseActivity() {
-    private val TAG = "HomeActivity"
+class StaticDetectionActivity : ComponentActivity() {
+    private val TAG = "StaticDetectionActivity"
 
-    // State variables
-    private val titleText = mutableStateOf("")
+    // Models
+    private lateinit var currentDetectorModel: YOLODetectorPool
+    private val classifier: YOLOClassifier =
+        PhoneStatusMonitor.getInstance().modelManager.classifier
 
-    // Tutorial info button states
-    private val speakInfoClickCount = mutableStateOf(1)
-    private var basicInfoClickCount = 1
-    private var basicInfoClickCount2 = 1
+    // Results
+    private var originalBitmap: Bitmap? = null
+    private val resultBitmap = mutableStateOf<Bitmap?>(null)
+    private var detectionResult: DetectionResult? = null
+    private var avgDetectorLatency = 0L
+    private var avgClassifierLatency = 0L
+    private var sceneClassId = -1
 
-    // Detection button states
-    private val showDetectionOptions = mutableStateOf(false)
-    private val selectedDetectionOption = mutableStateOf<DetectionOption?>(null)
-    private val detectionIconColor = mutableStateOf(R.color.std_purple_dark)
+    // States
+    private val stopDetection = AtomicBoolean(false)
+    private val displayReady = AtomicBoolean(false)
+    private var detectionErrorType = DetectionErrorType.NONE
 
-    // Speech recognition parameters
-    private val speechRecognizer = PhoneStatusMonitor.getInstance()
-        .modelManager.speechRecognizer
-    private val soundManager = PhoneStatusMonitor.getInstance()
-        .soundManager
-    private val ttsManager = PhoneStatusMonitor.getInstance()
-        .ttsManager
-    private val showSpeechDialog = mutableStateOf(false)
-    private val speechText = mutableStateOf("")
-    private val speechProcessText = mutableStateOf("")
-    private val isSpeaking = mutableStateOf(true)
-    private val retrySpeech = mutableStateOf(false)
-    private val sendSpeech = mutableStateOf(false)
-    private lateinit var matchedIndices: List<SpeechRecognizer.MatchedObject>
-    private lateinit var classNames: List<String>
+    // UI States
+    private val showLoading = mutableStateOf(true)
+    private val loadingText = mutableStateOf("")
+    private val showResult = mutableStateOf(false)
 
-    // Volume button tracking
-    private var locked = false
-    private var lockedVolumeDown = false
-    private var uiLocked = false
-    private var handleVolumeDownControl = false
-
-    // Runnable for navigation to an activity
-    private var onPermissionGranted = {}
-    private var classOpt = 0
-
-    // Camera intent parameters
-    private lateinit var takePictureLauncher: ActivityResultLauncher<Uri>
-    private lateinit var currentPhotoUri: Uri
-
-    // Main handler
+    // Handlers
     private val mainHandler = Handler(Looper.getMainLooper())
-    private lateinit var afterResumeRunnable: Runnable
-    private var hasToExecAfterResume = false
-    private var returnFromFindMyObject = false
+    private val updateHandler = Handler(Looper.getMainLooper())
+    private var updateRunnable: Runnable? = null
+    private lateinit var infoNotificationManager: InfoNotificationManager
 
-    private var syncStatus: Int = 0
-    private var syncDays: Int = 0
+    // Camera
+    private lateinit var takePictureLauncher: ActivityResultLauncher<Uri>
+    private var currentPhotoUri: Uri? = null
+
+    // Error types
+    enum class DetectionErrorType {
+        NONE,
+        NO_DETECTOR_AVAILABLE,
+        NO_OBJECTS_FOUND,
+        IMAGE_LOAD_ERROR
+    }
+
+    // Thread result
+    data class ThreadResult(
+        val detectionResult: DetectionResult?,
+        val bitmap: Bitmap?,
+        val sceneClassId: Int,
+        val detectorLatency: Long,
+        val classifierLatency: Long,
+        val errorType: DetectionErrorType = DetectionErrorType.NONE
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Initialize models
+        currentDetectorModel = PhoneStatusMonitor.getInstance().modelManager.detector
+
+        // Initialize notification manager
+        infoNotificationManager = InfoNotificationManager(this)
+
+        // Register camera launcher
         registerCameraLauncher()
 
-        // Load initial title
-        titleText.value = load_homeTitle()
-
-        // Get sync status
-        val dbManager = PhoneStatusMonitor.getInstance().dbManager
-        syncStatus = dbManager.statusOverview
-        syncDays = if (syncStatus > 0) dbManager.diffDays.toInt() else 0
-
-        uiLocked = true
-        locked = true
-        PhoneStatusMonitor.getInstance().soundManager.play(SoundConstants.OPEN_UP_ID, 1f, 1f) {
-            uiLocked = false
-            locked = false
-        }
-
-        //Log.d(TAG, FileUtils.readProfileFileAsString(this, Constants.ENV_REPORTS_FILE_NAME))
+        // Load initial loading text
+        loadingText.value = load_scanningScene(this)
 
         setContent {
-            HomeScreen(
-                titleText = titleText.value,
-                syncStatus = syncStatus,
-                syncDays = syncDays,
-                showDetectionOptions = showDetectionOptions.value,
-                detectionIconColor = detectionIconColor.value,
-                selectedDetectionOption = selectedDetectionOption.value,
-                showSpeechDialog = showSpeechDialog.value,
-                speechText = speechText.value,
-                speechProcessText = speechProcessText.value,
-                isSpeaking = isSpeaking.value,
-                onDetectionClick = ::handleDetectionClick,
-                onDetectionOptionSelected = ::handleDetectionOptionSelected,
-                onCaptionClick = ::handleCaptionClick,
-                onDetectionInfoClick = ::handleDetectionInfoClick,
-                onCaptionInfoClick = ::handleCaptionInfoClick,
-                onSpeakInfoClick = ::handleSpeakInfoClick,
-                onNavigateHome = ::handleNavigateHome,
-                onNavigateReports = ::handleNavigateReports,
-                onNavigateSettings = ::handleNavigateSettings,
-                onSpeechDialogTap = ::handleSpeechDialogTap,
-                navigateFun = ::navigateToLiveOrStatic,
-                onSwipeToLeft = ::handleSwipeToLeft
+            StaticDetectionScreen(
+                showLoading = showLoading.value,
+                loadingText = loadingText.value,
+                showResult = showResult.value,
+                resultBitmap = resultBitmap.value,
+                onHomeClick = ::handleHomeClick,
+                onPhotoClick = ::handlePhotoClick,
+                onBBoxResize = ::handleBBoxResize,
+                onTextResize = ::handleTextResize
             )
+        }
+
+        // Start detection process
+        val imageUriString = intent.getStringExtra(Constants.EXTRA_IMAGE_URI)
+        if (imageUriString != null) {
+            val imageUri = imageUriString.toUri()
+            loadAndDetectImage(imageUri)
+        } else {
+            Log.e(TAG, "No image URI provided!")
+            showError(DetectionErrorType.IMAGE_LOAD_ERROR)
         }
     }
 
     @Suppress("DEPRECATION")
     private fun registerCameraLauncher() {
         takePictureLauncher = registerForActivityResult(
-            TakePicture()
+            ActivityResultContracts.TakePicture()
         ) { isSuccess ->
-            if (isSuccess) {
+            if (isSuccess && currentPhotoUri != null) {
                 try {
-                    navigateToFindMyObjectWithBitmap()
+                    // Reset states
+                    showResult.value = false
+                    originalBitmap?.recycle()
+                    resultBitmap.value?.recycle()
+                    originalBitmap = null
+                    detectionResult = null
+                    stopDetection.set(false)
+                    displayReady.set(false)
+
+                    // Show loading and restart detection
+                    showLoading.value = true
+                    loadingText.value = load_scanningScene(this)
+
+                    loadAndDetectImage(currentPhotoUri!!)
                 } catch (e: IOException) {
-                    Log.e(TAG, "Error loading captured image", e)
-                    showCameraError()
+                    Log.e(TAG, "Error loading new captured image", e)
+                    showError(DetectionErrorType.IMAGE_LOAD_ERROR)
                 }
             } else {
                 Log.e(TAG, "Image capture failed or cancelled")
-                uiLocked = false
-                locked = false
             }
         }
-
-        Log.d(TAG, "Camera launcher registered")
     }
 
-    override fun onResume() {
-        super.onResume()
+    private fun loadAndDetectImage(imageUri: Uri) {
+        BackgroundTaskExecutor.getInstance().executeAsync(
+            {
+                try {
+                    // Load bitmap from URI
+                    val inputStream = contentResolver.openInputStream(imageUri)
+                    val bitmap = BitmapFactory.decodeStream(inputStream)
+                    inputStream?.close()
 
-        if (PhoneStatusMonitor.getInstance().isReturningFromPermissions)
-            PermissionChecker.checkAndRequestPermissions(
+                    if (bitmap == null) {
+                        Log.e(TAG, "Failed to decode bitmap from URI")
+                        return@executeAsync ThreadResult(
+                            null, null, -1, 0, 0,
+                            DetectionErrorType.IMAGE_LOAD_ERROR
+                        )
+                    }
+
+                    Log.d(TAG, "Image loaded: ${bitmap.width}x${bitmap.height}")
+
+                    // Run detection
+                    runDetection(bitmap)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error loading image", e)
+                    ThreadResult(
+                        null, null, -1, 0, 0,
+                        DetectionErrorType.IMAGE_LOAD_ERROR
+                    )
+                }
+            },
+            object : BackgroundTaskExecutor.TaskCallback<ThreadResult?> {
+                override fun onSuccess(result: ThreadResult?) {
+                    if (result == null) {
+                        showError(DetectionErrorType.IMAGE_LOAD_ERROR)
+                        return
+                    }
+
+                    when (result.errorType) {
+                        DetectionErrorType.NONE -> {
+                            // Success - process results
+                            if (result.detectionResult != null) {
+                                processFoundObjects(result)
+                            } else {
+                                showNoObjectsFound()
+                            }
+                        }
+
+                        DetectionErrorType.NO_DETECTOR_AVAILABLE -> {
+                            showError(DetectionErrorType.NO_DETECTOR_AVAILABLE)
+                        }
+
+                        DetectionErrorType.NO_OBJECTS_FOUND -> {
+                            showNoObjectsFound()
+                        }
+
+                        DetectionErrorType.IMAGE_LOAD_ERROR -> {
+                            showError(DetectionErrorType.IMAGE_LOAD_ERROR)
+                        }
+                    }
+
+                    displayReady.set(true)
+                    stopDetection.set(true)
+                }
+
+                override fun onError(e: Exception) {
+                    Log.e(TAG, "Detection error", e)
+                    showError(DetectionErrorType.IMAGE_LOAD_ERROR)
+                    displayReady.set(true)
+                    stopDetection.set(true)
+                }
+            }
+        )
+    }
+
+    private fun runDetection(bitmap: Bitmap): ThreadResult {
+        // Acquire detector
+        val detectorWrapper = currentDetectorModel.acquireDetector(
+            false,  // Don't prefer nano for static detection
+            5  // 5 second timeout
+        )
+
+        if (detectorWrapper == null) {
+            Log.e(TAG, "No detector available")
+            bitmap.recycle()
+            return ThreadResult(
+                null, null, -1, 0, 0,
+                DetectionErrorType.NO_DETECTOR_AVAILABLE
+            )
+        }
+
+        val detector = detectorWrapper.detector
+
+        var sceneId = -1
+        var classifierLatency = 0L
+
+        // Run classifier if enabled
+        val classifierLatch = CountDownLatch(1)
+
+        if (AppConfig.env_reports) {
+            BackgroundTaskExecutor.getInstance().executeAsync(
+                {
+                    val classifierStart = System.currentTimeMillis()
+                    sceneId = classifier.detectScene(bitmap, "StaticDetection")
+                    classifierLatency = System.currentTimeMillis() - classifierStart
+                    null
+                },
+                object : BackgroundTaskExecutor.TaskCallback<Any?> {
+                    override fun onSuccess(result: Any?) {
+                        classifierLatch.countDown()
+                    }
+
+                    override fun onError(e: Exception) {
+                        Log.e(TAG, "Classifier error", e)
+                        classifierLatch.countDown()
+                    }
+                }
+            )
+        } else {
+            classifierLatch.countDown()
+        }
+
+        // Run detector
+        val detectorStart = System.currentTimeMillis()
+        val detectionResult = detector.detectObjects(bitmap, "StaticDetection")
+        val detectorLatency = System.currentTimeMillis() - detectorStart
+
+        // Check if found any objects
+        val foundObjects = detectionResult.classIndices.isNotEmpty()
+
+        // Release detector
+        currentDetectorModel.releaseDetector(detectorWrapper)
+
+        if (!foundObjects) {
+            bitmap.recycle()
+
+            // Wait for classifier to finish
+            try {
+                classifierLatch.await(1, TimeUnit.SECONDS)
+            } catch (e: InterruptedException) {
+                Log.e(TAG, "Wait interrupted", e)
+            }
+
+            return ThreadResult(
+                null, null, sceneId, detectorLatency, classifierLatency,
+                DetectionErrorType.NO_OBJECTS_FOUND
+            )
+        }
+
+        // Wait for classifier
+        try {
+            val finished = classifierLatch.await(1, TimeUnit.SECONDS)
+            if (!finished) {
+                Log.w(TAG, "Classifier timeout after 1 second")
+            }
+        } catch (e: InterruptedException) {
+            Log.e(TAG, "Wait interrupted", e)
+        }
+
+        return ThreadResult(
+            detectionResult,
+            bitmap,
+            sceneId,
+            detectorLatency,
+            classifierLatency,
+            DetectionErrorType.NONE
+        )
+    }
+
+    private fun processFoundObjects(result: ThreadResult) {
+        // Stop detection
+        stopDetection.set(true)
+
+        // Update latency stats
+        updateLatencyStats(result.detectorLatency, result.classifierLatency)
+
+        // Write environment report
+        if (AppConfig.env_reports) {
+            EnvironmentReportsManagerKt.writeDetectionReport(
                 this,
-                AppConfig.blindness,
-                onPermissionGranted
+                result.sceneClassId,
+                result.detectionResult!!.classIndices as List<Int>,
+                1,  // Single thread for static detection
+                avgDetectorLatency,
+                avgClassifierLatency,
+                0f  // No battery usage tracking for static
+            )
+        }
+
+        // Save results
+        originalBitmap = result.bitmap
+        detectionResult = result.detectionResult
+        sceneClassId = result.sceneClassId
+
+        // Draw detections with default settings (0 offset, default text size)
+        resultBitmap.value = YOLODetector.drawDetections(
+            originalBitmap,
+            detectionResult
+        )
+
+        // Signal ready
+        displayReady.set(true)
+    }
+
+    private fun updateLatencyStats(detectorLatency: Long, classifierLatency: Long) {
+        avgDetectorLatency = if (avgDetectorLatency == 0L) {
+            detectorLatency
+        } else {
+            (avgDetectorLatency + detectorLatency) / 2
+        }
+
+        if (classifierLatency > 0) {
+            avgClassifierLatency = if (avgClassifierLatency == 0L) {
+                classifierLatency
+            } else {
+                (avgClassifierLatency + classifierLatency) / 2
+            }
+        }
+    }
+
+    private fun showResults() {
+        mainHandler.post(object : Runnable {
+            override fun run() {
+                if (displayReady.get()) {
+                    if (resultBitmap.value != null) {
+                        // Success - show results
+                        showLoading.value = false
+                        showResult.value = true
+
+                        if (AppConfig.haptics) {
+                            vibrate(haptic_model0())
+                        }
+
+                        // Show classification notification
+                        if (AppConfig.env_reports && sceneClassId >= 0) {
+                            val sceneName = classifier.getClassName(sceneClassId)
+                            showClassificationNotification(sceneName)
+                        }
+                    } else {
+                        // Error occurred
+                        showLoading.value = false
+                    }
+                    return
+                }
+                // Schedule next iteration
+                mainHandler.postDelayed(this, 500)
+            }
+        })
+    }
+
+    private fun showError(errorType: DetectionErrorType) {
+        detectionErrorType = errorType
+        displayReady.set(true)
+
+        mainHandler.postDelayed({
+            showLoading.value = false
+
+            if(errorType==DetectionErrorType.IMAGE_LOAD_ERROR
+                ||errorType==DetectionErrorType.NO_DETECTOR_AVAILABLE)
+                showErrorDialog()
+
+            // Show error dialog and exit after delay
+            infoNotificationManager.showNotification(
+                load_noObjectsFound(this),
+                {
+                    finish()
+                },
+                "OK"
             )
 
-        if (hasToExecAfterResume) {
-            hasToExecAfterResume = false
-            mainHandler.post(afterResumeRunnable)
-        }
-
-        if (returnFromFindMyObject) {
-            returnFromFindMyObject = false
-            handleSpeechDialogTap()
-        }
-    }
-
-    private fun handleDetectionClick() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            showDetectionOptions.value = !showDetectionOptions.value
-            detectionIconColor.value = if (showDetectionOptions.value) {
-                R.color.std_cyan
-            } else {
-                selectedDetectionOption.value = null
-                R.color.std_purple_dark
-            }
-        }
-    }
-
-    private fun handleDetectionOptionSelected(option: DetectionOption?, navigate: Boolean) {
-        if (option != null) {
-            if (selectedDetectionOption.value != option) {
-                vibrateIfEnabled()
-                selectedDetectionOption.value = option
-            }
-        } else
-            selectedDetectionOption.value = null
-        if (navigate) {
-            navigateToLiveOrStatic()
-        }
-    }
-
-    private fun navigateToLiveOrStatic() {
-        when (selectedDetectionOption.value) {
-            DetectionOption.LIVE -> launchLiveDetection()
-            DetectionOption.STATIC -> launchStaticDetection()
-            else -> {
-                handleDetectionClick()
-            }
-        }
-    }
-
-    private fun launchLiveDetection() {
-        onPermissionGranted = {
-            checkPhoneStatusAndNavigate {
-                // Navigate to LiveDetectionActivity
-                val intent = Intent(this, LiveDetectionActivity::class.java)
-                startActivity(intent)
+            // Auto-exit after delay
+            mainHandler.postDelayed({
                 finish()
-            }
-        }
-        PermissionChecker.checkAndRequestPermissions(this, AppConfig.blindness, onPermissionGranted)
+            }, Constants.ERROR_READ_DELAY.toLong())
+        }, 500)
     }
 
-    private fun launchStaticDetection() {
-        classOpt = 0
-        onPermissionGranted = {
+    private fun showErrorDialog() {
+        val monitor = PhoneStatusMonitor.getInstance()
+        val errorDialog = ErrorDialogManager(monitor.currentActivity)
+        errorDialog.setupDialog(Constants.DETECTOR_LOAD_ERROR)
+        monitor.shutdownApp(errorDialog, monitor.currentContext)
+    }
+
+    private fun showNoObjectsFound() {
+        mainHandler.postDelayed({
+            showLoading.value = false
+
+            val message = load_noObjectsFound(this)
+
+            // Show info dialog and exit after delay
+            infoNotificationManager.showNotification(
+                message,
+                {
+                    finish()
+                },
+                "OK"
+            )
+
+            // Auto-exit after delay
+            mainHandler.postDelayed({
+                finish()
+            }, Constants.ERROR_READ_DELAY.toLong())
+        }, 500)
+    }
+
+    private fun showClassificationNotification(sceneName: String) {
+        val message = load_classificationSuccess(sceneName)
+
+        infoNotificationManager.showNotification(
+            message,
+            {
+                infoNotificationManager.hideNotification()
+            },
+            "OK"
+        )
+
+        // Auto-hide after delay
+        mainHandler.postDelayed({
+            infoNotificationManager.hideNotification()
+        }, Constants.ERROR_READ_DELAY.toLong())
+    }
+
+    private fun handleHomeClick() {
+        if (AppConfig.haptics) {
+            vibrate(haptic_model0())
+        }
+
+        val intent = Intent(this, HomeActivity::class.java)
+        startActivity(intent)
+        finish()
+    }
+
+    private fun handlePhotoClick() {
+        if (AppConfig.haptics) {
+            vibrate(haptic_model0())
+        }
+
+        // Check permissions first
+        PermissionChecker.checkAndRequestPermissions(this, false) {
+            // Check phone status
             checkPhoneStatusAndNavigate {
                 launchCamera()
             }
         }
-        PermissionChecker.checkAndRequestPermissions(this, AppConfig.blindness, onPermissionGranted)
+    }
+
+    private fun checkPhoneStatusAndNavigate(onSuccess: () -> Unit) {
+        PhoneStatusMonitor.getInstance().checkPhoneStatus()
+        // If check passes, execute success callback
+        onSuccess()
     }
 
     private fun launchCamera() {
@@ -356,1398 +590,415 @@ class StaticDetectionActivity : BaseActivity() {
 
             Log.d(TAG, "Launching camera with URI: $currentPhotoUri")
 
-            takePictureLauncher.launch(currentPhotoUri)
+            takePictureLauncher.launch(currentPhotoUri!!)
         } catch (e: IOException) {
             Log.e(TAG, "Error creating temp file", e)
             showCameraError()
         }
     }
 
-    private fun navigateToFindMyObjectWithBitmap() {
-        try {
-            val intent = Intent(
-                this,
-                when (classOpt) {
-                    0 -> StaticDetectionActivity::class.java
-                    else -> CaptionActivity::class.java
-                }
-            )
-            intent.putExtra(Constants.EXTRA_IMAGE_URI, currentPhotoUri.toString())
-            startActivity(intent)
-            finish()
-        } catch (e: Exception) {
-            Log.e(TAG, "Error navigating to FindMyObjectActivity", e)
-            showCameraError()
-        }
-    }
-
     private fun showCameraError() {
         val monitor = PhoneStatusMonitor.getInstance()
-        val errorDialog = ErrorDialogManager(monitor.currentActivity)
+        val errorDialog = ErrorDialogManager(this)
         errorDialog.setupDialog(Constants.CAMERA_MAKE_PHOTO)
-        monitor.shutdownApp(errorDialog, monitor.currentContext)
+        monitor.shutdownApp(errorDialog, this)
     }
 
-    private fun handleCaptionClick() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            launchCaptionActivity()
+    private fun handleBBoxResize(offset: Float) {
+        // Cancel any pending update
+        updateRunnable?.let { updateHandler.removeCallbacks(it) }
+
+        // Schedule new update with delay
+        updateRunnable = Runnable {
+            redrawDetections()
         }
+        updateHandler.postDelayed(updateRunnable!!, Constants.PREVIEW_UPDATE_DELAY.toLong())
     }
 
-    private fun launchCaptionActivity() {
-        classOpt = 1
-        onPermissionGranted = {
-            checkPhoneStatusAndNavigate {
-                launchCamera()
-            }
+    private fun handleTextResize(ratio: Float) {
+        // Cancel any pending update
+        updateRunnable?.let { updateHandler.removeCallbacks(it) }
+
+        // Schedule new update with delay
+        updateRunnable = Runnable {
+            redrawDetections()
         }
-        PermissionChecker.checkAndRequestPermissions(this, AppConfig.blindness, onPermissionGranted)
+        updateHandler.postDelayed(updateRunnable!!, Constants.PREVIEW_UPDATE_DELAY.toLong())
     }
 
-    private fun handleDetectionInfoClick() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            titleText.value = load_detectionTutorial(this, getNextInfoStep())
-        }
-    }
+    private fun redrawDetections() {
+        if (originalBitmap != null && detectionResult != null) {
+            BackgroundTaskExecutor.getInstance().executeAsync(
+                {
+                    YOLODetector.drawDetections(
+                        originalBitmap,
+                        detectionResult
+                    )
+                },
+                object : BackgroundTaskExecutor.TaskCallback<Bitmap?> {
+                    override fun onSuccess(result: Bitmap?) {
+                        resultBitmap.value = result
+                    }
 
-    private fun handleCaptionInfoClick() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            titleText.value = load_captionTutorial(this, getNextInfoStep2())
-        }
-    }
-
-    private fun handleSpeakInfoClick() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-
-            titleText.value = load_speakTutorial(this, speakInfoClickCount.value)
-
-            // Reset after showing all messages
-            if (speakInfoClickCount.value == 7) {
-                speakInfoClickCount.value = 0
-            } else
-                speakInfoClickCount.value++
-        }
-    }
-
-    private fun getNextInfoStep(): Int {
-        // Simple counter for tutorial steps
-        if (++basicInfoClickCount == 4) {
-            basicInfoClickCount = 1
-            return 0
-        } else {
-            return basicInfoClickCount - 1
-        }
-    }
-
-    private fun getNextInfoStep2(): Int {
-        // Simple counter for tutorial steps
-        if (++basicInfoClickCount2 == 4) {
-            basicInfoClickCount2 = 1
-            return 0
-        } else {
-            return basicInfoClickCount2 - 1
-        }
-    }
-
-    private fun handleNavigateHome() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            // Already on home, do nothing
-        }
-    }
-
-    private fun handleNavigateReports() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-
-            val intent = Intent(this, EnvironmentReportsActivity::class.java)
-            startActivity(intent)
-            finish()
-        }
-    }
-
-    private fun handleNavigateSettings() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            val intent = Intent(this, SettingsActivity::class.java)
-            startActivity(intent)
-            finish()
-        }
-    }
-
-    private fun handleSwipeToLeft() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            val intent = Intent(
-                this, if (AppConfig.env_reports)
-                    EnvironmentReportsActivity::class.java
-                else
-                    SettingsActivity::class.java
+                    override fun onError(e: Exception) {
+                        Log.e(TAG, "Error redrawing detections", e)
+                    }
+                }
             )
-            startActivity(intent)
-            finish()
         }
     }
 
-    private fun launchSpeechRecognition(firstTimeSpeak: Boolean) {
-        if (firstTimeSpeak) {
-            if (AppConfig.mainLanguage.code == "ro") {
-                hasToExecAfterResume = true
-                soundManager.play(SoundConstants.STT_ERROR_ID, 0.7f, 0.7f) {
-                    ttsManager.speak(
-                        load_unavailableSTT(this),
-                        AppConfig.tts_pitch,
-                        AppConfig.tts_speech_rate,
-                        false,
-                        null
-                    )
-                }
-                afterResumeRunnable = object : Runnable {
-                    override fun run() {
-                        if (ttsManager.isDoneSpeaking) {
-                            uiLocked = false
-                            locked = false
-                        } else {
-                            mainHandler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS.toLong())
-                        }
-                    }
-                }
-                mainHandler.postDelayed(
-                    afterResumeRunnable,
-                    SoundConstants.getDuration(SoundConstants.STT_ERROR_ID).toLong() + 500
-                )
-            } else
-                if (speechRecognizer == null) {
-                    soundManager.play(SoundConstants.STT_ERROR_ID, 0.7f, 0.7f) {
-                        ttsManager.speak(
-                            load_errorSTT(this),
-                            AppConfig.tts_pitch,
-                            AppConfig.tts_speech_rate,
-                            false,
-                            null
-                        )
-                    }
-                    afterResumeRunnable = object : Runnable {
-                        override fun run() {
-                            if (ttsManager.isDoneSpeaking) {
-                                uiLocked = false
-                                locked = false
-                            } else {
-                                mainHandler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS.toLong())
-                            }
-                        }
-                    }
-                    mainHandler.postDelayed(
-                        afterResumeRunnable,
-                        SoundConstants.getDuration(SoundConstants.STT_ERROR_ID).toLong() + 500
-                    )
-                } else {
-                    retrySpeech.value = false
-                    sendSpeech.value = false
-                    showSpeechDialog.value = true
-                    speakingProcess()
-                }
-        } else {
-            speakingProcess()
-        }
-    }
+    override fun onResume() {
+        super.onResume()
 
-    private fun formatRecognizedText(text: String): String {
-        if (text.isBlank()) return text
-
-        // Replace [unk] with ??
-        var formatted = text.replace("[unk]", "??")
-
-        // Capitalize first letter if it's not ??
-        if (formatted.isNotEmpty() && !formatted.startsWith("??")) {
-            formatted = formatted.replaceFirstChar {
-                if (it.isLowerCase()) it.titlecase() else it.toString()
+        if (PhoneStatusMonitor.getInstance().isReturningFromPermissions) {
+            PermissionChecker.checkAndRequestPermissions(this, false) {
+                // Permissions granted
             }
         }
 
-        return formatted
-    }
-
-    private fun speakingProcess() {
-        lockedVolumeDown = false
-        isSpeaking.value = true
-        speechText.value = "Listening..."
-        soundManager.play(SoundConstants.STT_SPEAK_OPEN_ID, 0.7f, 0.7f) {
-            speechRecognizer.startListening(object :
-                SpeechRecognizer.RecognitionCallback {
-                override fun onResult(recognizedText: String, isFinalResult: Boolean) {
-                    if (isFinalResult) {
-                        isSpeaking.value = false
-                        speechText.value = formatRecognizedText(recognizedText)
-                        mainHandler.postDelayed({ processRecognizedSpeech() }, 1000)
-
-                        /*
-                        sendSpeech.value = true
-                        retrySpeech.value = true
-                        locked = false
-                        vibrateIfEnabled()*/
-                    } else {
-                        speechText.value = formatRecognizedText(recognizedText)
-                    }
-                }
-
-                override fun onError(error: String) {
-                    hasToExecAfterResume = true
-                    soundManager.play(SoundConstants.STT_ERROR_ID, 0.7f, 0.7f) {
-                        ttsManager.speak(
-                            load_errorSTTRuntime(PhoneStatusMonitor.getInstance().currentContext),
-                            AppConfig.tts_pitch,
-                            AppConfig.tts_speech_rate,
-                            false,
-                            null
-                        )
-                    }
-                    afterResumeRunnable = object : Runnable {
-                        override fun run() {
-                            if (ttsManager.isDoneSpeaking) {
-                                handleSpeechDialogTap()
-                            } else {
-                                mainHandler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS.toLong())
-                            }
-                        }
-                    }
-                    mainHandler.postDelayed(
-                        afterResumeRunnable,
-                        SoundConstants.getDuration(SoundConstants.STT_ERROR_ID).toLong() + 500
-                    )
-                }
-            })
+        // Start showing results if ready
+        if (!displayReady.get()) {
+            showResults()
         }
-    }
-
-    private fun processRecognizedSpeech() {
-        speechProcessText.value = "Matching known objects..."
-
-        var finishedLoading = false
-        val backgroundTask = BackgroundTaskExecutor.getInstance()
-        backgroundTask.executeAsync(
-            {
-                matchedIndices = speechRecognizer.processRecognizedText(speechText.value)
-
-                if (!matchedIndices.isEmpty()) {
-                    classNames = matchedIndices.map { it.matchedWord }
-                }
-                return@executeAsync 0
-            },
-            object : BackgroundTaskExecutor.TaskCallback<Int> {
-                override fun onSuccess(result: Int) {
-                    finishedLoading = true
-                }
-
-                override fun onError(e: Exception) {
-                    finishedLoading = true
-                }
-            }
-        )
-
-        val checkRunnable = object : Runnable {
-            override fun run() {
-                if (finishedLoading) {
-                    processTextOutput()
-                } else {
-                    mainHandler.postDelayed(this, 500)
-                }
-            }
-        }
-        mainHandler.postDelayed(checkRunnable, 2000)
-    }
-
-    private fun processTextOutput() {
-        if (matchedIndices.isEmpty()) {
-            speechProcessText.value = "No matched known classes"
-            retrySpeech.value = true
-            sendSpeech.value = false
-            lockedVolumeDown = true
-            locked = false
-            vibrateIfEnabled()
-        } else {
-            speechProcessText.value = "Matched: ${classNames.joinToString(", ")}"
-            retrySpeech.value = true
-            sendSpeech.value = true
-            locked = false
-            vibrateIfEnabled()
-        }
-    }
-
-    private fun sendProcessedSpeech() {
-        val classIndices = IntArray(matchedIndices.size) { matchedIndices[it].classIndex }
-        val matchedWords = Array(matchedIndices.size) { matchedIndices[it].matchedWord }
-
-        val intent = Intent(this, FindMyObjectActivity::class.java).apply {
-            putExtra(Constants.EXTRA_MATCHED_INDICES, classIndices)
-            putExtra(Constants.EXTRA_SYNONYMS_WORDS, matchedWords)
-        }
-        returnFromFindMyObject = true
-        startActivity(intent)
-
-        //finish()
-    }
-
-    private fun handleSpeechDialogTap() {
-        // Cancel speech recognition
-        mainHandler.removeCallbacksAndMessages(null)
-        soundManager.releaseCallback()
-        speechRecognizer.stopListening()
-        locked = true
-        lockedVolumeDown = false
-        showSpeechDialog.value = false
-        mainHandler.postDelayed({
-            uiLocked = false
-            retrySpeech.value = false
-            sendSpeech.value = false
-            isSpeaking.value = false
-            speechText.value = ""
-            speechProcessText.value = ""
-            locked = false
-        }, Constants.ANIMATION_DELAY.toLong())
-    }
-
-    private fun resetSpeechStates() {
-        speechProcessText.value = ""
-        speechText.value = ""
-        //cancelSpeech.value = true
-        retrySpeech.value = false
-        sendSpeech.value = false
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        when (keyCode) {
-            KeyEvent.KEYCODE_VOLUME_UP -> {
-                if (!locked) {
-                    //uiLocked=true
-                    if (retrySpeech.value) {
-                        // Retry speech recognition
-                        locked = true
-                        resetSpeechStates()
-                        launchSpeechRecognition(false)
-                    } else {
-                        uiLocked = true
-                        locked = true
-                        // Launch static detection
-                        launchStaticDetection()
-                    }
-                }
-                return true
-            }
-
+        return when (keyCode) {
             KeyEvent.KEYCODE_VOLUME_DOWN -> {
-                if (!locked) {
-                    uiLocked = true
-                    if (!handleVolumeDownControl) {
-                        if (!showSpeechDialog.value)
-                            handleVolumeDownControl = true
-                        mainHandler.removeCallbacksAndMessages(null)
-                        mainHandler.postDelayed(
-                            { handleSingleVolumeDown() }, Constants.VOLUME_DOWN_DELAY_MS.toLong()
-                        )
-                    } else {
-                        mainHandler.removeCallbacksAndMessages(null)
-                        locked = true
-                        handleVolumeDownControl = false
-                        launchSpeechRecognition(true)
-                    }
+                handleHomeClick()
+                true
+            }
+
+            KeyEvent.KEYCODE_VOLUME_UP -> {
+                if (showResult.value) {
+                    handlePhotoClick()
                 }
-                return true
-            }
-        }
-        return super.onKeyDown(keyCode, event)
-    }
-
-    private fun handleSingleVolumeDown() {
-        when {
-            sendSpeech.value -> {
-                locked = true
-                // Process recognized text
-                sendProcessedSpeech()
+                true
             }
 
-            else -> {
-                if (!lockedVolumeDown)
-                // Launch caption activity
-                    launchCaptionActivity()
-            }
+            else -> super.onKeyDown(keyCode, event)
         }
     }
 
-    private fun vibrateIfEnabled() {
-        if (AppConfig.haptics) {
-            vibrate(haptic_model0())
-        }
-    }
-
-    private fun checkPhoneStatusAndNavigate(onSuccess: () -> Unit) {
-        PhoneStatusMonitor.getInstance().checkPhoneStatus()
-        // If check passes, execute success callback
-        onSuccess()
-    }
-
-    override fun onPause() {
-        super.onPause()
+    override fun onDestroy() {
+        super.onDestroy()
+        originalBitmap?.recycle()
+        resultBitmap.value?.recycle()
         mainHandler.removeCallbacksAndMessages(null)
-        soundManager.releaseCallback()
-        ttsManager.stopSpeaking()
+        updateHandler.removeCallbacksAndMessages(null)
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(
-    titleText: String,
-    syncStatus: Int,
-    syncDays: Int,
-    showDetectionOptions: Boolean,
-    detectionIconColor: Int,
-    selectedDetectionOption: DetectionOption?,
-    showSpeechDialog: Boolean,
-    speechText: String,
-    speechProcessText: String,
-    isSpeaking: Boolean,
-    onDetectionClick: () -> Unit,
-    onDetectionOptionSelected: (DetectionOption?, navigate: Boolean) -> Unit,
-    onCaptionClick: () -> Unit,
-    onDetectionInfoClick: () -> Unit,
-    onCaptionInfoClick: () -> Unit,
-    onSpeakInfoClick: () -> Unit,
-    onNavigateHome: () -> Unit,
-    onNavigateReports: () -> Unit,
-    onNavigateSettings: () -> Unit,
-    onSpeechDialogTap: () -> Unit,
-    navigateFun: () -> Unit,
-    onSwipeToLeft: () -> Unit
+fun StaticDetectionScreen(
+    showLoading: Boolean,
+    loadingText: String,
+    showResult: Boolean,
+    resultBitmap: Bitmap?,
+    onHomeClick: () -> Unit,
+    onPhotoClick: () -> Unit,
+    onBBoxResize: (Float) -> Unit,
+    onTextResize: (Float) -> Unit
 ) {
-    BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxSize()
-    ) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val screenHeight = maxHeight
         val screenWidth = maxWidth
-        val navbarHeight = 90.dp / maxHeight
-        val sectionMain = 1.0f - navbarHeight
 
+        // Background: Black or Result Image
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(Unit) {
-                    var swipeStartX = 0f
-                    detectHorizontalDragGestures(
-                        onDragStart = {
-                            swipeStartX = 0f
-                        },
-                        onDragEnd = {
-                            val threshold = (screenWidth * Constants.MIN_HDISTANCE_THRESHOLD).toPx()
-                            when {
-                                swipeStartX <= -threshold -> {
-                                    onSwipeToLeft()
-                                }
-                            }
-                            swipeStartX = 0f
-                        },
-                        onHorizontalDrag = { _, dragAmount ->
-                            swipeStartX += dragAmount
-                        }
-                    )
-                }
+                .background(Color.Black)
         ) {
-            // Background image
-            Image(
-                painter = painterResource(R.drawable.app_background),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-
-            // Main content
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(sectionMain)
-            ) {
-                Box(modifier = Modifier.height(screenHeight * 0.045f))
-
-                // Logo
+            if (showResult && resultBitmap != null) {
                 Image(
-                    painter = painterResource(R.drawable.vision_assist_logo),
-                    contentDescription = "app logo",
-                    modifier = Modifier.size(Constants.LOGO_SIZE.dp)
-                )
-
-                // Title with typewriter animation
-                TypewriterText(
-                    text = titleText,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp),
-                    colorSchema = TypewriterColorSchema(
-                        wordColorSchema = CustomColorSchema(
-                            color = colorResource(R.color.std_purple),
-                            fontFamily = robotoSemibold,
-                            fontSize = Constants.STD_SUBTITLE_SIZE.sp
-                        ),
-                        outlinedWordColorSchema = CustomColorSchema(
-                            color = colorResource(R.color.std_purple_dark),
-                            fontFamily = robotoExtraBold,
-                            fontSize = Constants.STD_SUBTITLE_SIZE.sp
-                        )
-                    )
-                )
-
-                Box(modifier = Modifier.height(screenWidth * 0.05f))
-
-                // Detection Button with options
-                DetectionButtonSection(
-                    showOptions = showDetectionOptions,
-                    iconColor = detectionIconColor,
-                    selectedOption = selectedDetectionOption,
-                    screenWidth = screenWidth,
-                    showInfoButton = AppConfig.showTutorial,
-                    onDetectionClick = onDetectionClick,
-                    onIconPress = onDetectionClick,
-                    onOptionSelected = onDetectionOptionSelected,
-                    onInfoClick = onDetectionInfoClick,
-                    navigate = navigateFun
-                )
-
-
-                Box(modifier = Modifier.height(screenHeight * 0.04f))
-
-                // Caption Button
-                CaptionButtonSection(
-                    screenWidth = screenWidth,
-                    showInfoButton = AppConfig.showTutorial,
-                    onCaptionClick = onCaptionClick,
-                    onInfoClick = onCaptionInfoClick
-                )
-
-                //Box(modifier = Modifier.height(screenHeight * 0.21f))
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                SyncStatusSection(
-                    syncStatus = syncStatus,
-                    syncDays = syncDays,
-                    showInfoButton = AppConfig.showTutorial && AppConfig.mainLanguage.code == "en",
-                    onInfoClick = onSpeakInfoClick
+                    bitmap = resultBitmap.asImageBitmap(),
+                    contentDescription = "Detection Result",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit
                 )
             }
+        }
 
+        // Loading overlay
+        LoadingComponent(
+            isVisible = showLoading,
+            loadingText = loadingText
+        )
 
-            // Bottom Navigation Bar
+        // Bottom panel (navigation + settings)
+        if (showResult) {
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .fillMaxHeight(navbarHeight),
             ) {
-                BottomNavigationBar(
-                    onNavigateHome = onNavigateHome,
-                    onNavigateReports = onNavigateReports,
-                    onNavigateSettings = onNavigateSettings,
-                    showReports = AppConfig.env_reports
+                SettingsPanel(
+                    screenHeight = screenHeight,
+                    screenWidth = screenWidth,
+                    onHomeClick = onHomeClick,
+                    onPhotoClick = onPhotoClick,
+                    onBBoxResize = onBBoxResize,
+                    onTextResize = onTextResize
                 )
             }
-
-            // Speech Recognition Dialog
-            SpeechRecognitionDialog(
-                isVisible = showSpeechDialog,
-                speechText = speechText,
-                processText = speechProcessText,
-                isSpeaking = isSpeaking,
-                onTap = onSpeechDialogTap
-            )
         }
     }
 }
 
 @Composable
-fun TypewriterText(
-    text: String,
-    modifier: Modifier = Modifier,
-    colorSchema: TypewriterColorSchema,
-    textShowSpeed: Long = 70
-) {
-    var displayedText by remember { mutableStateOf("") }
-
-    LaunchedEffect(text) {
-        displayedText = ""
-        text.forEachIndexed { index, _ ->
-            delay(textShowSpeed) // Typing speed
-            displayedText = text.take(index + 1)
-        }
-    }
-
-    // Parse text with ~ separator
-    val parts = displayedText.split("~")
-
-    Text(
-        text = buildAnnotatedString {
-            when (parts.size) {
-                1 -> {
-                    withStyle(
-                        style = SpanStyle(
-                            color = colorSchema.wordColorSchema.color,
-                            fontFamily = colorSchema.wordColorSchema.fontFamily,
-                            fontSize = colorSchema.wordColorSchema.fontSize
-                        )
-                    ) {
-                        append(parts[0])
-                    }
-                }
-
-                3 -> {
-                    withStyle(
-                        style = SpanStyle(
-                            color = colorSchema.wordColorSchema.color,
-                            fontFamily = colorSchema.wordColorSchema.fontFamily,
-                            fontSize = colorSchema.wordColorSchema.fontSize
-                        )
-                    ) {
-                        append(parts[0])
-                    }
-                    withStyle(
-                        style = SpanStyle(
-                            color = colorSchema.outlinedWordColorSchema.color,
-                            fontFamily = colorSchema.outlinedWordColorSchema.fontFamily,
-                            fontSize = colorSchema.outlinedWordColorSchema.fontSize
-                        )
-                    ) {
-                        append(parts[1])
-                    }
-                    withStyle(
-                        style = SpanStyle(
-                            color = colorSchema.wordColorSchema.color,
-                            fontFamily = colorSchema.wordColorSchema.fontFamily,
-                            fontSize = colorSchema.wordColorSchema.fontSize
-                        )
-                    ) {
-                        append(parts[2])
-                    }
-                }
-            }
-        },
-        textAlign = TextAlign.Center,
-        modifier = modifier
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun DetectionButtonSection(
-    showOptions: Boolean,
-    iconColor: Int,
-    selectedOption: DetectionOption?,
+fun SettingsPanel(
+    screenHeight: Dp,
     screenWidth: Dp,
-    showInfoButton: Boolean,
-    onDetectionClick: () -> Unit,
-    onIconPress: () -> Unit,
-    onOptionSelected: (DetectionOption?, navigate: Boolean) -> Unit,
-    onInfoClick: () -> Unit,
-    navigate: () -> Unit
+    onHomeClick: () -> Unit,
+    onPhotoClick: () -> Unit,
+    onBBoxResize: (Float) -> Unit,
+    onTextResize: (Float) -> Unit
 ) {
-    // Button dimensions
-    val buttonHeight = Constants.STD_BUTTON_PAGE_HEIGHT.dp
-    val optionWidth = screenWidth * 0.21f
-    val detectionX = screenWidth * 0.23f
+    var isExpanded by remember { mutableStateOf(false) }
+    var currentSliderSection by remember { mutableIntStateOf(1) } // 1 = BBox, 2 = Text
 
-    // ✅ NEW: Drag detection state
-    val density = LocalDensity.current
+    var bboxOffset by remember { mutableFloatStateOf(0f) }
+    var textSizeRatio by remember { mutableFloatStateOf(Constants.TEXT_SIZE_WIDTH_SCREEN) }
 
-    // Helper function to determine which button is being hovered
-    fun getHoveredOption(position: Offset): DetectionOption? {
-        if (!showOptions) return null
+    // Animated offsets for slide animations
+    val navigationOffsetY by animateDpAsState(
+        targetValue = if (isExpanded) screenHeight * 0.246f else 0.dp,
+        animationSpec = tween(
+            durationMillis = 250,
+            delayMillis = if (isExpanded) 0 else 250,
+            easing = FastOutSlowInEasing
+        ),
+        label = "navigation_offset"
+    )
 
-        with(density) {
-            // Static button bounds (left of detection)
-            val staticLeft = (detectionX - optionWidth - 5.dp).toPx()
-            val staticRight = (detectionX - 5.dp).toPx()
-            val staticTop = buttonHeight.toPx()
-            val staticBottom = (buttonHeight + buttonHeight).toPx()
-
-            if (position.x in staticLeft..staticRight &&
-                position.y in staticTop..staticBottom
-            ) {
-                return DetectionOption.STATIC
-            }
-
-            // Live button bounds (above detection, rotated)
-            val liveLeft = detectionX.toPx()
-            val liveRight = (detectionX + buttonHeight).toPx() // Rotated: width is height
-            val liveTop = (buttonHeight - optionWidth - 4.dp).toPx()
-            val liveBottom = (buttonHeight - 4.dp).toPx()
-
-            if (position.x in liveLeft..liveRight &&
-                position.y in liveTop..liveBottom
-            ) {
-                return DetectionOption.LIVE
-            }
-        }
-
-        return null
-    }
+    val sliderOffsetY by animateDpAsState(
+        targetValue = if (isExpanded) 0.dp else screenHeight * 0.246f,
+        animationSpec = tween(
+            durationMillis = 250,
+            delayMillis = if (!isExpanded) 0 else 250,
+            easing = FastOutSlowInEasing
+        ),
+        label = "slider_offset"
+    )
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height((Constants.STD_BUTTON_PAGE_HEIGHT).dp + optionWidth)
-            .pointerInput(showOptions) {
-                // ✅ Detect drag gestures when options are visible
-                if (showOptions) {
-                    detectDragGestures(
-                        onDragStart = { offset ->
-                            onOptionSelected(getHoveredOption(offset), false)
-                        },
-                        onDrag = { change, _ ->
-                            onOptionSelected(getHoveredOption(change.position), false)
-                        },
-                        onDragEnd = {
-                            navigate()
-                        },
-                        onDragCancel = {
-                            navigate()
-                        }
-                    )
+            .height(screenHeight * 0.246f)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+                .offset(y = navigationOffsetY)
+                .padding(bottom = 43.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Home + Photo buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(screenWidth * 0.08f)
+                ) {
+                    // Photo button (left)
+                    PhotoButton(onClick = onPhotoClick)
+
+                    // Home button (center, larger)
+                    HomeButton(onClick = onHomeClick)
                 }
             }
-    ) {
-        // === STATIC BUTTON (Slides LEFT) ===
-        AnimatedVisibility(
-            visible = showOptions,
-            enter = slideInHorizontally(
-                initialOffsetX = { it },
-                animationSpec = tween(250)
-            ),
-            exit = slideOutHorizontally(
-                targetOffsetX = { it },
-                animationSpec = tween(250)
-            ),
-            modifier = Modifier
-                .offset(
-                    x = detectionX - optionWidth - 5.dp,
-                    y = buttonHeight
-                )
-        ) {
-            OptionButton(
-                text = "Static",
-                isSelected = selectedOption == DetectionOption.STATIC,
-                onClick = { onOptionSelected(DetectionOption.STATIC, true) },
-                width = optionWidth,
-                height = buttonHeight,
-                isRotated = false
-            )
-        }
 
-        // === LIVE BUTTON (Slides UP, rotated 90°) ===
-        AnimatedVisibility(
-            visible = showOptions,
-            enter = slideInVertically(
-                initialOffsetY = { it },
-                animationSpec = tween(250)
-            ),
-            exit = slideOutVertically(
-                targetOffsetY = { it },
-                animationSpec = tween(250)
-            ),
-            modifier = Modifier
-                .offset(
-                    x = detectionX,
-                    y = buttonHeight - optionWidth - 8.dp
-                )
-        ) {
-            OptionButton(
-                text = "Live",
-                isSelected = selectedOption == DetectionOption.LIVE,
-                onClick = { onOptionSelected(DetectionOption.LIVE, true) },
-                width = optionWidth,
-                height = buttonHeight,
-                isRotated = true
-            )
-        }
+            Spacer(modifier = Modifier.height(15.dp))
 
-        // === DETECTION BUTTON (Fixed position) ===
-        Row(
-            modifier = Modifier
-                .offset(x = detectionX, y = buttonHeight)
-                .fillMaxWidth(0.77f),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            MainActionButton(
+            ExtendedFloatingActionButton(
+                onClick = {
+                    isExpanded = true
+                    if (AppConfig.haptics) vibrate(haptic_model0())
+                },
+                containerColor = colorResource(R.color.std_purple),
+                contentColor = Color.White,
                 shape = RoundedCornerShape(
-                    topStart = 5.dp,
-                    topEnd = 31.dp,
-                    bottomStart = 5.dp,
-                    bottomEnd = 5.dp
+                    topStart = 0.dp,
+                    topEnd = 0.dp,
+                    bottomEnd = 16.dp,
+                    bottomStart = 16.dp
                 ),
-                text = if (AppConfig.mainLanguage.code == "en") "Detection" else "Detecție",
-                iconRes = R.drawable.detection_icon,
-                iconColor = iconColor,
-                screenWidth = screenWidth,
-                onClick = onDetectionClick,
-                onIconPress = onIconPress
-            )
-
-            if (showInfoButton) {
-                InfoButtonWithPulse(
-                    onClick = onInfoClick,
-                    isPulsing = true
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun CaptionButtonSection(
-    screenWidth: Dp,
-    showInfoButton: Boolean,
-    onCaptionClick: () -> Unit,
-    onInfoClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height((Constants.STD_BUTTON_PAGE_HEIGHT).dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .offset(x = screenWidth * 0.23f)
-                .fillMaxWidth(0.77f),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Caption Button
-            MainActionButton(
-                shape = RoundedCornerShape(
-                    topStart = 5.dp,
-                    topEnd = 5.dp,
-                    bottomStart = 31.dp,
-                    bottomEnd = 31.dp
-                ),
-                predefinedIcon = Icons.Filled.TextFields,
-                text = if (AppConfig.mainLanguage.code == "en") "Caption" else "Descriere textuală",
-                iconColor = R.color.std_purple_dark,
-                screenWidth = screenWidth,
-                onClick = onCaptionClick,
-                onIconPress = onCaptionClick, // No special behavior
-            )
-
-            // Info button
-            if (showInfoButton) {
-                Spacer(modifier = Modifier.width(15.dp))
-                InfoButtonWithPulse(
-                    onClick = onInfoClick,
-                    isPulsing = true
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun OptionButton(
-    text: String,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    width: Dp,
-    height: Dp,
-    isRotated: Boolean
-) {
-    if (isRotated) {
-        // Rotated button (for "Live" - vertical)
-        Button(
-            onClick = onClick,
-            modifier = Modifier
-                .width(height) // Swap dimensions
-                .height(height)
-                .shadow(
-                    3.dp, RoundedCornerShape(
-                        topStart = 31.dp,
-                        topEnd = 31.dp,
-                        bottomStart = 5.dp,
-                        bottomEnd = 5.dp
-                    )
-                ),
-            shape = RoundedCornerShape(
-                topStart = 31.dp,
-                topEnd = 31.dp,
-                bottomStart = 5.dp,
-                bottomEnd = 5.dp
-            ),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = if (isSelected) {
-                    colorResource(R.color.std_purple_dark)
-                } else {
-                    colorResource(R.color.std_cyan)
-                },
-                contentColor = Color.White
-            ),
-            contentPadding = PaddingValues(0.dp)
-        ) {
-            Text(
-                text = text,
-                fontSize = 22.sp,
-                fontFamily = robotoExtraBoldItalic
-            )
-        }
-    } else {
-        // Regular button (for "Static" - horizontal)
-        Button(
-            onClick = onClick,
-            modifier = Modifier
-                .width(width)
-                .height(height)
-                .shadow(
-                    3.dp, RoundedCornerShape(
-                        topStart = 31.dp,
-                        topEnd = 5.dp,
-                        bottomStart = 31.dp,
-                        bottomEnd = 5.dp
-                    )
-                ),
-            shape = RoundedCornerShape(
-                topStart = 31.dp,
-                topEnd = 5.dp,
-                bottomStart = 31.dp,
-                bottomEnd = 5.dp
-            ),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = if (isSelected) {
-                    colorResource(R.color.std_purple_dark)
-                } else {
-                    colorResource(R.color.std_cyan)
-                },
-                contentColor = Color.White
-            ),
-            contentPadding = PaddingValues(0.dp)
-        ) {
-            Text(
-                text = text,
-                fontSize = 22.sp,
-                fontFamily = robotoExtraBoldItalic
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun MainActionButton(
-    shape: Shape,
-    predefinedIcon: ImageVector? = null,
-    text: String,
-    iconRes: Int = 0,
-    iconColor: Int,
-    screenWidth: Dp,
-    onClick: () -> Unit,
-    onIconPress: () -> Unit
-) {
-    val buttonWidth = screenWidth * 0.6f
-    // Main button
-    Button(
-        onClick = onClick,
-        modifier = Modifier
-            .shadow(
-                3.dp,
-                shape
-            )
-            .width(buttonWidth)
-            .height(Constants.STD_BUTTON_PAGE_HEIGHT.dp),
-        shape = shape,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Color.White,
-            contentColor = colorResource(R.color.std_purple)
-        ),
-        contentPadding = PaddingValues(0.dp)
-    ) {
-        // Icon button (circle)
-        Box(
-            modifier = Modifier
-                .size(56.dp)
-                .shadow(3.dp, CircleShape)
-                .clip(CircleShape)
-                .background(colorResource(iconColor))
-                .pointerInput(Unit) {
-                    detectTapGestures(
-                        onTap = {
-                            onIconPress()
-                        }
-                    )
-                },
-            contentAlignment = Alignment.Center
-        ) {
-            if (predefinedIcon == null) {
-                Icon(
-                    painter = painterResource(iconRes),
-                    contentDescription = "Action icon",
-                    tint = Color.White.copy(alpha = 0.7f),
-                    modifier = Modifier.size(28.dp)
-                )
-            } else {
-                Icon(
-                    imageVector = predefinedIcon,
-                    contentDescription = "Action icon",
-                    tint = Color.White.copy(alpha = 0.7f),
-                    modifier = Modifier.size(28.dp)
-                )
-            }
-        }
-        Spacer(modifier = Modifier.width(buttonWidth * 0.05f))
-        Text(
-            text = text,
-            fontSize = Constants.STD_SUBTITLE_SIZE.sp,
-            fontFamily = robotoBold,
-            color = colorResource(R.color.std_purple_dark)
-        )
-    }
-}
-
-@Composable
-fun InfoButtonWithPulse(
-    onClick: () -> Unit,
-    isPulsing: Boolean,
-    modifier: Modifier = Modifier
-) {
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-
-    // Scale animation for the pulse circle (grows from 1.0 to 1.4)
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.3f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = 1500,
-                easing = FastOutSlowInEasing
-            ),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "pulse_scale"
-    )
-
-    // Alpha animation for the pulse circle (fades from 0.4 to 0.0)
-    val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.4f,
-        targetValue = 0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = 1500,
-                easing = FastOutSlowInEasing
-            ),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "pulse_alpha"
-    )
-
-    Box(
-        modifier = modifier.size(Constants.STD_INFO_BUTTON_SIZE.dp * 1.3f),
-        contentAlignment = Alignment.Center
-    ) {
-        // Pulse circle (behind the button) - only visible when pulsing
-        if (isPulsing) {
-            Box(
                 modifier = Modifier
-                    .size(Constants.STD_INFO_BUTTON_SIZE.dp)
-                    .scale(pulseScale)
-                    .background(
-                        color = colorResource(R.color.std_purple).copy(alpha = pulseAlpha),
-                        shape = CircleShape
-                    )
-            )
-        }
-
-        // Actual button (ALWAYS constant size)
-        IconButton(
-            onClick = onClick,
-            modifier = Modifier
-                .size(Constants.STD_INFO_BUTTON_SIZE.dp)
-                .background(
-                    color = colorResource(R.color.std_purple).copy(alpha = 0.0f),
-                    shape = CircleShape
-                )
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Info,
-                contentDescription = "Info",
-                tint = colorResource(R.color.std_purple),
-                modifier = Modifier.size((Constants.STD_INFO_BUTTON_SIZE).dp)
-            )
-        }
-    }
-}
-
-@Composable
-fun SyncStatusSection(
-    syncStatus: Int,
-    syncDays: Int,
-    showInfoButton: Boolean,
-    onInfoClick: () -> Unit
-) {
-    // Main row ALWAYS exists
-    Row(
-        modifier = Modifier
-            .fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // === FIRST ROW: 0.7 weight (Sync on LEFT) ===
-        Row(
-            modifier = Modifier
-                .weight(0.7f)
-                .padding(start = 10.dp),
-            horizontalArrangement = Arrangement.Start,  // Align LEFT
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (syncStatus > 0) {
-                // Sync circle icon
-                Box(
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (syncStatus == 1) colorResource(R.color.checked_green) else colorResource(
-                                R.color.error_red
-                            )
-                        ),
-                    contentAlignment = Alignment.Center
+                    .width(Constants.NAV_BUTTONS_WIDTH.dp * 2 + screenWidth * 0.08f)
+                    .height(Constants.NAV_BUTTONS_HEIGHT.dp / 2)
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = if (syncStatus == 1) Icons.Filled.Sync else Icons.Filled.SyncProblem,
-                        contentDescription = if (AppConfig.mainLanguage.code == "en") "Sync status" else "Status sincronizare",
-                        tint = Color.White,
-                        modifier = Modifier.size(21.dp)
+                        imageVector = Icons.Filled.Settings,
+                        contentDescription = "Settings",
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(5.dp))
+                    Text(
+                        text = "Adjust Detection",
+                        fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
+                        fontFamily = robotoExtraBold
                     )
                 }
-
-                Spacer(modifier = Modifier.width(5.dp))
-
-                // Sync text
-                Text(
-                    text = if (syncStatus == 1) {
-                        load_syncStatusText(syncDays)
-                    } else {
-                        load_syncErrorText(LocalContext.current)
-                    },
-                    fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
-                    fontFamily = robotoSemibold,
-                    color = colorResource(if (syncStatus == 1) R.color.std_cyan_dark else R.color.error_red)
-                )
             }
         }
 
-        // === SECOND ROW: Remaining weight (Info on RIGHT) ===
-        Row(
-            modifier = Modifier.weight(1f - 0.7f), // Rest of the weight
-            horizontalArrangement = Arrangement.End,  // Align RIGHT
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (showInfoButton) {
-                InfoButtonWithPulse(
-                    onClick = onInfoClick,
-                    isPulsing = true
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun BottomNavigationBar(
-    onNavigateHome: () -> Unit,
-    onNavigateReports: () -> Unit,
-    onNavigateSettings: () -> Unit,
-    showReports: Boolean
-) {
-    NavigationBar(
-        containerColor = colorResource(R.color.std_light_purple)
-    ) {
-        NavigationBarItem(
-            icon = {
-                Icon(
-                    imageVector = Icons.Filled.Home,
-                    contentDescription = if (AppConfig.mainLanguage.code == "en") "Home" else "Acasă"
-                )
-            },
-            label = {
-                Text(
-                    text = if (AppConfig.mainLanguage.code == "en") "Home" else "Acasă",
-                    fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
-                    fontFamily = robotoExtraBold
-                )
-
-            },
-            selected = true,
-            colors = NavigationBarItemColors(
-                selectedIconColor = Color.White,
-                unselectedIconColor = Color(0xFF828188),
-                selectedIndicatorColor = colorResource(R.color.std_purple),
-                selectedTextColor = Color.Black,
-                unselectedTextColor = Color(0xFF828188),
-                disabledIconColor = Color.White,
-                disabledTextColor = Color.White
-            ),
-            onClick = onNavigateHome
-        )
-
-        if (showReports) {
-            NavigationBarItem(
-                icon = {
-                    Icon(
-                        imageVector = Icons.Filled.Description,
-                        contentDescription = if (AppConfig.mainLanguage.code == "en") "Reports" else "Rapoarte de mediu"
-                    )
-                },
-                label = {
-                    Text(
-                        if (AppConfig.mainLanguage.code == "en") "Reports" else "Rapoarte de mediu",
-                        fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
-                        fontFamily = robotoLight
-                    )
-                },
-                selected = false,
-                onClick = onNavigateReports,
-                colors = NavigationBarItemColors(
-                    selectedIconColor = Color.White,
-                    unselectedIconColor = Color(0xFF828188),
-                    selectedIndicatorColor = colorResource(R.color.std_purple),
-                    selectedTextColor = Color.Black,
-                    unselectedTextColor = Color(0xFF828188),
-                    disabledIconColor = Color.White,
-                    disabledTextColor = Color.White
-                )
-            )
-        }
-
-        NavigationBarItem(
-            icon = {
-                Icon(
-                    imageVector = Icons.Filled.Settings,
-                    contentDescription = if (AppConfig.mainLanguage.code == "en") "Settings" else "Setări"
-                )
-            },
-            label = {
-                Text(
-                    if (AppConfig.mainLanguage.code == "en") "Settings" else "Setări",
-                    fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
-                    fontFamily = robotoLight
-                )
-            },
-            selected = false,
-            onClick = onNavigateSettings,
-            colors = NavigationBarItemColors(
-                selectedIconColor = Color.White,
-                unselectedIconColor = Color(0xFF615E65),
-                selectedIndicatorColor = colorResource(R.color.std_purple),
-                selectedTextColor = Color.Black,
-                unselectedTextColor = Color(0xFF828188),
-                disabledIconColor = Color.White,
-                disabledTextColor = Color.White
-            )
-        )
-    }
-}
-
-@Composable
-fun SpeechRecognitionDialog(
-    isVisible: Boolean,
-    speechText: String,
-    processText: String,
-    isSpeaking: Boolean,
-    onTap: () -> Unit
-) {
-    AnimatedVisibility(
-        visible = isVisible,
-        enter = fadeIn(animationSpec = tween(Constants.ANIMATION_DELAY)),
-        exit = fadeOut(animationSpec = tween(Constants.ANIMATION_DELAY))
-    ) {
-        Box(
+        Column(
             modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Gray.copy(alpha = 0.8f))
-                .pointerInput(Unit) {
-                    detectTapGestures {
-                        onTap()
-                    }
-                },
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+                .offset(y = sliderOffsetY)
+                .background(
+                    color = colorResource(R.color.notification_button_white),
+                    shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+                )
+                .padding(bottom = 43.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            val hasProcessText = processText.isNotEmpty()
+            // Close button at top
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(screenHeight * 0.03f)
+                    .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                    .background(colorResource(R.color.std_purple))
+                    .clickable {
+                        isExpanded = false
+                        if (AppConfig.haptics) vibrate(haptic_model0())
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowDown,
+                        contentDescription = "Collapse",
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
 
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Section selector tabs
+            Row(
                 modifier = Modifier
                     .fillMaxWidth(0.85f)
-                    .animateContentSize()
+                    .height(screenHeight * 0.045f),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // === TOP TEXT (processText when exists, speechText when it doesn't) ===
-                AnimatedContent(
-                    targetState = hasProcessText,
-                    transitionSpec = {
-                        if (targetState) {
-                            // ProcessText appearing: fade in
-                            fadeIn(animationSpec = tween(Constants.ANIMATION_DELAY))
-                                .togetherWith(fadeOut(animationSpec = tween(0)))
-                        } else {
-                            // ProcessText disappearing: instant reset (no animation)
-                            fadeIn(animationSpec = tween(0))
-                                .togetherWith(fadeOut(animationSpec = tween(0)))
-                        }
-                    },
-                    label = "top_text_animation"
-                ) { showingProcess ->
-                    if (showingProcess) {
-                        // Show processText at top (title size, white)
-                        Text(
-                            text = processText,
-                            fontSize = Constants.STD_TITLE_SIZE.sp,
-                            fontFamily = robotoSemibold,
-                            color = Color.White,
-                            textAlign = TextAlign.Center
+                // BBox tab
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(
+                            if (currentSliderSection == 1)
+                                colorResource(R.color.std_cyan)
+                            else
+                                Color(0xFFDCD8E0)
                         )
-                    } else {
-                        // Show speechText at top (title size, colored)
-                        Text(
-                            text = speechText,
-                            fontSize = Constants.STD_TITLE_SIZE.sp,
-                            fontFamily = robotoSemibold,
-                            color = if (isSpeaking) {
-                                Color.White
-                            } else {
-                                colorResource(R.color.std_light_purple)
-                            },
-                            textAlign = TextAlign.Center
-                        )
-                    }
+                        .clickable {
+                            currentSliderSection = 1
+                            if (AppConfig.haptics) vibrate(haptic_model0())
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Box Size",
+                        color = if (currentSliderSection == 1)
+                            Color.White
+                        else
+                            colorResource(R.color.std_purple),
+                        fontSize = Constants.STD_FONT_SIZE.sp,
+                        fontFamily = robotoExtraBold
+                    )
                 }
 
-                // === BOTTOM TEXT (speechText slides down when processText appears) ===
-                if (hasProcessText) {
-                    Spacer(modifier = Modifier.height(24.dp))
+                // Text tab
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(
+                            if (currentSliderSection == 2)
+                                colorResource(R.color.std_cyan)
+                            else
+                                Color(0xFFDCD8E0)
+                        )
+                        .clickable {
+                            currentSliderSection = 2
+                            if (AppConfig.haptics) vibrate(haptic_model0())
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Text Size",
+                        color = if (currentSliderSection == 2)
+                            Color.White
+                        else
+                            colorResource(R.color.std_purple),
+                        fontSize = Constants.STD_FONT_SIZE.sp,
+                        fontFamily = robotoExtraBold
+                    )
+                }
+            }
 
-                    // Animated appearance of bottom speechText
-                    AnimatedVisibility(
-                        visible = true,
-                        enter = slideInVertically(
-                            initialOffsetY = { -it / 2 }, // Slide from above
-                            animationSpec = tween(Constants.ANIMATION_DELAY)
-                        ) + fadeIn(animationSpec = tween(Constants.ANIMATION_DELAY))
-                    ) {
-                        Text(
-                            text = speechText,
-                            fontSize = Constants.STD_SLIDER_INFO_SIZE.sp, // Small font
-                            fontFamily = robotoSemibold,
-                            color = if (isSpeaking) {
-                                Color.White
-                            } else {
-                                colorResource(R.color.std_light_purple)
-                            },
-                            textAlign = TextAlign.Center
+            Spacer(modifier = Modifier.height(5.dp))
+
+            // Animated slider content
+            AnimatedContent(
+                targetState = currentSliderSection,
+                transitionSpec = {
+                    slideInHorizontally(
+                        initialOffsetX = { if (targetState > initialState) it else -it },
+                        animationSpec = tween(durationMillis = Constants.ANIMATION_DELAY)
+                    ) togetherWith slideOutHorizontally(
+                        targetOffsetX = { if (targetState > initialState) -it else it },
+                        animationSpec = tween(durationMillis = Constants.ANIMATION_DELAY)
+                    )
+                },
+                label = "slider_section"
+            ) { section ->
+                when (section) {
+                    1 -> {
+                        // BBox size slider
+                        BBoxSizeSlider(
+                            bboxOffset = bboxOffset,
+                            onBBoxChange = { newOffset ->
+                                bboxOffset = newOffset
+                                if (AppConfig.haptics) {
+                                    vibrate(haptic_model0())
+                                }
+                                onBBoxResize(newOffset)
+                            }
+                        )
+                    }
+
+                    2 -> {
+                        // Text size slider
+                        TextSizeSlider(
+                            textSizeRatio = textSizeRatio,
+                            onTextChange = { newRatio ->
+                                textSizeRatio = newRatio
+                                if (AppConfig.haptics) {
+                                    vibrate(haptic_model0())
+                                }
+                                onTextResize(newRatio)
+                            }
                         )
                     }
                 }
@@ -1756,99 +1007,97 @@ fun SpeechRecognitionDialog(
     }
 }
 
-@Preview(name = "Home Activity", showBackground = true, widthDp = 412, heightDp = 917)
 @Composable
-fun HomeActivityPreview() {
-    HomeScreen(
-        titleText = "Hello ~Eduard~,\nwhat can I do for you?",
-        syncStatus = 1,
-        syncDays = 5,
-        showDetectionOptions = false,
-        detectionIconColor = R.color.std_purple_dark,
-        selectedDetectionOption = null,
-        showSpeechDialog = false,
-        speechText = "",
-        speechProcessText = "",
-        isSpeaking = true,
-        onDetectionClick = {},
-        onDetectionOptionSelected = { _, _ -> },
-        onCaptionClick = {},
-        onDetectionInfoClick = {},
-        onCaptionInfoClick = {},
-        onSpeakInfoClick = {},
-        onNavigateHome = {},
-        onNavigateReports = {},
-        onNavigateSettings = {},
-        onSpeechDialogTap = {},
-        navigateFun = {},
-        onSwipeToLeft = {}
-    )
+fun HomeButton(onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(
+                width = Constants.NAV_BUTTONS_WIDTH.dp,
+                height = Constants.NAV_BUTTONS_HEIGHT.dp
+            )
+            .clip(RoundedCornerShape(16.dp))
+            .background(colorResource(R.color.std_purple))
+            .clickable {
+                if (AppConfig.haptics) vibrate(haptic_model0())
+                onClick()
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Home,
+                contentDescription = "Home",
+                tint = Color.White,
+                modifier = Modifier.size(32.dp)
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Home",
+                color = Color.White,
+                fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
+                fontFamily = robotoExtraBold
+            )
+        }
+    }
 }
 
-@Preview(
-    name = "Home Activity - Detection Options Visible",
-    showBackground = true,
-    widthDp = 412,
-    heightDp = 917
-)
 @Composable
-fun HomeActivityWithOptionsPreview() {
-    HomeScreen(
-        titleText = "Hello ~Eduard~,\nwhat can I do for you?",
-        syncStatus = 1,
-        syncDays = 5,
-        showDetectionOptions = true,
-        detectionIconColor = R.color.std_cyan,
-        selectedDetectionOption = DetectionOption.LIVE,
-        showSpeechDialog = false,
-        speechText = "",
-        speechProcessText = "",
-        isSpeaking = true,
-        onDetectionClick = {},
-        onDetectionOptionSelected = { _, _ -> },
-        onCaptionClick = {},
-        onDetectionInfoClick = {},
-        onCaptionInfoClick = {},
-        onSpeakInfoClick = {},
-        onNavigateHome = {},
-        onNavigateReports = {},
-        onNavigateSettings = {},
-        onSpeechDialogTap = {},
-        navigateFun = {},
-        onSwipeToLeft = {}
-    )
+fun PhotoButton(onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(
+                width = Constants.NAV_BUTTONS_WIDTH.dp,
+                height = Constants.NAV_BUTTONS_HEIGHT.dp
+            )
+            .clip(RoundedCornerShape(16.dp))
+            .background(colorResource(R.color.std_cyan))
+            .clickable {
+                if (AppConfig.haptics) vibrate(haptic_model0())
+                onClick()
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.CameraAlt,
+                contentDescription = "Photo",
+                tint = Color.White,
+                modifier = Modifier.size(32.dp)
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Photo",
+                color = Color.White,
+                fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
+                fontFamily = robotoExtraBold
+            )
+        }
+    }
 }
 
-@Preview(
-    name = "Home Activity - Speaking Dialog Enabled",
-    showBackground = true,
-    widthDp = 412,
-    heightDp = 917
-)
+@Preview(name = "Static Detection Result", showBackground = true, widthDp = 412, heightDp = 917)
 @Composable
-fun HomeActivityWithSpeakingDialogPreview() {
-    HomeScreen(
-        titleText = "Hello ~Eduard~,\nwhat can I do for you?",
-        syncStatus = 1,
-        syncDays = 5,
-        showDetectionOptions = false,
-        detectionIconColor = R.color.std_purple_dark,
-        selectedDetectionOption = DetectionOption.LIVE,
-        showSpeechDialog = true,
-        speechText = "Where is my phone, tablet, apple, and laptop",
-        speechProcessText = "ddd",
-        isSpeaking = false,
-        onDetectionClick = {},
-        onDetectionOptionSelected = { _, _ -> },
-        onCaptionClick = {},
-        onDetectionInfoClick = {},
-        onCaptionInfoClick = {},
-        onSpeakInfoClick = {},
-        onNavigateHome = {},
-        onNavigateReports = {},
-        onNavigateSettings = {},
-        onSpeechDialogTap = {},
-        navigateFun = {},
-        onSwipeToLeft = {}
+fun StaticDetectionScreenPreview() {
+    val imageWidth = 412f
+    val imageHeight = 917f
+    val mutableBitmap = createBitmap(imageWidth.toInt(), imageHeight.toInt())
+    val canvas = Canvas(mutableBitmap)
+    canvas.drawColor(android.graphics.Color.BLACK)
+
+    StaticDetectionScreen(
+        showLoading = false,
+        loadingText = "Scanning the scene...",
+        showResult = true,
+        resultBitmap = mutableBitmap,
+        onHomeClick = {},
+        onPhotoClick = {},
+        onBBoxResize = {},
+        onTextResize = {}
     )
 }
