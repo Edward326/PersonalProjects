@@ -5,6 +5,8 @@
 
 -schimbat design meniu
 
+-adaugat zoom and pan la findmyobject,blindfindmyobjetct si staticdetecion + adaugarea optinuea de salvare a foto
+
 -testarea aplicatiei + debugging
 
 -fine tuning(detector, classifier(indoorcvpr), captioner)
