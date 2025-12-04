@@ -106,6 +106,7 @@ import java.io.IOException
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import androidx.core.graphics.scale
 
 class StaticDetectionActivity : ComponentActivity() {
     private val TAG = "StaticDetectionActivity"
@@ -203,6 +204,8 @@ class StaticDetectionActivity : ComponentActivity() {
         ) { isSuccess ->
             if (isSuccess && currentPhotoUri != null) {
                 try {
+                    mainHandler.removeCallbacksAndMessages(null)
+
                     // Reset states
                     showResult.value = false
                     showLoading.value = true
@@ -242,15 +245,20 @@ class StaticDetectionActivity : ComponentActivity() {
                 try {
                     // Load bitmap from URI
                     val inputStream = contentResolver.openInputStream(imageUri)
-                    val bitmap = BitmapFactory.decodeStream(inputStream)
+                    val initBitmap = BitmapFactory.decodeStream(inputStream)
                     inputStream?.close()
 
-                    if (bitmap == null) {
+                    if (initBitmap == null) {
                         Log.e(TAG, "Failed to decode bitmap from URI")
                         return@executeAsync null
                     }
 
-                    Log.d(TAG, "Image loaded: ${bitmap.width}x${bitmap.height}")
+                    Log.d(TAG, "Init image resolution: ${initBitmap.width}x${initBitmap.height}")
+                    val bitmap = initBitmap.scale(
+                        resources.displayMetrics.widthPixels,
+                        resources.displayMetrics.heightPixels
+                    )
+                    Log.d(TAG, "After rescale image resolution: ${bitmap.width}x${bitmap.height}")
 
                     // Run detection
                     runDetection(bitmap)
@@ -447,12 +455,17 @@ class StaticDetectionActivity : ComponentActivity() {
                         // Show classification notification
                         if (AppConfig.env_reports && sceneClassId >= 0) {
                             val sceneName = classifier.getClassName(sceneClassId)
-                            showClassificationNotification(sceneName)
+                            mainHandler.postDelayed({
+                                showClassificationNotification(sceneName)
+                            },500)
                         }
                     }, Constants.ANIMATION_DELAY.toLong())
-                }
+                } else
                 // Schedule next iteration
-                mainHandler.postDelayed(this, 500)
+                {
+                    mainHandler.postDelayed(this, 500)
+                    Log.w(TAG, "Result not ready, waiting...")
+                }
             }
         })
     }
@@ -489,11 +502,11 @@ class StaticDetectionActivity : ComponentActivity() {
                     if (AppConfig.haptics) {
                         vibrate(haptic_model0())
                     }
+                    infoNotificationManager.hideNotification()
                     PermissionChecker.checkAndRequestPermissions(this, false) {
                         // Check phone status
                         checkPhoneStatusAndNavigate {
                             launchCamera()
-                            mainHandler.removeCallbacksAndMessages(null)
                         }
                     }
                 },
@@ -501,6 +514,7 @@ class StaticDetectionActivity : ComponentActivity() {
                     if (AppConfig.haptics) {
                         vibrate(haptic_model0())
                     }
+                    infoNotificationManager.hideNotification()
                     val intent = Intent(this, HomeActivity::class.java)
                     startActivity(intent)
                     finish()
@@ -515,7 +529,7 @@ class StaticDetectionActivity : ComponentActivity() {
         // Auto-hide after delay
         mainHandler.postDelayed({
             showClassificationDialog.value = false
-        }, 5000)
+        }, 4500)
     }
 
     private fun handleHomeClick() {
@@ -634,12 +648,12 @@ class StaticDetectionActivity : ComponentActivity() {
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         return when (keyCode) {
-            KeyEvent.KEYCODE_VOLUME_DOWN -> {
+            KeyEvent.KEYCODE_VOLUME_UP -> {
                 handleHomeClick()
                 true
             }
 
-            KeyEvent.KEYCODE_VOLUME_UP -> {
+            KeyEvent.KEYCODE_VOLUME_DOWN -> {
                 if (showResult.value) {
                     handlePhotoClick()
                 }
