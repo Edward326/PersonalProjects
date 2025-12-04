@@ -3,9 +3,11 @@
 	-activitati pentru detection(low eyesight:live/static | blind), caption(low eysight | blind)
 	-EnvirotmentsReports, Settings(low eysight | blind)
 
--schimbat design meniu
-
 -adaugat zoom and pan la findmyobject,blindfindmyobjetct si staticdetecion + adaugarea optinuea de salvare a foto
+
+-de rezolvat incardrare activiatet in ecranul util al telefonului(fara status bar si nav bar)
+
+-schimbat design meniu
 
 -testarea aplicatiei + debugging
 
