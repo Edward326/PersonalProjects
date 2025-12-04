@@ -116,8 +116,7 @@ class FindMyObjectActivity : ComponentActivity() {
     private lateinit var lightMonitor: LightManager
     private lateinit var currentDetectorModel: YOLODetectorPool
     private var preferNanoModel = false
-    private val classifier: YOLOClassifier =
-        PhoneStatusMonitor.getInstance().modelManager.classifier
+    private lateinit var classifier: YOLOClassifier
     private var canSwitchModels = false
 
     // Detection data
@@ -171,6 +170,11 @@ class FindMyObjectActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        classifier= if(AppConfig.env_reports)
+            PhoneStatusMonitor.getInstance().modelManager.classifier
+        else
+            YOLOClassifier(this)
 
         extractIntentData()
         cameraExecutor = Executors.newSingleThreadExecutor()

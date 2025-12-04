@@ -114,8 +114,7 @@ class StaticDetectionActivity : ComponentActivity() {
     // Models
     private val currentDetectorModel: YOLODetectorPool =
         PhoneStatusMonitor.getInstance().modelManager.detector
-    private val classifier: YOLOClassifier =
-        PhoneStatusMonitor.getInstance().modelManager.classifier
+    private lateinit var classifier: YOLOClassifier
 
     // Results
     private var originalBitmap: Bitmap? = null
@@ -160,6 +159,11 @@ class StaticDetectionActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        classifier= if(AppConfig.env_reports)
+            PhoneStatusMonitor.getInstance().modelManager.classifier
+        else
+            YOLOClassifier(this)
 
         // Initialize notification manager
         infoNotificationManager = InfoNotificationManager(this)
