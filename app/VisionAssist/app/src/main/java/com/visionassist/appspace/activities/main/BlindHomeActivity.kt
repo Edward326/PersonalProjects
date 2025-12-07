@@ -50,7 +50,7 @@ import com.visionassist.appspace.BaseActivity
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
 import com.visionassist.appspace.activities.tabs.home.caption.CaptionCameraXActivity
-import com.visionassist.appspace.activities.tabs.home.detection.DetectionCameraXActivity
+import com.visionassist.appspace.activities.tabs.home.detection.BlindDetectionActivity
 import com.visionassist.appspace.activities.tabs.home.findmyobjects.BlindFindMyObjectActivity
 import com.visionassist.appspace.activities.tabs.settings.BlindSettingsActivity
 import com.visionassist.appspace.models.sttengine.SpeechRecognizer
@@ -365,7 +365,7 @@ class BlindHomeActivity : BaseActivity() {
 
         onPermissionGranted = {
             checkPhoneStatusAndNavigate {
-                val intent = Intent(this, DetectionCameraXActivity::class.java)
+                val intent = Intent(this, BlindDetectionActivity::class.java)
                 startActivity(intent)
                 finish()
             }
