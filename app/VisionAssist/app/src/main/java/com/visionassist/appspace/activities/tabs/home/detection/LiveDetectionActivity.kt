@@ -2,706 +2,1405 @@
 
 package com.visionassist.appspace.activities.tabs.home.detection
 
-import android.content.Intent
-import android.net.Uri
+import android.annotation.SuppressLint
+import android.graphics.Bitmap
+import android.graphics.RectF
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.util.Size
 import android.view.KeyEvent
+import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.result.ActivityResultLauncher
-import androidx.activity.result.contract.ActivityResultContracts.TakePicture
+import androidx.camera.core.Camera
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
+import androidx.camera.core.ImageProxy
+import androidx.camera.core.Preview
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.core.content.FileProvider
-import com.visionassist.appspace.BaseActivity
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
-import com.visionassist.appspace.activities.tabs.home.caption.CaptionActivity
-import com.visionassist.appspace.activities.tabs.home.caption.HomeScreen
-import com.visionassist.appspace.activities.tabs.home.findmyobjects.FindMyObjectActivity
-import com.visionassist.appspace.activities.tabs.reports.EnvironmentReportsActivity
-import com.visionassist.appspace.activities.tabs.settings.SettingsActivity
+import com.visionassist.appspace.activities.tabs.LightManager
+import com.visionassist.appspace.activities.tabs.MotionManager
+import com.visionassist.appspace.activities.tabs.reports.EnvironmentReportsManagerKt
+import com.visionassist.appspace.jetpack.design.BackArrowLargeFab
+import com.visionassist.appspace.jetpack.design.CustomSlider
+import com.visionassist.appspace.jetpack.design.NextArrowLargeFab
+import com.visionassist.appspace.jetpack.design.ThumbStyle
 import com.visionassist.appspace.jetpack.managers.ErrorDialogManager
-import com.visionassist.appspace.models.sttengine.SpeechRecognizer
-import com.visionassist.appspace.sound.SoundConstants
+import com.visionassist.appspace.models.classifier.YOLOClassifier
+import com.visionassist.appspace.models.detector.DetectionResult
+import com.visionassist.appspace.models.detector.YOLODetector
+import com.visionassist.appspace.models.detector.YOLODetectorPool
 import com.visionassist.appspace.utils.AppConfig
 import com.visionassist.appspace.utils.BackgroundTaskExecutor
 import com.visionassist.appspace.utils.Constants
-import com.visionassist.appspace.utils.DetectionOption
+import com.visionassist.appspace.utils.ImageUtils
 import com.visionassist.appspace.utils.PermissionChecker
 import com.visionassist.appspace.utils.haptic_model0
-import com.visionassist.appspace.utils.load_captionTutorial
-import com.visionassist.appspace.utils.load_detectionTutorial
-import com.visionassist.appspace.utils.load_errorSTT
-import com.visionassist.appspace.utils.load_errorSTTRuntime
-import com.visionassist.appspace.utils.load_homeTitle
-import com.visionassist.appspace.utils.load_speakTutorial
-import com.visionassist.appspace.utils.load_unavailableSTT
+import com.visionassist.appspace.utils.robotoExtraBold
+import com.visionassist.appspace.utils.startBatteryLevelCheck
 import com.visionassist.appspace.utils.vibrate
-import java.io.File
-import java.io.IOException
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
-class LiveDetectionActivity : BaseActivity() {
-    private val TAG = "HomeActivity"
+class LiveDetectionActivity : ComponentActivity() {
+    private val TAG = "FindMyObjectActivity"
 
-    // State variables
-    private val titleText = mutableStateOf("")
+    // Models
+    private lateinit var motionMonitor: MotionManager
+    private lateinit var lightMonitor: LightManager
+    private lateinit var currentDetectorModel: YOLODetectorPool
+    private var preferNanoModel = false
+    private lateinit var classifier: YOLOClassifier
+    private var canSwitchModels = false
 
-    // Tutorial info button states
-    private val speakInfoClickCount = mutableStateOf(1)
-    private var basicInfoClickCount = 1
-    private var basicInfoClickCount2 = 1
+    // Detection data
+    private lateinit var objectsToFind: MutableMap<Int, String>
+    private lateinit var remainingClassIndices: MutableList<Int>
 
-    // Detection button states
-    private val showDetectionOptions = mutableStateOf(false)
-    private val selectedDetectionOption = mutableStateOf<DetectionOption?>(null)
-    private val detectionIconColor = mutableStateOf(R.color.std_purple_dark)
+    // Results
+    private var originalBitmap: Bitmap? = null
+    private val resultBitmap = mutableStateOf<Bitmap?>(null)
+    private var detectionResult: DetectionResult? = null
+    private val threadCount = AtomicInteger(0)
+    private var avgDetectorLatency = 0L
+    private var avgClassifierLatency = 0L
+    private val bitmapList = mutableListOf<Bitmap>()
+    private var bitmapListCurrentIndex = 0
+    private val maxBitmapListSize = 10
 
-    // Speech recognition parameters
-    private val speechRecognizer = PhoneStatusMonitor.getInstance()
-        .modelManager.speechRecognizer
-    private val soundManager = PhoneStatusMonitor.getInstance()
-        .soundManager
-    private val ttsManager = PhoneStatusMonitor.getInstance()
-        .ttsManager
-    private val showSpeechDialog = mutableStateOf(false)
-    private val speechText = mutableStateOf("")
-    private val speechProcessText = mutableStateOf("")
-    private val isSpeaking = mutableStateOf(true)
-    private val retrySpeech = mutableStateOf(false)
-    private val sendSpeech = mutableStateOf(false)
-    private lateinit var matchedIndices: List<SpeechRecognizer.MatchedObject>
-    private lateinit var classNames: List<String>
+    // Camera
+    private var cameraProvider: ProcessCameraProvider? = null
+    private var imageCapture: ImageCapture? = null
+    private lateinit var cameraExecutor: ExecutorService
+    private var currentCamera: Camera? = null
+    private var isFlashlightOn = false
 
-    // Volume button tracking
-    private var locked = false
-    private var lockedVolumeDown = false
-    private var uiLocked = false
-    private var handleVolumeDownControl = false
+    // Threads Control States
+    private val stopDetection = AtomicBoolean(false)
+    private val resultsReady = AtomicBoolean(false)
+    private val displayReady = AtomicBoolean(false)
 
-    // Runnable for navigation to an activity
-    private var onPermissionGranted = {}
-    private var classOpt = 0
-
-    // Camera intent parameters
-    private lateinit var takePictureLauncher: ActivityResultLauncher<Uri>
-    private lateinit var currentPhotoUri: Uri
-
-    // Main handler
+    // Handlers
     private val mainHandler = Handler(Looper.getMainLooper())
-    private lateinit var afterResumeRunnable: Runnable
-    private var hasToExecAfterResume = false
-    private var returnFromFindMyObject = false
+    private val updateHandler = Handler(Looper.getMainLooper())
+    private var updateRunnable: Runnable? = null
 
-    private var syncStatus: Int = 0
-    private var syncDays: Int = 0
+    // Compose states
+    private val showResult = mutableStateOf(false)
+    private val showBatteryWarning = mutableStateOf(false)
+    private val showMemoryWarning = mutableStateOf(false)
+
+    // Monitor parameters
+    private val avgBatteryMoreUsed = mutableStateOf(0f)
+    private val batteryCheckRunning = mutableStateOf(false)
+
+    // Resize bbox + text parameters
+    private var currentBBoxOffset = 0f
+    private var currentTextRatio = Constants.TEXT_SIZE_WIDTH_SCREEN
+
+    data class ThreadResult(
+        val detectionResult: DetectionResult?,
+        val bitmap: Bitmap?,
+        val sceneClassId: Int,
+        val detectorLatency: Long,
+        val classifierLatency: Long
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        registerCameraLauncher()
+        classifier = if (AppConfig.env_reports)
+            PhoneStatusMonitor.getInstance().modelManager.classifier
+        else
+            YOLOClassifier(this)
 
-        // Load initial title
-        titleText.value = load_homeTitle()
+        extractIntentData()
+        cameraExecutor = Executors.newSingleThreadExecutor()
 
-        // Get sync status
-        val dbManager = PhoneStatusMonitor.getInstance().dbManager
-        syncStatus = dbManager.statusOverview
-        syncDays = if (syncStatus > 0) dbManager.diffDays.toInt() else 0
+        currentDetectorModel = PhoneStatusMonitor.getInstance().modelManager.detector
 
-        uiLocked = true
-        locked = true
-        PhoneStatusMonitor.getInstance().soundManager.play(SoundConstants.OPEN_UP_ID, 1f, 1f) {
-            uiLocked = false
-            locked = false
+        motionMonitor = MotionManager(
+            this,
+            mainHandler
+        ) {
+            preferNanoModel =
+                motionMonitor.linearSpeed > Constants.LINEAR_SPEED_THRESHOLD || motionMonitor.rotationSpeed > Constants.ROTATION_SPEED_THRESHOLD
         }
 
-        //Log.d(TAG, FileUtils.readProfileFileAsString(this, Constants.ENV_REPORTS_FILE_NAME))
-
-        setContent {
-            HomeScreen(
-                titleText = titleText.value,
-                syncStatus = syncStatus,
-                syncDays = syncDays,
-                showDetectionOptions = showDetectionOptions.value,
-                detectionIconColor = detectionIconColor.value,
-                selectedDetectionOption = selectedDetectionOption.value,
-                showSpeechDialog = showSpeechDialog.value,
-                speechText = speechText.value,
-                speechProcessText = speechProcessText.value,
-                isSpeaking = isSpeaking.value,
-                onDetectionClick = ::handleDetectionClick,
-                onDetectionOptionSelected = ::handleDetectionOptionSelected,
-                onCaptionClick = ::handleCaptionClick,
-                onDetectionInfoClick = ::handleDetectionInfoClick,
-                onCaptionInfoClick = ::handleCaptionInfoClick,
-                onSpeakInfoClick = ::handleSpeakInfoClick,
-                onNavigateHome = ::handleNavigateHome,
-                onNavigateReports = ::handleNavigateReports,
-                onNavigateSettings = ::handleNavigateSettings,
-                onSpeechDialogTap = ::handleSpeechDialogTap,
-                navigateFun = ::navigateToLiveOrStatic,
-                onSwipeToLeft = ::handleSwipeToLeft
-            )
-        }
-    }
-
-    @Suppress("DEPRECATION")
-    private fun registerCameraLauncher() {
-        takePictureLauncher = registerForActivityResult(
-            TakePicture()
-        ) { isSuccess ->
-            if (isSuccess) {
-                try {
-                    navigateToFindMyObjectWithBitmap()
-                } catch (e: IOException) {
-                    Log.e(TAG, "Error loading captured image", e)
-                    showCameraError()
-                }
+        lightMonitor = LightManager(
+            this,
+            mainHandler
+        ) {
+            if (lightMonitor.isDark) {
+                turnFlashlightOn()
             } else {
-                Log.e(TAG, "Image capture failed or cancelled")
-                uiLocked = false
-                locked = false
+                turnFlashlightOff()
             }
         }
 
-        Log.d(TAG, "Camera launcher registered")
+        setContent {
+            LiveDetectionScreen(
+                showResult = showResult.value,
+                resultBitmap = resultBitmap.value,
+                hasMoreObjects = remainingClassIndices.isNotEmpty(),
+                showBatteryWarning = showBatteryWarning.value,
+                showMemoryWarning = showMemoryWarning.value,
+                onBackClick = ::handleBackClick,
+                onNextClick = if (remainingClassIndices.isNotEmpty()) ::handleNextClick else null,
+                onCameraReady = { previewView ->
+                    startCameraX(previewView)
+                },
+                onBBoxResize = ::handleBBoxResize,
+                onTextResize = ::handleTextResize
+            )
+        }
     }
 
     override fun onResume() {
         super.onResume()
-
-        if (PhoneStatusMonitor.getInstance().isReturningFromPermissions)
-            PermissionChecker.checkAndRequestPermissions(
-                this,
-                AppConfig.blindness,
-                onPermissionGranted
-            )
-
-        if (hasToExecAfterResume) {
-            hasToExecAfterResume = false
-            mainHandler.post(afterResumeRunnable)
-        }
-
-        if (returnFromFindMyObject) {
-            returnFromFindMyObject = false
-            handleSpeechDialogTap()
+        if (PhoneStatusMonitor.getInstance().isReturningFromPermissions) {
+            PermissionChecker.checkAndRequestPermissions(this, false) {
+                reloadDetectionPhase()
+                startDetectionProcess()
+            }
+        } else {
+            if (stopDetection.get() && !showResult.value) {
+                Log.d(TAG, "Activity resumed - restarting detection")
+                reloadDetectionPhase()
+                startDetectionProcess()
+            }
         }
     }
 
-    private fun handleDetectionClick() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            showDetectionOptions.value = !showDetectionOptions.value
-            detectionIconColor.value = if (showDetectionOptions.value) {
-                R.color.std_cyan
+    private fun extractIntentData() {
+        val classIndices = intent.getIntArrayExtra(Constants.EXTRA_MATCHED_INDICES) ?: intArrayOf()
+        val matchedWords = intent.getStringArrayExtra(Constants.EXTRA_SYNONYMS_WORDS) ?: arrayOf()
+
+        objectsToFind = mutableMapOf()
+        remainingClassIndices = mutableListOf()
+
+        for (i in classIndices.indices) {
+            objectsToFind[classIndices[i]] = matchedWords[i]
+            remainingClassIndices.add(classIndices[i])
+        }
+
+        Log.d(TAG, "Objects to find (detector_class:synonym): $objectsToFind")
+    }
+
+    private fun turnFlashlightOn() {
+        try {
+            if (currentCamera?.cameraInfo?.hasFlashUnit() == true && !isFlashlightOn) {
+                currentCamera?.cameraControl?.enableTorch(true)
+                isFlashlightOn = true
+                Log.d(TAG, "🔦 Flashlight turned ON via CameraX")
             } else {
-                selectedDetectionOption.value = null
-                R.color.std_purple_dark
-            }
-        }
-    }
-
-    private fun handleDetectionOptionSelected(option: DetectionOption?, navigate: Boolean) {
-        if (option != null) {
-            if (selectedDetectionOption.value != option) {
-                vibrateIfEnabled()
-                selectedDetectionOption.value = option
-            }
-        } else
-            selectedDetectionOption.value = null
-        if (navigate) {
-            navigateToLiveOrStatic()
-        }
-    }
-
-    private fun navigateToLiveOrStatic() {
-        when (selectedDetectionOption.value) {
-            DetectionOption.LIVE -> launchLiveDetection()
-            DetectionOption.STATIC -> launchStaticDetection()
-            else -> {
-                handleDetectionClick()
-            }
-        }
-    }
-
-    private fun launchLiveDetection() {
-        onPermissionGranted = {
-            checkPhoneStatusAndNavigate {
-                // Navigate to LiveDetectionActivity
-                val intent = Intent(this, LiveDetectionActivity::class.java)
-                startActivity(intent)
-                finish()
-            }
-        }
-        PermissionChecker.checkAndRequestPermissions(this, AppConfig.blindness, onPermissionGranted)
-    }
-
-    private fun launchStaticDetection() {
-        classOpt = 0
-        onPermissionGranted = {
-            checkPhoneStatusAndNavigate {
-                launchCamera()
-            }
-        }
-        PermissionChecker.checkAndRequestPermissions(this, AppConfig.blindness, onPermissionGranted)
-    }
-
-    private fun launchCamera() {
-        try {
-            val photoFile = File.createTempFile(
-                "temp_visionassist",
-                ".jpg",
-                cacheDir
-            )
-
-            currentPhotoUri = FileProvider.getUriForFile(
-                this,
-                "$packageName.fileprovider",
-                photoFile
-            )
-
-            Log.d(TAG, "Launching camera with URI: $currentPhotoUri")
-
-            takePictureLauncher.launch(currentPhotoUri)
-        } catch (e: IOException) {
-            Log.e(TAG, "Error creating temp file", e)
-            showCameraError()
-        }
-    }
-
-    private fun navigateToFindMyObjectWithBitmap() {
-        try {
-            val intent = Intent(
-                this,
-                when (classOpt) {
-                    0 -> StaticDetectionActivity::class.java
-                    else -> CaptionActivity::class.java
-                }
-            )
-            intent.putExtra(Constants.EXTRA_IMAGE_URI, currentPhotoUri.toString())
-            startActivity(intent)
-            finish()
-        } catch (e: Exception) {
-            Log.e(TAG, "Error navigating to FindMyObjectActivity", e)
-            showCameraError()
-        }
-    }
-
-    private fun showCameraError() {
-        val monitor = PhoneStatusMonitor.getInstance()
-        val errorDialog = ErrorDialogManager(monitor.currentActivity)
-        errorDialog.setupDialog(Constants.CAMERA_MAKE_PHOTO)
-        monitor.shutdownApp(errorDialog, monitor.currentContext)
-    }
-
-    private fun handleCaptionClick() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            launchCaptionActivity()
-        }
-    }
-
-    private fun launchCaptionActivity() {
-        classOpt = 1
-        onPermissionGranted = {
-            checkPhoneStatusAndNavigate {
-                launchCamera()
-            }
-        }
-        PermissionChecker.checkAndRequestPermissions(this, AppConfig.blindness, onPermissionGranted)
-    }
-
-    private fun handleDetectionInfoClick() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            titleText.value = load_detectionTutorial(this, getNextInfoStep())
-        }
-    }
-
-    private fun handleCaptionInfoClick() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            titleText.value = load_captionTutorial(this, getNextInfoStep2())
-        }
-    }
-
-    private fun handleSpeakInfoClick() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-
-            titleText.value = load_speakTutorial(this, speakInfoClickCount.value)
-
-            // Reset after showing all messages
-            if (speakInfoClickCount.value == 7) {
-                speakInfoClickCount.value = 0
-            } else
-                speakInfoClickCount.value++
-        }
-    }
-
-    private fun getNextInfoStep(): Int {
-        // Simple counter for tutorial steps
-        if (++basicInfoClickCount == 4) {
-            basicInfoClickCount = 1
-            return 0
-        } else {
-            return basicInfoClickCount - 1
-        }
-    }
-
-    private fun getNextInfoStep2(): Int {
-        // Simple counter for tutorial steps
-        if (++basicInfoClickCount2 == 4) {
-            basicInfoClickCount2 = 1
-            return 0
-        } else {
-            return basicInfoClickCount2 - 1
-        }
-    }
-
-    private fun handleNavigateHome() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            // Already on home, do nothing
-        }
-    }
-
-    private fun handleNavigateReports() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-
-            val intent = Intent(this, EnvironmentReportsActivity::class.java)
-            startActivity(intent)
-            finish()
-        }
-    }
-
-    private fun handleNavigateSettings() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            val intent = Intent(this, SettingsActivity::class.java)
-            startActivity(intent)
-            finish()
-        }
-    }
-
-    private fun handleSwipeToLeft() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            val intent = Intent(
-                this, if (AppConfig.env_reports)
-                    EnvironmentReportsActivity::class.java
-                else
-                    SettingsActivity::class.java
-            )
-            startActivity(intent)
-            finish()
-        }
-    }
-
-    private fun launchSpeechRecognition(firstTimeSpeak: Boolean) {
-        if (firstTimeSpeak) {
-            if (AppConfig.mainLanguage.code == "ro") {
-                hasToExecAfterResume = true
-                soundManager.play(SoundConstants.STT_ERROR_ID, 0.7f, 0.7f) {
-                    ttsManager.speak(
-                        load_unavailableSTT(this),
-                        AppConfig.tts_pitch,
-                        AppConfig.tts_speech_rate,
-                        false,
-                        null
-                    )
-                }
-                afterResumeRunnable = object : Runnable {
-                    override fun run() {
-                        if (ttsManager.isDoneSpeaking) {
-                            uiLocked = false
-                            locked = false
-                        } else {
-                            mainHandler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS.toLong())
-                        }
-                    }
-                }
-                mainHandler.postDelayed(
-                    afterResumeRunnable,
-                    SoundConstants.getDuration(SoundConstants.STT_ERROR_ID).toLong() + 500
+                Log.w(
+                    TAG,
+                    "Cannot turn ON flashlight: hasFlash=${currentCamera?.cameraInfo?.hasFlashUnit()}, isOn=$isFlashlightOn"
                 )
-            } else
-                if (speechRecognizer == null) {
-                    soundManager.play(SoundConstants.STT_ERROR_ID, 0.7f, 0.7f) {
-                        ttsManager.speak(
-                            load_errorSTT(this),
-                            AppConfig.tts_pitch,
-                            AppConfig.tts_speech_rate,
-                            false,
-                            null
-                        )
-                    }
-                    afterResumeRunnable = object : Runnable {
-                        override fun run() {
-                            if (ttsManager.isDoneSpeaking) {
-                                uiLocked = false
-                                locked = false
-                            } else {
-                                mainHandler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS.toLong())
-                            }
-                        }
-                    }
-                    mainHandler.postDelayed(
-                        afterResumeRunnable,
-                        SoundConstants.getDuration(SoundConstants.STT_ERROR_ID).toLong() + 500
-                    )
-                } else {
-                    retrySpeech.value = false
-                    sendSpeech.value = false
-                    showSpeechDialog.value = true
-                    speakingProcess()
-                }
-        } else {
-            speakingProcess()
-        }
-    }
-
-    private fun formatRecognizedText(text: String): String {
-        if (text.isBlank()) return text
-
-        // Replace [unk] with ??
-        var formatted = text.replace("[unk]", "??")
-
-        // Capitalize first letter if it's not ??
-        if (formatted.isNotEmpty() && !formatted.startsWith("??")) {
-            formatted = formatted.replaceFirstChar {
-                if (it.isLowerCase()) it.titlecase() else it.toString()
             }
-        }
-
-        return formatted
-    }
-
-    private fun speakingProcess() {
-        lockedVolumeDown = false
-        isSpeaking.value = true
-        speechText.value = "Listening..."
-        soundManager.play(SoundConstants.STT_SPEAK_OPEN_ID, 0.7f, 0.7f) {
-            speechRecognizer.startListening(object :
-                SpeechRecognizer.RecognitionCallback {
-                override fun onResult(recognizedText: String, isFinalResult: Boolean) {
-                    if (isFinalResult) {
-                        isSpeaking.value = false
-                        speechText.value = formatRecognizedText(recognizedText)
-                        mainHandler.postDelayed({ processRecognizedSpeech() }, 1000)
-
-                        /*
-                        sendSpeech.value = true
-                        retrySpeech.value = true
-                        locked = false
-                        vibrateIfEnabled()*/
-                    } else {
-                        speechText.value = formatRecognizedText(recognizedText)
-                    }
-                }
-
-                override fun onError(error: String) {
-                    hasToExecAfterResume = true
-                    soundManager.play(SoundConstants.STT_ERROR_ID, 0.7f, 0.7f) {
-                        ttsManager.speak(
-                            load_errorSTTRuntime(PhoneStatusMonitor.getInstance().currentContext),
-                            AppConfig.tts_pitch,
-                            AppConfig.tts_speech_rate,
-                            false,
-                            null
-                        )
-                    }
-                    afterResumeRunnable = object : Runnable {
-                        override fun run() {
-                            if (ttsManager.isDoneSpeaking) {
-                                handleSpeechDialogTap()
-                            } else {
-                                mainHandler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS.toLong())
-                            }
-                        }
-                    }
-                    mainHandler.postDelayed(
-                        afterResumeRunnable,
-                        SoundConstants.getDuration(SoundConstants.STT_ERROR_ID).toLong() + 500
-                    )
-                }
-            })
+        } catch (e: Exception) {
+            Log.e(TAG, "Error turning flashlight ON via CameraX", e)
         }
     }
 
-    private fun processRecognizedSpeech() {
-        speechProcessText.value = "Matching known objects..."
+    private fun turnFlashlightOff() {
+        try {
+            if (currentCamera?.cameraInfo?.hasFlashUnit() == true && isFlashlightOn) {
+                currentCamera?.cameraControl?.enableTorch(false)
+                isFlashlightOn = false
+                Log.d(TAG, "🔦 Flashlight turned OFF via CameraX")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error turning flashlight OFF via CameraX", e)
+        }
+    }
 
-        var finishedLoading = false
-        val backgroundTask = BackgroundTaskExecutor.getInstance()
-        backgroundTask.executeAsync(
+    private fun handleBBoxResize(offsetDp: Float) {
+        currentBBoxOffset = offsetDp
+
+        // Cancel any pending update
+        updateRunnable?.let { updateHandler.removeCallbacks(it) }
+
+        // Schedule new update with delay
+        updateRunnable = Runnable {
+            redrawDetections()
+        }
+        updateHandler.postDelayed(updateRunnable!!, Constants.PREVIEW_UPDATE_DELAY.toLong())
+    }
+
+    private fun handleTextResize(textSizeRatio: Float) {
+        currentTextRatio = textSizeRatio
+
+        // Cancel any pending update
+        updateRunnable?.let { updateHandler.removeCallbacks(it) }
+
+        // Schedule new update with delay
+        updateRunnable = Runnable {
+            redrawDetections()
+        }
+        updateHandler.postDelayed(updateRunnable!!, Constants.PREVIEW_UPDATE_DELAY.toLong())
+    }
+
+    private fun redrawDetections() {
+        BackgroundTaskExecutor.getInstance().executeAsync(
             {
-                matchedIndices = speechRecognizer.processRecognizedText(speechText.value)
-
-                if (!matchedIndices.isEmpty()) {
-                    classNames = matchedIndices.map { it.matchedWord }
-                }
-                return@executeAsync 0
+                // Use the smart drawing method that handles everything
+                YOLODetector.drawDetectionsWithSmartResize(
+                    originalBitmap,
+                    detectionResult,
+                    currentBBoxOffset,  // Current bbox offset
+                    currentTextRatio,   // Current text ratio (can be null for default)
+                    resources.displayMetrics
+                )
             },
-            object : BackgroundTaskExecutor.TaskCallback<Int> {
-                override fun onSuccess(result: Int) {
-                    finishedLoading = true
+            object : BackgroundTaskExecutor.TaskCallback<Bitmap?> {
+                override fun onSuccess(result: Bitmap?) {
+                    if (result != null) {
+                        resultBitmap.value = result
+                        // Trigger recomposition
+                        showResult.value = true
+                    }
                 }
 
                 override fun onError(e: Exception) {
-                    finishedLoading = true
+                    Log.e(TAG, "Error redrawing detections", e)
                 }
             }
         )
+    }
 
+    private fun startCameraX(previewView: PreviewView) {
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
+
+        cameraProviderFuture.addListener({
+            try {
+                cameraProvider = cameraProviderFuture.get()
+                bindCamera(previewView)
+                startDetectionProcess()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error starting camera", e)
+            }
+        }, ContextCompat.getMainExecutor(this))
+    }
+
+    private fun bindCamera(previewView: PreviewView) {
+        val preview = Preview.Builder().build()
+        preview.surfaceProvider = previewView.surfaceProvider
+
+        val screenWidth = resources.displayMetrics.widthPixels
+        val screenHeight = resources.displayMetrics.heightPixels
+
+        imageCapture = ImageCapture.Builder()
+            .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+            .setTargetResolution(Size(screenWidth, screenHeight))
+            .setFlashMode(ImageCapture.FLASH_MODE_OFF)
+            .build()
+
+        val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+
+        try {
+            cameraProvider?.unbindAll()
+            currentCamera = cameraProvider?.bindToLifecycle(
+                this, cameraSelector, preview, imageCapture
+            )
+            Log.d(TAG, "Camera bound")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error binding camera", e)
+        }
+    }
+
+    private fun startDetectionProcess() {
+        // Start phone status monitoring
+        PhoneStatusMonitor.getInstance().startMonitoring(mainHandler) {
+            resultsReady.set(true); batteryCheckRunning.value =
+            false; motionMonitor.stopMonitoring(); lightMonitor.stopMonitoring(); turnFlashlightOff()
+        }
+        if (canSwitchModels)
+            motionMonitor.startMonitoring()
+        lightMonitor.startMonitoring()
+        // Start battery level check
+        batteryCheckRunning.value = true
+        startBatteryLevelCheck(batteryCheckRunning, showBatteryWarning, avgBatteryMoreUsed)
+
+        // Start detection loop
+        stopDetection.set(false)
+        resultsReady.set(false)
+        displayReady.set(false)
+        startDetectionLoop()
+    }
+
+    private fun startDetectionLoop() {
+        // Launch detection thread
+        launchDetectionThread()
+
+        mainHandler.post(object : Runnable {
+            override fun run() {
+                if (!bitmapList.isEmpty()) {
+                    // Stop loop and show results
+                    startDisplayLoop()
+                    return
+                }
+
+                // Schedule next iteration
+                mainHandler.postDelayed(this, 200)
+            }
+        })
+    }
+
+    private fun startDisplayLoop() {
+        mainHandler.post(object : Runnable {
+            override fun run() {
+                if (stopDetection.get()) return
+
+                val nextBitmap = getNextBitmapFromList()
+                if (nextBitmap != null) {
+                    resultBitmap.value?.recycle()
+                    resultBitmap.value = nextBitmap
+                    showResult.value = true
+                }
+
+                mainHandler.postDelayed(this, Constants.IMAGE_REFRESH_MS.toLong())
+            }
+        })
+    }
+
+    private fun addBitmapToList(bitmap: Bitmap) {
+        bitmapListCurrentIndex++
+
+        //to prevent concurrent writing
+        resultsReady.set(false)
+
+        bitmapList.add(bitmapListCurrentIndex - 1, bitmap)
+        while (bitmapList.size > maxBitmapListSize) {
+            val oldBitmap = bitmapList.removeAt(0)
+            oldBitmap.recycle()
+        }
+        Log.d(TAG, "Bitmap added to list, size: ${bitmapList.size}")
+    }
+
+    private fun getNextBitmapFromList(): Bitmap? {
+        return if (bitmapList.isNotEmpty()) {
+            bitmapList.removeAt(0)
+        } else {
+            null
+        }
+    }
+
+    private fun launchDetectionThread() {
+        val toRun = {
+            threadCount.incrementAndGet()
+            if (!stopDetection.get()) {
+                BackgroundTaskExecutor.getInstance().executeAsync(
+                    {
+                        // Capture image
+                        val currentThreadNo = "Thread_" + threadCount.get()
+                        val detectorWrapper = currentDetectorModel.acquireDetector(
+                            preferNanoModel,  // Prefer nano if moving fast
+                            5  // 5 second timeout
+                        )
+                        if (detectorWrapper == null)
+                            return@executeAsync ThreadResult(null, null, -1, 0, 0)
+
+                        val detector = detectorWrapper.detector
+
+                        val bitmap = captureImageSync() ?: return@executeAsync null
+
+                        var sceneClassId = -1
+                        var classifierLatency = 0L
+
+                        val classifierLatch = CountDownLatch(1)
+
+                        if (AppConfig.env_reports) {
+                            BackgroundTaskExecutor.getInstance().executeAsync(
+                                {
+                                    val classifierStart = System.currentTimeMillis()
+                                    sceneClassId = classifier.detectScene(bitmap, currentThreadNo)
+                                    classifierLatency = System.currentTimeMillis() - classifierStart
+                                    null
+                                },
+                                object : BackgroundTaskExecutor.TaskCallback<Any?> {
+                                    override fun onSuccess(result: Any?) {
+                                        classifierLatch.countDown()
+                                    }
+
+                                    override fun onError(e: Exception) {
+                                        Log.e(TAG, currentThreadNo + "Classifier error", e)
+                                        classifierLatch.countDown()
+                                    }
+                                }
+                            )
+                        } else {
+                            classifierLatch.countDown() // Skip waiting if disabled
+                        }
+
+                        // Run detector
+                        val detectorStart = System.currentTimeMillis()
+                        val detectionResult = detector.detectObjects(bitmap, currentThreadNo)
+                        val detectorLatency = System.currentTimeMillis() - detectorStart
+
+                        // Check if found target objects
+                        val foundObjects = detectionResult.classIndices.isNotEmpty()
+                        currentDetectorModel.releaseDetector(detectorWrapper)
+
+                        //val detectedClasses = detectionResult.classIndices
+                        //val foundClasses = remainingClassIndices.filter { it in detectedClasses }
+
+                        if (!foundObjects) {
+                            bitmap.recycle()
+                            return@executeAsync ThreadResult(null, null, -1, detectorLatency, 0)
+                        }
+
+                        try {
+                            val finished = classifierLatch.await(1, TimeUnit.SECONDS)
+                            if (!finished) {
+                                Log.w(TAG, currentThreadNo + "Classifier timeout after 3 seconds")
+                            }
+                        } catch (e: InterruptedException) {
+                            Log.e(TAG, currentThreadNo + "Wait interrupted", e)
+                        }
+
+                        val bitmapWithDetections = YOLODetector.drawDetectionsWithSmartResize(
+                            bitmap,
+                            detectionResult,
+                            currentBBoxOffset,
+                            currentTextRatio,
+                            resources.displayMetrics
+                        )
+                        bitmap.recycle()
+
+                        // Now classifier is done, return result
+                        ThreadResult(
+                            detectionResult,
+                            bitmapWithDetections,
+                            sceneClassId,
+                            detectorLatency,
+                            classifierLatency
+                        )
+                    },
+                    object : BackgroundTaskExecutor.TaskCallback<ThreadResult?> {
+                        override fun onSuccess(result: ThreadResult?) {
+                            if (result == null || result.detectionResult == null) {
+                                updateLatencyStats(
+                                    result?.detectorLatency ?: 0,
+                                    result?.classifierLatency ?: 0
+                                )
+                                //threadCount.decrementAndGet()
+                                return
+                            }
+
+                            // Update latency statistics
+                            updateLatencyStats(result.detectorLatency, result.classifierLatency)
+
+                            // Check if another thread already finished
+                            if (resultsReady.compareAndSet(false, true))
+                                addBitmapToList(result.bitmap!!)
+                            else
+                                result.bitmap?.recycle()
+
+                        }
+
+                        override fun onError(e: Exception) {
+                            Log.e(TAG, "Detection thread error", e)
+                            //threadCount.decrementAndGet()
+                        }
+                    }
+                )
+            }
+        }
+
+        val runtime = Runtime.getRuntime()
+        val maxMemory = runtime.maxMemory()
+        val usedMemory = runtime.totalMemory() - runtime.freeMemory()
+        var availableMemory: Long = maxMemory - usedMemory
         val checkRunnable = object : Runnable {
             override fun run() {
-                if (finishedLoading) {
-                    processTextOutput()
+                if (availableMemory > currentDetectorModel.ACTUAL_THREAD_MEM_USED_MB) {
+                    showMemoryWarning.value = false
+                    mainHandler.post(toRun)
                 } else {
-                    mainHandler.postDelayed(this, 500)
+                    showMemoryWarning.value = true
+                    val runtime = Runtime.getRuntime()
+                    val maxMemory = runtime.maxMemory()
+                    val usedMemory = runtime.totalMemory() - runtime.freeMemory()
+                    availableMemory = maxMemory - usedMemory
+                    Log.w(
+                        TAG,
+                        "Low memory (${availableMemory / 1_048_576}MB), WAITING FOR RELEASE OR USER EXIT"
+                    )
+                    mainHandler.postDelayed(this, Constants.WAIT_CHECK)
                 }
             }
         }
-        mainHandler.postDelayed(checkRunnable, 2000)
+        mainHandler.post(checkRunnable)
     }
 
-    private fun processTextOutput() {
-        if (matchedIndices.isEmpty()) {
-            speechProcessText.value = "No matched known classes"
-            retrySpeech.value = true
-            sendSpeech.value = false
-            lockedVolumeDown = true
-            locked = false
-            vibrateIfEnabled()
-        } else {
-            speechProcessText.value = "Matched: ${classNames.joinToString(", ")}"
-            retrySpeech.value = true
-            sendSpeech.value = true
-            locked = false
-            vibrateIfEnabled()
-        }
-    }
+    private fun captureImageSync(): Bitmap? {
+        return try {
+            val captureResult = CompletableFuture<Bitmap?>()
 
-    private fun sendProcessedSpeech() {
-        val classIndices = IntArray(matchedIndices.size) { matchedIndices[it].classIndex }
-        val matchedWords = Array(matchedIndices.size) { matchedIndices[it].matchedWord }
+            imageCapture?.takePicture(
+                ContextCompat.getMainExecutor(this),
+                object : ImageCapture.OnImageCapturedCallback() {
+                    override fun onCaptureSuccess(image: ImageProxy) {
+                        try {
+                            if (!stopDetection.get()) {
+                                mainHandler.postDelayed(
+                                    {
+                                        launchDetectionThread()
+                                    },
+                                    Constants.CAMERA_RECOVERY_MS.toLong()
+                                )  // 200ms camera recovery time
+                            }
 
-        val intent = Intent(this, FindMyObjectActivity::class.java).apply {
-            putExtra(Constants.EXTRA_MATCHED_INDICES, classIndices)
-            putExtra(Constants.EXTRA_SYNONYMS_WORDS, matchedWords)
-        }
-        returnFromFindMyObject = true
-        startActivity(intent)
+                            // Convert ImageProxy to Bitmap using ImageUtils
+                            val bitmap = ImageUtils.imageProxyToBitmap(image)
+                            captureResult.complete(bitmap)
 
-        //finish()
-    }
+                            if (bitmap != null) {
+                                Log.d(TAG, "Image captured: ${bitmap.width}x${bitmap.height}")
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error converting ImageProxy to Bitmap", e)
+                            showCameraError(Constants.CAMERA_FAIL_CONVERT_IMGPROXY)
+                            captureResult.complete(null)
+                        } finally {
+                            // CRITICAL: Always close ImageProxy to free memory
+                            // If you don't close it, you'll run out of memory buffers
+                            image.close()
+                        }
+                    }
 
-    private fun handleSpeechDialogTap() {
-        // Cancel speech recognition
-        mainHandler.removeCallbacksAndMessages(null)
-        soundManager.releaseCallback()
-        speechRecognizer.stopListening()
-        locked = true
-        lockedVolumeDown = false
-        showSpeechDialog.value = false
-        mainHandler.postDelayed({
-            uiLocked = false
-            retrySpeech.value = false
-            sendSpeech.value = false
-            isSpeaking.value = false
-            speechText.value = ""
-            speechProcessText.value = ""
-            locked = false
-        }, Constants.ANIMATION_DELAY.toLong())
-    }
-
-    private fun resetSpeechStates() {
-        speechProcessText.value = ""
-        speechText.value = ""
-        //cancelSpeech.value = true
-        retrySpeech.value = false
-        sendSpeech.value = false
-    }
-
-    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        when (keyCode) {
-            KeyEvent.KEYCODE_VOLUME_UP -> {
-                if (!locked) {
-                    //uiLocked=true
-                    if (retrySpeech.value) {
-                        // Retry speech recognition
-                        locked = true
-                        resetSpeechStates()
-                        launchSpeechRecognition(false)
-                    } else {
-                        uiLocked = true
-                        locked = true
-                        // Launch static detection
-                        launchStaticDetection()
+                    override fun onError(exception: ImageCaptureException) {
+                        Log.e(TAG, "Image capture failed: ${exception.message}", exception)
+                        captureResult.complete(null)
                     }
                 }
-                return true
-            }
+            )
 
-            KeyEvent.KEYCODE_VOLUME_DOWN -> {
-                if (!locked) {
-                    uiLocked = true
-                    if (!handleVolumeDownControl) {
-                        if (!showSpeechDialog.value)
-                            handleVolumeDownControl = true
-                        mainHandler.removeCallbacksAndMessages(null)
-                        mainHandler.postDelayed(
-                            { handleSingleVolumeDown() }, Constants.VOLUME_DOWN_DELAY_MS.toLong()
-                        )
-                    } else {
-                        mainHandler.removeCallbacksAndMessages(null)
-                        locked = true
-                        handleVolumeDownControl = false
-                        launchSpeechRecognition(true)
-                    }
-                }
-                return true
-            }
-        }
-        return super.onKeyDown(keyCode, event)
-    }
+            // Block and wait for result with timeout (5 seconds)
+            // This makes the async callback synchronous
+            captureResult.get(5, TimeUnit.SECONDS)
 
-    private fun handleSingleVolumeDown() {
-        when {
-            sendSpeech.value -> {
-                locked = true
-                // Process recognized text
-                sendProcessedSpeech()
-            }
-
-            else -> {
-                if (!lockedVolumeDown)
-                // Launch caption activity
-                    launchCaptionActivity()
-            }
+        } catch (e: TimeoutException) {
+            Log.e(TAG, "Image capture timeout after 5 seconds", e)
+            null
+        } catch (e: Exception) {
+            Log.e(TAG, "Error capturing image synchronously", e)
+            showCameraError(Constants.STD_CAMERA_FAIL)
+            null
         }
     }
 
-    private fun vibrateIfEnabled() {
+    private fun filterDetectionResult(
+        original: DetectionResult,
+        foundClasses: List<Int>,
+        detector: YOLODetector
+    ): DetectionResult {
+        // Get original detection data
+        val originalBoxes = original.boundingBoxes
+        val originalConfidences = original.confidences
+        val originalClassIndices = original.classIndices
+
+        // Create filtered lists
+        val filteredBoxes = mutableListOf<RectF>()
+        val filteredConfidences = mutableListOf<Float>()
+        val filteredClassIndices = mutableListOf<Int>()
+        val filteredLabels = mutableListOf<String>()
+
+        // Iterate through all detections
+        for (i in originalClassIndices.indices) {
+            val classIdx = originalClassIndices[i]
+
+            // Check if this detection matches one of our target objects
+            if (classIdx in foundClasses) {
+                // Add detection data to filtered lists
+                filteredBoxes.add(originalBoxes[i])
+                filteredConfidences.add(originalConfidences[i])
+                filteredClassIndices.add(classIdx)
+
+                // IMPORTANT: Use synonym from objectsToFind, not YOLO label
+                // Example: User said "keys" → Use "keys" not "key"(detector label)
+                val synonym = objectsToFind[classIdx] ?: detector.getClassName(classIdx)
+                filteredLabels.add(synonym)
+
+                Log.d(
+                    TAG,
+                    "Filtered detection: $synonym (class $classIdx) with confidence ${originalConfidences[i]}"
+                )
+            }
+        }
+
+        Log.d(
+            TAG,
+            "Filtered ${filteredLabels.size} detections from ${originalClassIndices.size} total"
+        )
+
+        // Return new DetectionResult with only matched objects
+        return DetectionResult(
+            filteredBoxes,
+            filteredConfidences,
+            filteredLabels,
+            filteredClassIndices
+        )
+    }
+
+    private fun updateLatencyStats(detectorLatency: Long, classifierLatency: Long) {
+        synchronized(this) {
+            if (detectorLatency > 0) {
+                avgDetectorLatency = (avgDetectorLatency + detectorLatency) /
+                        (2)
+            }
+            if (classifierLatency > 0) {
+                avgClassifierLatency = (avgClassifierLatency + classifierLatency) /
+                        (2)
+            }
+        }
+    }
+
+    private fun processFoundObjects(result: ThreadResult) {
+        // Signal stop
+        stopDetection.set(true)
+        PhoneStatusMonitor.getInstance().stopMonitoring()
+        motionMonitor.stopMonitoring(); lightMonitor.stopMonitoring(); turnFlashlightOff()
+        batteryCheckRunning.value = false
+
+        // Remove found classes
+        val foundSynonyms = mutableListOf<String>()
+        result.detectionResult?.classIndices?.forEach { classIdx ->
+            if (classIdx in remainingClassIndices) {
+                foundSynonyms.add(objectsToFind[classIdx] ?: "")
+                remainingClassIndices.remove(classIdx)
+            }
+        }
+
+        val listIndices = result.detectionResult?.classIndices as List<Int>
+        // Write environment report
+        if (AppConfig.env_reports) {
+            val batteryUsageIncrease = if (avgBatteryMoreUsed.value > 0f) {
+                1f - avgBatteryMoreUsed.value
+            } else {
+                0f
+            }
+            EnvironmentReportsManagerKt.writeDetectionReport(
+                this,
+                result.sceneClassId, listIndices,
+                threadCount.get(),
+                avgDetectorLatency,
+                avgClassifierLatency,
+                batteryUsageIncrease
+            )
+        }
+
+
+        originalBitmap = result.bitmap
+        detectionResult = result.detectionResult
+
+        // Set result bitmap
+        resultBitmap.value = YOLODetector.drawDetections(originalBitmap, detectionResult)
+
+        currentBBoxOffset = 0f
+        currentTextRatio = Constants.TEXT_SIZE_WIDTH_SCREEN
+
+        // Signal display ready
+        displayReady.set(true)
+    }
+
+    private fun handleBackClick() {
         if (AppConfig.haptics) {
             vibrate(haptic_model0())
         }
+        finish()
+        //startActivity(Intent(this, HomeActivity::class.java))
     }
 
-    private fun checkPhoneStatusAndNavigate(onSuccess: () -> Unit) {
-        PhoneStatusMonitor.getInstance().checkPhoneStatus()
-        // If check passes, execute success callback
-        onSuccess()
+    private fun reloadDetectionPhase() {
+        // Reset states
+        showResult.value = false
+        originalBitmap?.recycle()
+        resultBitmap.value?.recycle()
+        originalBitmap = null
+        detectionResult = null
+    }
+
+    private fun handleNextClick() {
+        if (AppConfig.haptics) {
+            vibrate(haptic_model0())
+        }
+        PermissionChecker.checkAndRequestPermissions(this, false) {
+            reloadDetectionPhase()
+            startDetectionProcess()
+        }
+    }
+
+    private fun showCameraError(reason: Int) {
+        val monitor = PhoneStatusMonitor.getInstance()
+        val errorDialog = ErrorDialogManager(monitor.currentActivity)
+        errorDialog.setupDialog(reason)
+        monitor.shutdownApp(errorDialog, monitor.currentContext)
+    }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        return when (keyCode) {
+            KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                handleBackClick()
+                true
+            }
+
+            KeyEvent.KEYCODE_VOLUME_UP -> {
+                if (remainingClassIndices.isNotEmpty() && showResult.value) {
+                    handleNextClick()
+                }
+                true
+            }
+
+            else -> super.onKeyDown(keyCode, event)
+        }
     }
 
     override fun onPause() {
         super.onPause()
+        PhoneStatusMonitor.getInstance().stopMonitoring()
+        motionMonitor.stopMonitoring(); lightMonitor.stopMonitoring(); turnFlashlightOff()
+        batteryCheckRunning.value = false
         mainHandler.removeCallbacksAndMessages(null)
-        soundManager.releaseCallback()
-        ttsManager.stopSpeaking()
+        updateHandler.removeCallbacksAndMessages(null)
+        stopDetection.set(true)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        cameraProvider?.unbindAll()
+        cameraExecutor.shutdown()
+    }
+}
+
+@Composable
+fun LiveDetectionScreen(
+    showResult: Boolean,
+    resultBitmap: Bitmap?,
+    hasMoreObjects: Boolean,
+    showBatteryWarning: Boolean,
+    showMemoryWarning: Boolean,
+    onBackClick: () -> Unit,
+    onNextClick: (() -> Unit)?,
+    onCameraReady: (PreviewView) -> Unit,
+    onBBoxResize: (Float) -> Unit,
+    onTextResize: (Float) -> Unit
+) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val screenHeight = maxHeight
+        val screenWidth = maxWidth
+
+        if (showMemoryWarning)
+            MemoryWarningNotification(showMemoryWarning)
+
+        if (!showResult) {
+            // Detection phase - Camera + FPS Slider
+            DetectionPhase(
+                onCameraReady = onCameraReady
+            )
+        } else {
+            // Result phase - Result image + Navigation
+            ResultPhaseWithSettings(
+                screenHeight = screenHeight, screenWidth = screenWidth,
+                resultBitmap = resultBitmap,
+                hasMoreObjects = hasMoreObjects,
+                onBackClick = onBackClick,
+                onNextClick = onNextClick,
+                onBBoxResize = onBBoxResize,
+                onTextResize = onTextResize
+            )
+        }
+
+        // Battery warning notification
+        AnimatedVisibility(
+            visible = showBatteryWarning,
+            enter = slideInVertically(initialOffsetY = { -it }),
+            exit = slideOutVertically(targetOffsetY = { -it }),
+            modifier = Modifier.align(Alignment.TopCenter)
+        ) {
+            BatteryWarningNotification()
+        }
+    }
+}
+
+@Composable
+fun DetectionPhase(
+    onCameraReady: (PreviewView) -> Unit
+) {
+    Box(modifier = Modifier.fillMaxSize()) {
+
+        // Camera Preview
+        AndroidView(
+            factory = { context ->
+                PreviewView(context).also { previewView ->
+                    onCameraReady(previewView)
+                }
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+
+    }
+}
+
+@Composable
+fun BatteryWarningNotification() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth(0.8f)
+            .background(
+                color = colorResource(R.color.notification_white), // Semi-transparent black
+                shape = RoundedCornerShape(28.dp)
+            )
+            .padding(horizontal = 24.dp, vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Warning,
+            contentDescription = "Warning",
+            modifier = Modifier.size(24.dp),
+            tint = Color(0xFFFF9800)
+        )
+
+        Text(
+            text = "The application detected an higher usage of battery than usual",
+            color = colorResource(R.color.notification_text_gray),
+            fontSize = Constants.STD_FONT_SIZE.sp,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            textAlign = TextAlign.Center,
+            lineHeight = 20.sp
+        )
+    }
+}
+
+@Composable
+fun MemoryWarningNotification(
+    isVisible: Boolean
+) {
+    AnimatedVisibility(
+        visible = isVisible,
+        enter = fadeIn(
+            initialAlpha = 0f,
+            animationSpec = tween(durationMillis = Constants.ANIMATION_DELAY)
+        ),
+        exit = fadeOut(
+            targetAlpha = 0f,
+            animationSpec = tween(durationMillis = 0)  // ← Instant exit, no glitch!
+        )
+    ) {
+        // Full screen white overlay with 50% opacity
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Gray.copy(alpha = Constants.BACKGROUND_OPACITY)),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth(0.8f)
+                    .background(
+                        color = colorResource(R.color.notification_white), // Semi-transparent black
+                        shape = RoundedCornerShape(28.dp)
+                    )
+                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Warning,
+                    contentDescription = "Warning",
+                    modifier = Modifier.size(24.dp),
+                    tint = Color(0xFFFF9800)
+                )
+
+                Text(
+                    text = if (AppConfig.mainLanguage.code == "en")
+                        "At the moment memory usage is at maximum, this page will be paused, until sufficient memory is available again, you can wait or exit the page via the volume up button"
+                    else
+                        "În acest moment, utilizarea memoriei este la maxim, iar pagina curentă va fii întreruptă până când vor exista resurse disponibile suficiente.Puteți aștepta sau ieși din pagină folosind butonul de volume up",
+                    color = colorResource(R.color.notification_text_gray),
+                    fontSize = Constants.STD_FONT_SIZE.sp,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    textAlign = TextAlign.Center,
+                    lineHeight = 20.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ResultPhaseWithSettings(
+    screenHeight: Dp,
+    screenWidth: Dp,
+    resultBitmap: Bitmap?,
+    hasMoreObjects: Boolean,
+    onBackClick: () -> Unit,
+    onNextClick: (() -> Unit)?,
+    onBBoxResize: (Float) -> Unit,
+    onTextResize: (Float) -> Unit
+) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Result image
+        if (resultBitmap != null) {
+            Image(
+                bitmap = resultBitmap.asImageBitmap(),
+                contentDescription = "Detection Result",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Fit
+            )
+        }
+
+        // Settings Panel at bottom
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+        ) {
+            SettingsPanel(
+                screenHeight = screenHeight,
+                screenWidth = screenWidth,
+                hasMoreObjects = hasMoreObjects,
+                onBackClick = onBackClick,
+                onNextClick = onNextClick,
+                onBBoxResize = onBBoxResize,
+                onTextResize = onTextResize
+            )
+        }
+    }
+}
+
+@Composable
+fun SettingsPanel(
+    screenHeight: Dp,
+    screenWidth: Dp,
+    hasMoreObjects: Boolean,
+    onBackClick: () -> Unit,
+    onNextClick: (() -> Unit)?,
+    onBBoxResize: (Float) -> Unit,
+    onTextResize: (Float) -> Unit
+) {
+    var isExpanded by remember { mutableStateOf(false) }
+    var currentSliderSection by remember { mutableIntStateOf(1) } // 1 = BBox, 2 = Text
+
+    var bboxOffset by remember { mutableFloatStateOf(0f) }
+    var textSizeRatio by remember { mutableFloatStateOf(Constants.TEXT_SIZE_WIDTH_SCREEN) }
+
+    // Animated offsets for slide animations
+    val navigationOffsetY by animateDpAsState(
+        targetValue = if (isExpanded) screenHeight * 0.246f else 0.dp,
+        animationSpec = tween(
+            durationMillis = 250,
+            delayMillis = if (isExpanded) 0 else 250,
+            easing = FastOutSlowInEasing
+        ),
+        label = "navigation_offset"
+    )
+
+    val sliderOffsetY by animateDpAsState(
+        targetValue = if (isExpanded) 0.dp else screenHeight * 0.246f,
+        animationSpec = tween(
+            durationMillis = 250,
+            delayMillis = if (!isExpanded) 0 else 250,
+            easing = FastOutSlowInEasing
+        ),
+        label = "slider_offset"
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(screenHeight * 0.246f)
+    ) {
+        // ============================================
+        // COLUMN 1: NAVIGATION + SETTINGS BUTTON
+        // (No background, slides down when expanded)
+        // ============================================
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+                .offset(y = navigationOffsetY)
+                .padding(bottom = 43.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            if (hasMoreObjects) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(screenWidth * 0.08f)
+                    ) {
+                        BackArrowLargeFab(onClick = onBackClick)
+                        NextArrowLargeFab(onClick = onNextClick as () -> Unit)
+                    }
+                }
+            } else {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    BackArrowLargeFab(onClick = onBackClick)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(15.dp))
+
+            // Settings button (triggers expansion)
+            ExtendedFloatingActionButton(
+                onClick = {
+                    isExpanded = true
+                    if (AppConfig.haptics) vibrate(haptic_model0())
+                },
+                containerColor = colorResource(R.color.std_purple),
+                contentColor = Color.White,
+                shape = RoundedCornerShape(
+                    topStart = 0.dp,
+                    topEnd = 0.dp,
+                    bottomEnd = 16.dp,
+                    bottomStart = 16.dp
+                ),
+                modifier = Modifier
+                    .width(Constants.NAV_BUTTONS_WIDTH.dp * 2 + screenWidth * 0.08f)
+                    .height(Constants.NAV_BUTTONS_HEIGHT.dp / 2)
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Settings,
+                        contentDescription = "Settings",
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(5.dp))
+                    Text(
+                        text = "Adjust Detection",
+                        fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
+                        fontFamily = robotoExtraBold
+                    )
+                }
+            }
+        }
+
+        // ============================================
+        // COLUMN 2: SLIDER PANEL
+        // (Has background, slides up when expanded)
+        // ============================================
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+                .offset(y = sliderOffsetY)
+                .background(
+                    color = colorResource(R.color.notification_button_white),
+                    shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+                )
+                .padding(bottom = 43.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Close button at top
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(screenHeight * 0.03f)
+                    .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                    .background(colorResource(R.color.std_purple))
+                    .clickable {
+                        isExpanded = false
+                        if (AppConfig.haptics) vibrate(haptic_model0())
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowDown,
+                        contentDescription = "Collapse",
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Section selector tabs
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth(0.85f)
+                    .height(screenHeight * 0.045f),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // BBox tab
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(
+                            if (currentSliderSection == 1)
+                                colorResource(R.color.std_cyan)
+                            else
+                                Color(0xFFDCD8E0)
+                        )
+                        .clickable {
+                            currentSliderSection = 1
+                            if (AppConfig.haptics) vibrate(haptic_model0())
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Box Size",
+                        color = if (currentSliderSection == 1)
+                            Color.White
+                        else
+                            colorResource(R.color.std_purple),
+                        fontSize = Constants.STD_FONT_SIZE.sp,
+                        fontFamily = robotoExtraBold
+                    )
+                }
+
+                // Text tab
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(
+                            if (currentSliderSection == 2)
+                                colorResource(R.color.std_cyan)
+                            else
+                                Color(0xFFDCD8E0)
+                        )
+                        .clickable {
+                            currentSliderSection = 2
+                            if (AppConfig.haptics) vibrate(haptic_model0())
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Text Size",
+                        color = if (currentSliderSection == 2)
+                            Color.White
+                        else
+                            colorResource(R.color.std_purple),
+                        fontSize = Constants.STD_FONT_SIZE.sp,
+                        fontFamily = robotoExtraBold
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(5.dp))
+
+            // Animated slider content
+            AnimatedContent(
+                targetState = currentSliderSection,
+                transitionSpec = {
+                    slideInHorizontally(
+                        initialOffsetX = { if (targetState > initialState) it else -it },
+                        animationSpec = tween(durationMillis = Constants.ANIMATION_DELAY)
+                    ) togetherWith slideOutHorizontally(
+                        targetOffsetX = { if (targetState > initialState) -it else it },
+                        animationSpec = tween(durationMillis = Constants.ANIMATION_DELAY)
+                    )
+                },
+                label = "slider_section"
+            ) { section ->
+                when (section) {
+                    1 -> {
+                        // BBox size slider
+                        BBoxSizeSlider(
+                            bboxOffset = bboxOffset,
+                            onBBoxChange = { newOffset ->
+                                bboxOffset = newOffset
+                                if (AppConfig.haptics) {
+                                    vibrate(haptic_model0())
+                                }
+                                onBBoxResize(newOffset)
+                            }
+                        )
+                    }
+
+                    2 -> {
+                        // Text size slider
+                        TextSizeSlider(
+                            textSizeRatio = textSizeRatio,
+                            onTextChange = { newRatio ->
+                                textSizeRatio = newRatio
+                                if (AppConfig.haptics) {
+                                    vibrate(haptic_model0())
+                                }
+                                onTextResize(newRatio)
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun BBoxSizeSlider(
+    bboxOffset: Float,
+    onBBoxChange: (Float) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth(0.85f)
+            .padding(horizontal = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Current value display
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "+${(bboxOffset / Constants.BBOX_RESIZE_MAX * 100).toInt()} %",
+                color = colorResource(R.color.std_cyan),
+                fontSize = Constants.STD_SUBTITLE_SIZE.sp,
+                fontFamily = robotoExtraBold
+            )
+        }
+
+        CustomSlider(
+            value = bboxOffset,
+            onValueChange = onBBoxChange,
+            valueRange = 0f..Constants.BBOX_RESIZE_MAX,
+            steps = 0,
+            thumbStyle = ThumbStyle.BAR,  // ROUND, BAR, or DOUBLE_BAR
+            thumbColor = colorResource(R.color.std_purple),
+            thumbWidth = 8.dp,
+            thumbHeight = 55.dp,
+            trackHeight = 20.dp,
+            activeTrackColor = Color.White,
+            inactiveTrackColor = Color.White,
+            trackShadow = 5.dp,
+            modifier = Modifier.fillMaxWidth(0.9f)
+        )
+    }
+}
+
+@SuppressLint("DefaultLocale")
+@Composable
+fun TextSizeSlider(
+    textSizeRatio: Float,
+    onTextChange: (Float) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth(0.85f)
+            .padding(horizontal = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // Current value display
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "+${((textSizeRatio - Constants.TEXT_SIZE_WIDTH_SCREEN) / Constants.TEXT_RESIZE_MAX * 100).toInt()} %",
+                color = colorResource(R.color.std_cyan),
+                fontSize = Constants.STD_SUBTITLE_SIZE.sp,
+                fontFamily = robotoExtraBold
+            )
+        }
+
+        CustomSlider(
+            value = textSizeRatio,
+            onValueChange = onTextChange,
+            valueRange = Constants.TEXT_SIZE_WIDTH_SCREEN..Constants.TEXT_RESIZE_MAX,
+            steps = 4,
+            thumbStyle = ThumbStyle.BAR,  // ROUND, BAR, or DOUBLE_BAR
+            thumbColor = colorResource(R.color.std_purple),
+            thumbWidth = 8.dp,
+            thumbHeight = 55.dp,
+            trackHeight = 20.dp,
+            activeTrackColor = Color.White,
+            inactiveTrackColor = Color.White,
+            trackShadow = 5.dp,
+            modifier = Modifier.fillMaxWidth(0.75f),
+            stepsColor = colorResource(R.color.purple_light)
+        )
     }
 }
