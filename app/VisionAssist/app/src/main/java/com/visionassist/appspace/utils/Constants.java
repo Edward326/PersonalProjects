@@ -151,7 +151,7 @@ public class Constants {
     public static final float TEXT_RESIZE_MAX = 0.06f;
     public static final float LINEAR_SPEED_THRESHOLD=0.8f;
     public static final float ROTATION_SPEED_THRESHOLD=0.6f;
-    public static final float IMAGE_REFRESH_MS=100;
+    public static final float IMAGE_REFRESH_MS=50;
 
     // Drag gestures parameters
     public static final float MIN_HDISTANCE_THRESHOLD=0.15f;

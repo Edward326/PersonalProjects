@@ -767,12 +767,12 @@ class FindMyObjectActivity : ComponentActivity() {
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         return when (keyCode) {
-            KeyEvent.KEYCODE_VOLUME_DOWN -> {
+            KeyEvent.KEYCODE_VOLUME_UP -> {
                 handleBackClick()
                 true
             }
 
-            KeyEvent.KEYCODE_VOLUME_UP -> {
+            KeyEvent.KEYCODE_VOLUME_DOWN -> {
                 if (remainingClassIndices.isNotEmpty() && showResult.value) {
                     handleNextClick()
                 }

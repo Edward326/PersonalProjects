@@ -2,9 +2,8 @@
 
 package com.visionassist.appspace.activities.tabs.home.detection
 
-import android.annotation.SuppressLint
+import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.RectF
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -49,13 +48,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -70,6 +68,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.style.TextAlign
@@ -80,13 +79,12 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
+import com.visionassist.appspace.activities.main.HomeActivity
 import com.visionassist.appspace.activities.tabs.LightManager
 import com.visionassist.appspace.activities.tabs.MotionManager
+import com.visionassist.appspace.activities.tabs.home.findmyobjects.BBoxSizeSlider
+import com.visionassist.appspace.activities.tabs.home.findmyobjects.TextSizeSlider
 import com.visionassist.appspace.activities.tabs.reports.EnvironmentReportsManagerKt
-import com.visionassist.appspace.jetpack.design.BackArrowLargeFab
-import com.visionassist.appspace.jetpack.design.CustomSlider
-import com.visionassist.appspace.jetpack.design.NextArrowLargeFab
-import com.visionassist.appspace.jetpack.design.ThumbStyle
 import com.visionassist.appspace.jetpack.managers.ErrorDialogManager
 import com.visionassist.appspace.models.classifier.YOLOClassifier
 import com.visionassist.appspace.models.detector.DetectionResult
@@ -121,19 +119,13 @@ class LiveDetectionActivity : ComponentActivity() {
     private lateinit var classifier: YOLOClassifier
     private var canSwitchModels = false
 
-    // Detection data
-    private lateinit var objectsToFind: MutableMap<Int, String>
-    private lateinit var remainingClassIndices: MutableList<Int>
-
     // Results
-    private var originalBitmap: Bitmap? = null
     private val resultBitmap = mutableStateOf<Bitmap?>(null)
-    private var detectionResult: DetectionResult? = null
     private val threadCount = AtomicInteger(0)
+    private val NOTHREADS_CLASSIFIER_DELAY = 3
     private var avgDetectorLatency = 0L
     private var avgClassifierLatency = 0L
     private val bitmapList = mutableListOf<Bitmap>()
-    private var bitmapListCurrentIndex = 0
     private val maxBitmapListSize = 10
 
     // Camera
@@ -145,16 +137,11 @@ class LiveDetectionActivity : ComponentActivity() {
 
     // Threads Control States
     private val stopDetection = AtomicBoolean(false)
-    private val resultsReady = AtomicBoolean(false)
-    private val displayReady = AtomicBoolean(false)
 
     // Handlers
     private val mainHandler = Handler(Looper.getMainLooper())
-    private val updateHandler = Handler(Looper.getMainLooper())
-    private var updateRunnable: Runnable? = null
 
     // Compose states
-    private val showResult = mutableStateOf(false)
     private val showBatteryWarning = mutableStateOf(false)
     private val showMemoryWarning = mutableStateOf(false)
 
@@ -167,6 +154,7 @@ class LiveDetectionActivity : ComponentActivity() {
     private var currentTextRatio = Constants.TEXT_SIZE_WIDTH_SCREEN
 
     data class ThreadResult(
+        val classifierRan: Boolean,
         val detectionResult: DetectionResult?,
         val bitmap: Bitmap?,
         val sceneClassId: Int,
@@ -182,7 +170,6 @@ class LiveDetectionActivity : ComponentActivity() {
         else
             YOLOClassifier(this)
 
-        extractIntentData()
         cameraExecutor = Executors.newSingleThreadExecutor()
 
         currentDetectorModel = PhoneStatusMonitor.getInstance().modelManager.detector
@@ -208,18 +195,15 @@ class LiveDetectionActivity : ComponentActivity() {
 
         setContent {
             LiveDetectionScreen(
-                showResult = showResult.value,
                 resultBitmap = resultBitmap.value,
-                hasMoreObjects = remainingClassIndices.isNotEmpty(),
                 showBatteryWarning = showBatteryWarning.value,
                 showMemoryWarning = showMemoryWarning.value,
-                onBackClick = ::handleBackClick,
-                onNextClick = if (remainingClassIndices.isNotEmpty()) ::handleNextClick else null,
                 onCameraReady = { previewView ->
                     startCameraX(previewView)
                 },
-                onBBoxResize = ::handleBBoxResize,
-                onTextResize = ::handleTextResize
+                onHomeClick = ::handleHomeClick,
+                onBBoxResize = { newBBoxSize -> currentBBoxOffset = newBBoxSize },
+                onTextResize = { newTextRatio -> currentTextRatio = newTextRatio }
             )
         }
     }
@@ -232,27 +216,12 @@ class LiveDetectionActivity : ComponentActivity() {
                 startDetectionProcess()
             }
         } else {
-            if (stopDetection.get() && !showResult.value) {
+            if (stopDetection.get()) {
                 Log.d(TAG, "Activity resumed - restarting detection")
                 reloadDetectionPhase()
                 startDetectionProcess()
             }
         }
-    }
-
-    private fun extractIntentData() {
-        val classIndices = intent.getIntArrayExtra(Constants.EXTRA_MATCHED_INDICES) ?: intArrayOf()
-        val matchedWords = intent.getStringArrayExtra(Constants.EXTRA_SYNONYMS_WORDS) ?: arrayOf()
-
-        objectsToFind = mutableMapOf()
-        remainingClassIndices = mutableListOf()
-
-        for (i in classIndices.indices) {
-            objectsToFind[classIndices[i]] = matchedWords[i]
-            remainingClassIndices.add(classIndices[i])
-        }
-
-        Log.d(TAG, "Objects to find (detector_class:synonym): $objectsToFind")
     }
 
     private fun turnFlashlightOn() {
@@ -284,58 +253,14 @@ class LiveDetectionActivity : ComponentActivity() {
         }
     }
 
-    private fun handleBBoxResize(offsetDp: Float) {
-        currentBBoxOffset = offsetDp
-
-        // Cancel any pending update
-        updateRunnable?.let { updateHandler.removeCallbacks(it) }
-
-        // Schedule new update with delay
-        updateRunnable = Runnable {
-            redrawDetections()
+    private fun handleHomeClick() {
+        if (AppConfig.haptics) {
+            vibrate(haptic_model0())
         }
-        updateHandler.postDelayed(updateRunnable!!, Constants.PREVIEW_UPDATE_DELAY.toLong())
-    }
 
-    private fun handleTextResize(textSizeRatio: Float) {
-        currentTextRatio = textSizeRatio
-
-        // Cancel any pending update
-        updateRunnable?.let { updateHandler.removeCallbacks(it) }
-
-        // Schedule new update with delay
-        updateRunnable = Runnable {
-            redrawDetections()
-        }
-        updateHandler.postDelayed(updateRunnable!!, Constants.PREVIEW_UPDATE_DELAY.toLong())
-    }
-
-    private fun redrawDetections() {
-        BackgroundTaskExecutor.getInstance().executeAsync(
-            {
-                // Use the smart drawing method that handles everything
-                YOLODetector.drawDetectionsWithSmartResize(
-                    originalBitmap,
-                    detectionResult,
-                    currentBBoxOffset,  // Current bbox offset
-                    currentTextRatio,   // Current text ratio (can be null for default)
-                    resources.displayMetrics
-                )
-            },
-            object : BackgroundTaskExecutor.TaskCallback<Bitmap?> {
-                override fun onSuccess(result: Bitmap?) {
-                    if (result != null) {
-                        resultBitmap.value = result
-                        // Trigger recomposition
-                        showResult.value = true
-                    }
-                }
-
-                override fun onError(e: Exception) {
-                    Log.e(TAG, "Error redrawing detections", e)
-                }
-            }
-        )
+        val intent = Intent(this, HomeActivity::class.java)
+        startActivity(intent)
+        finish()
     }
 
     private fun startCameraX(previewView: PreviewView) {
@@ -381,8 +306,8 @@ class LiveDetectionActivity : ComponentActivity() {
     private fun startDetectionProcess() {
         // Start phone status monitoring
         PhoneStatusMonitor.getInstance().startMonitoring(mainHandler) {
-            resultsReady.set(true); batteryCheckRunning.value =
-            false; motionMonitor.stopMonitoring(); lightMonitor.stopMonitoring(); turnFlashlightOff()
+            batteryCheckRunning.value = false; motionMonitor.stopMonitoring()
+            lightMonitor.stopMonitoring(); turnFlashlightOff()
         }
         if (canSwitchModels)
             motionMonitor.startMonitoring()
@@ -393,8 +318,6 @@ class LiveDetectionActivity : ComponentActivity() {
 
         // Start detection loop
         stopDetection.set(false)
-        resultsReady.set(false)
-        displayReady.set(false)
         startDetectionLoop()
     }
 
@@ -425,7 +348,6 @@ class LiveDetectionActivity : ComponentActivity() {
                 if (nextBitmap != null) {
                     resultBitmap.value?.recycle()
                     resultBitmap.value = nextBitmap
-                    showResult.value = true
                 }
 
                 mainHandler.postDelayed(this, Constants.IMAGE_REFRESH_MS.toLong())
@@ -433,13 +355,9 @@ class LiveDetectionActivity : ComponentActivity() {
         })
     }
 
+    @Synchronized
     private fun addBitmapToList(bitmap: Bitmap) {
-        bitmapListCurrentIndex++
-
-        //to prevent concurrent writing
-        resultsReady.set(false)
-
-        bitmapList.add(bitmapListCurrentIndex - 1, bitmap)
+        bitmapList.add(bitmap)
         while (bitmapList.size > maxBitmapListSize) {
             val oldBitmap = bitmapList.removeAt(0)
             oldBitmap.recycle()
@@ -468,7 +386,7 @@ class LiveDetectionActivity : ComponentActivity() {
                             5  // 5 second timeout
                         )
                         if (detectorWrapper == null)
-                            return@executeAsync ThreadResult(null, null, -1, 0, 0)
+                            return@executeAsync ThreadResult(false, null, null, -1, 0, 0)
 
                         val detector = detectorWrapper.detector
 
@@ -476,10 +394,12 @@ class LiveDetectionActivity : ComponentActivity() {
 
                         var sceneClassId = -1
                         var classifierLatency = 0L
+                        var classifierRan = false
 
                         val classifierLatch = CountDownLatch(1)
 
-                        if (AppConfig.env_reports) {
+                        if (AppConfig.env_reports && (threadCount.get() % NOTHREADS_CLASSIFIER_DELAY == 0)) {
+                            classifierRan = true
                             BackgroundTaskExecutor.getInstance().executeAsync(
                                 {
                                     val classifierStart = System.currentTimeMillis()
@@ -515,8 +435,14 @@ class LiveDetectionActivity : ComponentActivity() {
                         //val foundClasses = remainingClassIndices.filter { it in detectedClasses }
 
                         if (!foundObjects) {
-                            bitmap.recycle()
-                            return@executeAsync ThreadResult(null, null, -1, detectorLatency, 0)
+                            return@executeAsync ThreadResult(
+                                false,
+                                null,
+                                bitmap,
+                                -1,
+                                detectorLatency,
+                                0
+                            )
                         }
 
                         try {
@@ -539,6 +465,7 @@ class LiveDetectionActivity : ComponentActivity() {
 
                         // Now classifier is done, return result
                         ThreadResult(
+                            classifierRan,
                             detectionResult,
                             bitmapWithDetections,
                             sceneClassId,
@@ -549,6 +476,9 @@ class LiveDetectionActivity : ComponentActivity() {
                     object : BackgroundTaskExecutor.TaskCallback<ThreadResult?> {
                         override fun onSuccess(result: ThreadResult?) {
                             if (result == null || result.detectionResult == null) {
+                                if(result?.bitmap !=null){
+                                    addBitmapToList(result.bitmap)
+                                }
                                 updateLatencyStats(
                                     result?.detectorLatency ?: 0,
                                     result?.classifierLatency ?: 0
@@ -561,11 +491,25 @@ class LiveDetectionActivity : ComponentActivity() {
                             updateLatencyStats(result.detectorLatency, result.classifierLatency)
 
                             // Check if another thread already finished
-                            if (resultsReady.compareAndSet(false, true))
-                                addBitmapToList(result.bitmap!!)
-                            else
-                                result.bitmap?.recycle()
-
+                            addBitmapToList(result.bitmap!!)
+                            // Write environment report
+                            if (result.classifierRan) {
+                                val listIndices =
+                                    result.detectionResult.classIndices as List<Int>
+                                val batteryUsageIncrease = if (avgBatteryMoreUsed.value > 0f) {
+                                    1f - avgBatteryMoreUsed.value
+                                } else {
+                                    0f
+                                }
+                                EnvironmentReportsManagerKt.writeDetectionReport(
+                                    PhoneStatusMonitor.getInstance().currentContext,
+                                    result.sceneClassId, listIndices,
+                                    threadCount.get(),
+                                    avgDetectorLatency,
+                                    avgClassifierLatency,
+                                    batteryUsageIncrease
+                                )
+                            }
                         }
 
                         override fun onError(e: Exception) {
@@ -660,59 +604,6 @@ class LiveDetectionActivity : ComponentActivity() {
         }
     }
 
-    private fun filterDetectionResult(
-        original: DetectionResult,
-        foundClasses: List<Int>,
-        detector: YOLODetector
-    ): DetectionResult {
-        // Get original detection data
-        val originalBoxes = original.boundingBoxes
-        val originalConfidences = original.confidences
-        val originalClassIndices = original.classIndices
-
-        // Create filtered lists
-        val filteredBoxes = mutableListOf<RectF>()
-        val filteredConfidences = mutableListOf<Float>()
-        val filteredClassIndices = mutableListOf<Int>()
-        val filteredLabels = mutableListOf<String>()
-
-        // Iterate through all detections
-        for (i in originalClassIndices.indices) {
-            val classIdx = originalClassIndices[i]
-
-            // Check if this detection matches one of our target objects
-            if (classIdx in foundClasses) {
-                // Add detection data to filtered lists
-                filteredBoxes.add(originalBoxes[i])
-                filteredConfidences.add(originalConfidences[i])
-                filteredClassIndices.add(classIdx)
-
-                // IMPORTANT: Use synonym from objectsToFind, not YOLO label
-                // Example: User said "keys" → Use "keys" not "key"(detector label)
-                val synonym = objectsToFind[classIdx] ?: detector.getClassName(classIdx)
-                filteredLabels.add(synonym)
-
-                Log.d(
-                    TAG,
-                    "Filtered detection: $synonym (class $classIdx) with confidence ${originalConfidences[i]}"
-                )
-            }
-        }
-
-        Log.d(
-            TAG,
-            "Filtered ${filteredLabels.size} detections from ${originalClassIndices.size} total"
-        )
-
-        // Return new DetectionResult with only matched objects
-        return DetectionResult(
-            filteredBoxes,
-            filteredConfidences,
-            filteredLabels,
-            filteredClassIndices
-        )
-    }
-
     private fun updateLatencyStats(detectorLatency: Long, classifierLatency: Long) {
         synchronized(this) {
             if (detectorLatency > 0) {
@@ -726,79 +617,9 @@ class LiveDetectionActivity : ComponentActivity() {
         }
     }
 
-    private fun processFoundObjects(result: ThreadResult) {
-        // Signal stop
-        stopDetection.set(true)
-        PhoneStatusMonitor.getInstance().stopMonitoring()
-        motionMonitor.stopMonitoring(); lightMonitor.stopMonitoring(); turnFlashlightOff()
-        batteryCheckRunning.value = false
-
-        // Remove found classes
-        val foundSynonyms = mutableListOf<String>()
-        result.detectionResult?.classIndices?.forEach { classIdx ->
-            if (classIdx in remainingClassIndices) {
-                foundSynonyms.add(objectsToFind[classIdx] ?: "")
-                remainingClassIndices.remove(classIdx)
-            }
-        }
-
-        val listIndices = result.detectionResult?.classIndices as List<Int>
-        // Write environment report
-        if (AppConfig.env_reports) {
-            val batteryUsageIncrease = if (avgBatteryMoreUsed.value > 0f) {
-                1f - avgBatteryMoreUsed.value
-            } else {
-                0f
-            }
-            EnvironmentReportsManagerKt.writeDetectionReport(
-                this,
-                result.sceneClassId, listIndices,
-                threadCount.get(),
-                avgDetectorLatency,
-                avgClassifierLatency,
-                batteryUsageIncrease
-            )
-        }
-
-
-        originalBitmap = result.bitmap
-        detectionResult = result.detectionResult
-
-        // Set result bitmap
-        resultBitmap.value = YOLODetector.drawDetections(originalBitmap, detectionResult)
-
-        currentBBoxOffset = 0f
-        currentTextRatio = Constants.TEXT_SIZE_WIDTH_SCREEN
-
-        // Signal display ready
-        displayReady.set(true)
-    }
-
-    private fun handleBackClick() {
-        if (AppConfig.haptics) {
-            vibrate(haptic_model0())
-        }
-        finish()
-        //startActivity(Intent(this, HomeActivity::class.java))
-    }
-
     private fun reloadDetectionPhase() {
         // Reset states
-        showResult.value = false
-        originalBitmap?.recycle()
         resultBitmap.value?.recycle()
-        originalBitmap = null
-        detectionResult = null
-    }
-
-    private fun handleNextClick() {
-        if (AppConfig.haptics) {
-            vibrate(haptic_model0())
-        }
-        PermissionChecker.checkAndRequestPermissions(this, false) {
-            reloadDetectionPhase()
-            startDetectionProcess()
-        }
     }
 
     private fun showCameraError(reason: Int) {
@@ -810,15 +631,12 @@ class LiveDetectionActivity : ComponentActivity() {
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         return when (keyCode) {
-            KeyEvent.KEYCODE_VOLUME_DOWN -> {
-                handleBackClick()
+            KeyEvent.KEYCODE_VOLUME_UP -> {
+                handleHomeClick()
                 true
             }
 
-            KeyEvent.KEYCODE_VOLUME_UP -> {
-                if (remainingClassIndices.isNotEmpty() && showResult.value) {
-                    handleNextClick()
-                }
+            KeyEvent.KEYCODE_VOLUME_DOWN -> {
                 true
             }
 
@@ -832,7 +650,6 @@ class LiveDetectionActivity : ComponentActivity() {
         motionMonitor.stopMonitoring(); lightMonitor.stopMonitoring(); turnFlashlightOff()
         batteryCheckRunning.value = false
         mainHandler.removeCallbacksAndMessages(null)
-        updateHandler.removeCallbacksAndMessages(null)
         stopDetection.set(true)
     }
 
@@ -845,25 +662,20 @@ class LiveDetectionActivity : ComponentActivity() {
 
 @Composable
 fun LiveDetectionScreen(
-    showResult: Boolean,
+    onCameraReady: (PreviewView) -> Unit,
     resultBitmap: Bitmap?,
-    hasMoreObjects: Boolean,
     showBatteryWarning: Boolean,
     showMemoryWarning: Boolean,
-    onBackClick: () -> Unit,
-    onNextClick: (() -> Unit)?,
-    onCameraReady: (PreviewView) -> Unit,
+    onHomeClick: () -> Unit,
     onBBoxResize: (Float) -> Unit,
     onTextResize: (Float) -> Unit
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val screenHeight = maxHeight
-        val screenWidth = maxWidth
 
-        if (showMemoryWarning)
-            MemoryWarningNotification(showMemoryWarning)
+        MemoryWarningNotification(showMemoryWarning)
 
-        if (!showResult) {
+        if (resultBitmap==null) {
             // Detection phase - Camera + FPS Slider
             DetectionPhase(
                 onCameraReady = onCameraReady
@@ -871,11 +683,9 @@ fun LiveDetectionScreen(
         } else {
             // Result phase - Result image + Navigation
             ResultPhaseWithSettings(
-                screenHeight = screenHeight, screenWidth = screenWidth,
+                screenHeight = screenHeight,
                 resultBitmap = resultBitmap,
-                hasMoreObjects = hasMoreObjects,
-                onBackClick = onBackClick,
-                onNextClick = onNextClick,
+                onHomeClick = onHomeClick,
                 onBBoxResize = onBBoxResize,
                 onTextResize = onTextResize
             )
@@ -1004,11 +814,8 @@ fun MemoryWarningNotification(
 @Composable
 fun ResultPhaseWithSettings(
     screenHeight: Dp,
-    screenWidth: Dp,
     resultBitmap: Bitmap?,
-    hasMoreObjects: Boolean,
-    onBackClick: () -> Unit,
-    onNextClick: (() -> Unit)?,
+    onHomeClick: () -> Unit,
     onBBoxResize: (Float) -> Unit,
     onTextResize: (Float) -> Unit
 ) {
@@ -1031,10 +838,7 @@ fun ResultPhaseWithSettings(
         ) {
             SettingsPanel(
                 screenHeight = screenHeight,
-                screenWidth = screenWidth,
-                hasMoreObjects = hasMoreObjects,
-                onBackClick = onBackClick,
-                onNextClick = onNextClick,
+                onHomeClick = onHomeClick,
                 onBBoxResize = onBBoxResize,
                 onTextResize = onTextResize
             )
@@ -1045,10 +849,7 @@ fun ResultPhaseWithSettings(
 @Composable
 fun SettingsPanel(
     screenHeight: Dp,
-    screenWidth: Dp,
-    hasMoreObjects: Boolean,
-    onBackClick: () -> Unit,
-    onNextClick: (() -> Unit)?,
+    onHomeClick: () -> Unit,
     onBBoxResize: (Float) -> Unit,
     onTextResize: (Float) -> Unit
 ) {
@@ -1057,17 +858,6 @@ fun SettingsPanel(
 
     var bboxOffset by remember { mutableFloatStateOf(0f) }
     var textSizeRatio by remember { mutableFloatStateOf(Constants.TEXT_SIZE_WIDTH_SCREEN) }
-
-    // Animated offsets for slide animations
-    val navigationOffsetY by animateDpAsState(
-        targetValue = if (isExpanded) screenHeight * 0.246f else 0.dp,
-        animationSpec = tween(
-            durationMillis = 250,
-            delayMillis = if (isExpanded) 0 else 250,
-            easing = FastOutSlowInEasing
-        ),
-        label = "navigation_offset"
-    )
 
     val sliderOffsetY by animateDpAsState(
         targetValue = if (isExpanded) 0.dp else screenHeight * 0.246f,
@@ -1088,72 +878,50 @@ fun SettingsPanel(
         // COLUMN 1: NAVIGATION + SETTINGS BUTTON
         // (No background, slides down when expanded)
         // ============================================
-        Column(
+        AnimatedVisibility(
+            visible = !isExpanded,
+            enter = slideInHorizontally(
+                initialOffsetX = { it },
+                animationSpec = tween(
+                    durationMillis = 250,
+                    delayMillis = 250,
+                    easing = FastOutSlowInEasing
+                )
+            ),
+            exit = slideOutHorizontally(
+                targetOffsetX = { it },
+                animationSpec = tween(
+                    durationMillis = 250,
+                    delayMillis = 0,
+                    easing = FastOutSlowInEasing
+                )
+            ),
             modifier = Modifier
                 .fillMaxWidth()
-                .align(Alignment.BottomCenter)
-                .offset(y = navigationOffsetY)
-                .padding(bottom = 43.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .align(Alignment.BottomEnd)  // ✅ Keep right alignment
         ) {
-            if (hasMoreObjects) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(screenWidth * 0.08f)
-                    ) {
-                        BackArrowLargeFab(onClick = onBackClick)
-                        NextArrowLargeFab(onClick = onNextClick as () -> Unit)
-                    }
-                }
-            } else {
-                Box(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    BackArrowLargeFab(onClick = onBackClick)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(15.dp))
-
-            // Settings button (triggers expansion)
-            ExtendedFloatingActionButton(
-                onClick = {
-                    isExpanded = true
-                    if (AppConfig.haptics) vibrate(haptic_model0())
-                },
-                containerColor = colorResource(R.color.std_purple),
-                contentColor = Color.White,
-                shape = RoundedCornerShape(
-                    topStart = 0.dp,
-                    topEnd = 0.dp,
-                    bottomEnd = 16.dp,
-                    bottomStart = 16.dp
-                ),
+            Column(
                 modifier = Modifier
-                    .width(Constants.NAV_BUTTONS_WIDTH.dp * 2 + screenWidth * 0.08f)
-                    .height(Constants.NAV_BUTTONS_HEIGHT.dp / 2)
+                    .fillMaxWidth()
+                    .padding(bottom = 43.dp),
+                horizontalAlignment = Alignment.End
             ) {
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Settings,
-                        contentDescription = "Settings",
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(5.dp))
-                    Text(
-                        text = "Adjust Detection",
-                        fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
-                        fontFamily = robotoExtraBold
-                    )
-                }
+                ButtonLive(
+                    onHomeClick,
+                    Icons.Filled.Home,
+                    if (AppConfig.mainLanguage.code == "en") "Home" else "Αcasă"
+                )
+
+                Spacer(modifier = Modifier.height(15.dp))
+
+                ButtonLive(
+                    {
+                        isExpanded = true
+                        if (AppConfig.haptics) vibrate(haptic_model0())
+                    },
+                    Icons.Filled.Settings,
+                    if (AppConfig.mainLanguage.code == "en") "Settings" else "Setări"
+                )
             }
         }
 
@@ -1318,89 +1086,31 @@ fun SettingsPanel(
 }
 
 @Composable
-fun BBoxSizeSlider(
-    bboxOffset: Float,
-    onBBoxChange: (Float) -> Unit
-) {
-    Column(
+fun ButtonLive(onClick: () -> Unit, imageVector: ImageVector, contentDescription: String) {
+    Box(
         modifier = Modifier
-            .fillMaxWidth(0.85f)
-            .padding(horizontal = 16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .size(
+                width = Constants.NAV_BUTTONS_WIDTH.dp * 0.7f,
+                height = Constants.NAV_BUTTONS_HEIGHT.dp * 0.7f
+            )
+            .clip(RoundedCornerShape(16.dp))
+            .background(colorResource(R.color.std_light_purple))
+            .clickable {
+                if (AppConfig.haptics) vibrate(haptic_model0())
+                onClick()
+            },
+        contentAlignment = Alignment.Center
     ) {
-        // Current value display
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Text(
-                text = "+${(bboxOffset / Constants.BBOX_RESIZE_MAX * 100).toInt()} %",
-                color = colorResource(R.color.std_cyan),
-                fontSize = Constants.STD_SUBTITLE_SIZE.sp,
-                fontFamily = robotoExtraBold
+            Icon(
+                imageVector = imageVector,
+                contentDescription = contentDescription,
+                tint = colorResource(R.color.std_purple),
+                modifier = Modifier.size(40.dp)
             )
         }
-
-        CustomSlider(
-            value = bboxOffset,
-            onValueChange = onBBoxChange,
-            valueRange = 0f..Constants.BBOX_RESIZE_MAX,
-            steps = 0,
-            thumbStyle = ThumbStyle.BAR,  // ROUND, BAR, or DOUBLE_BAR
-            thumbColor = colorResource(R.color.std_purple),
-            thumbWidth = 8.dp,
-            thumbHeight = 55.dp,
-            trackHeight = 20.dp,
-            activeTrackColor = Color.White,
-            inactiveTrackColor = Color.White,
-            trackShadow = 5.dp,
-            modifier = Modifier.fillMaxWidth(0.9f)
-        )
-    }
-}
-
-@SuppressLint("DefaultLocale")
-@Composable
-fun TextSizeSlider(
-    textSizeRatio: Float,
-    onTextChange: (Float) -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth(0.85f)
-            .padding(horizontal = 16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        // Current value display
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "+${((textSizeRatio - Constants.TEXT_SIZE_WIDTH_SCREEN) / Constants.TEXT_RESIZE_MAX * 100).toInt()} %",
-                color = colorResource(R.color.std_cyan),
-                fontSize = Constants.STD_SUBTITLE_SIZE.sp,
-                fontFamily = robotoExtraBold
-            )
-        }
-
-        CustomSlider(
-            value = textSizeRatio,
-            onValueChange = onTextChange,
-            valueRange = Constants.TEXT_SIZE_WIDTH_SCREEN..Constants.TEXT_RESIZE_MAX,
-            steps = 4,
-            thumbStyle = ThumbStyle.BAR,  // ROUND, BAR, or DOUBLE_BAR
-            thumbColor = colorResource(R.color.std_purple),
-            thumbWidth = 8.dp,
-            thumbHeight = 55.dp,
-            trackHeight = 20.dp,
-            activeTrackColor = Color.White,
-            inactiveTrackColor = Color.White,
-            trackShadow = 5.dp,
-            modifier = Modifier.fillMaxWidth(0.75f),
-            stepsColor = colorResource(R.color.purple_light)
-        )
     }
 }
