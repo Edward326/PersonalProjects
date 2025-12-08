@@ -112,10 +112,6 @@
             android:screenOrientation="portrait" />
 
         <activity
-            android:name=".activities.tabs.home.detection.LiveCameraXActivity"
-            android:screenOrientation="portrait" />
-
-        <activity
             android:name=".activities.tabs.home.caption.CaptionActivity"
             android:screenOrientation="portrait" />
 
@@ -132,7 +128,7 @@
             android:screenOrientation="portrait" />
 
         <activity
-            android:name=".activities.tabs.home.detection.DetectionCameraXActivity"
+            android:name=".activities.tabs.home.detection.BlindDetectionActivity"
             android:screenOrientation="portrait" />
 
         <activity
