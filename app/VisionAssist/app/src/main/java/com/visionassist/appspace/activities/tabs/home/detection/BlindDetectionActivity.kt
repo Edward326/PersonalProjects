@@ -3,705 +3,979 @@
 package com.visionassist.appspace.activities.tabs.home.detection
 
 import android.content.Intent
-import android.net.Uri
+import android.graphics.Bitmap
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.util.Size
 import android.view.KeyEvent
+import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.result.ActivityResultLauncher
-import androidx.activity.result.contract.ActivityResultContracts.TakePicture
+import androidx.camera.core.Camera
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
+import androidx.camera.core.ImageProxy
+import androidx.camera.core.Preview
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
-import androidx.core.content.FileProvider
-import com.visionassist.appspace.BaseActivity
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.unit.Dp
+import androidx.core.content.ContextCompat
 import com.visionassist.appspace.PhoneStatusMonitor
-import com.visionassist.appspace.R
-import com.visionassist.appspace.activities.tabs.home.caption.CaptionActivity
-import com.visionassist.appspace.activities.tabs.home.caption.HomeScreen
-import com.visionassist.appspace.activities.tabs.home.findmyobjects.FindMyObjectActivity
-import com.visionassist.appspace.activities.tabs.reports.EnvironmentReportsActivity
-import com.visionassist.appspace.activities.tabs.settings.SettingsActivity
+import com.visionassist.appspace.activities.main.BlindHomeActivity
+import com.visionassist.appspace.activities.tabs.LightManager
+import com.visionassist.appspace.activities.tabs.MotionManager
 import com.visionassist.appspace.jetpack.managers.ErrorDialogManager
-import com.visionassist.appspace.models.sttengine.SpeechRecognizer
+import com.visionassist.appspace.models.detector.DetectionResult
+import com.visionassist.appspace.models.detector.YOLODetector
+import com.visionassist.appspace.models.detector.YOLODetectorPool
 import com.visionassist.appspace.sound.SoundConstants
 import com.visionassist.appspace.utils.AppConfig
 import com.visionassist.appspace.utils.BackgroundTaskExecutor
 import com.visionassist.appspace.utils.Constants
-import com.visionassist.appspace.utils.DetectionOption
+import com.visionassist.appspace.utils.ImageUtils
 import com.visionassist.appspace.utils.PermissionChecker
 import com.visionassist.appspace.utils.haptic_model0
-import com.visionassist.appspace.utils.load_captionTutorial
-import com.visionassist.appspace.utils.load_detectionTutorial
-import com.visionassist.appspace.utils.load_errorSTT
-import com.visionassist.appspace.utils.load_errorSTTRuntime
-import com.visionassist.appspace.utils.load_homeTitle
-import com.visionassist.appspace.utils.load_speakTutorial
-import com.visionassist.appspace.utils.load_unavailableSTT
+import com.visionassist.appspace.utils.load_speakNoObjectsFound
+import com.visionassist.appspace.utils.startBatteryLevelCheck
 import com.visionassist.appspace.utils.vibrate
-import java.io.File
-import java.io.IOException
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
-class BlindDetectionActivity : BaseActivity() {
-    private val TAG = "HomeActivity"
+class BlindDetectionActivity : ComponentActivity() {
+    private val TAG = "FindMyObjectActivity"
 
-    // State variables
-    private val titleText = mutableStateOf("")
+    // Models
+    private lateinit var motionMonitor: MotionManager
+    private lateinit var lightMonitor: LightManager
+    private lateinit var currentDetectorModel: YOLODetectorPool
+    private var preferNanoModel = false
+    private var canSwitchModels = false
 
-    // Tutorial info button states
-    private val speakInfoClickCount = mutableStateOf(1)
-    private var basicInfoClickCount = 1
-    private var basicInfoClickCount2 = 1
+    // Detection data
+    private lateinit var objectsToFind: MutableMap<Int, String>
+    private lateinit var remainingClassIndices: MutableList<Int>
 
-    // Detection button states
-    private val showDetectionOptions = mutableStateOf(false)
-    private val selectedDetectionOption = mutableStateOf<DetectionOption?>(null)
-    private val detectionIconColor = mutableStateOf(R.color.std_purple_dark)
+    // Results
+    private val resultBitmap = mutableStateOf<Bitmap?>(null)
+    private var resultInText = mutableListOf<String>()
+    private val threadCount = AtomicInteger(0)
 
-    // Speech recognition parameters
-    private val speechRecognizer = PhoneStatusMonitor.getInstance()
-        .modelManager.speechRecognizer
+    // Camera
+    private var cameraProvider: ProcessCameraProvider? = null
+    private var imageCapture: ImageCapture? = null
+    private lateinit var cameraExecutor: ExecutorService
+    private var currentCamera: Camera? = null
+    private var isFlashlightOn = false
+
+    // Threads Control States
+    private val stopDetection = AtomicBoolean(false)
+    private val resultsReady = AtomicBoolean(false)
+    private val displayReady = AtomicBoolean(false)
+
+    // Handlers
+    private val mainHandler = Handler(Looper.getMainLooper())
+
+    // Compose states
+    private val showResult = mutableStateOf(false)
+    private val showBatteryWarning = mutableStateOf(false)
+    private var showMemoryWarning = false
+
+    // Monitor parameters
+    private val avgBatteryMoreUsed = mutableStateOf(0f)
+    private val batteryCheckRunning = mutableStateOf(false)
+
+    // Managers
     private val soundManager = PhoneStatusMonitor.getInstance()
         .soundManager
     private val ttsManager = PhoneStatusMonitor.getInstance()
         .ttsManager
-    private val showSpeechDialog = mutableStateOf(false)
-    private val speechText = mutableStateOf("")
-    private val speechProcessText = mutableStateOf("")
-    private val isSpeaking = mutableStateOf(true)
-    private val retrySpeech = mutableStateOf(false)
-    private val sendSpeech = mutableStateOf(false)
-    private lateinit var matchedIndices: List<SpeechRecognizer.MatchedObject>
-    private lateinit var classNames: List<String>
-
-    // Volume button tracking
+    private var isSpeakingPhase = false
+    private var currentSentenceIndex = 0
     private var locked = false
-    private var lockedVolumeDown = false
-    private var uiLocked = false
-    private var handleVolumeDownControl = false
 
-    // Runnable for navigation to an activity
-    private var onPermissionGranted = {}
-    private var classOpt = 0
-
-    // Camera intent parameters
-    private lateinit var takePictureLauncher: ActivityResultLauncher<Uri>
-    private lateinit var currentPhotoUri: Uri
-
-    // Main handler
-    private val mainHandler = Handler(Looper.getMainLooper())
-    private lateinit var afterResumeRunnable: Runnable
-    private var hasToExecAfterResume = false
-    private var returnFromFindMyObject = false
-
-    private var syncStatus: Int = 0
-    private var syncDays: Int = 0
+    data class ThreadResult(
+        val detectionResult: DetectionResult?,
+        val bitmap: Bitmap?
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        registerCameraLauncher()
+        extractIntentData()
+        cameraExecutor = Executors.newSingleThreadExecutor()
 
-        // Load initial title
-        titleText.value = load_homeTitle()
+        currentDetectorModel = PhoneStatusMonitor.getInstance().modelManager.detector
 
-        // Get sync status
-        val dbManager = PhoneStatusMonitor.getInstance().dbManager
-        syncStatus = dbManager.statusOverview
-        syncDays = if (syncStatus > 0) dbManager.diffDays.toInt() else 0
-
-        uiLocked = true
-        locked = true
-        PhoneStatusMonitor.getInstance().soundManager.play(SoundConstants.OPEN_UP_ID, 1f, 1f) {
-            uiLocked = false
-            locked = false
+        motionMonitor = MotionManager(
+            this,
+            mainHandler
+        ) {
+            preferNanoModel =
+                motionMonitor.linearSpeed > Constants.LINEAR_SPEED_THRESHOLD || motionMonitor.rotationSpeed > Constants.ROTATION_SPEED_THRESHOLD
         }
 
-        //Log.d(TAG, FileUtils.readProfileFileAsString(this, Constants.ENV_REPORTS_FILE_NAME))
-
-        setContent {
-            HomeScreen(
-                titleText = titleText.value,
-                syncStatus = syncStatus,
-                syncDays = syncDays,
-                showDetectionOptions = showDetectionOptions.value,
-                detectionIconColor = detectionIconColor.value,
-                selectedDetectionOption = selectedDetectionOption.value,
-                showSpeechDialog = showSpeechDialog.value,
-                speechText = speechText.value,
-                speechProcessText = speechProcessText.value,
-                isSpeaking = isSpeaking.value,
-                onDetectionClick = ::handleDetectionClick,
-                onDetectionOptionSelected = ::handleDetectionOptionSelected,
-                onCaptionClick = ::handleCaptionClick,
-                onDetectionInfoClick = ::handleDetectionInfoClick,
-                onCaptionInfoClick = ::handleCaptionInfoClick,
-                onSpeakInfoClick = ::handleSpeakInfoClick,
-                onNavigateHome = ::handleNavigateHome,
-                onNavigateReports = ::handleNavigateReports,
-                onNavigateSettings = ::handleNavigateSettings,
-                onSpeechDialogTap = ::handleSpeechDialogTap,
-                navigateFun = ::navigateToLiveOrStatic,
-                onSwipeToLeft = ::handleSwipeToLeft
-            )
-        }
-    }
-
-    @Suppress("DEPRECATION")
-    private fun registerCameraLauncher() {
-        takePictureLauncher = registerForActivityResult(
-            TakePicture()
-        ) { isSuccess ->
-            if (isSuccess) {
-                try {
-                    navigateToFindMyObjectWithBitmap()
-                } catch (e: IOException) {
-                    Log.e(TAG, "Error loading captured image", e)
-                    showCameraError()
-                }
+        lightMonitor = LightManager(
+            this,
+            mainHandler
+        ) {
+            if (lightMonitor.isDark) {
+                turnFlashlightOn()
             } else {
-                Log.e(TAG, "Image capture failed or cancelled")
-                uiLocked = false
-                locked = false
+                turnFlashlightOff()
             }
         }
 
-        Log.d(TAG, "Camera launcher registered")
+        setContent {
+            BlindDetectionScreen(
+                showResult = showResult.value,
+                resultBitmap = resultBitmap.value,
+                onResultReadyText = ::onResultReadyText,
+                showBatteryWarning = showBatteryWarning.value,
+                batteryWarningTrigger = ::handleBatteryWarning,
+                onBackClick = ::handleBackClick,
+                onCameraReady = { previewView ->
+                    startCameraX(previewView)
+                }
+            )
+        }
     }
 
     override fun onResume() {
         super.onResume()
-
-        if (PhoneStatusMonitor.getInstance().isReturningFromPermissions)
-            PermissionChecker.checkAndRequestPermissions(
-                this,
-                AppConfig.blindness,
-                onPermissionGranted
-            )
-
-        if (hasToExecAfterResume) {
-            hasToExecAfterResume = false
-            mainHandler.post(afterResumeRunnable)
-        }
-
-        if (returnFromFindMyObject) {
-            returnFromFindMyObject = false
-            handleSpeechDialogTap()
+        if (PhoneStatusMonitor.getInstance().isReturningFromPermissions) {
+            PermissionChecker.checkAndRequestPermissions(this, false) {
+                reloadDetectionPhase()
+                startDetectionProcess()
+            }
+        } else {
+            if (stopDetection.get() && !showResult.value) {
+                Log.d(TAG, "Activity resumed - restarting detection")
+                reloadDetectionPhase()
+                startDetectionProcess()
+            }
         }
     }
 
-    private fun handleDetectionClick() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            showDetectionOptions.value = !showDetectionOptions.value
-            detectionIconColor.value = if (showDetectionOptions.value) {
-                R.color.std_cyan
+    private fun extractIntentData() {
+        val classIndices = intent.getIntArrayExtra(Constants.EXTRA_MATCHED_INDICES) ?: intArrayOf()
+        val matchedWords = intent.getStringArrayExtra(Constants.EXTRA_SYNONYMS_WORDS) ?: arrayOf()
+
+        objectsToFind = mutableMapOf()
+        remainingClassIndices = mutableListOf()
+
+        for (i in classIndices.indices) {
+            objectsToFind[classIndices[i]] = matchedWords[i]
+            remainingClassIndices.add(classIndices[i])
+        }
+
+        Log.d(TAG, "Objects to find (detector_class:synonym): $objectsToFind")
+    }
+
+    private fun turnFlashlightOn() {
+        try {
+            if (currentCamera?.cameraInfo?.hasFlashUnit() == true && !isFlashlightOn) {
+                currentCamera?.cameraControl?.enableTorch(true)
+                isFlashlightOn = true
+                Log.d(TAG, "🔦 Flashlight turned ON via CameraX")
             } else {
-                selectedDetectionOption.value = null
-                R.color.std_purple_dark
+                Log.w(
+                    TAG,
+                    "Cannot turn ON flashlight: hasFlash=${currentCamera?.cameraInfo?.hasFlashUnit()}, isOn=$isFlashlightOn"
+                )
             }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error turning flashlight ON via CameraX", e)
         }
     }
 
-    private fun handleDetectionOptionSelected(option: DetectionOption?, navigate: Boolean) {
-        if (option != null) {
-            if (selectedDetectionOption.value != option) {
-                vibrateIfEnabled()
-                selectedDetectionOption.value = option
-            }
-        } else
-            selectedDetectionOption.value = null
-        if (navigate) {
-            navigateToLiveOrStatic()
-        }
-    }
-
-    private fun navigateToLiveOrStatic() {
-        when (selectedDetectionOption.value) {
-            DetectionOption.LIVE -> launchLiveDetection()
-            DetectionOption.STATIC -> launchStaticDetection()
-            else -> {
-                handleDetectionClick()
-            }
-        }
-    }
-
-    private fun launchLiveDetection() {
-        onPermissionGranted = {
-            checkPhoneStatusAndNavigate {
-                // Navigate to LiveDetectionActivity
-                val intent = Intent(this, LiveDetectionActivity::class.java)
-                startActivity(intent)
-                finish()
-            }
-        }
-        PermissionChecker.checkAndRequestPermissions(this, AppConfig.blindness, onPermissionGranted)
-    }
-
-    private fun launchStaticDetection() {
-        classOpt = 0
-        onPermissionGranted = {
-            checkPhoneStatusAndNavigate {
-                launchCamera()
-            }
-        }
-        PermissionChecker.checkAndRequestPermissions(this, AppConfig.blindness, onPermissionGranted)
-    }
-
-    private fun launchCamera() {
+    private fun turnFlashlightOff() {
         try {
-            val photoFile = File.createTempFile(
-                "temp_visionassist",
-                ".jpg",
-                cacheDir
+            if (currentCamera?.cameraInfo?.hasFlashUnit() == true && isFlashlightOn) {
+                currentCamera?.cameraControl?.enableTorch(false)
+                isFlashlightOn = false
+                Log.d(TAG, "🔦 Flashlight turned OFF via CameraX")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error turning flashlight OFF via CameraX", e)
+        }
+    }
+
+    private fun waitForTTSSpeech(afterTTSSpeech: Runnable) {
+        val checkRunnable = object : Runnable {
+            override fun run() {
+                if (ttsManager.isDoneSpeaking) {
+                    mainHandler.post(afterTTSSpeech)
+                } else {
+                    mainHandler.postDelayed(this, 350)
+                }
+            }
+        }
+        mainHandler.post(checkRunnable)
+    }
+
+    private fun onResultReadyText() {
+        locked = true
+        vibrate(haptic_model0())
+        soundManager.play(SoundConstants.FIND_MY_OBJECT_DONE_ID, 0.7f, 0.7f) {
+            val textToSpeak1 = load_speakNoObjectsFound(resultInText.lastIndex)
+            isSpeakingPhase = true
+            ttsManager.speak(
+                textToSpeak1,
+                AppConfig.tts_pitch,
+                AppConfig.tts_speech_rate,
+                true,
+                null
             )
 
-            currentPhotoUri = FileProvider.getUriForFile(
-                this,
-                "$packageName.fileprovider",
-                photoFile
-            )
-
-            Log.d(TAG, "Launching camera with URI: $currentPhotoUri")
-
-            takePictureLauncher.launch(currentPhotoUri)
-        } catch (e: IOException) {
-            Log.e(TAG, "Error creating temp file", e)
-            showCameraError()
+            waitForTTSSpeech {
+                iterateAllSentences()
+            }
         }
     }
 
-    private fun navigateToFindMyObjectWithBitmap() {
+    private fun iterateAllSentences() {
+        ttsManager.speak(
+            resultInText[currentSentenceIndex],
+            AppConfig.tts_pitch,
+            AppConfig.tts_speech_rate,
+            true,
+            null
+        )
+        waitForTTSSpeech {
+            currentSentenceIndex++
+            if (currentSentenceIndex < resultInText.size)
+                iterateAllSentences()
+            else
+                handleEndSpeakSentences()
+        }
+    }
+
+    private fun handleEndSpeakSentences() {
+        vibrate(haptic_model0())
+        soundManager.play(SoundConstants.FIND_MY_OBJECT_DONE_ID, 0.7f, 0.7f) {
+            currentSentenceIndex = 0
+            isSpeakingPhase = false
+            handleNextClick()
+        }
+    }
+
+    private fun handleBatteryWarning() {
+        ttsManager.speak(
+            if (AppConfig.mainLanguage.code == "en")
+                "The application detected an higher usage of battery than usual, to solve this you could return to home page"
+            else
+                "Aplicația a detectat o utilizare a bateriei mai mare decât de obicei, pentru a rezolva acest lucru puteți reveni la pagina principală",
+            AppConfig.tts_pitch,
+            AppConfig.tts_speech_rate,
+            false,
+            haptic_model0()
+        )
+    }
+
+    private fun startCameraX(previewView: PreviewView) {
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
+
+        cameraProviderFuture.addListener({
+            try {
+                cameraProvider = cameraProviderFuture.get()
+                bindCamera(previewView)
+                startDetectionProcess()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error starting camera", e)
+            }
+        }, ContextCompat.getMainExecutor(this))
+    }
+
+    private fun bindCamera(previewView: PreviewView) {
+        val preview = Preview.Builder().build()
+        preview.surfaceProvider = previewView.surfaceProvider
+
+        val screenWidth = resources.displayMetrics.widthPixels
+        val screenHeight = resources.displayMetrics.heightPixels
+
+        imageCapture = ImageCapture.Builder()
+            .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+            .setTargetResolution(Size(screenWidth, screenHeight))
+            .build()
+
+        val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+
         try {
-            val intent = Intent(
-                this,
-                when (classOpt) {
-                    0 -> StaticDetectionActivity::class.java
-                    else -> CaptionActivity::class.java
+            cameraProvider?.unbindAll()
+            currentCamera = cameraProvider?.bindToLifecycle(
+                this, cameraSelector, preview, imageCapture
+            )
+            Log.d(TAG, "Camera bound")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error binding camera", e)
+        }
+    }
+
+    private fun startDetectionProcess() {
+        soundManager.play(SoundConstants.FIND_MY_OBJECT_STARTED_ID, 0.7f, 0.7f) {
+            // Start phone status monitoring
+            PhoneStatusMonitor.getInstance().startMonitoring(mainHandler) {
+                resultsReady.set(true); batteryCheckRunning.value = false
+                motionMonitor.stopMonitoring();lightMonitor.stopMonitoring();turnFlashlightOff()
+            }
+            if (canSwitchModels)
+                motionMonitor.startMonitoring()
+            lightMonitor.startMonitoring()
+            // Start battery level check
+            batteryCheckRunning.value = true
+            startBatteryLevelCheck(batteryCheckRunning, showBatteryWarning, avgBatteryMoreUsed)
+
+            // Start detection loop
+            stopDetection.set(false)
+            resultsReady.set(false)
+            displayReady.set(false)
+            startDetectionLoop()
+        }
+    }
+
+    private fun startDetectionLoop() {
+        // Launch detection thread
+        launchDetectionThread()
+
+        mainHandler.post(object : Runnable {
+            override fun run() {
+                if (displayReady.get()) {
+                    // Stop loop and show results
+                    showResult.value = true
+                    return
+                }
+                // Schedule next iteration
+                mainHandler.postDelayed(this, 500)
+            }
+        })
+    }
+
+    private fun launchDetectionThread() {
+        val toRun = {
+            threadCount.incrementAndGet()
+            if (!stopDetection.get()) {
+                BackgroundTaskExecutor.getInstance().executeAsync(
+                    {
+                        val currentThreadNo = "Thread_" + threadCount.get()
+                        val detectorWrapper = currentDetectorModel.acquireDetector(
+                            preferNanoModel,  // Prefer nano if moving fast
+                            5  // 5 second timeout
+                        )
+                        if (detectorWrapper == null)
+                            return@executeAsync ThreadResult(null, null)
+
+                        val detector = detectorWrapper.detector
+
+                        val bitmap = captureImageSync() ?: return@executeAsync null
+
+                        // Run detector
+                        val detectionResult = detector.detectObjects(bitmap, currentThreadNo)
+
+                        // Check if found target objects
+                        val foundObjects = detectionResult.classIndices.isNotEmpty()
+                        currentDetectorModel.releaseDetector(detectorWrapper)
+
+                        if (!foundObjects) {
+                            bitmap.recycle()
+                            return@executeAsync ThreadResult(
+                                null, null
+                            )
+                        }
+
+                        val bitmapWithDetections = YOLODetector.drawDetections(
+                            bitmap,
+                            detectionResult,
+                        )
+                        bitmap.recycle()
+
+                        // Now classifier is done, return result
+                        ThreadResult(
+                            detectionResult,
+                            bitmapWithDetections
+                        )
+                    },
+                    object : BackgroundTaskExecutor.TaskCallback<ThreadResult?> {
+                        override fun onSuccess(result: ThreadResult?) {
+                            if (result == null || result.bitmap == null)
+                                return
+
+                            // Check if another thread already finished
+                            if (resultsReady.compareAndSet(false, true)) {
+                                processFoundObjects(result)
+                            }
+                        }
+
+                        override fun onError(e: Exception) {
+                            Log.e(TAG, "Detection thread error", e)
+                            //threadCount.decrementAndGet()
+                        }
+                    }
+                )
+            }
+        }
+
+        val runtime = Runtime.getRuntime()
+        val maxMemory = runtime.maxMemory()
+        val usedMemory = runtime.totalMemory() - runtime.freeMemory()
+        var availableMemory: Long = maxMemory - usedMemory
+        val checkRunnable = object : Runnable {
+            override fun run() {
+                if (availableMemory > currentDetectorModel.ACTUAL_THREAD_MEM_USED_MB) {
+                    if (showMemoryWarning) {
+                        showMemoryWarning = false
+                        val checkRunnable = object : Runnable {
+                            override fun run() {
+                                if (ttsManager.isDoneSpeaking) {
+                                    mainHandler.post(toRun)
+                                } else {
+                                    Log.i(TAG, "Speaking process isn't finished")
+                                    mainHandler.postDelayed(
+                                        this,
+                                        Constants.RETRY_TTS_DELAY_MS.toLong()
+                                    )
+                                }
+                            }
+                        }
+                        val checkRunnable2 = object : Runnable {
+                            override fun run() {
+                                if (ttsManager.isDoneSpeaking) {
+                                    val speakText =
+                                        if (ttsManager.currentLocale.language == "en")
+                                            "App has now sufficient memory to run, resuming detection process"
+                                        else
+                                            "Aplicația are acum suficientă memorie pentru a rula, se reia procesul de detecție"
+                                    ttsManager.speak(
+                                        speakText,
+                                        AppConfig.tts_pitch,
+                                        AppConfig.tts_speech_rate,
+                                        false,
+                                        null
+                                    )
+                                    mainHandler.post(checkRunnable)
+                                } else {
+                                    Log.i(TAG, "Speaking process isn't finished")
+                                    mainHandler.postDelayed(
+                                        this,
+                                        Constants.RETRY_TTS_DELAY_MS.toLong()
+                                    )
+                                }
+                            }
+                        }
+                        mainHandler.post(checkRunnable2)
+                    } else
+                        mainHandler.post(toRun)
+                } else {
+                    if (!showMemoryWarning) {
+                        ttsManager.stopSpeaking()
+                        showMemoryWarning = true
+                        isSpeakingPhase = true
+                        val speakText =
+                            if (ttsManager.currentLocale.language == "en")
+                                "At the moment memory usage is at maximum, this page will be paused, until sufficient memory is available again, you can wait or exit the page via the volume up button"
+                            else
+                                "În acest moment, utilizarea memoriei este la maxim, iar pagina curentă va fii întreruptă până când vor exista resurse disponibile suficiente.Puteți aștepta sau ieși din pagină folosind butonul de volume up"
+                        ttsManager.speak(
+                            speakText,
+                            AppConfig.tts_pitch,
+                            AppConfig.tts_speech_rate,
+                            true,
+                            null
+                        )
+                    }
+                    val runtime = Runtime.getRuntime()
+                    val maxMemory = runtime.maxMemory()
+                    val usedMemory = runtime.totalMemory() - runtime.freeMemory()
+                    availableMemory = maxMemory - usedMemory
+                    Log.w(
+                        TAG,
+                        "Low memory (${availableMemory / 1_048_576}MB), WAITING FOR RELEASE OR USER EXIT"
+                    )
+                    mainHandler.postDelayed(this, Constants.WAIT_CHECK)
+                }
+            }
+        }
+        mainHandler.post(checkRunnable)
+    }
+
+    private fun captureImageSync(): Bitmap? {
+        return try {
+            val captureResult = CompletableFuture<Bitmap?>()
+
+            imageCapture?.takePicture(
+                ContextCompat.getMainExecutor(this),
+                object : ImageCapture.OnImageCapturedCallback() {
+                    override fun onCaptureSuccess(image: ImageProxy) {
+                        try {
+                            if (!stopDetection.get()) {
+                                mainHandler.postDelayed(
+                                    {
+                                        launchDetectionThread()
+                                    },
+                                    Constants.CAMERA_RECOVERY_MS.toLong()
+                                )  // 200ms camera recovery time
+                            }
+
+                            // Convert ImageProxy to Bitmap using ImageUtils
+                            val bitmap = ImageUtils.imageProxyToBitmap(image)
+                            captureResult.complete(bitmap)
+
+                            if (bitmap != null) {
+                                Log.d(TAG, "Image captured: ${bitmap.width}x${bitmap.height}")
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error converting ImageProxy to Bitmap", e)
+                            showCameraError(Constants.CAMERA_FAIL_CONVERT_IMGPROXY)
+                            captureResult.complete(null)
+                        } finally {
+                            // CRITICAL: Always close ImageProxy to free memory
+                            // If you don't close it, you'll run out of memory buffers
+                            image.close()
+                        }
+                    }
+
+                    override fun onError(exception: ImageCaptureException) {
+                        Log.e(TAG, "Image capture failed: ${exception.message}", exception)
+                        captureResult.complete(null)
+                    }
                 }
             )
-            intent.putExtra(Constants.EXTRA_IMAGE_URI, currentPhotoUri.toString())
-            startActivity(intent)
-            finish()
+
+            // Block and wait for result with timeout (5 seconds)
+            // This makes the async callback synchronous
+            captureResult.get(5, TimeUnit.SECONDS)
+
+        } catch (e: TimeoutException) {
+            Log.e(TAG, "Image capture timeout after 5 seconds", e)
+            null
         } catch (e: Exception) {
-            Log.e(TAG, "Error navigating to FindMyObjectActivity", e)
-            showCameraError()
+            Log.e(TAG, "Error capturing image synchronously", e)
+            showCameraError(Constants.STD_CAMERA_FAIL)
+            null
         }
     }
 
-    private fun showCameraError() {
+    private fun processFoundObjects(result: ThreadResult) {
+        // Signal stop
+        stopDetection.set(true)
+        PhoneStatusMonitor.getInstance().stopMonitoring()
+        motionMonitor.stopMonitoring();lightMonitor.stopMonitoring();turnFlashlightOff()
+        batteryCheckRunning.value = false
+
+        // Set result bitmap
+        resultBitmap.value = result.bitmap
+        resultInText = generateSpatialDescriptions(
+            result.bitmap!!.width,
+            result.bitmap.height,
+            result.detectionResult!!
+        )
+
+        // Signal display ready
+        displayReady.set(true)
+    }
+
+    private fun handleBackClick() {
+        soundManager.releaseCallback()
+        ttsManager.stopSpeaking()
+        ttsManager.speak(
+            if(ttsManager.currentLocale.language=="en")
+                "Returning to home page"
+            else
+                "Se revine în pagina prinipală"
+            ,
+            AppConfig.tts_pitch,
+            AppConfig.tts_speech_rate,
+            false,
+            haptic_model0()
+        )
+        waitForTTSSpeech {
+            startActivity(Intent(this, BlindHomeActivity::class.java))
+            finish()
+        }
+    }
+
+    private fun reloadDetectionPhase() {
+        // Reset states
+        showResult.value = false
+        resultBitmap.value?.recycle()
+    }
+
+    private fun handleNextClick() {
+        //soundManager.releaseCallback()
+        //ttsManager.stopSpeaking()
+
+        reloadDetectionPhase()
+        mainHandler.postDelayed({
+            startDetectionProcess()
+        }, 500)
+    }
+
+    private fun showCameraError(reason: Int) {
         val monitor = PhoneStatusMonitor.getInstance()
         val errorDialog = ErrorDialogManager(monitor.currentActivity)
-        errorDialog.setupDialog(Constants.CAMERA_MAKE_PHOTO)
+        errorDialog.setupDialog(reason)
         monitor.shutdownApp(errorDialog, monitor.currentContext)
     }
 
-    private fun handleCaptionClick() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            launchCaptionActivity()
+    fun generateSpatialDescriptions(
+        bitmapWidth: Int,
+        bitmapHeight: Int,
+        detectionResult: DetectionResult
+    ): MutableList<String> {
+        val descriptions = mutableListOf<String>()
+
+        val boundingBoxes = detectionResult.boundingBoxes
+        val labels = detectionResult.labels
+
+        if (boundingBoxes.isEmpty() || labels.isEmpty()) {
+            return descriptions
         }
+
+        for (i in boundingBoxes.indices) {
+            val bbox = boundingBoxes[i]
+            val label = labels[i]
+
+            // Calculate center point of bounding box
+            val centerX = (bbox.left + bbox.right) / 2f
+            val centerY = (bbox.top + bbox.bottom) / 2f
+
+            // Generate spatial description
+            val spatialDesc = getSpatialDescription(centerX, centerY, bitmapWidth, bitmapHeight)
+
+            // Build complete sentence
+            val description = buildDescriptionSentence(label, spatialDesc)
+            descriptions.add(description)
+        }
+        return descriptions
     }
 
-    private fun launchCaptionActivity() {
-        classOpt = 1
-        onPermissionGranted = {
-            checkPhoneStatusAndNavigate {
-                launchCamera()
-            }
+    private fun getSpatialDescription(
+        centerX: Float,
+        centerY: Float,
+        width: Int,
+        height: Int
+    ): SpatialPosition {
+        // Divide frame into thirds horizontally
+        val horizontalPosition = when {
+            centerX < width / 3f -> HorizontalPosition.LEFT
+            centerX > 2 * width / 3f -> HorizontalPosition.RIGHT
+            else -> HorizontalPosition.CENTER
         }
-        PermissionChecker.checkAndRequestPermissions(this, AppConfig.blindness, onPermissionGranted)
+
+        // Divide frame into thirds vertically
+        val verticalPosition = when {
+            centerY < height / 3f -> VerticalPosition.TOP
+            centerY > 2 * height / 3f -> VerticalPosition.BOTTOM
+            else -> VerticalPosition.MIDDLE
+        }
+
+        return SpatialPosition(horizontalPosition, verticalPosition)
     }
 
-    private fun handleDetectionInfoClick() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            titleText.value = load_detectionTutorial(this, getNextInfoStep())
-        }
-    }
-
-    private fun handleCaptionInfoClick() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            titleText.value = load_captionTutorial(this, getNextInfoStep2())
-        }
-    }
-
-    private fun handleSpeakInfoClick() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-
-            titleText.value = load_speakTutorial(this, speakInfoClickCount.value)
-
-            // Reset after showing all messages
-            if (speakInfoClickCount.value == 7) {
-                speakInfoClickCount.value = 0
-            } else
-                speakInfoClickCount.value++
-        }
-    }
-
-    private fun getNextInfoStep(): Int {
-        // Simple counter for tutorial steps
-        if (++basicInfoClickCount == 4) {
-            basicInfoClickCount = 1
-            return 0
+    private fun buildDescriptionSentence(
+        label: String,
+        position: SpatialPosition,
+    ): String {
+        // Check current language
+        return if (AppConfig.mainLanguage.code == "en") {
+            // English
+            val article = getArticleEnglish(label)
+            val spatialPhrase = position.toPhrase()
+            buildEnglishSentence(article, label, spatialPhrase)
         } else {
-            return basicInfoClickCount - 1
+            // Romanian
+            val article = getArticleRomanian(label)
+            val spatialPhrase = position.toPhrase()
+            buildRomanianSentence(article, label, spatialPhrase)
         }
     }
 
-    private fun getNextInfoStep2(): Int {
-        // Simple counter for tutorial steps
-        if (++basicInfoClickCount2 == 4) {
-            basicInfoClickCount2 = 1
-            return 0
-        } else {
-            return basicInfoClickCount2 - 1
-        }
-    }
-
-    private fun handleNavigateHome() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            // Already on home, do nothing
-        }
-    }
-
-    private fun handleNavigateReports() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-
-            val intent = Intent(this, EnvironmentReportsActivity::class.java)
-            startActivity(intent)
-            finish()
-        }
-    }
-
-    private fun handleNavigateSettings() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            val intent = Intent(this, SettingsActivity::class.java)
-            startActivity(intent)
-            finish()
-        }
-    }
-
-    private fun handleSwipeToLeft() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            val intent = Intent(
-                this, if (AppConfig.env_reports)
-                    EnvironmentReportsActivity::class.java
-                else
-                    SettingsActivity::class.java
-            )
-            startActivity(intent)
-            finish()
-        }
-    }
-
-    private fun launchSpeechRecognition(firstTimeSpeak: Boolean) {
-        if (firstTimeSpeak) {
-            if (AppConfig.mainLanguage.code == "ro") {
-                hasToExecAfterResume = true
-                soundManager.play(SoundConstants.STT_ERROR_ID, 0.7f, 0.7f) {
-                    ttsManager.speak(
-                        load_unavailableSTT(this),
-                        AppConfig.tts_pitch,
-                        AppConfig.tts_speech_rate,
-                        false,
-                        null
-                    )
-                }
-                afterResumeRunnable = object : Runnable {
-                    override fun run() {
-                        if (ttsManager.isDoneSpeaking) {
-                            uiLocked = false
-                            locked = false
-                        } else {
-                            mainHandler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS.toLong())
-                        }
-                    }
-                }
-                mainHandler.postDelayed(
-                    afterResumeRunnable,
-                    SoundConstants.getDuration(SoundConstants.STT_ERROR_ID).toLong() + 500
-                )
-            } else
-                if (speechRecognizer == null) {
-                    soundManager.play(SoundConstants.STT_ERROR_ID, 0.7f, 0.7f) {
-                        ttsManager.speak(
-                            load_errorSTT(this),
-                            AppConfig.tts_pitch,
-                            AppConfig.tts_speech_rate,
-                            false,
-                            null
-                        )
-                    }
-                    afterResumeRunnable = object : Runnable {
-                        override fun run() {
-                            if (ttsManager.isDoneSpeaking) {
-                                uiLocked = false
-                                locked = false
-                            } else {
-                                mainHandler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS.toLong())
-                            }
-                        }
-                    }
-                    mainHandler.postDelayed(
-                        afterResumeRunnable,
-                        SoundConstants.getDuration(SoundConstants.STT_ERROR_ID).toLong() + 500
-                    )
-                } else {
-                    retrySpeech.value = false
-                    sendSpeech.value = false
-                    showSpeechDialog.value = true
-                    speakingProcess()
-                }
-        } else {
-            speakingProcess()
-        }
-    }
-
-    private fun formatRecognizedText(text: String): String {
-        if (text.isBlank()) return text
-
-        // Replace [unk] with ??
-        var formatted = text.replace("[unk]", "??")
-
-        // Capitalize first letter if it's not ??
-        if (formatted.isNotEmpty() && !formatted.startsWith("??")) {
-            formatted = formatted.replaceFirstChar {
-                if (it.isLowerCase()) it.titlecase() else it.toString()
-            }
-        }
-
-        return formatted
-    }
-
-    private fun speakingProcess() {
-        lockedVolumeDown = false
-        isSpeaking.value = true
-        speechText.value = "Listening..."
-        soundManager.play(SoundConstants.STT_SPEAK_OPEN_ID, 0.7f, 0.7f) {
-            speechRecognizer.startListening(object :
-                SpeechRecognizer.RecognitionCallback {
-                override fun onResult(recognizedText: String, isFinalResult: Boolean) {
-                    if (isFinalResult) {
-                        isSpeaking.value = false
-                        speechText.value = formatRecognizedText(recognizedText)
-                        mainHandler.postDelayed({ processRecognizedSpeech() }, 1000)
-
-                        /*
-                        sendSpeech.value = true
-                        retrySpeech.value = true
-                        locked = false
-                        vibrateIfEnabled()*/
-                    } else {
-                        speechText.value = formatRecognizedText(recognizedText)
-                    }
-                }
-
-                override fun onError(error: String) {
-                    hasToExecAfterResume = true
-                    soundManager.play(SoundConstants.STT_ERROR_ID, 0.7f, 0.7f) {
-                        ttsManager.speak(
-                            load_errorSTTRuntime(PhoneStatusMonitor.getInstance().currentContext),
-                            AppConfig.tts_pitch,
-                            AppConfig.tts_speech_rate,
-                            false,
-                            null
-                        )
-                    }
-                    afterResumeRunnable = object : Runnable {
-                        override fun run() {
-                            if (ttsManager.isDoneSpeaking) {
-                                handleSpeechDialogTap()
-                            } else {
-                                mainHandler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS.toLong())
-                            }
-                        }
-                    }
-                    mainHandler.postDelayed(
-                        afterResumeRunnable,
-                        SoundConstants.getDuration(SoundConstants.STT_ERROR_ID).toLong() + 500
-                    )
-                }
-            })
-        }
-    }
-
-    private fun processRecognizedSpeech() {
-        speechProcessText.value = "Matching known objects..."
-
-        var finishedLoading = false
-        val backgroundTask = BackgroundTaskExecutor.getInstance()
-        backgroundTask.executeAsync(
-            {
-                matchedIndices = speechRecognizer.processRecognizedText(speechText.value)
-
-                if (!matchedIndices.isEmpty()) {
-                    classNames = matchedIndices.map { it.matchedWord }
-                }
-                return@executeAsync 0
-            },
-            object : BackgroundTaskExecutor.TaskCallback<Int> {
-                override fun onSuccess(result: Int) {
-                    finishedLoading = true
-                }
-
-                override fun onError(e: Exception) {
-                    finishedLoading = true
-                }
-            }
-        )
-
-        val checkRunnable = object : Runnable {
-            override fun run() {
-                if (finishedLoading) {
-                    processTextOutput()
-                } else {
-                    mainHandler.postDelayed(this, 500)
-                }
-            }
-        }
-        mainHandler.postDelayed(checkRunnable, 2000)
-    }
-
-    private fun processTextOutput() {
-        if (matchedIndices.isEmpty()) {
-            speechProcessText.value = "No matched known classes"
-            retrySpeech.value = true
-            sendSpeech.value = false
-            lockedVolumeDown = true
-            locked = false
-            vibrateIfEnabled()
-        } else {
-            speechProcessText.value = "Matched: ${classNames.joinToString(", ")}"
-            retrySpeech.value = true
-            sendSpeech.value = true
-            locked = false
-            vibrateIfEnabled()
-        }
-    }
-
-    private fun sendProcessedSpeech() {
-        val classIndices = IntArray(matchedIndices.size) { matchedIndices[it].classIndex }
-        val matchedWords = Array(matchedIndices.size) { matchedIndices[it].matchedWord }
-
-        val intent = Intent(this, FindMyObjectActivity::class.java).apply {
-            putExtra(Constants.EXTRA_MATCHED_INDICES, classIndices)
-            putExtra(Constants.EXTRA_SYNONYMS_WORDS, matchedWords)
-        }
-        returnFromFindMyObject = true
-        startActivity(intent)
-
-        //finish()
-    }
-
-    private fun handleSpeechDialogTap() {
-        // Cancel speech recognition
-        mainHandler.removeCallbacksAndMessages(null)
-        soundManager.releaseCallback()
-        speechRecognizer.stopListening()
-        locked = true
-        lockedVolumeDown = false
-        showSpeechDialog.value = false
-        mainHandler.postDelayed({
-            uiLocked = false
-            retrySpeech.value = false
-            sendSpeech.value = false
-            isSpeaking.value = false
-            speechText.value = ""
-            speechProcessText.value = ""
-            locked = false
-        }, Constants.ANIMATION_DELAY.toLong())
-    }
-
-    private fun resetSpeechStates() {
-        speechProcessText.value = ""
-        speechText.value = ""
-        //cancelSpeech.value = true
-        retrySpeech.value = false
-        sendSpeech.value = false
-    }
-
-    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        when (keyCode) {
-            KeyEvent.KEYCODE_VOLUME_UP -> {
-                if (!locked) {
-                    //uiLocked=true
-                    if (retrySpeech.value) {
-                        // Retry speech recognition
-                        locked = true
-                        resetSpeechStates()
-                        launchSpeechRecognition(false)
-                    } else {
-                        uiLocked = true
-                        locked = true
-                        // Launch static detection
-                        launchStaticDetection()
-                    }
-                }
-                return true
-            }
-
-            KeyEvent.KEYCODE_VOLUME_DOWN -> {
-                if (!locked) {
-                    uiLocked = true
-                    if (!handleVolumeDownControl) {
-                        if (!showSpeechDialog.value)
-                            handleVolumeDownControl = true
-                        mainHandler.removeCallbacksAndMessages(null)
-                        mainHandler.postDelayed(
-                            { handleSingleVolumeDown() }, Constants.VOLUME_DOWN_DELAY_MS.toLong()
-                        )
-                    } else {
-                        mainHandler.removeCallbacksAndMessages(null)
-                        locked = true
-                        handleVolumeDownControl = false
-                        launchSpeechRecognition(true)
-                    }
-                }
-                return true
-            }
-        }
-        return super.onKeyDown(keyCode, event)
-    }
-
-    private fun handleSingleVolumeDown() {
-        when {
-            sendSpeech.value -> {
-                locked = true
-                // Process recognized text
-                sendProcessedSpeech()
+    private fun buildEnglishSentence(
+        article: String,
+        label: String,
+        spatialPhrase: String
+    ): String {
+        // Format: "There is a bottle in the center" or "A person on your left"
+        return when {
+            spatialPhrase.contains("center") || spatialPhrase.contains("middle") -> {
+                "There is $article $label $spatialPhrase"
             }
 
             else -> {
-                if (!lockedVolumeDown)
-                // Launch caption activity
-                    launchCaptionActivity()
+                "$article $label $spatialPhrase".capitalize()
             }
         }
     }
 
-    private fun vibrateIfEnabled() {
-        if (AppConfig.haptics) {
-            vibrate(haptic_model0())
+    private fun buildRomanianSentence(
+        article: String,
+        label: String,
+        spatialPhrase: String
+    ): String {
+        // Format: "Este o sticlă în centru" or "O persoană în stânga ta"
+        return when {
+            spatialPhrase.contains("centru") || spatialPhrase.contains("centrală") -> {
+                "Este $article $label $spatialPhrase"
+            }
+
+            else -> {
+                "$article $label $spatialPhrase".capitalize()
+            }
         }
     }
 
-    private fun checkPhoneStatusAndNavigate(onSuccess: () -> Unit) {
-        PhoneStatusMonitor.getInstance().checkPhoneStatus()
-        // If check passes, execute success callback
-        onSuccess()
+    private fun getArticleEnglish(label: String): String {
+        // Check if word starts with vowel sound
+        val vowels = setOf('a', 'e', 'i', 'o', 'u')
+        return if (label.isNotEmpty() && label[0].lowercase()[0] in vowels) {
+            "an"
+        } else {
+            "a"
+        }
+    }
+
+    private fun getArticleRomanian(label: String): String {
+        // Detect gender from Romanian word ending
+        if (label.isEmpty()) return "un"
+
+        val lastChar = label.last().lowercaseChar()
+        val lastTwoChars = if (label.length >= 2) {
+            label.takeLast(2).lowercase()
+        } else {
+            ""
+        }
+
+        // Check for feminine endings
+        return when {
+            // Feminine endings
+            lastChar == 'ă' || lastTwoChars == "ie" || lastChar == 'e' -> "o"
+
+            // Masculine/Neuter (default)
+            else -> "un"
+        }
+    }
+
+    private data class SpatialPosition(
+        val horizontal: HorizontalPosition,
+        val vertical: VerticalPosition
+    ) {
+        fun toPhrase(): String {
+            return if (PhoneStatusMonitor.getInstance().ttsManager.currentLocale.language == "en")
+                toPhraseEnglish()
+            else
+                toPhraseRomanian()
+        }
+
+        private fun toPhraseEnglish(): String {
+            return when (horizontal) {
+                HorizontalPosition.CENTER if vertical == VerticalPosition.MIDDLE ->
+                    "in the center"
+
+                HorizontalPosition.CENTER if vertical == VerticalPosition.TOP ->
+                    "at the top center"
+
+                HorizontalPosition.CENTER if vertical == VerticalPosition.BOTTOM ->
+                    "at the bottom center"
+
+                // Left positions
+                HorizontalPosition.LEFT if vertical == VerticalPosition.MIDDLE ->
+                    "on your left"
+
+                HorizontalPosition.LEFT if vertical == VerticalPosition.TOP ->
+                    "on your top left"
+
+                HorizontalPosition.LEFT if vertical == VerticalPosition.BOTTOM ->
+                    "on your bottom left"
+
+                // Right positions
+                HorizontalPosition.RIGHT if vertical == VerticalPosition.MIDDLE ->
+                    "on your right"
+
+                HorizontalPosition.RIGHT if vertical == VerticalPosition.TOP ->
+                    "on your top right"
+
+                HorizontalPosition.RIGHT if vertical == VerticalPosition.BOTTOM ->
+                    "on your bottom right"
+
+                else -> "in front of you"
+            }
+        }
+
+        private fun toPhraseRomanian(): String {
+            return when (horizontal) {
+                HorizontalPosition.CENTER if vertical == VerticalPosition.MIDDLE ->
+                    "în centru"
+
+                HorizontalPosition.CENTER if vertical == VerticalPosition.TOP ->
+                    "în partea de sus centrală"
+
+                HorizontalPosition.CENTER if vertical == VerticalPosition.BOTTOM ->
+                    "în partea de jos centrală"
+
+                // Left positions
+                HorizontalPosition.LEFT if vertical == VerticalPosition.MIDDLE ->
+                    "în stânga ta"
+
+                HorizontalPosition.LEFT if vertical == VerticalPosition.TOP ->
+                    "în stânga sus"
+
+                HorizontalPosition.LEFT if vertical == VerticalPosition.BOTTOM ->
+                    "în stânga jos"
+
+                // Right positions
+                HorizontalPosition.RIGHT if vertical == VerticalPosition.MIDDLE ->
+                    "în dreapta ta"
+
+                HorizontalPosition.RIGHT if vertical == VerticalPosition.TOP ->
+                    "în dreapta sus"
+
+                HorizontalPosition.RIGHT if vertical == VerticalPosition.BOTTOM ->
+                    "în dreapta jos"
+
+                else -> "în fața ta"
+            }
+        }
+    }
+
+    private enum class HorizontalPosition {
+        LEFT, CENTER, RIGHT
+    }
+
+    private enum class VerticalPosition {
+        TOP, MIDDLE, BOTTOM
+    }
+
+    private fun String.capitalize(): String {
+        return this.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+    }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        return when (keyCode) {
+            KeyEvent.KEYCODE_VOLUME_UP -> {
+                handleBackClick()
+                true
+            }
+
+            KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                if (isSpeakingPhase)
+                    ttsManager.onVolumeDownPressed()
+                true
+            }
+
+            else -> super.onKeyDown(keyCode, event)
+        }
     }
 
     override fun onPause() {
         super.onPause()
-        mainHandler.removeCallbacksAndMessages(null)
         soundManager.releaseCallback()
         ttsManager.stopSpeaking()
+        PhoneStatusMonitor.getInstance()
+            .stopMonitoring();lightMonitor.stopMonitoring();turnFlashlightOff()
+        motionMonitor.stopMonitoring()
+        batteryCheckRunning.value = false
+        mainHandler.removeCallbacksAndMessages(null)
+        stopDetection.set(true)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        cameraProvider?.unbindAll()
+        cameraExecutor.shutdown()
+    }
+}
+
+@Composable
+fun BlindDetectionScreen(
+    showResult: Boolean,
+    resultBitmap: Bitmap?,
+    showBatteryWarning: Boolean,
+    batteryWarningTrigger: () -> Unit,
+    onResultReadyText: () -> Unit,
+    onBackClick: () -> Unit,
+    onCameraReady: (PreviewView) -> Unit
+) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val screenWidth = maxWidth
+
+        if (!showResult) {
+            // Detection phase - Camera + FPS Slider
+            DetectionPhase(
+                onCameraReady = onCameraReady
+            )
+        } else {
+            // Result phase - Result image
+            ResultPhaseWithoutSettings(
+                screenWidth = screenWidth,
+                resultBitmap = resultBitmap,
+                onResultReadyText = onResultReadyText,
+                onBackClick = onBackClick
+            )
+        }
+
+        if (showBatteryWarning)
+            batteryWarningTrigger()
+    }
+}
+
+@Composable
+fun ResultPhaseWithoutSettings(
+    screenWidth: Dp,
+    resultBitmap: Bitmap?,
+    onResultReadyText: () -> Unit,
+    onBackClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                var swipeStartX = 0f
+                detectHorizontalDragGestures(
+                    onDragStart = {
+                        swipeStartX = 0f
+                    },
+                    onDragEnd = {
+                        val threshold = (screenWidth * Constants.MIN_HDISTANCE_THRESHOLD).toPx()
+                        when {
+                            swipeStartX >= threshold -> {
+                                onBackClick()
+                            }
+                        }
+                        swipeStartX = 0f
+                    },
+                    onHorizontalDrag = { _, dragAmount ->
+                        swipeStartX += dragAmount
+                    }
+                )
+            }
+
+    ) {
+        // Result image
+        if (resultBitmap != null) {
+            Image(
+                bitmap = resultBitmap.asImageBitmap(),
+                contentDescription = "Detection Result",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Fit
+            )
+            onResultReadyText()
+        }
     }
 }

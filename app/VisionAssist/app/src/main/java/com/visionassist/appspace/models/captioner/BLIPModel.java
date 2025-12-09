@@ -137,33 +137,32 @@ public class BLIPModel {
         else return -1;
     }
 
-    public String generateCaption(Bitmap bitmap, List<String> detectedLabels) {
+    public long[] generateCaption(Bitmap bitmap) {
         long startTime = System.currentTimeMillis();
 
         try {
-            String result = generateRealCaption(bitmap);
+            long[] result = generateRealCaption(bitmap);
 
             long endTime = System.currentTimeMillis();
             Log.d(TAG, String.format("Caption generated in %dms",endTime - startTime));
 
             return result;
-
         } catch (Exception e) {
             Log.e(TAG, "Real caption generation failed, using fallback", e);
-            return generateFallbackCaption(detectedLabels);
+            return null;
         }
     }
 
-    private String generateRealCaption(Bitmap bitmap) throws Exception {
+    private long[] generateRealCaption(Bitmap bitmap) throws Exception {
         // Step 1: Preprocess image to [1, 3, 384, 384] tensor
         float[][][] imageArray = preprocessImage(bitmap);
 
         // Step 2: Implement autoregressive generation loop
-        long[] generatedTokens = autoregressiveGenerate(imageArray);
+        return autoregressiveGenerate(imageArray);
 
         // Step 3: Decode tokens to text using vocabulary
 
-        return tokenizer.decode(generatedTokens);
+        //return tokenizer.decode(generatedTokens);
     }
 
     private float[][][] preprocessImage(Bitmap bitmap) {

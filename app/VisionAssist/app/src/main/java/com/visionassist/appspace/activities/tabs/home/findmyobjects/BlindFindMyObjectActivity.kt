@@ -221,7 +221,7 @@ class BlindFindMyObjectActivity : ComponentActivity() {
                 if (ttsManager.isDoneSpeaking) {
                     mainHandler.post(afterTTSSpeech)
                 } else {
-                    mainHandler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS.toLong())
+                    mainHandler.postDelayed(this, 350)
                 }
             }
         }
@@ -244,7 +244,7 @@ class BlindFindMyObjectActivity : ComponentActivity() {
                 AppConfig.tts_pitch,
                 AppConfig.tts_speech_rate,
                 true,
-                haptic_model0()
+                null
             )
 
             waitForTTSSpeech {
@@ -259,7 +259,7 @@ class BlindFindMyObjectActivity : ComponentActivity() {
             AppConfig.tts_pitch,
             AppConfig.tts_speech_rate,
             true,
-            haptic_model0()
+            null
         )
         waitForTTSSpeech {
             currentSentenceIndex++
@@ -355,12 +355,11 @@ class BlindFindMyObjectActivity : ComponentActivity() {
 
         mainHandler.post(object : Runnable {
             override fun run() {
-                if (stopDetection.get()) {
+                if (displayReady.get()) {
                     // Stop loop and show results
-                    showResults()
+                    showResult.value = true
                     return
                 }
-
                 // Schedule next iteration
                 mainHandler.postDelayed(this, 500)
             }
@@ -611,22 +610,7 @@ class BlindFindMyObjectActivity : ComponentActivity() {
         displayReady.set(true)
     }
 
-    private fun showResults() {
-        mainHandler.post(object : Runnable {
-            override fun run() {
-                if (displayReady.get()) {
-                    // Stop loop and show results
-                    showResult.value = true
-                    return
-                }
-                // Schedule next iteration
-                mainHandler.postDelayed(this, 500)
-            }
-        })
-    }
-
     private fun handleBackClick() {
-        if (locked) return
         soundManager.releaseCallback()
         ttsManager.stopSpeaking()
         ttsManager.speak(
@@ -649,8 +633,8 @@ class BlindFindMyObjectActivity : ComponentActivity() {
     private fun handleNextClick() {
         if (locked) return
 
-        soundManager.releaseCallback()
-        ttsManager.stopSpeaking()
+        //soundManager.releaseCallback()
+        //ttsManager.stopSpeaking()
         vibrate(haptic_model0())
 
         PermissionChecker.checkAndRequestPermissions(this, false) {

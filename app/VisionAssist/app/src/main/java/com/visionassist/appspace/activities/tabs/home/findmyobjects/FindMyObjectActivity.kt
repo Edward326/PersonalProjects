@@ -393,12 +393,14 @@ class FindMyObjectActivity : ComponentActivity() {
 
         mainHandler.post(object : Runnable {
             override fun run() {
-                if (stopDetection.get()) {
+                if (displayReady.get()) {
                     // Stop loop and show results
-                    showResults()
+                    if (AppConfig.haptics) {
+                        vibrate(haptic_model0())
+                    }
+                    showResult.value = true
                     return
                 }
-
                 // Schedule next iteration
                 mainHandler.postDelayed(this, 500)
             }
@@ -712,23 +714,6 @@ class FindMyObjectActivity : ComponentActivity() {
 
         // Signal display ready
         displayReady.set(true)
-    }
-
-    private fun showResults() {
-        mainHandler.post(object : Runnable {
-            override fun run() {
-                if (displayReady.get()) {
-                    // Stop loop and show results
-                    if (AppConfig.haptics) {
-                        vibrate(haptic_model0())
-                    }
-                    showResult.value = true
-                    return
-                }
-                // Schedule next iteration
-                mainHandler.postDelayed(this, 500)
-            }
-        })
     }
 
     private fun handleBackClick() {
