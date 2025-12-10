@@ -801,3 +801,220 @@ fun load_speakNoObjectsFound(index: Int): String {
                 "The application detected an single object in your environment"
     }
 }
+
+fun computePerceptualHash(bitmap: Bitmap): String {
+    try {
+        // Resize to 8x8 for hash computation
+        val small = Bitmap.createScaledBitmap(bitmap, 8, 8, false)
+
+        // Convert to grayscale and compute average
+        var sum = 0L
+        val pixels = IntArray(64)
+
+        for (y in 0 until 8) {
+            for (x in 0 until 8) {
+                val pixel = small.getPixel(x, y)
+                val gray = ((pixel shr 16) and 0xFF) * 0.299 +
+                        ((pixel shr 8) and 0xFF) * 0.587 +
+                        (pixel and 0xFF) * 0.114
+                pixels[y * 8 + x] = gray.toInt()
+                sum += gray.toLong()
+            }
+        }
+
+        small.recycle()
+
+        val average = sum / 64
+
+        // Build hash: 1 if pixel > average, 0 otherwise
+        val hash = StringBuilder()
+        for (pixel in pixels) {
+            hash.append(if (pixel > average) "1" else "0")
+        }
+
+        // Convert binary string to hex
+        return binaryToHex(hash.toString())
+    } catch (e: Exception) {
+        Log.e("PerceptualHash", "Error computing hash", e)
+        return System.currentTimeMillis().toString() // Fallback
+    }
+}
+
+private fun binaryToHex(binary: String): String {
+    val hex = StringBuilder()
+    for (i in binary.indices step 4) {
+        val chunk = binary.substring(i, minOf(i + 4, binary.length)).padEnd(4, '0')
+        val decimal = chunk.toInt(2)
+        hex.append(decimal.toString(16))
+    }
+    return hex.toString()
+}
+
+private fun hammingDistance(hash1: String, hash2: String): Int {
+    if (hash1.length != hash2.length) return Int.MAX_VALUE
+
+    var distance = 0
+    for (i in hash1.indices) {
+        if (hash1[i] != hash2[i]) distance++
+    }
+    return distance
+}
+
+private fun hashSimilarity(hash1: String, hash2: String): Float {
+    val distance = hammingDistance(hash1, hash2)
+    val maxDistance = hash1.length * 4 // Each hex char = 4 bits
+    return (1f - distance.toFloat() / maxDistance) * 100f
+}
+
+fun searchHashCache(targetHash: String, similarityThreshold: Float = 90f): List<Int>? {
+    try {
+        val context = AppConfig.context ?: return null
+        val cacheFile = File(FileUtils.getProfileDirectory(context), Constants.HASH_CACHE_FILE_NAME)
+
+        if (!cacheFile.exists() || cacheFile.length() == 0L) {
+            Log.d("HashCache", "Cache file empty or not found")
+            return null
+        }
+
+        // Read all records
+        val records = cacheFile.readLines()
+        val totalRecords = records.size
+
+        if (totalRecords == 0) return null
+
+        Log.d("HashCache", "Searching through $totalRecords records...")
+
+        // Calculate number of threads (5 threads if > 10 records, else 1)
+        val threadCount = if (totalRecords <= 10) 1 else 5
+        val recordsPerThread = totalRecords / threadCount
+
+        Log.d("HashCache", "Using $threadCount threads, ~$recordsPerThread records each")
+
+        // Shared state
+        val foundResult = AtomicBoolean(false)
+        var resultTokens: List<Int>? = null
+        val finishedThreads = AtomicInteger(0)
+        val latch = CountDownLatch(threadCount)
+
+        // Launch threads
+        for (threadId in 0 until threadCount) {
+            val startIdx = threadId * recordsPerThread
+            val endIdx = if (threadId == threadCount - 1) totalRecords else (threadId + 1) * recordsPerThread
+
+            Thread {
+                try {
+                    Log.d("HashCache", "Thread $threadId: scanning records $startIdx to $endIdx")
+
+                    for (i in startIdx until endIdx) {
+                        // Check if another thread found result
+                        if (foundResult.get()) {
+                            Log.d("HashCache", "Thread $threadId: stopping (result found by another thread)")
+                            break
+                        }
+
+                        val record = records[i].trim()
+                        if (record.isEmpty()) continue
+
+                        // Parse record: "hash:tokenId0_tokenId1_tokenId2"
+                        val parts = record.split(":", limit = 2)
+                        if (parts.size != 2) continue
+
+                        val recordHash = parts[0]
+                        val tokensPart = parts[1]
+
+                        // Compute similarity
+                        val similarity = hashSimilarity(targetHash, recordHash)
+
+                        if (similarity >= similarityThreshold) {
+                            // Found match!
+                            Log.d("HashCache", "Thread $threadId: FOUND! Similarity: ${similarity}%")
+
+                            // Try to set result (only first thread succeeds)
+                            synchronized(foundResult) {
+                                if (!foundResult.get()) {
+                                    foundResult.set(true)
+
+                                    // Parse tokens
+                                    val tokens = tokensPart.split("_").mapNotNull { it.toIntOrNull() }
+                                    resultTokens = tokens
+
+                                    Log.d("HashCache", "Result set: ${tokens.size} tokens")
+                                }
+                            }
+                            break
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("HashCache", "Thread $threadId error", e)
+                } finally {
+                    finishedThreads.incrementAndGet()
+                    latch.countDown()
+                }
+            }.start()
+        }
+
+        // Wait for threads to finish (max 5 seconds timeout)
+        val finished = latch.await(5, TimeUnit.SECONDS)
+
+        if (!finished) {
+            Log.w("HashCache", "Search timeout after 5 seconds")
+        }
+
+        Log.d("HashCache", "Search complete: ${finishedThreads.get()}/$threadCount threads finished, found: ${foundResult.get()}")
+
+        return resultTokens
+
+    } catch (e: Exception) {
+        Log.e("HashCache", "Error searching cache", e)
+        return null
+    }
+}
+
+fun saveToHashCache(hash: String, tokenIds: List<Int>) {
+    try {
+        val context = AppConfig.context ?: return
+        val cacheFile = File(FileUtils.getProfileDirectory(context), Constants.HASH_CACHE_FILE_NAME)
+
+        // Determine max records based on env_reports mode
+        val maxRecords = if (AppConfig.env_reports) 5000 else 2500
+        val removeCount = (maxRecords * 0.25).toInt()
+
+        // Read existing records
+        val existingRecords = if (cacheFile.exists()) {
+            cacheFile.readLines().toMutableList()
+        } else {
+            mutableListOf()
+        }
+
+        // Create new record: "hash:tokenId0_tokenId1_tokenId2"
+        val tokenString = tokenIds.joinToString("_")
+        val newRecord = "$hash:$tokenString"
+
+        // Check if file is too large
+        if (existingRecords.size >= maxRecords) {
+            Log.d("HashCache", "Cache full (${existingRecords.size}/$maxRecords), removing $removeCount old records")
+            // Remove oldest records (from beginning)
+            repeat(removeCount) {
+                if (existingRecords.isNotEmpty()) {
+                    existingRecords.removeAt(0)
+                }
+            }
+        }
+
+        // Add new record
+        existingRecords.add(newRecord)
+
+        // Write back to file
+        BufferedWriter(FileWriter(cacheFile)).use { writer ->
+            existingRecords.forEach { record ->
+                writer.write(record)
+                writer.newLine()
+            }
+        }
+
+        Log.d("HashCache", "Saved to cache: ${existingRecords.size} total records")
+
+    } catch (e: Exception) {
+        Log.e("HashCache", "Error saving to cache", e)
+    }
+}

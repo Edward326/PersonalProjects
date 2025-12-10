@@ -42,7 +42,7 @@ import com.visionassist.appspace.utils.vibrate
 import java.io.File
 import java.io.IOException
 
-class CaptionCameraXActivity : BaseActivity() {
+class BlindCaptionActivity : BaseActivity() {
     private val TAG = "HomeActivity"
 
     // State variables

@@ -3,1859 +3,873 @@
 package com.visionassist.appspace.activities.tabs.home.caption
 
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.KeyEvent
+import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.ActivityResultLauncher
-import androidx.activity.result.contract.ActivityResultContracts.TakePicture
-import androidx.compose.animation.AnimatedContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material.icons.filled.SyncProblem
-import androidx.compose.material.icons.filled.TextFields
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemColors
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.colorResource
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
-import com.visionassist.appspace.BaseActivity
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
-import com.visionassist.appspace.activities.tabs.home.detection.LiveDetectionActivity
-import com.visionassist.appspace.activities.tabs.home.detection.StaticDetectionActivity
-import com.visionassist.appspace.activities.tabs.home.findmyobjects.FindMyObjectActivity
-import com.visionassist.appspace.activities.tabs.reports.EnvironmentReportsActivity
-import com.visionassist.appspace.activities.tabs.settings.SettingsActivity
-import com.visionassist.appspace.jetpack.managers.ErrorDialogManager
-import com.visionassist.appspace.models.sttengine.SpeechRecognizer
+import com.visionassist.appspace.activities.main.HomeActivity
+import com.visionassist.appspace.activities.tabs.reports.EnvironmentReportsManagerKt
+import com.visionassist.appspace.jetpack.design.LoadingComponent
+import com.visionassist.appspace.jetpack.managers.InfoNotificationManager
+import com.visionassist.appspace.models.captioner.BLIPModel
+import com.visionassist.appspace.models.captioner.Tokenizer
+import com.visionassist.appspace.models.classifier.YOLOClassifier
+import com.visionassist.appspace.models.translator.CaptionTranslator
 import com.visionassist.appspace.sound.SoundConstants
-import com.visionassist.appspace.utils.AppConfig
-import com.visionassist.appspace.utils.BackgroundTaskExecutor
-import com.visionassist.appspace.utils.Constants
-import com.visionassist.appspace.utils.CustomColorSchema
-import com.visionassist.appspace.utils.DetectionOption
-import com.visionassist.appspace.utils.PermissionChecker
-import com.visionassist.appspace.utils.TypewriterColorSchema
-import com.visionassist.appspace.utils.haptic_model0
-import com.visionassist.appspace.utils.load_captionTutorial
-import com.visionassist.appspace.utils.load_detectionTutorial
-import com.visionassist.appspace.utils.load_errorSTT
-import com.visionassist.appspace.utils.load_errorSTTRuntime
-import com.visionassist.appspace.utils.load_homeTitle
-import com.visionassist.appspace.utils.load_speakTutorial
-import com.visionassist.appspace.utils.load_syncErrorText
-import com.visionassist.appspace.utils.load_syncStatusText
-import com.visionassist.appspace.utils.load_unavailableSTT
-import com.visionassist.appspace.utils.robotoBold
-import com.visionassist.appspace.utils.robotoExtraBold
-import com.visionassist.appspace.utils.robotoExtraBoldItalic
-import com.visionassist.appspace.utils.robotoLight
-import com.visionassist.appspace.utils.robotoSemibold
-import com.visionassist.appspace.utils.vibrate
-import kotlinx.coroutines.delay
+import com.visionassist.appspace.utils.*
 import java.io.File
-import java.io.IOException
 
-class CaptionActivity : BaseActivity() {
-    private val TAG = "HomeActivity"
+class CaptionActivity : ComponentActivity() {
+    private val TAG = "CaptionActivity"
 
-    // State variables
-    private val titleText = mutableStateOf("")
+    // Models
+    private lateinit var captioner: BLIPModel
+    private lateinit var tokenizer: Tokenizer
+    private lateinit var classifier: YOLOClassifier
+    private var translator: CaptionTranslator? = null
 
-    // Tutorial info button states
-    private val speakInfoClickCount = mutableStateOf(1)
-    private var basicInfoClickCount = 1
-    private var basicInfoClickCount2 = 1
+    // Image data
+    private var originalBitmap: Bitmap? = null
+    private var imageHash: String = ""
 
-    // Detection button states
-    private val showDetectionOptions = mutableStateOf(false)
-    private val selectedDetectionOption = mutableStateOf<DetectionOption?>(null)
-    private val detectionIconColor = mutableStateOf(R.color.std_purple_dark)
+    // Results
+    private var tokenIds: List<Int>? = null
+    private var captionText: String = ""
+    private var captionerLatency: Long = 0
+    private var classifierLatency: Long = 0
+    private var sceneClassId: Int = -1
+    private var foundInCache: Boolean = false
 
-    // Speech recognition parameters
-    private val speechRecognizer = PhoneStatusMonitor.getInstance()
-        .modelManager.speechRecognizer
-    private val soundManager = PhoneStatusMonitor.getInstance()
-        .soundManager
-    private val ttsManager = PhoneStatusMonitor.getInstance()
-        .ttsManager
-    private val showSpeechDialog = mutableStateOf(false)
-    private val speechText = mutableStateOf("")
-    private val speechProcessText = mutableStateOf("")
-    private val isSpeaking = mutableStateOf(true)
-    private val retrySpeech = mutableStateOf(false)
-    private val sendSpeech = mutableStateOf(false)
-    private lateinit var matchedIndices: List<SpeechRecognizer.MatchedObject>
-    private lateinit var classNames: List<String>
+    // UI States
+    private val showLoading = mutableStateOf(true)
+    private val loadingText = mutableStateOf("")
+    private val showResult = mutableStateOf(false)
+    private val showClassificationDialog = mutableStateOf(false)
+    private val classificationText = mutableStateOf("")
 
-    // Volume button tracking
-    private var locked = false
-    private var lockedVolumeDown = false
-    private var uiLocked = false
-    private var handleVolumeDownControl = false
+    // Text size control
+    private var currentTextSize = mutableFloatStateOf(24f)
+    private val textSizes = listOf(16f, 20f, 24f, 28f, 32f, 36f, 40f, 44f)
 
-    // Runnable for navigation to an activity
-    private var onPermissionGranted = {}
-    private var classOpt = 0
-
-    // Camera intent parameters
-    private lateinit var takePictureLauncher: ActivityResultLauncher<Uri>
-    private lateinit var currentPhotoUri: Uri
-
-    // Main handler
+    // Handlers
     private val mainHandler = Handler(Looper.getMainLooper())
-    private lateinit var afterResumeRunnable: Runnable
-    private var hasToExecAfterResume = false
-    private var returnFromFindMyObject = false
+    private lateinit var infoNotificationManager: InfoNotificationManager
 
-    private var syncStatus: Int = 0
-    private var syncDays: Int = 0
+    // Camera
+    private lateinit var takePictureLauncher: ActivityResultLauncher<Uri>
+    private var currentPhotoUri: Uri? = null
+
+    // Settings panel
+    private val showSettings = mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        registerCameraLauncher()
-
-        // Load initial title
-        titleText.value = load_homeTitle()
-
-        // Get sync status
-        val dbManager = PhoneStatusMonitor.getInstance().dbManager
-        syncStatus = dbManager.statusOverview
-        syncDays = if (syncStatus > 0) dbManager.diffDays.toInt() else 0
-
-        uiLocked = true
-        locked = true
-        PhoneStatusMonitor.getInstance().soundManager.play(SoundConstants.OPEN_UP_ID, 1f, 1f) {
-            uiLocked = false
-            locked = false
-        }
-
-        //Log.d(TAG, FileUtils.readProfileFileAsString(this, Constants.ENV_REPORTS_FILE_NAME))
-
-        setContent {
-            HomeScreen(
-                titleText = titleText.value,
-                syncStatus = syncStatus,
-                syncDays = syncDays,
-                showDetectionOptions = showDetectionOptions.value,
-                detectionIconColor = detectionIconColor.value,
-                selectedDetectionOption = selectedDetectionOption.value,
-                showSpeechDialog = showSpeechDialog.value,
-                speechText = speechText.value,
-                speechProcessText = speechProcessText.value,
-                isSpeaking = isSpeaking.value,
-                onDetectionClick = ::handleDetectionClick,
-                onDetectionOptionSelected = ::handleDetectionOptionSelected,
-                onCaptionClick = ::handleCaptionClick,
-                onDetectionInfoClick = ::handleDetectionInfoClick,
-                onCaptionInfoClick = ::handleCaptionInfoClick,
-                onSpeakInfoClick = ::handleSpeakInfoClick,
-                onNavigateHome = ::handleNavigateHome,
-                onNavigateReports = ::handleNavigateReports,
-                onNavigateSettings = ::handleNavigateSettings,
-                onSpeechDialogTap = ::handleSpeechDialogTap,
-                navigateFun = ::navigateToLiveOrStatic,
-                onSwipeToLeft = ::handleSwipeToLeft
-            )
-        }
-    }
-
-    @Suppress("DEPRECATION")
-    private fun registerCameraLauncher() {
-        takePictureLauncher = registerForActivityResult(
-            TakePicture()
-        ) { isSuccess ->
-            if (isSuccess) {
-                try {
-                    navigateToFindMyObjectWithBitmap()
-                } catch (e: IOException) {
-                    Log.e(TAG, "Error loading captured image", e)
-                    showCameraError()
-                }
-            } else {
-                Log.e(TAG, "Image capture failed or cancelled")
-                uiLocked = false
-                locked = false
-            }
-        }
-
-        Log.d(TAG, "Camera launcher registered")
-    }
-
-    override fun onResume() {
-        super.onResume()
-
-        if (PhoneStatusMonitor.getInstance().isReturningFromPermissions)
-            PermissionChecker.checkAndRequestPermissions(
-                this,
-                AppConfig.blindness,
-                onPermissionGranted
-            )
-
-        if (hasToExecAfterResume) {
-            hasToExecAfterResume = false
-            mainHandler.post(afterResumeRunnable)
-        }
-
-        if (returnFromFindMyObject) {
-            returnFromFindMyObject = false
-            handleSpeechDialogTap()
-        }
-    }
-
-    private fun handleDetectionClick() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            showDetectionOptions.value = !showDetectionOptions.value
-            detectionIconColor.value = if (showDetectionOptions.value) {
-                R.color.std_cyan
-            } else {
-                selectedDetectionOption.value = null
-                R.color.std_purple_dark
-            }
-        }
-    }
-
-    private fun handleDetectionOptionSelected(option: DetectionOption?, navigate: Boolean) {
-        if (option != null) {
-            if (selectedDetectionOption.value != option) {
-                vibrateIfEnabled()
-                selectedDetectionOption.value = option
-            }
-        } else
-            selectedDetectionOption.value = null
-        if (navigate) {
-            navigateToLiveOrStatic()
-        }
-    }
-
-    private fun navigateToLiveOrStatic() {
-        when (selectedDetectionOption.value) {
-            DetectionOption.LIVE -> launchLiveDetection()
-            DetectionOption.STATIC -> launchStaticDetection()
-            else -> {
-                handleDetectionClick()
-            }
-        }
-    }
-
-    private fun launchLiveDetection() {
-        onPermissionGranted = {
-            checkPhoneStatusAndNavigate {
-                // Navigate to LiveDetectionActivity
-                val intent = Intent(this, LiveDetectionActivity::class.java)
-                startActivity(intent)
-                finish()
-            }
-        }
-        PermissionChecker.checkAndRequestPermissions(this, AppConfig.blindness, onPermissionGranted)
-    }
-
-    private fun launchStaticDetection() {
-        classOpt = 0
-        onPermissionGranted = {
-            checkPhoneStatusAndNavigate {
-                launchCamera()
-            }
-        }
-        PermissionChecker.checkAndRequestPermissions(this, AppConfig.blindness, onPermissionGranted)
-    }
-
-    private fun launchCamera() {
+        // Initialize models
         try {
-            val photoFile = File.createTempFile(
-                "temp_visionassist",
-                ".jpg",
-                cacheDir
-            )
+            captioner = PhoneStatusMonitor.getInstance().modelManager.captioner
+            tokenizer = captioner.tokenizer
+            classifier = PhoneStatusMonitor.getInstance().modelManager.classifier
 
-            currentPhotoUri = FileProvider.getUriForFile(
-                this,
-                "$packageName.fileprovider",
-                photoFile
-            )
-
-            Log.d(TAG, "Launching camera with URI: $currentPhotoUri")
-
-            takePictureLauncher.launch(currentPhotoUri)
-        } catch (e: IOException) {
-            Log.e(TAG, "Error creating temp file", e)
-            showCameraError()
-        }
-    }
-
-    private fun navigateToFindMyObjectWithBitmap() {
-        try {
-            val intent = Intent(
-                this,
-                when (classOpt) {
-                    0 -> StaticDetectionActivity::class.java
-                    else -> CaptionActivity::class.java
-                }
-            )
-            intent.putExtra(Constants.EXTRA_IMAGE_URI, currentPhotoUri.toString())
-            startActivity(intent)
-            finish()
-        } catch (e: Exception) {
-            Log.e(TAG, "Error navigating to FindMyObjectActivity", e)
-            showCameraError()
-        }
-    }
-
-    private fun showCameraError() {
-        val monitor = PhoneStatusMonitor.getInstance()
-        val errorDialog = ErrorDialogManager(monitor.currentActivity)
-        errorDialog.setupDialog(Constants.CAMERA_MAKE_PHOTO)
-        monitor.shutdownApp(errorDialog, monitor.currentContext)
-    }
-
-    private fun handleCaptionClick() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            launchCaptionActivity()
-        }
-    }
-
-    private fun launchCaptionActivity() {
-        classOpt = 1
-        onPermissionGranted = {
-            checkPhoneStatusAndNavigate {
-                launchCamera()
-            }
-        }
-        PermissionChecker.checkAndRequestPermissions(this, AppConfig.blindness, onPermissionGranted)
-    }
-
-    private fun handleDetectionInfoClick() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            titleText.value = load_detectionTutorial(this, getNextInfoStep())
-        }
-    }
-
-    private fun handleCaptionInfoClick() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            titleText.value = load_captionTutorial(this, getNextInfoStep2())
-        }
-    }
-
-    private fun handleSpeakInfoClick() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-
-            titleText.value = load_speakTutorial(this, speakInfoClickCount.value)
-
-            // Reset after showing all messages
-            if (speakInfoClickCount.value == 7) {
-                speakInfoClickCount.value = 0
-            } else
-                speakInfoClickCount.value++
-        }
-    }
-
-    private fun getNextInfoStep(): Int {
-        // Simple counter for tutorial steps
-        if (++basicInfoClickCount == 4) {
-            basicInfoClickCount = 1
-            return 0
-        } else {
-            return basicInfoClickCount - 1
-        }
-    }
-
-    private fun getNextInfoStep2(): Int {
-        // Simple counter for tutorial steps
-        if (++basicInfoClickCount2 == 4) {
-            basicInfoClickCount2 = 1
-            return 0
-        } else {
-            return basicInfoClickCount2 - 1
-        }
-    }
-
-    private fun handleNavigateHome() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            // Already on home, do nothing
-        }
-    }
-
-    private fun handleNavigateReports() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-
-            val intent = Intent(this, EnvironmentReportsActivity::class.java)
-            startActivity(intent)
-            finish()
-        }
-    }
-
-    private fun handleNavigateSettings() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            val intent = Intent(this, SettingsActivity::class.java)
-            startActivity(intent)
-            finish()
-        }
-    }
-
-    private fun handleSwipeToLeft() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            val intent = Intent(
-                this, if (AppConfig.env_reports)
-                    EnvironmentReportsActivity::class.java
-                else
-                    SettingsActivity::class.java
-            )
-            startActivity(intent)
-            finish()
-        }
-    }
-
-    private fun launchSpeechRecognition(firstTimeSpeak: Boolean) {
-        if (firstTimeSpeak) {
+            // Initialize translator if Romanian
             if (AppConfig.mainLanguage.code == "ro") {
-                hasToExecAfterResume = true
-                soundManager.play(SoundConstants.STT_ERROR_ID, 0.7f, 0.7f) {
-                    ttsManager.speak(
-                        load_unavailableSTT(this),
-                        AppConfig.tts_pitch,
-                        AppConfig.tts_speech_rate,
-                        false,
-                        null
-                    )
-                }
-                afterResumeRunnable = object : Runnable {
-                    override fun run() {
-                        if (ttsManager.isDoneSpeaking) {
-                            uiLocked = false
-                            locked = false
-                        } else {
-                            mainHandler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS.toLong())
-                        }
-                    }
-                }
-                mainHandler.postDelayed(
-                    afterResumeRunnable,
-                    SoundConstants.getDuration(SoundConstants.STT_ERROR_ID).toLong() + 500
-                )
-            } else
-                if (speechRecognizer == null) {
-                    soundManager.play(SoundConstants.STT_ERROR_ID, 0.7f, 0.7f) {
-                        ttsManager.speak(
-                            load_errorSTT(this),
-                            AppConfig.tts_pitch,
-                            AppConfig.tts_speech_rate,
-                            false,
-                            null
-                        )
-                    }
-                    afterResumeRunnable = object : Runnable {
-                        override fun run() {
-                            if (ttsManager.isDoneSpeaking) {
-                                uiLocked = false
-                                locked = false
-                            } else {
-                                mainHandler.postDelayed(
-                                    this,
-                                    Constants.LOAD_CHECK_DELAY_MS.toLong()
-                                )
-                            }
-                        }
-                    }
-                    mainHandler.postDelayed(
-                        afterResumeRunnable,
-                        SoundConstants.getDuration(SoundConstants.STT_ERROR_ID).toLong() + 500
-                    )
-                } else {
-                    retrySpeech.value = false
-                    sendSpeech.value = false
-                    showSpeechDialog.value = true
-                    speakingProcess()
-                }
-        } else {
-            speakingProcess()
+                translator = PhoneStatusMonitor.getInstance().modelManager.translator
+            }
+
+            Log.d(TAG, "Models initialized successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to initialize models", e)
+            finish()
+            return
         }
-    }
 
-    private fun formatRecognizedText(text: String): String {
-        if (text.isBlank()) return text
-
-        // Replace [unk] with ??
-        var formatted = text.replace("[unk]", "??")
-
-        // Capitalize first letter if it's not ??
-        if (formatted.isNotEmpty() && !formatted.startsWith("??")) {
-            formatted = formatted.replaceFirstChar {
-                if (it.isLowerCase()) it.titlecase() else it.toString()
+        // Initialize camera launcher
+        takePictureLauncher = registerForActivityResult(
+            ActivityResultContracts.TakePicture()
+        ) { success ->
+            if (success && currentPhotoUri != null) {
+                processCapturedImage(currentPhotoUri!!)
             }
         }
 
-        return formatted
-    }
+        // Initialize info notification manager
+        infoNotificationManager = InfoNotificationManager(this)
 
-    private fun speakingProcess() {
-        lockedVolumeDown = false
-        isSpeaking.value = true
-        speechText.value = "Listening..."
-        soundManager.play(SoundConstants.STT_SPEAK_OPEN_ID, 0.7f, 0.7f) {
-            speechRecognizer.startListening(object :
-                SpeechRecognizer.RecognitionCallback {
-                override fun onResult(recognizedText: String, isFinalResult: Boolean) {
-                    if (isFinalResult) {
-                        isSpeaking.value = false
-                        speechText.value = formatRecognizedText(recognizedText)
-                        mainHandler.postDelayed({ processRecognizedSpeech() }, 1000)
+        // Set up UI
+        setContent {
+            CaptionScreen(
+                showLoading = showLoading.value,
+                loadingText = loadingText.value,
+                showResult = showResult.value,
+                showSettings = showSettings.value,
+                showClassificationDialog = showClassificationDialog.value,
+                classificationText = classificationText.value,
+                captionText = captionText,
+                captionerLatency = captionerLatency,
+                foundInCache = foundInCache,
+                currentTextSize = currentTextSize.floatValue,
+                textSizes = textSizes,
+                onTextSizeChange = { size -> currentTextSize.floatValue = size },
+                onHomeClick = { handleHomeClick() },
+                onCameraClick = { handleCameraClick() },
+                onSpeakClick = { handleSpeakClick() },
+                onSettingsClick = { showSettings.value = !showSettings.value },
+                onClassificationDismiss = { showClassificationDialog.value = false }
+            )
+        }
 
-                        /*
-                        sendSpeech.value = true
-                        retrySpeech.value = true
-                        locked = false
-                        vibrateIfEnabled()*/
-                    } else {
-                        speechText.value = formatRecognizedText(recognizedText)
-                    }
-                }
-
-                override fun onError(error: String) {
-                    hasToExecAfterResume = true
-                    soundManager.play(SoundConstants.STT_ERROR_ID, 0.7f, 0.7f) {
-                        ttsManager.speak(
-                            load_errorSTTRuntime(PhoneStatusMonitor.getInstance().currentContext),
-                            AppConfig.tts_pitch,
-                            AppConfig.tts_speech_rate,
-                            false,
-                            null
-                        )
-                    }
-                    afterResumeRunnable = object : Runnable {
-                        override fun run() {
-                            if (ttsManager.isDoneSpeaking) {
-                                handleSpeechDialogTap()
-                            } else {
-                                mainHandler.postDelayed(
-                                    this,
-                                    Constants.LOAD_CHECK_DELAY_MS.toLong()
-                                )
-                            }
-                        }
-                    }
-                    mainHandler.postDelayed(
-                        afterResumeRunnable,
-                        SoundConstants.getDuration(SoundConstants.STT_ERROR_ID).toLong() + 500
-                    )
-                }
-            })
+        // Get image URI from intent
+        val imageUriString = intent.getStringExtra(Constants.EXTRA_IMAGE_URI)
+        if (imageUriString != null) {
+            val imageUri = Uri.parse(imageUriString)
+            processImageUri(imageUri)
+        } else {
+            Log.e(TAG, "No image URI provided")
+            finish()
         }
     }
 
-    private fun processRecognizedSpeech() {
-        speechProcessText.value = "Matching known objects..."
-
-        var finishedLoading = false
-        val backgroundTask = BackgroundTaskExecutor.getInstance()
-        backgroundTask.executeAsync(
+    private fun processImageUri(imageUri: Uri) {
+        BackgroundTaskExecutor.getInstance().executeAsync(
             {
-                matchedIndices = speechRecognizer.processRecognizedText(speechText.value)
+                // Load bitmap from URI
+                val inputStream = contentResolver.openInputStream(imageUri)
+                val bitmap = android.graphics.BitmapFactory.decodeStream(inputStream)
+                inputStream?.close()
 
-                if (!matchedIndices.isEmpty()) {
-                    classNames = matchedIndices.map { it.matchedWord }
+                if (bitmap == null) {
+                    Log.e(TAG, "Failed to decode bitmap")
+                    return@executeAsync null
                 }
-                return@executeAsync 0
+
+                Log.d(TAG, "Bitmap loaded: ${bitmap.width}x${bitmap.height}")
+                bitmap
             },
-            object : BackgroundTaskExecutor.TaskCallback<Int> {
-                override fun onSuccess(result: Int) {
-                    finishedLoading = true
+            object : BackgroundTaskExecutor.TaskCallback<Bitmap?> {
+                override fun onSuccess(result: Bitmap?) {
+                    if (result != null) {
+                        originalBitmap = result
+                        startCaptionProcess(result)
+                    } else {
+                        finish()
+                    }
                 }
 
                 override fun onError(e: Exception) {
-                    finishedLoading = true
+                    Log.e(TAG, "Error loading bitmap", e)
+                    finish()
                 }
             }
         )
+    }
 
-        val checkRunnable = object : Runnable {
-            override fun run() {
-                if (finishedLoading) {
-                    processTextOutput()
-                } else {
-                    mainHandler.postDelayed(this, 500)
+    private fun processCapturedImage(imageUri: Uri) {
+        showLoading.value = true
+        loadingText.value = "Processing image..."
+        showResult.value = false
+
+        processImageUri(imageUri)
+    }
+
+    private fun startCaptionProcess(bitmap: Bitmap) {
+        loadingText.value = "Computing image hash..."
+
+        BackgroundTaskExecutor.getInstance().executeAsync(
+            {
+                // Step 1: Compute perceptual hash
+                val hash = computePerceptualHash(bitmap)
+                Log.d(TAG, "Image hash: $hash")
+                imageHash = hash
+
+                // Step 2: Search in hash cache file
+                loadingText.value = "Searching cache..."
+                val cachedTokens = searchHashCache(hash)
+
+                cachedTokens
+            },
+            object : BackgroundTaskExecutor.TaskCallback<List<Int>?> {
+                override fun onSuccess(result: List<Int>?) {
+                    if (result != null) {
+                        // Found in cache!
+                        Log.d(TAG, "Caption found in cache: ${result.size} tokens")
+                        foundInCache = true
+                        tokenIds = result
+
+                        // Decode tokens
+                        val tokenArray = result.map { it.toLong() }.toLongArray()
+                        captionText = tokenizer.decode(tokenArray)
+
+                        // Run classifier if needed (for env reports)
+                        if (AppConfig.env_reports) {
+                            runClassifier(bitmap, onCacheHit = true)
+                        } else {
+                            // Translate if needed and show result
+                            translateAndShowResult()
+                        }
+                    } else {
+                        // Not found in cache - generate caption
+                        Log.d(TAG, "Caption not found in cache, generating...")
+                        foundInCache = false
+                        generateCaption(bitmap)
+                    }
+                }
+
+                override fun onError(e: Exception) {
+                    Log.e(TAG, "Error in cache search", e)
+                    // Fallback to generation
+                    foundInCache = false
+                    generateCaption(bitmap)
                 }
             }
-        }
-        mainHandler.postDelayed(checkRunnable, 2000)
+        )
     }
 
-    private fun processTextOutput() {
-        if (matchedIndices.isEmpty()) {
-            speechProcessText.value = "No matched known classes"
-            retrySpeech.value = true
-            sendSpeech.value = false
-            lockedVolumeDown = true
-            locked = false
-            vibrateIfEnabled()
+    private fun generateCaption(bitmap: Bitmap) {
+        loadingText.value = "Generating caption..."
+
+        // Launch captioner task
+        BackgroundTaskExecutor.getInstance().executeAsync(
+            {
+                val startTime = System.currentTimeMillis()
+                val tokens = captioner.generateCaption(bitmap)
+                val latency = System.currentTimeMillis() - startTime
+
+                Log.d(TAG, "Caption generated: ${tokens.size} tokens in ${latency}ms")
+
+                Pair(tokens, latency)
+            },
+            object : BackgroundTaskExecutor.TaskCallback<Pair<List<Int>, Long>> {
+                override fun onSuccess(result: Pair<List<Int>, Long>) {
+                    tokenIds = result.first
+                    captionerLatency = result.second
+
+                    // Decode tokens
+                    val tokenArray = result.first.map { it.toLong() }.toLongArray()
+                    captionText = tokenizer.decode(tokenArray)
+
+                    Log.d(TAG, "Caption text: $captionText")
+
+                    // Save to hash cache
+                    saveToHashCache(imageHash, result.first)
+
+                    // Run classifier if needed
+                    if (AppConfig.env_reports) {
+                        runClassifier(bitmap!!, onCacheHit = false)
+                    } else {
+                        // Translate if needed and show result
+                        translateAndShowResult()
+                    }
+                }
+
+                override fun onError(e: Exception) {
+                    Log.e(TAG, "Error generating caption", e)
+                    captionText = "Failed to generate caption."
+                    showResult.value = true
+                    showLoading.value = false
+                }
+            }
+        )
+    }
+
+    private fun runClassifier(bitmap: Bitmap, onCacheHit: Boolean) {
+        loadingText.value = "Classifying scene..."
+
+        BackgroundTaskExecutor.getInstance().executeAsync(
+            {
+                val startTime = System.currentTimeMillis()
+                val classId = classifier.classifyEnvironment(bitmap)
+                val latency = System.currentTimeMillis() - startTime
+
+                Log.d(TAG, "Scene classified: $classId in ${latency}ms")
+
+                Pair(classId, latency)
+            },
+            object : BackgroundTaskExecutor.TaskCallback<Pair<Int, Long>> {
+                override fun onSuccess(result: Pair<Int, Long>) {
+                    sceneClassId = result.first
+                    classifierLatency = result.second
+
+                    // Write to env reports
+                    if (!onCacheHit) {
+                        // Only write captioner latency if generated (not from cache)
+                        EnvironmentReportsManagerKt.writeCaptionReport(
+                            this@CaptionActivity,
+                            sceneClassId,
+                            captionerLatency,
+                            classifierLatency
+                        )
+                    } else {
+                        // Only write classifier latency if from cache
+                        EnvironmentReportsManagerKt.writeCaptionReportCacheHit(
+                            this@CaptionActivity,
+                            sceneClassId,
+                            classifierLatency
+                        )
+                    }
+
+                    // Translate if needed and show result
+                    translateAndShowResult()
+                }
+
+                override fun onError(e: Exception) {
+                    Log.e(TAG, "Error classifying scene", e)
+                    // Continue anyway
+                    translateAndShowResult()
+                }
+            }
+        )
+    }
+
+    private fun translateAndShowResult() {
+        if (AppConfig.mainLanguage.code == "ro" && translator != null) {
+            loadingText.value = "Translating..."
+
+            BackgroundTaskExecutor.getInstance().executeAsync(
+                {
+                    translator!!.translate(captionText)
+                },
+                object : BackgroundTaskExecutor.TaskCallback<String?> {
+                    override fun onSuccess(result: String?) {
+                        if (result != null) {
+                            captionText = result
+                            Log.d(TAG, "Translated caption: $result")
+                        }
+                        showResultScreen()
+                    }
+
+                    override fun onError(e: Exception) {
+                        Log.e(TAG, "Error translating", e)
+                        // Show English caption anyway
+                        showResultScreen()
+                    }
+                }
+            )
         } else {
-            speechProcessText.value = "Matched: ${classNames.joinToString(", ")}"
-            retrySpeech.value = true
-            sendSpeech.value = true
-            locked = false
-            vibrateIfEnabled()
+            showResultScreen()
         }
     }
 
-    private fun sendProcessedSpeech() {
-        val classIndices = IntArray(matchedIndices.size) { matchedIndices[it].classIndex }
-        val matchedWords = Array(matchedIndices.size) { matchedIndices[it].matchedWord }
+    private fun showResultScreen() {
+        showLoading.value = false
+        showResult.value = true
 
-        val intent = Intent(this, FindMyObjectActivity::class.java).apply {
-            putExtra(Constants.EXTRA_MATCHED_INDICES, classIndices)
-            putExtra(Constants.EXTRA_SYNONYMS_WORDS, matchedWords)
+        // Show classification notification if scene was classified
+        if (sceneClassId >= 0) {
+            mainHandler.postDelayed({
+                classificationText.value = "Scene: ${classifier.getClassName(sceneClassId)}"
+                showClassificationDialog.value = true
+
+                // Auto-hide after 3 seconds
+                mainHandler.postDelayed({
+                    showClassificationDialog.value = false
+                }, 3000)
+            }, 500)
         }
-        returnFromFindMyObject = true
-        startActivity(intent)
-
-        //finish()
     }
 
-    private fun handleSpeechDialogTap() {
-        // Cancel speech recognition
-        mainHandler.removeCallbacksAndMessages(null)
-        soundManager.releaseCallback()
-        speechRecognizer.stopListening()
-        locked = true
-        lockedVolumeDown = false
-        showSpeechDialog.value = false
-        mainHandler.postDelayed({
-            uiLocked = false
-            retrySpeech.value = false
-            sendSpeech.value = false
-            isSpeaking.value = false
-            speechText.value = ""
-            speechProcessText.value = ""
-            locked = false
-        }, Constants.ANIMATION_DELAY.toLong())
+    // Navigation handlers
+    private fun handleHomeClick() {
+        if (AppConfig.haptics) vibrate(haptic_model0())
+        soundManager.play(SoundConstants.BACK_ID, 0.7f, 0.7f) {
+            finish()
+            startActivity(Intent(this, HomeActivity::class.java))
+        }
     }
 
-    private fun resetSpeechStates() {
-        speechProcessText.value = ""
-        speechText.value = ""
-        //cancelSpeech.value = true
-        retrySpeech.value = false
-        sendSpeech.value = false
+    private fun handleCameraClick() {
+        if (AppConfig.haptics) vibrate(haptic_model0())
+
+        try {
+            val photoFile = File(cacheDir, "caption_${System.currentTimeMillis()}.jpg")
+            currentPhotoUri = FileProvider.getUriForFile(
+                this,
+                "${packageName}.fileprovider",
+                photoFile
+            )
+            takePictureLauncher.launch(currentPhotoUri!!)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error launching camera", e)
+        }
+    }
+
+    private fun handleSpeakClick() {
+        if (AppConfig.haptics) vibrate(haptic_model0())
+        ttsManager.speak(
+            captionText,
+            AppConfig.tts_pitch,
+            AppConfig.tts_speech_rate,
+            false,
+            haptic_model0()
+        )
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        when (keyCode) {
+        return when (keyCode) {
             KeyEvent.KEYCODE_VOLUME_UP -> {
-                if (!locked) {
-                    //uiLocked=true
-                    if (retrySpeech.value) {
-                        // Retry speech recognition
-                        locked = true
-                        resetSpeechStates()
-                        launchSpeechRecognition(false)
-                    } else {
-                        uiLocked = true
-                        locked = true
-                        // Launch static detection
-                        launchStaticDetection()
-                    }
-                }
-                return true
+                // Go home
+                handleHomeClick()
+                true
             }
-
             KeyEvent.KEYCODE_VOLUME_DOWN -> {
-                if (!locked) {
-                    uiLocked = true
-                    if (!handleVolumeDownControl) {
-                        if (!showSpeechDialog.value)
-                            handleVolumeDownControl = true
-                        mainHandler.removeCallbacksAndMessages(null)
-                        mainHandler.postDelayed(
-                            { handleSingleVolumeDown() }, Constants.VOLUME_DOWN_DELAY_MS.toLong()
-                        )
-                    } else {
-                        mainHandler.removeCallbacksAndMessages(null)
-                        locked = true
-                        handleVolumeDownControl = false
-                        launchSpeechRecognition(true)
-                    }
+                // Take another photo (only when result is shown)
+                if (showResult.value) {
+                    handleCameraClick()
                 }
-                return true
+                true
             }
+            else -> super.onKeyDown(keyCode, event)
         }
-        return super.onKeyDown(keyCode, event)
-    }
-
-    private fun handleSingleVolumeDown() {
-        when {
-            sendSpeech.value -> {
-                locked = true
-                // Process recognized text
-                sendProcessedSpeech()
-            }
-
-            else -> {
-                if (!lockedVolumeDown)
-                // Launch caption activity
-                    launchCaptionActivity()
-            }
-        }
-    }
-
-    private fun vibrateIfEnabled() {
-        if (AppConfig.haptics) {
-            vibrate(haptic_model0())
-        }
-    }
-
-    private fun checkPhoneStatusAndNavigate(onSuccess: () -> Unit) {
-        PhoneStatusMonitor.getInstance().checkPhoneStatus()
-        // If check passes, execute success callback
-        onSuccess()
     }
 
     override fun onPause() {
         super.onPause()
-        mainHandler.removeCallbacksAndMessages(null)
         soundManager.releaseCallback()
         ttsManager.stopSpeaking()
+        mainHandler.removeCallbacksAndMessages(null)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        originalBitmap?.recycle()
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(
-    titleText: String,
-    syncStatus: Int,
-    syncDays: Int,
-    showDetectionOptions: Boolean,
-    detectionIconColor: Int,
-    selectedDetectionOption: DetectionOption?,
-    showSpeechDialog: Boolean,
-    speechText: String,
-    speechProcessText: String,
-    isSpeaking: Boolean,
-    onDetectionClick: () -> Unit,
-    onDetectionOptionSelected: (DetectionOption?, navigate: Boolean) -> Unit,
-    onCaptionClick: () -> Unit,
-    onDetectionInfoClick: () -> Unit,
-    onCaptionInfoClick: () -> Unit,
-    onSpeakInfoClick: () -> Unit,
-    onNavigateHome: () -> Unit,
-    onNavigateReports: () -> Unit,
-    onNavigateSettings: () -> Unit,
-    onSpeechDialogTap: () -> Unit,
-    navigateFun: () -> Unit,
-    onSwipeToLeft: () -> Unit
+fun CaptionScreen(
+    showLoading: Boolean,
+    loadingText: String,
+    showResult: Boolean,
+    showSettings: Boolean,
+    showClassificationDialog: Boolean,
+    classificationText: String,
+    captionText: String,
+    captionerLatency: Long,
+    foundInCache: Boolean,
+    currentTextSize: Float,
+    textSizes: List<Float>,
+    onTextSizeChange: (Float) -> Unit,
+    onHomeClick: () -> Unit,
+    onCameraClick: () -> Unit,
+    onSpeakClick: () -> Unit,
+    onSettingsClick: () -> Unit,
+    onClassificationDismiss: () -> Unit
 ) {
-    BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxSize()
-    ) {
-        val screenHeight = maxHeight
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val screenWidth = maxWidth
-        val navbarHeight = 90.dp / maxHeight
-        val sectionMain = 1.0f - navbarHeight
+        val screenHeight = maxHeight
 
+        // Background
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(Unit) {
-                    var swipeStartX = 0f
-                    detectHorizontalDragGestures(
-                        onDragStart = {
-                            swipeStartX = 0f
-                        },
-                        onDragEnd = {
-                            val threshold = (screenWidth * Constants.MIN_HDISTANCE_THRESHOLD).toPx()
-                            when {
-                                swipeStartX <= -threshold -> {
-                                    onSwipeToLeft()
-                                }
-                            }
-                            swipeStartX = 0f
-                        },
-                        onHorizontalDrag = { _, dragAmount ->
-                            swipeStartX += dragAmount
-                        }
-                    )
-                }
-        ) {
-            // Background image
-            Image(
-                painter = painterResource(R.drawable.app_background),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
+                .background(colorResource(R.color.app_background))
+        )
+
+        // Loading screen
+        if (showLoading) {
+            LoadingComponent(
+                text = loadingText,
+                showText = true
             )
+        }
 
-            // Main content
+        // Result screen
+        if (showResult) {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(sectionMain)
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Box(modifier = Modifier.height(screenHeight * 0.045f))
-
-                // Logo
-                Image(
-                    painter = painterResource(R.drawable.vision_assist_logo),
-                    contentDescription = "app logo",
-                    modifier = Modifier.size(Constants.LOGO_SIZE.dp)
-                )
-
-                // Title with typewriter animation
-                TypewriterText(
-                    text = titleText,
+                // Caption section
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp),
-                    colorSchema = TypewriterColorSchema(
-                        wordColorSchema = CustomColorSchema(
-                            color = colorResource(R.color.std_purple),
-                            fontFamily = robotoSemibold,
-                            fontSize = Constants.STD_SUBTITLE_SIZE.sp
-                        ),
-                        outlinedWordColorSchema = CustomColorSchema(
-                            color = colorResource(R.color.std_purple_dark),
+                        .weight(1f)
+                        .background(Color.White)
+                ) {
+                    // Purple overlay (60% alpha)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(colorResource(R.color.std_purple).copy(alpha = 0.6f))
+                    )
+
+                    // Caption content
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // Caption text
+                        Text(
+                            text = captionText,
+                            fontSize = currentTextSize.sp,
+                            color = Color.White,
+                            textAlign = TextAlign.Center,
                             fontFamily = robotoExtraBold,
-                            fontSize = Constants.STD_SUBTITLE_SIZE.sp
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                                .padding(16.dp),
+                            lineHeight = (currentTextSize * 1.3f).sp
                         )
-                    )
-                )
 
-                Box(modifier = Modifier.height(screenWidth * 0.05f))
+                        // Inference time and cache indicator
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Inference time box
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(Color.White.copy(alpha = 0.3f))
+                                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                            ) {
+                                Text(
+                                    text = "${captionerLatency}ms",
+                                    fontSize = 16.sp,
+                                    color = Color.White,
+                                    fontFamily = robotoExtraBold
+                                )
+                            }
 
-                // Detection Button with options
-                DetectionButtonSection(
-                    showOptions = showDetectionOptions,
-                    iconColor = detectionIconColor,
-                    selectedOption = selectedDetectionOption,
+                            // Lightning bolt icon (cache hit indicator)
+                            if (foundInCache) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(CircleShape)
+                                        .background(colorResource(R.color.std_green)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Bolt,
+                                        contentDescription = "Found in cache",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Text size slider
+                TextSizeSlider(
                     screenWidth = screenWidth,
-                    showInfoButton = AppConfig.showTutorial,
-                    onDetectionClick = onDetectionClick,
-                    onIconPress = onDetectionClick,
-                    onOptionSelected = onDetectionOptionSelected,
-                    onInfoClick = onDetectionInfoClick,
-                    navigate = navigateFun
+                    textSizes = textSizes,
+                    currentTextSize = currentTextSize,
+                    onTextSizeChange = onTextSizeChange
                 )
 
+                Spacer(modifier = Modifier.height(16.dp))
 
-                Box(modifier = Modifier.height(screenHeight * 0.04f))
-
-                // Caption Button
-                CaptionButtonSection(
-                    screenWidth = screenWidth,
-                    showInfoButton = AppConfig.showTutorial,
-                    onCaptionClick = onCaptionClick,
-                    onInfoClick = onCaptionInfoClick
+                // Navigation buttons
+                NavigationSection(
+                    onHomeClick = onHomeClick,
+                    onCameraClick = onCameraClick,
+                    onSpeakClick = onSpeakClick,
+                    onSettingsClick = onSettingsClick
                 )
 
-                //Box(modifier = Modifier.height(screenHeight * 0.21f))
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                SyncStatusSection(
-                    syncStatus = syncStatus,
-                    syncDays = syncDays,
-                    showInfoButton = AppConfig.showTutorial && AppConfig.mainLanguage.code == "en",
-                    onInfoClick = onSpeakInfoClick
-                )
+                Spacer(modifier = Modifier.height(32.dp))
             }
+        }
 
+        // Classification notification
+        AnimatedVisibility(
+            visible = showClassificationDialog,
+            enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
+            exit = fadeOut() + slideOutVertically(targetOffsetY = { -it })
+        ) {
+            ClassificationNotification(
+                text = classificationText,
+                onDismiss = onClassificationDismiss
+            )
+        }
 
-            // Bottom Navigation Bar
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .fillMaxHeight(navbarHeight),
-            ) {
-                BottomNavigationBar(
-                    onNavigateHome = onNavigateHome,
-                    onNavigateReports = onNavigateReports,
-                    onNavigateSettings = onNavigateSettings,
-                    showReports = AppConfig.env_reports
-                )
-            }
-
-            // Speech Recognition Dialog
-            SpeechRecognitionDialog(
-                isVisible = showSpeechDialog,
-                speechText = speechText,
-                processText = speechProcessText,
-                isSpeaking = isSpeaking,
-                onTap = onSpeechDialogTap
+        // Settings panel
+        AnimatedVisibility(
+            visible = showSettings,
+            enter = slideInHorizontally(initialOffsetX = { it }),
+            exit = slideOutHorizontally(targetOffsetX = { it })
+        ) {
+            SettingsPanel(
+                onClose = { onSettingsClick() }
             )
         }
     }
 }
 
 @Composable
-fun TypewriterText(
-    text: String,
-    modifier: Modifier = Modifier,
-    colorSchema: TypewriterColorSchema,
-    textShowSpeed: Long = 70
+fun NavigationSection(
+    onHomeClick: () -> Unit,
+    onCameraClick: () -> Unit,
+    onSpeakClick: () -> Unit,
+    onSettingsClick: () -> Unit
 ) {
-    var displayedText by remember { mutableStateOf("") }
-
-    LaunchedEffect(text) {
-        displayedText = ""
-        text.forEachIndexed { index, _ ->
-            delay(textShowSpeed) // Typing speed
-            displayedText = text.take(index + 1)
-        }
-    }
-
-    // Parse text with ~ separator
-    val parts = displayedText.split("~")
-
-    Text(
-        text = buildAnnotatedString {
-            when (parts.size) {
-                1 -> {
-                    withStyle(
-                        style = SpanStyle(
-                            color = colorSchema.wordColorSchema.color,
-                            fontFamily = colorSchema.wordColorSchema.fontFamily,
-                            fontSize = colorSchema.wordColorSchema.fontSize
-                        )
-                    ) {
-                        append(parts[0])
-                    }
-                }
-
-                3 -> {
-                    withStyle(
-                        style = SpanStyle(
-                            color = colorSchema.wordColorSchema.color,
-                            fontFamily = colorSchema.wordColorSchema.fontFamily,
-                            fontSize = colorSchema.wordColorSchema.fontSize
-                        )
-                    ) {
-                        append(parts[0])
-                    }
-                    withStyle(
-                        style = SpanStyle(
-                            color = colorSchema.outlinedWordColorSchema.color,
-                            fontFamily = colorSchema.outlinedWordColorSchema.fontFamily,
-                            fontSize = colorSchema.outlinedWordColorSchema.fontSize
-                        )
-                    ) {
-                        append(parts[1])
-                    }
-                    withStyle(
-                        style = SpanStyle(
-                            color = colorSchema.wordColorSchema.color,
-                            fontFamily = colorSchema.wordColorSchema.fontFamily,
-                            fontSize = colorSchema.wordColorSchema.fontSize
-                        )
-                    ) {
-                        append(parts[2])
-                    }
-                }
-            }
-        },
-        textAlign = TextAlign.Center,
-        modifier = modifier
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun DetectionButtonSection(
-    showOptions: Boolean,
-    iconColor: Int,
-    selectedOption: DetectionOption?,
-    screenWidth: Dp,
-    showInfoButton: Boolean,
-    onDetectionClick: () -> Unit,
-    onIconPress: () -> Unit,
-    onOptionSelected: (DetectionOption?, navigate: Boolean) -> Unit,
-    onInfoClick: () -> Unit,
-    navigate: () -> Unit
-) {
-    // Button dimensions
-    val buttonHeight = Constants.STD_BUTTON_PAGE_HEIGHT.dp
-    val optionWidth = screenWidth * 0.21f
-    val detectionX = screenWidth * 0.23f
-
-    // ✅ NEW: Drag detection state
-    val density = LocalDensity.current
-
-    // Helper function to determine which button is being hovered
-    fun getHoveredOption(position: Offset): DetectionOption? {
-        if (!showOptions) return null
-
-        with(density) {
-            // Static button bounds (left of detection)
-            val staticLeft = (detectionX - optionWidth - 5.dp).toPx()
-            val staticRight = (detectionX - 5.dp).toPx()
-            val staticTop = buttonHeight.toPx()
-            val staticBottom = (buttonHeight + buttonHeight).toPx()
-
-            if (position.x in staticLeft..staticRight &&
-                position.y in staticTop..staticBottom
-            ) {
-                return DetectionOption.STATIC
-            }
-
-            // Live button bounds (above detection, rotated)
-            val liveLeft = detectionX.toPx()
-            val liveRight = (detectionX + buttonHeight).toPx() // Rotated: width is height
-            val liveTop = (buttonHeight - optionWidth - 4.dp).toPx()
-            val liveBottom = (buttonHeight - 4.dp).toPx()
-
-            if (position.x in liveLeft..liveRight &&
-                position.y in liveTop..liveBottom
-            ) {
-                return DetectionOption.LIVE
-            }
-        }
-
-        return null
-    }
-
-    Box(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height((Constants.STD_BUTTON_PAGE_HEIGHT).dp + optionWidth)
-            .pointerInput(showOptions) {
-                // ✅ Detect drag gestures when options are visible
-                if (showOptions) {
-                    detectDragGestures(
-                        onDragStart = { offset ->
-                            onOptionSelected(getHoveredOption(offset), false)
-                        },
-                        onDrag = { change, _ ->
-                            onOptionSelected(getHoveredOption(change.position), false)
-                        },
-                        onDragEnd = {
-                            navigate()
-                        },
-                        onDragCancel = {
-                            navigate()
-                        }
-                    )
-                }
-            }
+            .padding(horizontal = 32.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        // === STATIC BUTTON (Slides LEFT) ===
-        AnimatedVisibility(
-            visible = showOptions,
-            enter = slideInHorizontally(
-                initialOffsetX = { it },
-                animationSpec = tween(250)
-            ),
-            exit = slideOutHorizontally(
-                targetOffsetX = { it },
-                animationSpec = tween(250)
-            ),
-            modifier = Modifier
-                .offset(
-                    x = detectionX - optionWidth - 5.dp,
-                    y = buttonHeight
-                )
-        ) {
-            OptionButton(
-                text = "Static",
-                isSelected = selectedOption == DetectionOption.STATIC,
-                onClick = { onOptionSelected(DetectionOption.STATIC, true) },
-                width = optionWidth,
-                height = buttonHeight,
-                isRotated = false
-            )
-        }
+        // Home button (left)
+        NavigationButton(
+            icon = Icons.Default.Home,
+            contentDescription = "Home",
+            onClick = onHomeClick,
+            size = 56.dp,
+            iconSize = 28.dp
+        )
 
-        // === LIVE BUTTON (Slides UP, rotated 90°) ===
-        AnimatedVisibility(
-            visible = showOptions,
-            enter = slideInVertically(
-                initialOffsetY = { it },
-                animationSpec = tween(250)
-            ),
-            exit = slideOutVertically(
-                targetOffsetY = { it },
-                animationSpec = tween(250)
-            ),
-            modifier = Modifier
-                .offset(
-                    x = detectionX,
-                    y = buttonHeight - optionWidth - 8.dp
-                )
-        ) {
-            OptionButton(
-                text = "Live",
-                isSelected = selectedOption == DetectionOption.LIVE,
-                onClick = { onOptionSelected(DetectionOption.LIVE, true) },
-                width = optionWidth,
-                height = buttonHeight,
-                isRotated = true
-            )
-        }
+        // Camera button (center - larger)
+        NavigationButton(
+            icon = Icons.Default.PhotoCamera,
+            contentDescription = "Camera",
+            onClick = onCameraClick,
+            size = 72.dp,
+            iconSize = 36.dp,
+            backgroundColor = colorResource(R.color.std_purple)
+        )
 
-        // === DETECTION BUTTON (Fixed position) ===
-        Row(
-            modifier = Modifier
-                .offset(x = detectionX, y = buttonHeight)
-                .fillMaxWidth(0.77f),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            MainActionButton(
-                shape = RoundedCornerShape(
-                    topStart = 5.dp,
-                    topEnd = 31.dp,
-                    bottomStart = 5.dp,
-                    bottomEnd = 5.dp
-                ),
-                text = if (AppConfig.mainLanguage.code == "en") "Detection" else "Detecție",
-                iconRes = R.drawable.detection_icon,
-                iconColor = iconColor,
-                screenWidth = screenWidth,
-                onClick = onDetectionClick,
-                onIconPress = onIconPress
-            )
-
-            if (showInfoButton) {
-                InfoButtonWithPulse(
-                    onClick = onInfoClick,
-                    isPulsing = true
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun CaptionButtonSection(
-    screenWidth: Dp,
-    showInfoButton: Boolean,
-    onCaptionClick: () -> Unit,
-    onInfoClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height((Constants.STD_BUTTON_PAGE_HEIGHT).dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .offset(x = screenWidth * 0.23f)
-                .fillMaxWidth(0.77f),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Caption Button
-            MainActionButton(
-                shape = RoundedCornerShape(
-                    topStart = 5.dp,
-                    topEnd = 5.dp,
-                    bottomStart = 31.dp,
-                    bottomEnd = 31.dp
-                ),
-                predefinedIcon = Icons.Filled.TextFields,
-                text = if (AppConfig.mainLanguage.code == "en") "Caption" else "Descriere textuală",
-                iconColor = R.color.std_purple_dark,
-                screenWidth = screenWidth,
-                onClick = onCaptionClick,
-                onIconPress = onCaptionClick, // No special behavior
-            )
-
-            // Info button
-            if (showInfoButton) {
-                Spacer(modifier = Modifier.width(15.dp))
-                InfoButtonWithPulse(
-                    onClick = onInfoClick,
-                    isPulsing = true
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun OptionButton(
-    text: String,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    width: Dp,
-    height: Dp,
-    isRotated: Boolean
-) {
-    if (isRotated) {
-        // Rotated button (for "Live" - vertical)
-        Button(
-            onClick = onClick,
-            modifier = Modifier
-                .width(height) // Swap dimensions
-                .height(height)
-                .shadow(
-                    3.dp, RoundedCornerShape(
-                        topStart = 31.dp,
-                        topEnd = 31.dp,
-                        bottomStart = 5.dp,
-                        bottomEnd = 5.dp
-                    )
-                ),
-            shape = RoundedCornerShape(
-                topStart = 31.dp,
-                topEnd = 31.dp,
-                bottomStart = 5.dp,
-                bottomEnd = 5.dp
-            ),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = if (isSelected) {
-                    colorResource(R.color.std_purple_dark)
-                } else {
-                    colorResource(R.color.std_cyan)
-                },
-                contentColor = Color.White
-            ),
-            contentPadding = PaddingValues(0.dp)
-        ) {
-            Text(
-                text = text,
-                fontSize = 22.sp,
-                fontFamily = robotoExtraBoldItalic
-            )
-        }
-    } else {
-        // Regular button (for "Static" - horizontal)
-        Button(
-            onClick = onClick,
-            modifier = Modifier
-                .width(width)
-                .height(height)
-                .shadow(
-                    3.dp, RoundedCornerShape(
-                        topStart = 31.dp,
-                        topEnd = 5.dp,
-                        bottomStart = 31.dp,
-                        bottomEnd = 5.dp
-                    )
-                ),
-            shape = RoundedCornerShape(
-                topStart = 31.dp,
-                topEnd = 5.dp,
-                bottomStart = 31.dp,
-                bottomEnd = 5.dp
-            ),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = if (isSelected) {
-                    colorResource(R.color.std_purple_dark)
-                } else {
-                    colorResource(R.color.std_cyan)
-                },
-                contentColor = Color.White
-            ),
-            contentPadding = PaddingValues(0.dp)
-        ) {
-            Text(
-                text = text,
-                fontSize = 22.sp,
-                fontFamily = robotoExtraBoldItalic
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun MainActionButton(
-    shape: Shape,
-    predefinedIcon: ImageVector? = null,
-    text: String,
-    iconRes: Int = 0,
-    iconColor: Int,
-    screenWidth: Dp,
-    onClick: () -> Unit,
-    onIconPress: () -> Unit
-) {
-    val buttonWidth = screenWidth * 0.6f
-    // Main button
-    Button(
-        onClick = onClick,
-        modifier = Modifier
-            .shadow(
-                3.dp,
-                shape
-            )
-            .width(buttonWidth)
-            .height(Constants.STD_BUTTON_PAGE_HEIGHT.dp),
-        shape = shape,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Color.White,
-            contentColor = colorResource(R.color.std_purple)
-        ),
-        contentPadding = PaddingValues(0.dp)
-    ) {
-        // Icon button (circle)
-        Box(
-            modifier = Modifier
-                .size(56.dp)
-                .shadow(3.dp, CircleShape)
-                .clip(CircleShape)
-                .background(colorResource(iconColor))
-                .pointerInput(Unit) {
-                    detectTapGestures(
-                        onTap = {
-                            onIconPress()
-                        }
-                    )
-                },
-            contentAlignment = Alignment.Center
-        ) {
-            if (predefinedIcon == null) {
-                Icon(
-                    painter = painterResource(iconRes),
-                    contentDescription = "Action icon",
-                    tint = Color.White.copy(alpha = 0.7f),
-                    modifier = Modifier.size(28.dp)
-                )
-            } else {
-                Icon(
-                    imageVector = predefinedIcon,
-                    contentDescription = "Action icon",
-                    tint = Color.White.copy(alpha = 0.7f),
-                    modifier = Modifier.size(28.dp)
-                )
-            }
-        }
-        Spacer(modifier = Modifier.width(buttonWidth * 0.05f))
-        Text(
-            text = text,
-            fontSize = Constants.STD_SUBTITLE_SIZE.sp,
-            fontFamily = robotoBold,
-            color = colorResource(R.color.std_purple_dark)
+        // Speak button (right)
+        NavigationButton(
+            icon = Icons.Default.VolumeUp,
+            contentDescription = "Speak",
+            onClick = onSpeakClick,
+            size = 56.dp,
+            iconSize = 28.dp
         )
     }
 }
 
 @Composable
-fun InfoButtonWithPulse(
+fun NavigationButton(
+    icon: ImageVector,
+    contentDescription: String,
     onClick: () -> Unit,
-    isPulsing: Boolean,
-    modifier: Modifier = Modifier
+    size: Dp,
+    iconSize: Dp,
+    backgroundColor: Color = colorResource(R.color.std_green)
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-
-    // Scale animation for the pulse circle (grows from 1.0 to 1.4)
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.3f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = 1500,
-                easing = FastOutSlowInEasing
-            ),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "pulse_scale"
-    )
-
-    // Alpha animation for the pulse circle (fades from 0.4 to 0.0)
-    val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.4f,
-        targetValue = 0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = 1500,
-                easing = FastOutSlowInEasing
-            ),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "pulse_alpha"
-    )
-
     Box(
-        modifier = modifier.size(Constants.STD_INFO_BUTTON_SIZE.dp * 1.3f),
-        contentAlignment = Alignment.Center
-    ) {
-        // Pulse circle (behind the button) - only visible when pulsing
-        if (isPulsing) {
-            Box(
-                modifier = Modifier
-                    .size(Constants.STD_INFO_BUTTON_SIZE.dp)
-                    .scale(pulseScale)
-                    .background(
-                        color = colorResource(R.color.std_purple).copy(alpha = pulseAlpha),
-                        shape = CircleShape
-                    )
-            )
-        }
-
-        // Actual button (ALWAYS constant size)
-        IconButton(
-            onClick = onClick,
-            modifier = Modifier
-                .size(Constants.STD_INFO_BUTTON_SIZE.dp)
-                .background(
-                    color = colorResource(R.color.std_purple).copy(alpha = 0.0f),
-                    shape = CircleShape
-                )
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Info,
-                contentDescription = "Info",
-                tint = colorResource(R.color.std_purple),
-                modifier = Modifier.size((Constants.STD_INFO_BUTTON_SIZE).dp)
-            )
-        }
-    }
-}
-
-@Composable
-fun SyncStatusSection(
-    syncStatus: Int,
-    syncDays: Int,
-    showInfoButton: Boolean,
-    onInfoClick: () -> Unit
-) {
-    // Main row ALWAYS exists
-    Row(
         modifier = Modifier
-            .fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // === FIRST ROW: 0.7 weight (Sync on LEFT) ===
-        Row(
-            modifier = Modifier
-                .weight(0.7f)
-                .padding(start = 10.dp),
-            horizontalArrangement = Arrangement.Start,  // Align LEFT
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (syncStatus > 0) {
-                // Sync circle icon
-                Box(
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (syncStatus == 1) colorResource(R.color.checked_green) else colorResource(
-                                R.color.error_red
-                            )
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = if (syncStatus == 1) Icons.Filled.Sync else Icons.Filled.SyncProblem,
-                        contentDescription = if (AppConfig.mainLanguage.code == "en") "Sync status" else "Status sincronizare",
-                        tint = Color.White,
-                        modifier = Modifier.size(21.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(5.dp))
-
-                // Sync text
-                Text(
-                    text = if (syncStatus == 1) {
-                        load_syncStatusText(syncDays)
-                    } else {
-                        load_syncErrorText(LocalContext.current)
-                    },
-                    fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
-                    fontFamily = robotoSemibold,
-                    color = colorResource(if (syncStatus == 1) R.color.std_cyan_dark else R.color.error_red)
-                )
-            }
-        }
-
-        // === SECOND ROW: Remaining weight (Info on RIGHT) ===
-        Row(
-            modifier = Modifier.weight(1f - 0.7f), // Rest of the weight
-            horizontalArrangement = Arrangement.End,  // Align RIGHT
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (showInfoButton) {
-                InfoButtonWithPulse(
-                    onClick = onInfoClick,
-                    isPulsing = true
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun BottomNavigationBar(
-    onNavigateHome: () -> Unit,
-    onNavigateReports: () -> Unit,
-    onNavigateSettings: () -> Unit,
-    showReports: Boolean
-) {
-    NavigationBar(
-        containerColor = colorResource(R.color.std_light_purple)
-    ) {
-        NavigationBarItem(
-            icon = {
-                Icon(
-                    imageVector = Icons.Filled.Home,
-                    contentDescription = if (AppConfig.mainLanguage.code == "en") "Home" else "Acasă"
+            .size(size)
+            .clip(CircleShape)
+            .background(backgroundColor)
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onTap = { onClick() }
                 )
             },
-            label = {
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = Color.White,
+            modifier = Modifier.size(iconSize)
+        )
+    }
+}
+
+@Composable
+fun ClassificationNotification(
+    text: String,
+    onDismiss: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(colorResource(R.color.std_green))
+            .padding(16.dp)
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = { onDismiss() })
+            }
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Info,
+                contentDescription = "Info",
+                tint = Color.White,
+                modifier = Modifier.size(24.dp)
+            )
+
+            Text(
+                text = text,
+                fontSize = 16.sp,
+                color = Color.White,
+                fontFamily = robotoExtraBold,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+fun SettingsPanel(
+    onClose: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxHeight()
+            .width(300.dp)
+            .background(colorResource(R.color.app_background))
+            .padding(16.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
-                    text = if (AppConfig.mainLanguage.code == "en") "Home" else "Acasă",
-                    fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
+                    text = "Settings",
+                    fontSize = 24.sp,
+                    color = Color.White,
                     fontFamily = robotoExtraBold
                 )
 
-            },
-            selected = true,
-            colors = NavigationBarItemColors(
-                selectedIconColor = Color.White,
-                unselectedIconColor = Color(0xFF828188),
-                selectedIndicatorColor = colorResource(R.color.std_purple),
-                selectedTextColor = Color.Black,
-                unselectedTextColor = Color(0xFF828188),
-                disabledIconColor = Color.White,
-                disabledTextColor = Color.White
-            ),
-            onClick = onNavigateHome
-        )
-
-        if (showReports) {
-            NavigationBarItem(
-                icon = {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(colorResource(R.color.std_purple))
+                        .pointerInput(Unit) {
+                            detectTapGestures(onTap = { onClose() })
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
                     Icon(
-                        imageVector = Icons.Filled.Description,
-                        contentDescription = if (AppConfig.mainLanguage.code == "en") "Reports" else "Rapoarte de mediu"
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Close",
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
                     )
-                },
-                label = {
-                    Text(
-                        if (AppConfig.mainLanguage.code == "en") "Reports" else "Rapoarte de mediu",
-                        fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
-                        fontFamily = robotoLight
-                    )
-                },
-                selected = false,
-                onClick = onNavigateReports,
-                colors = NavigationBarItemColors(
-                    selectedIconColor = Color.White,
-                    unselectedIconColor = Color(0xFF828188),
-                    selectedIndicatorColor = colorResource(R.color.std_purple),
-                    selectedTextColor = Color.Black,
-                    unselectedTextColor = Color(0xFF828188),
-                    disabledIconColor = Color.White,
-                    disabledTextColor = Color.White
-                )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Settings content
+            Text(
+                text = "Caption settings coming soon...",
+                fontSize = 16.sp,
+                color = Color.White.copy(alpha = 0.7f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
             )
         }
-
-        NavigationBarItem(
-            icon = {
-                Icon(
-                    imageVector = Icons.Filled.Settings,
-                    contentDescription = if (AppConfig.mainLanguage.code == "en") "Settings" else "Setări"
-                )
-            },
-            label = {
-                Text(
-                    if (AppConfig.mainLanguage.code == "en") "Settings" else "Setări",
-                    fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
-                    fontFamily = robotoLight
-                )
-            },
-            selected = false,
-            onClick = onNavigateSettings,
-            colors = NavigationBarItemColors(
-                selectedIconColor = Color.White,
-                unselectedIconColor = Color(0xFF615E65),
-                selectedIndicatorColor = colorResource(R.color.std_purple),
-                selectedTextColor = Color.Black,
-                unselectedTextColor = Color(0xFF828188),
-                disabledIconColor = Color.White,
-                disabledTextColor = Color.White
-            )
-        )
     }
 }
 
+// Text Size Slider (reuse from StaticDetectionActivity or create simple version)
 @Composable
-fun SpeechRecognitionDialog(
-    isVisible: Boolean,
-    speechText: String,
-    processText: String,
-    isSpeaking: Boolean,
-    onTap: () -> Unit
+fun TextSizeSlider(
+    screenWidth: Dp,
+    textSizes: List<Float>,
+    currentTextSize: Float,
+    onTextSizeChange: (Float) -> Unit
 ) {
-    AnimatedVisibility(
-        visible = isVisible,
-        enter = fadeIn(animationSpec = tween(Constants.ANIMATION_DELAY)),
-        exit = fadeOut(animationSpec = tween(Constants.ANIMATION_DELAY))
+    val currentIndex = textSizes.indexOf(currentTextSize).coerceAtLeast(0)
+
+    Box(
+        modifier = Modifier
+            .width(screenWidth * 0.8f)
+            .height(60.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.White.copy(alpha = 0.1f))
+            .padding(8.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Gray.copy(alpha = 0.8f))
-                .pointerInput(Unit) {
-                    detectTapGestures {
-                        onTap()
-                    }
-                },
-            contentAlignment = Alignment.Center
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            val hasProcessText = processText.isNotEmpty()
+            textSizes.forEachIndexed { index, size ->
+                val isSelected = index == currentIndex
 
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-                modifier = Modifier
-                    .fillMaxWidth(0.85f)
-                    .animateContentSize()
-            ) {
-                // === TOP TEXT (processText when exists, speechText when it doesn't) ===
-                AnimatedContent(
-                    targetState = hasProcessText,
-                    transitionSpec = {
-                        if (targetState) {
-                            // ProcessText appearing: fade in
-                            fadeIn(animationSpec = tween(Constants.ANIMATION_DELAY))
-                                .togetherWith(fadeOut(animationSpec = tween(0)))
-                        } else {
-                            // ProcessText disappearing: instant reset (no animation)
-                            fadeIn(animationSpec = tween(0))
-                                .togetherWith(fadeOut(animationSpec = tween(0)))
-                        }
-                    },
-                    label = "top_text_animation"
-                ) { showingProcess ->
-                    if (showingProcess) {
-                        // Show processText at top (title size, white)
-                        Text(
-                            text = processText,
-                            fontSize = Constants.STD_TITLE_SIZE.sp,
-                            fontFamily = robotoSemibold,
-                            color = Color.White,
-                            textAlign = TextAlign.Center
+                Box(
+                    modifier = Modifier
+                        .size(if (isSelected) 40.dp else 32.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (isSelected)
+                                colorResource(R.color.std_purple)
+                            else
+                                Color.White.copy(alpha = 0.3f)
                         )
-                    } else {
-                        // Show speechText at top (title size, colored)
-                        Text(
-                            text = speechText,
-                            fontSize = Constants.STD_TITLE_SIZE.sp,
-                            fontFamily = robotoSemibold,
-                            color = if (isSpeaking) {
-                                Color.White
-                            } else {
-                                colorResource(R.color.std_light_purple)
-                            },
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
-
-                // === BOTTOM TEXT (speechText slides down when processText appears) ===
-                if (hasProcessText) {
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    // Animated appearance of bottom speechText
-                    AnimatedVisibility(
-                        visible = true,
-                        enter = slideInVertically(
-                            initialOffsetY = { -it / 2 }, // Slide from above
-                            animationSpec = tween(Constants.ANIMATION_DELAY)
-                        ) + fadeIn(animationSpec = tween(Constants.ANIMATION_DELAY))
-                    ) {
-                        Text(
-                            text = speechText,
-                            fontSize = Constants.STD_SLIDER_INFO_SIZE.sp, // Small font
-                            fontFamily = robotoSemibold,
-                            color = if (isSpeaking) {
-                                Color.White
-                            } else {
-                                colorResource(R.color.std_light_purple)
-                            },
-                            textAlign = TextAlign.Center
-                        )
-                    }
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onTap = {
+                                    if (AppConfig.haptics) vibrate(haptic_model0())
+                                    onTextSizeChange(size)
+                                }
+                            )
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "A",
+                        fontSize = (size / 2).sp,
+                        color = if (isSelected) Color.White else Color.Gray,
+                        fontFamily = robotoExtraBold
+                    )
                 }
             }
         }
     }
-}
-
-@Preview(name = "Home Activity", showBackground = true, widthDp = 412, heightDp = 917)
-@Composable
-fun HomeActivityPreview() {
-    HomeScreen(
-        titleText = "Hello ~Eduard~,\nwhat can I do for you?",
-        syncStatus = 1,
-        syncDays = 5,
-        showDetectionOptions = false,
-        detectionIconColor = R.color.std_purple_dark,
-        selectedDetectionOption = null,
-        showSpeechDialog = false,
-        speechText = "",
-        speechProcessText = "",
-        isSpeaking = true,
-        onDetectionClick = {},
-        onDetectionOptionSelected = { _, _ -> },
-        onCaptionClick = {},
-        onDetectionInfoClick = {},
-        onCaptionInfoClick = {},
-        onSpeakInfoClick = {},
-        onNavigateHome = {},
-        onNavigateReports = {},
-        onNavigateSettings = {},
-        onSpeechDialogTap = {},
-        navigateFun = {},
-        onSwipeToLeft = {}
-    )
-}
-
-@Preview(
-    name = "Home Activity - Detection Options Visible",
-    showBackground = true,
-    widthDp = 412,
-    heightDp = 917
-)
-@Composable
-fun HomeActivityWithOptionsPreview() {
-    HomeScreen(
-        titleText = "Hello ~Eduard~,\nwhat can I do for you?",
-        syncStatus = 1,
-        syncDays = 5,
-        showDetectionOptions = true,
-        detectionIconColor = R.color.std_cyan,
-        selectedDetectionOption = DetectionOption.LIVE,
-        showSpeechDialog = false,
-        speechText = "",
-        speechProcessText = "",
-        isSpeaking = true,
-        onDetectionClick = {},
-        onDetectionOptionSelected = { _, _ -> },
-        onCaptionClick = {},
-        onDetectionInfoClick = {},
-        onCaptionInfoClick = {},
-        onSpeakInfoClick = {},
-        onNavigateHome = {},
-        onNavigateReports = {},
-        onNavigateSettings = {},
-        onSpeechDialogTap = {},
-        navigateFun = {},
-        onSwipeToLeft = {}
-    )
-}
-
-@Preview(
-    name = "Home Activity - Speaking Dialog Enabled",
-    showBackground = true,
-    widthDp = 412,
-    heightDp = 917
-)
-@Composable
-fun HomeActivityWithSpeakingDialogPreview() {
-    HomeScreen(
-        titleText = "Hello ~Eduard~,\nwhat can I do for you?",
-        syncStatus = 1,
-        syncDays = 5,
-        showDetectionOptions = false,
-        detectionIconColor = R.color.std_purple_dark,
-        selectedDetectionOption = DetectionOption.LIVE,
-        showSpeechDialog = true,
-        speechText = "Where is my phone, tablet, apple, and laptop",
-        speechProcessText = "ddd",
-        isSpeaking = false,
-        onDetectionClick = {},
-        onDetectionOptionSelected = { _, _ -> },
-        onCaptionClick = {},
-        onDetectionInfoClick = {},
-        onCaptionInfoClick = {},
-        onSpeakInfoClick = {},
-        onNavigateHome = {},
-        onNavigateReports = {},
-        onNavigateSettings = {},
-        onSpeechDialogTap = {},
-        navigateFun = {},
-        onSwipeToLeft = {}
-    )
 }
