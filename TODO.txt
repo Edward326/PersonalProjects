@@ -9,6 +9,8 @@
 
 -schimbat design meniu
 
+-slider sa se poate misca prin pan
+
 -testarea aplicatiei + debugging
 
 -fine tuning(detector, classifier(indoorcvpr), captioner)
