@@ -21,6 +21,7 @@ import com.visionassist.appspace.activities.tabs.home.detection.LiveDetectionAct
 import com.visionassist.appspace.activities.tabs.home.findmyobjects.FindMyObjectActivity
 import com.visionassist.appspace.activities.tabs.home.detection.StaticDetectionActivity
 import com.visionassist.appspace.activities.tabs.reports.EnvironmentReportsActivity
+import com.visionassist.appspace.activities.tabs.reports.HomeScreen
 import com.visionassist.appspace.activities.tabs.settings.SettingsActivity
 import com.visionassist.appspace.jetpack.managers.ErrorDialogManager
 import com.visionassist.appspace.models.sttengine.SpeechRecognizer

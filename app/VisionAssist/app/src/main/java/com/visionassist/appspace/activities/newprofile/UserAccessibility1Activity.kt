@@ -1206,7 +1206,7 @@ class UserAccessibility1Activity : ComponentActivity() {
                     thumbHeight = 55.dp,
                     trackHeight = 25.dp,
                     trackShadow = 3.dp,
-                    activeTrackColor = Color.White,
+                    activeTrackColor = Color.Red,
                     inactiveTrackColor = Color.White,
                     modifier = Modifier
                         .weight(1f)
@@ -1241,7 +1241,7 @@ class UserAccessibility1Activity : ComponentActivity() {
                     thumbHeight = 55.dp,
                     trackHeight = 25.dp,
                     trackShadow = 3.dp,
-                    activeTrackColor = Color.White,
+                    activeTrackColor = colorResource(R.color.slider_green),
                     inactiveTrackColor = Color.White,
                     modifier = Modifier
                         .weight(1f)
@@ -1276,7 +1276,7 @@ class UserAccessibility1Activity : ComponentActivity() {
                     thumbHeight = 55.dp,
                     trackHeight = 25.dp,
                     trackShadow = 3.dp,
-                    activeTrackColor = Color.White,
+                    activeTrackColor = Color.Blue,
                     inactiveTrackColor = Color.White,
                     modifier = Modifier
                         .weight(1f)

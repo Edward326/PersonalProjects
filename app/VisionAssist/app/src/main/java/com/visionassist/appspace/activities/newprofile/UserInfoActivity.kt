@@ -655,7 +655,7 @@ fun AgeSection(
                 thumbWidth = 8.dp,
                 thumbHeight = 55.dp,
                 trackHeight = 20.dp,
-                activeTrackColor = Color.White,
+                activeTrackColor = colorResource(R.color.std_purple),
                 inactiveTrackColor = Color.White,
                 trackShadow = 5.dp,
                 modifier = Modifier.fillMaxWidth(0.75f)

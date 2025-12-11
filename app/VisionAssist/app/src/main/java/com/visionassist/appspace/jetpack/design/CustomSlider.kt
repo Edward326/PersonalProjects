@@ -95,7 +95,8 @@ fun CustomSlider(
     inactiveTrackColor: Color = Color.LightGray,
     showSteps: Boolean = steps > 0,
     enabled: Boolean = true,
-    stepsColor: Color = colorResource(R.color.std_cyan)
+    stepsColor: Color = colorResource(R.color.std_cyan),
+    activeTrackSpacingMultiplier: Float = 20f
 ) {
     when (orientation) {
         SliderOrientation.HORIZONTAL -> HorizontalCustomSlider(
@@ -116,7 +117,8 @@ fun CustomSlider(
             inactiveTrackColor = inactiveTrackColor,
             showSteps = showSteps,
             stepsColor=stepsColor,
-            enabled = enabled
+            enabled = enabled,
+            activeTrackSpacingMultiplier = activeTrackSpacingMultiplier
         )
         SliderOrientation.VERTICAL -> VerticalCustomSlider(
             value = value,
@@ -136,7 +138,8 @@ fun CustomSlider(
             inactiveTrackColor = inactiveTrackColor,
             showSteps = showSteps,
             stepsColor=stepsColor,
-            enabled = enabled
+            enabled = enabled,
+            activeTrackSpacingMultiplier = activeTrackSpacingMultiplier
         )
     }
 }
@@ -180,7 +183,8 @@ private fun HorizontalCustomSlider(
     inactiveTrackColor: Color,
     showSteps: Boolean,
     stepsColor: Color,
-    enabled: Boolean
+    enabled: Boolean,
+    activeTrackSpacingMultiplier: Float
 ) {
     var sliderWidth by remember { mutableFloatStateOf(0f) }
 
@@ -250,26 +254,41 @@ private fun HorizontalCustomSlider(
             )
 
             // Draw active track (from start to thumb position, with padding)
-            drawLine(
-                color = activeTrackColor,
-                start = Offset(trackPadding, size.height / 2),
-                end = Offset(trackPadding + (availableTrackWidth * normalizedValue), size.height / 2),
-                strokeWidth = size.height,
-                cap = StrokeCap.Round
-            )
+            val activeTrackSpacing = activeTrackSpacingMultiplier // Spacing
+            val activeEndX = trackPadding + (availableTrackWidth * normalizedValue) - activeTrackSpacing
+
+            if (activeEndX > trackPadding) {
+                drawLine(
+                    color = activeTrackColor,
+                    start = Offset(size.height / 2, size.height / 2),
+                    end = Offset(size.height / 2+trackPadding, size.height / 2),
+                    strokeWidth = size.height,
+                    cap = StrokeCap.Round  // Flat end
+                )
+
+                // Draw flat rectangle for middle/end (no cap at end = flat)
+                if (activeEndX > trackPadding + size.height / 2) {
+                    drawLine(
+                        color = activeTrackColor,
+                        start = Offset(trackPadding + size.height / 2, size.height / 2),
+                        end = Offset(activeEndX, size.height / 2),
+                        strokeWidth = size.height,
+                        cap = StrokeCap.Butt  // Flat end
+                    )
+                }
+            }
 
             // Draw step indicators if enabled
             if (showSteps && steps > 0) {
                 // Calculate circle radius and padding to prevent clipping
                 val circleRadius = size.height * 0.3f
-                val horizontalPadding = circleRadius
 
                 // Calculate available width for steps (inset from edges)
-                val availableWidth = size.width - (horizontalPadding * 2)
-                val stepWidth = if (steps > 0) availableWidth / steps else 0f
+                val availableWidth = size.width - (circleRadius * 2)
+                val stepWidth = availableWidth / steps
 
                 for (i in 0..steps) {
-                    val x = horizontalPadding + (stepWidth * i)
+                    val x = circleRadius + (stepWidth * i)
                     drawCircle(
                         color = if (x <= size.width * normalizedValue)
                             stepsColor
@@ -337,7 +356,8 @@ private fun VerticalCustomSlider(
     inactiveTrackColor: Color,
     showSteps: Boolean,
     stepsColor: Color,
-    enabled: Boolean
+    enabled: Boolean,
+    activeTrackSpacingMultiplier: Float
 ) {
     var sliderHeight by remember { mutableFloatStateOf(0f) }
 
@@ -409,26 +429,40 @@ private fun VerticalCustomSlider(
             )
 
             // Draw active track (from bottom to thumb position)
-            drawLine(
-                color = activeTrackColor,
-                start = Offset(size.width / 2, size.height),
-                end = Offset(size.width / 2, size.height * (1 - normalizedValue)),
-                strokeWidth = size.width,
-                cap = StrokeCap.Round
-            )
+            val activeTrackSpacing = activeTrackSpacingMultiplier
+            val activeEndY = size.height * (1 - normalizedValue) + activeTrackSpacing
+
+            if (activeEndY < size.height) {
+                // Draw rounded start (bottom cap as circle)
+                drawCircle(
+                    color = activeTrackColor,
+                    radius = size.width / 2,
+                    center = Offset(size.width / 2, size.height)
+                )
+
+                // Draw flat rectangle for middle/end (no cap at top = flat)
+                if (activeEndY < size.height - size.width / 2) {
+                    drawLine(
+                        color = activeTrackColor,
+                        start = Offset(size.width / 2, size.height - size.width / 2),
+                        end = Offset(size.width / 2, activeEndY),
+                        strokeWidth = size.width,
+                        cap = StrokeCap.Butt  // Flat end
+                    )
+                }
+            }
 
             // Draw step indicators if enabled
             if (showSteps && steps > 0) {
                 // Calculate circle radius and padding to prevent clipping
                 val circleRadius = size.width * 0.3f
-                val verticalPadding = circleRadius
 
                 // Calculate available height for steps (inset from edges)
-                val availableHeight = size.height - (verticalPadding * 2)
-                val stepHeight = if (steps > 0) availableHeight / steps else 0f
+                val availableHeight = size.height - (circleRadius * 2)
+                val stepHeight = availableHeight / steps
 
                 for (i in 0..steps) {
-                    val y = size.height - verticalPadding - (stepHeight * i)  // From bottom up with padding
+                    val y = size.height - circleRadius - (stepHeight * i)  // From bottom up with padding
                     drawCircle(
                         color = if (y >= size.height * (1 - normalizedValue))
                             stepsColor
@@ -749,7 +783,7 @@ fun CustomSliderPreview3() {
             thumbStyle = ThumbStyle.BAR,
             thumbWidth = 10.dp,
             thumbHeight = 50.dp,
-            modifier = Modifier.fillMaxWidth(0.8f)
+            modifier = Modifier.fillMaxWidth(0.8f),
         )
     }
 }

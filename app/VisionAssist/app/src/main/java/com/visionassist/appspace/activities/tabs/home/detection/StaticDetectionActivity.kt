@@ -70,7 +70,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -160,7 +164,7 @@ class StaticDetectionActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        classifier= if(AppConfig.env_reports)
+        classifier = if (AppConfig.env_reports)
             PhoneStatusMonitor.getInstance().modelManager.classifier
         else
             YOLOClassifier(this)
@@ -198,7 +202,7 @@ class StaticDetectionActivity : ComponentActivity() {
                 Log.e(TAG, "No image URI provided!")
                 showError(Constants.INTENT_URI_IS_NULL)
             }
-        }, 1500)
+        }, 500)
     }
 
     @Suppress("DEPRECATION")
@@ -328,7 +332,7 @@ class StaticDetectionActivity : ComponentActivity() {
             BackgroundTaskExecutor.getInstance().executeAsync(
                 {
                     val classifierStart = System.currentTimeMillis()
-                    sceneId = classifier.detectScene(bitmap, "StaticDetection")
+                    sceneId = classifier.detectScene(bitmap, "StaticDetectionActivity")
                     classifierLatency = System.currentTimeMillis() - classifierStart
                     null
                 },
@@ -461,7 +465,7 @@ class StaticDetectionActivity : ComponentActivity() {
                             val sceneName = classifier.getClassName(sceneClassId)
                             mainHandler.postDelayed({
                                 showClassificationNotification(sceneName)
-                            },500)
+                            }, 500)
                         }
                     }, Constants.ANIMATION_DELAY.toLong())
                 } else
@@ -770,7 +774,8 @@ fun SceneClassifiedNotification(
                 shape = RoundedCornerShape(28.dp)
             )
             .padding(horizontal = 24.dp, vertical = 12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Icon(
             imageVector = Icons.Filled.Info,
@@ -780,12 +785,30 @@ fun SceneClassifiedNotification(
         )
 
         Text(
-            text,
-            color = colorResource(R.color.notification_text_gray),
+            text = buildAnnotatedString {
+                val parts = text.split("~")
+                withStyle(
+                    style = SpanStyle(
+                        fontSize = Constants.STD_FONT_SIZE.sp
+                    )
+                ) {
+                    append(parts[0])
+                }
+
+                if (parts.size > 1) {
+                    withStyle(
+                        style = SpanStyle(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = Constants.STD_FONT_SIZE.sp,
+                            color = Color.Black
+                        )
+                    ) {
+                        append(parts[1])
+                    }
+                }
+            },
             fontSize = Constants.STD_FONT_SIZE.sp,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            color = colorResource(R.color.notification_text_gray),
             textAlign = TextAlign.Center,
             lineHeight = 20.sp
         )

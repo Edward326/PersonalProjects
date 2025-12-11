@@ -137,11 +137,11 @@ public class BLIPModel {
         else return -1;
     }
 
-    public long[] generateCaption(Bitmap bitmap) {
+    public int[] generateCaption(Bitmap bitmap) {
         long startTime = System.currentTimeMillis();
 
         try {
-            long[] result = generateRealCaption(bitmap);
+            int[] result = generateRealCaption(bitmap);
 
             long endTime = System.currentTimeMillis();
             Log.d(TAG, String.format("Caption generated in %dms",endTime - startTime));
@@ -153,7 +153,7 @@ public class BLIPModel {
         }
     }
 
-    private long[] generateRealCaption(Bitmap bitmap) throws Exception {
+    private int[] generateRealCaption(Bitmap bitmap) throws Exception {
         // Step 1: Preprocess image to [1, 3, 384, 384] tensor
         float[][][] imageArray = preprocessImage(bitmap);
 
@@ -197,10 +197,10 @@ public class BLIPModel {
         return imageArray;
     }
 
-    private long[] autoregressiveGenerate(float[][][] imageArray) throws OrtException {
+    private int[] autoregressiveGenerate(float[][][] imageArray) throws OrtException {
         // Initialize sequence with BOS token
-        long[] currentSequence = new long[maxLength];
-        currentSequence[0] = tokenizer.getBosToken(); // Start with <BOS>
+        int[] currentSequence = new int[maxLength];
+        currentSequence[0] = (int)tokenizer.getBosToken(); // Start with <BOS>
         int currentLength = 1;
 
         Log.d(TAG, "Starting autoregressive generation with BOS token: " + tokenizer.getBosToken());
@@ -238,7 +238,7 @@ public class BLIPModel {
                 }
 
                 // Add next token to sequence
-                currentSequence[currentLength] = nextToken;
+                currentSequence[currentLength] = (int)nextToken;
                 currentLength++;
 
             } catch (Exception e) {
@@ -257,7 +257,7 @@ public class BLIPModel {
         return Arrays.copyOfRange(currentSequence, 1, currentLength);
     }
 
-    private Map<String, OnnxTensor> createInputTensors(float[][][] imageArray, long[] sequence, int seqLength) throws OrtException {
+    private Map<String, OnnxTensor> createInputTensors(float[][][] imageArray, int[] sequence, int seqLength) throws OrtException {
         Map<String, OnnxTensor> inputs = new HashMap<>();
 
         // Create image tensor [1, 3, H, W]
@@ -398,6 +398,10 @@ public class BLIPModel {
         } else {
             return "a " + noun;
         }
+    }
+
+    public Tokenizer getTokenizer(){
+        return tokenizer;
     }
 
     public void close() {

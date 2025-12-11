@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.graphics.Bitmap
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -16,10 +17,19 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.core.content.ContextCompat.getSystemService
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
+import com.visionassist.appspace.activities.tabs.home.caption.PerceptualHash.isSimilar
+import com.visionassist.appspace.activities.tabs.home.caption.PerceptualHash.similarity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.io.BufferedWriter
+import java.io.File
+import java.io.FileWriter
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 data class Language(
     var code: String,
@@ -776,9 +786,9 @@ fun load_noObjectsFound(context: Context): String {
 
 fun load_classificationSuccess(sceneName: String): String {
     return when (AppConfig.mainLanguage.code) {
-        "en" -> "Image classified successfully: $sceneName"
-        "ro" -> "Imagine clasificată cu succes: $sceneName"
-        else -> "Image classified successfully: $sceneName"
+        "en" -> "Image classified successfully: ~$sceneName"
+        "ro" -> "Imagine clasificată cu succes: ~$sceneName"
+        else -> "Image classified successfully: ~$sceneName"
     }
 }
 
@@ -789,11 +799,13 @@ fun load_speakNoObjectsFound(index: Int): String {
                 "The application detected ${index} objects in your environment"
             else
                 "The application detected an single object in your environment"
+
         "ro" ->
             if (index + 1 > 1)
                 "Aplicația a detectat ${index} obiecte în spațiul în care vă aflați"
             else
                 "Aplicația a detectat un singur obiect în spațiul în care vă aflați"
+
         else ->
             if (index + 1 > 1)
                 "The application detected ${index} objects in your environment"
@@ -802,76 +814,12 @@ fun load_speakNoObjectsFound(index: Int): String {
     }
 }
 
-fun computePerceptualHash(bitmap: Bitmap): String {
-    try {
-        // Resize to 8x8 for hash computation
-        val small = Bitmap.createScaledBitmap(bitmap, 8, 8, false)
-
-        // Convert to grayscale and compute average
-        var sum = 0L
-        val pixels = IntArray(64)
-
-        for (y in 0 until 8) {
-            for (x in 0 until 8) {
-                val pixel = small.getPixel(x, y)
-                val gray = ((pixel shr 16) and 0xFF) * 0.299 +
-                        ((pixel shr 8) and 0xFF) * 0.587 +
-                        (pixel and 0xFF) * 0.114
-                pixels[y * 8 + x] = gray.toInt()
-                sum += gray.toLong()
-            }
-        }
-
-        small.recycle()
-
-        val average = sum / 64
-
-        // Build hash: 1 if pixel > average, 0 otherwise
-        val hash = StringBuilder()
-        for (pixel in pixels) {
-            hash.append(if (pixel > average) "1" else "0")
-        }
-
-        // Convert binary string to hex
-        return binaryToHex(hash.toString())
-    } catch (e: Exception) {
-        Log.e("PerceptualHash", "Error computing hash", e)
-        return System.currentTimeMillis().toString() // Fallback
-    }
-}
-
-private fun binaryToHex(binary: String): String {
-    val hex = StringBuilder()
-    for (i in binary.indices step 4) {
-        val chunk = binary.substring(i, minOf(i + 4, binary.length)).padEnd(4, '0')
-        val decimal = chunk.toInt(2)
-        hex.append(decimal.toString(16))
-    }
-    return hex.toString()
-}
-
-private fun hammingDistance(hash1: String, hash2: String): Int {
-    if (hash1.length != hash2.length) return Int.MAX_VALUE
-
-    var distance = 0
-    for (i in hash1.indices) {
-        if (hash1[i] != hash2[i]) distance++
-    }
-    return distance
-}
-
-private fun hashSimilarity(hash1: String, hash2: String): Float {
-    val distance = hammingDistance(hash1, hash2)
-    val maxDistance = hash1.length * 4 // Each hex char = 4 bits
-    return (1f - distance.toFloat() / maxDistance) * 100f
-}
-
 fun searchHashCache(targetHash: String, similarityThreshold: Float = 90f): List<Int>? {
     try {
-        val context = AppConfig.context ?: return null
+        val context = PhoneStatusMonitor.getInstance().currentContext
         val cacheFile = File(FileUtils.getProfileDirectory(context), Constants.HASH_CACHE_FILE_NAME)
 
-        if (!cacheFile.exists() || cacheFile.length() == 0L) {
+        if (cacheFile.length() == 0L) {
             Log.d("HashCache", "Cache file empty or not found")
             return null
         }
@@ -888,7 +836,7 @@ fun searchHashCache(targetHash: String, similarityThreshold: Float = 90f): List<
         val threadCount = if (totalRecords <= 10) 1 else 5
         val recordsPerThread = totalRecords / threadCount
 
-        Log.d("HashCache", "Using $threadCount threads, ~$recordsPerThread records each")
+        Log.d("HashCache", "Using $threadCount threads/$recordsPerThread records per thread")
 
         // Shared state
         val foundResult = AtomicBoolean(false)
@@ -899,7 +847,8 @@ fun searchHashCache(targetHash: String, similarityThreshold: Float = 90f): List<
         // Launch threads
         for (threadId in 0 until threadCount) {
             val startIdx = threadId * recordsPerThread
-            val endIdx = if (threadId == threadCount - 1) totalRecords else (threadId + 1) * recordsPerThread
+            val endIdx =
+                if (threadId == threadCount - 1) totalRecords else (threadId + 1) * recordsPerThread
 
             Thread {
                 try {
@@ -908,7 +857,10 @@ fun searchHashCache(targetHash: String, similarityThreshold: Float = 90f): List<
                     for (i in startIdx until endIdx) {
                         // Check if another thread found result
                         if (foundResult.get()) {
-                            Log.d("HashCache", "Thread $threadId: stopping (result found by another thread)")
+                            Log.d(
+                                "HashCache",
+                                "Thread $threadId: stopping (result found by another thread)"
+                            )
                             break
                         }
 
@@ -923,11 +875,14 @@ fun searchHashCache(targetHash: String, similarityThreshold: Float = 90f): List<
                         val tokensPart = parts[1]
 
                         // Compute similarity
-                        val similarity = hashSimilarity(targetHash, recordHash)
+                        val similarity = similarity(targetHash, recordHash)
 
                         if (similarity >= similarityThreshold) {
                             // Found match!
-                            Log.d("HashCache", "Thread $threadId: FOUND! Similarity: ${similarity}%")
+                            Log.d(
+                                "HashCache",
+                                "Thread $threadId: FOUND! Similarity: ${similarity}%"
+                            )
 
                             // Try to set result (only first thread succeeds)
                             synchronized(foundResult) {
@@ -935,7 +890,8 @@ fun searchHashCache(targetHash: String, similarityThreshold: Float = 90f): List<
                                     foundResult.set(true)
 
                                     // Parse tokens
-                                    val tokens = tokensPart.split("_").mapNotNull { it.toIntOrNull() }
+                                    val tokens =
+                                        tokensPart.split("_").mapNotNull { it.toIntOrNull() }
                                     resultTokens = tokens
 
                                     Log.d("HashCache", "Result set: ${tokens.size} tokens")
@@ -960,7 +916,10 @@ fun searchHashCache(targetHash: String, similarityThreshold: Float = 90f): List<
             Log.w("HashCache", "Search timeout after 5 seconds")
         }
 
-        Log.d("HashCache", "Search complete: ${finishedThreads.get()}/$threadCount threads finished, found: ${foundResult.get()}")
+        Log.d(
+            "HashCache",
+            "Search complete: ${finishedThreads.get()}/$threadCount threads finished, found: ${foundResult.get()}"
+        )
 
         return resultTokens
 
@@ -972,7 +931,7 @@ fun searchHashCache(targetHash: String, similarityThreshold: Float = 90f): List<
 
 fun saveToHashCache(hash: String, tokenIds: List<Int>) {
     try {
-        val context = AppConfig.context ?: return
+        val context = PhoneStatusMonitor.getInstance().currentContext
         val cacheFile = File(FileUtils.getProfileDirectory(context), Constants.HASH_CACHE_FILE_NAME)
 
         // Determine max records based on env_reports mode
@@ -992,7 +951,10 @@ fun saveToHashCache(hash: String, tokenIds: List<Int>) {
 
         // Check if file is too large
         if (existingRecords.size >= maxRecords) {
-            Log.d("HashCache", "Cache full (${existingRecords.size}/$maxRecords), removing $removeCount old records")
+            Log.d(
+                "HashCache",
+                "Cache full (${existingRecords.size}/$maxRecords), removing $removeCount old records"
+            )
             // Remove oldest records (from beginning)
             repeat(removeCount) {
                 if (existingRecords.isNotEmpty()) {

@@ -10,58 +10,91 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.KeyEvent
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
+import androidx.core.net.toUri
+import com.visionassist.appspace.BaseActivity
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
 import com.visionassist.appspace.activities.main.HomeActivity
+import com.visionassist.appspace.activities.newprofile.LoadProfileActivity
+import com.visionassist.appspace.activities.tabs.home.caption.PerceptualHash.computeHash
+import com.visionassist.appspace.activities.tabs.home.detection.SceneClassifiedNotification
 import com.visionassist.appspace.activities.tabs.reports.EnvironmentReportsManagerKt
+import com.visionassist.appspace.jetpack.design.CustomSlider
 import com.visionassist.appspace.jetpack.design.LoadingComponent
-import com.visionassist.appspace.jetpack.managers.InfoNotificationManager
-import com.visionassist.appspace.models.captioner.BLIPModel
-import com.visionassist.appspace.models.captioner.Tokenizer
+import com.visionassist.appspace.jetpack.design.NotificationDialog
+import com.visionassist.appspace.jetpack.design.ThumbStyle
 import com.visionassist.appspace.models.classifier.YOLOClassifier
-import com.visionassist.appspace.models.translator.CaptionTranslator
-import com.visionassist.appspace.sound.SoundConstants
-import com.visionassist.appspace.utils.*
+import com.visionassist.appspace.utils.AppConfig
+import com.visionassist.appspace.utils.BackgroundTaskExecutor
+import com.visionassist.appspace.utils.Constants
+import com.visionassist.appspace.utils.haptic_model0
+import com.visionassist.appspace.utils.load_classificationSuccess
+import com.visionassist.appspace.utils.robotoExtraBold
+import com.visionassist.appspace.utils.saveToHashCache
+import com.visionassist.appspace.utils.searchHashCache
+import com.visionassist.appspace.utils.vibrate
 import java.io.File
 
-class CaptionActivity : ComponentActivity() {
+class CaptionActivity : BaseActivity() {
     private val TAG = "CaptionActivity"
 
     // Models
-    private lateinit var captioner: BLIPModel
-    private lateinit var tokenizer: Tokenizer
+    private val captioner = PhoneStatusMonitor.getInstance().modelManager.captioner
+    private val tokenizer = captioner.tokenizer
     private lateinit var classifier: YOLOClassifier
-    private var translator: CaptionTranslator? = null
+    private var translator = PhoneStatusMonitor.getInstance().modelManager.translator
+    private val ttsManager = PhoneStatusMonitor.getInstance()
+        .ttsManager
 
     // Image data
     private var originalBitmap: Bitmap? = null
@@ -79,44 +112,29 @@ class CaptionActivity : ComponentActivity() {
     private val showLoading = mutableStateOf(true)
     private val loadingText = mutableStateOf("")
     private val showResult = mutableStateOf(false)
+    private val showErrorDialog = mutableStateOf(false)
     private val showClassificationDialog = mutableStateOf(false)
+    private val errorMessage = mutableStateOf("")
     private val classificationText = mutableStateOf("")
 
-    // Text size control
-    private var currentTextSize = mutableFloatStateOf(24f)
-    private val textSizes = listOf(16f, 20f, 24f, 28f, 32f, 36f, 40f, 44f)
+    // Text size control (8 stops)
+    private var currentTextSize = mutableFloatStateOf(28f)
+    private val textSizes = listOf(20f, 24f, 28f, 32f, 36f, 40f, 44f)
 
     // Handlers
     private val mainHandler = Handler(Looper.getMainLooper())
-    private lateinit var infoNotificationManager: InfoNotificationManager
 
     // Camera
     private lateinit var takePictureLauncher: ActivityResultLauncher<Uri>
     private var currentPhotoUri: Uri? = null
 
-    // Settings panel
-    private val showSettings = mutableStateOf(false)
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Initialize models
-        try {
-            captioner = PhoneStatusMonitor.getInstance().modelManager.captioner
-            tokenizer = captioner.tokenizer
-            classifier = PhoneStatusMonitor.getInstance().modelManager.classifier
-
-            // Initialize translator if Romanian
-            if (AppConfig.mainLanguage.code == "ro") {
-                translator = PhoneStatusMonitor.getInstance().modelManager.translator
-            }
-
-            Log.d(TAG, "Models initialized successfully")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to initialize models", e)
-            finish()
-            return
-        }
+        classifier = if (AppConfig.env_reports)
+            PhoneStatusMonitor.getInstance().modelManager.classifier
+        else
+            YOLOClassifier(this)
 
         // Initialize camera launcher
         takePictureLauncher = registerForActivityResult(
@@ -127,16 +145,14 @@ class CaptionActivity : ComponentActivity() {
             }
         }
 
-        // Initialize info notification manager
-        infoNotificationManager = InfoNotificationManager(this)
-
         // Set up UI
         setContent {
             CaptionScreen(
                 showLoading = showLoading.value,
                 loadingText = loadingText.value,
                 showResult = showResult.value,
-                showSettings = showSettings.value,
+                showErrorDialog = showErrorDialog.value,
+                errorMessage = errorMessage.value,
                 showClassificationDialog = showClassificationDialog.value,
                 classificationText = classificationText.value,
                 captionText = captionText,
@@ -144,24 +160,30 @@ class CaptionActivity : ComponentActivity() {
                 foundInCache = foundInCache,
                 currentTextSize = currentTextSize.floatValue,
                 textSizes = textSizes,
-                onTextSizeChange = { size -> currentTextSize.floatValue = size },
+                onTextSizeChange = { size ->
+                    currentTextSize.floatValue = size
+                    if (AppConfig.haptics) vibrate(haptic_model0())
+                },
                 onHomeClick = { handleHomeClick() },
                 onCameraClick = { handleCameraClick() },
                 onSpeakClick = { handleSpeakClick() },
-                onSettingsClick = { showSettings.value = !showSettings.value },
-                onClassificationDismiss = { showClassificationDialog.value = false }
+                onErrorRetry = { handleRetry() },
+                onErrorOk = { handleHomeClick() }
             )
         }
 
-        // Get image URI from intent
-        val imageUriString = intent.getStringExtra(Constants.EXTRA_IMAGE_URI)
-        if (imageUriString != null) {
-            val imageUri = Uri.parse(imageUriString)
-            processImageUri(imageUri)
-        } else {
-            Log.e(TAG, "No image URI provided")
-            finish()
-        }
+
+        mainHandler.postDelayed({
+            // Get image URI from intent
+            val imageUriString = intent.getStringExtra(Constants.EXTRA_IMAGE_URI)
+            if (imageUriString != null) {
+                val imageUri = imageUriString.toUri()
+                processImageUri(imageUri)
+            } else {
+                Log.e(TAG, "❌ No image URI provided")
+                finish()
+            }
+        }, 500)
     }
 
     private fun processImageUri(imageUri: Uri) {
@@ -186,38 +208,53 @@ class CaptionActivity : ComponentActivity() {
                         originalBitmap = result
                         startCaptionProcess(result)
                     } else {
-                        finish()
+                        errorMessage.value = if (AppConfig.mainLanguage.code == "en")
+                            "Failed to generate caption. You can try again or return to home page"
+                        else
+                            "Nu s-a reușit generarea descrierii textuale. Poți încearca din nou sau poți să revii în pagina principala"
+                        showLoading.value = false
+                        mainHandler.postDelayed({
+                            showErrorDialog.value = true
+                        }, Constants.ANIMATION_DELAY.toLong())
                     }
                 }
 
                 override fun onError(e: Exception) {
                     Log.e(TAG, "Error loading bitmap", e)
-                    finish()
+                    errorMessage.value = if (AppConfig.mainLanguage.code == "en")
+                        "Failed to generate caption. You can try again or return to home page"
+                    else
+                        "Nu s-a reușit generarea descrierii textuale. Poți încearca din nou sau poți să revii în pagina principala"
+                    showLoading.value = false
+                    mainHandler.postDelayed({
+                        showErrorDialog.value = true
+                    }, Constants.ANIMATION_DELAY.toLong())
                 }
             }
         )
     }
 
     private fun processCapturedImage(imageUri: Uri) {
+        // Reset states
         showLoading.value = true
-        loadingText.value = "Processing image..."
         showResult.value = false
+        showErrorDialog.value = false
+        loadingText.value = if (AppConfig.mainLanguage.code == "en")
+            "Processing image..."
+        else
+            "Procesez imaginea..."
 
         processImageUri(imageUri)
     }
 
     private fun startCaptionProcess(bitmap: Bitmap) {
-        loadingText.value = "Computing image hash..."
-
         BackgroundTaskExecutor.getInstance().executeAsync(
             {
                 // Step 1: Compute perceptual hash
-                val hash = computePerceptualHash(bitmap)
+                val hash = computeHash(bitmap)
                 Log.d(TAG, "Image hash: $hash")
                 imageHash = hash
 
-                // Step 2: Search in hash cache file
-                loadingText.value = "Searching cache..."
                 val cachedTokens = searchHashCache(hash)
 
                 cachedTokens
@@ -225,8 +262,8 @@ class CaptionActivity : ComponentActivity() {
             object : BackgroundTaskExecutor.TaskCallback<List<Int>?> {
                 override fun onSuccess(result: List<Int>?) {
                     if (result != null) {
-                        // Found in cache!
-                        Log.d(TAG, "Caption found in cache: ${result.size} tokens")
+                        // ⚡ Found in cache!
+                        Log.d(TAG, "⚡ Caption found in cache: ${result.size} tokens")
                         foundInCache = true
                         tokenIds = result
 
@@ -242,15 +279,15 @@ class CaptionActivity : ComponentActivity() {
                             translateAndShowResult()
                         }
                     } else {
-                        // Not found in cache - generate caption
-                        Log.d(TAG, "Caption not found in cache, generating...")
+                        // ❌ Not found in cache - generate caption
+                        Log.d(TAG, "❌ Caption not found in cache, generating...")
                         foundInCache = false
                         generateCaption(bitmap)
                     }
                 }
 
                 override fun onError(e: Exception) {
-                    Log.e(TAG, "Error in cache search", e)
+                    Log.e(TAG, "❌ Error in cache search", e)
                     // Fallback to generation
                     foundInCache = false
                     generateCaption(bitmap)
@@ -260,7 +297,10 @@ class CaptionActivity : ComponentActivity() {
     }
 
     private fun generateCaption(bitmap: Bitmap) {
-        loadingText.value = "Generating caption..."
+        loadingText.value = if (AppConfig.mainLanguage.code == "en")
+            "Generating caption..."
+        else
+            "Generez descriere..."
 
         // Launch captioner task
         BackgroundTaskExecutor.getInstance().executeAsync(
@@ -269,9 +309,9 @@ class CaptionActivity : ComponentActivity() {
                 val tokens = captioner.generateCaption(bitmap)
                 val latency = System.currentTimeMillis() - startTime
 
-                Log.d(TAG, "Caption generated: ${tokens.size} tokens in ${latency}ms")
+                Log.d(TAG, "✅ Caption generated: ${tokens.size} tokens in ${latency}ms")
 
-                Pair(tokens, latency)
+                Pair(tokens.toList(), latency)
             },
             object : BackgroundTaskExecutor.TaskCallback<Pair<List<Int>, Long>> {
                 override fun onSuccess(result: Pair<List<Int>, Long>) {
@@ -282,14 +322,14 @@ class CaptionActivity : ComponentActivity() {
                     val tokenArray = result.first.map { it.toLong() }.toLongArray()
                     captionText = tokenizer.decode(tokenArray)
 
-                    Log.d(TAG, "Caption text: $captionText")
+                    Log.d(TAG, "📝 Caption text: $captionText")
 
                     // Save to hash cache
                     saveToHashCache(imageHash, result.first)
 
                     // Run classifier if needed
                     if (AppConfig.env_reports) {
-                        runClassifier(bitmap!!, onCacheHit = false)
+                        runClassifier(bitmap, onCacheHit = false)
                     } else {
                         // Translate if needed and show result
                         translateAndShowResult()
@@ -297,9 +337,8 @@ class CaptionActivity : ComponentActivity() {
                 }
 
                 override fun onError(e: Exception) {
-                    Log.e(TAG, "Error generating caption", e)
-                    captionText = "Failed to generate caption."
-                    showResult.value = true
+                    Log.e(TAG, "❌ Error generating caption", e)
+                    showErrorDialog.value = true
                     showLoading.value = false
                 }
             }
@@ -307,15 +346,18 @@ class CaptionActivity : ComponentActivity() {
     }
 
     private fun runClassifier(bitmap: Bitmap, onCacheHit: Boolean) {
-        loadingText.value = "Classifying scene..."
+        loadingText.value = if (AppConfig.mainLanguage.code == "en")
+            "Classifying scene..."
+        else
+            "Clasificare scena..."
 
         BackgroundTaskExecutor.getInstance().executeAsync(
             {
                 val startTime = System.currentTimeMillis()
-                val classId = classifier.classifyEnvironment(bitmap)
+                val classId = classifier.detectScene(bitmap, "CaptionActivity")
                 val latency = System.currentTimeMillis() - startTime
 
-                Log.d(TAG, "Scene classified: $classId in ${latency}ms")
+                Log.d(TAG, "✅ Scene classified: $classId in ${latency}ms")
 
                 Pair(classId, latency)
             },
@@ -326,7 +368,7 @@ class CaptionActivity : ComponentActivity() {
 
                     // Write to env reports
                     if (!onCacheHit) {
-                        // Only write captioner latency if generated (not from cache)
+                        // Caption generated (not from cache)
                         EnvironmentReportsManagerKt.writeCaptionReport(
                             this@CaptionActivity,
                             sceneClassId,
@@ -334,7 +376,7 @@ class CaptionActivity : ComponentActivity() {
                             classifierLatency
                         )
                     } else {
-                        // Only write classifier latency if from cache
+                        // Caption from cache
                         EnvironmentReportsManagerKt.writeCaptionReportCacheHit(
                             this@CaptionActivity,
                             sceneClassId,
@@ -347,7 +389,7 @@ class CaptionActivity : ComponentActivity() {
                 }
 
                 override fun onError(e: Exception) {
-                    Log.e(TAG, "Error classifying scene", e)
+                    Log.e(TAG, "❌ Error classifying scene", e)
                     // Continue anyway
                     translateAndShowResult()
                 }
@@ -357,7 +399,7 @@ class CaptionActivity : ComponentActivity() {
 
     private fun translateAndShowResult() {
         if (AppConfig.mainLanguage.code == "ro" && translator != null) {
-            loadingText.value = "Translating..."
+            loadingText.value = "Traduc..."
 
             BackgroundTaskExecutor.getInstance().executeAsync(
                 {
@@ -367,13 +409,13 @@ class CaptionActivity : ComponentActivity() {
                     override fun onSuccess(result: String?) {
                         if (result != null) {
                             captionText = result
-                            Log.d(TAG, "Translated caption: $result")
+                            Log.d(TAG, "✅ Translated caption: $result")
                         }
                         showResultScreen()
                     }
 
                     override fun onError(e: Exception) {
-                        Log.e(TAG, "Error translating", e)
+                        Log.e(TAG, "❌ Error translating", e)
                         // Show English caption anyway
                         showResultScreen()
                     }
@@ -391,7 +433,9 @@ class CaptionActivity : ComponentActivity() {
         // Show classification notification if scene was classified
         if (sceneClassId >= 0) {
             mainHandler.postDelayed({
-                classificationText.value = "Scene: ${classifier.getClassName(sceneClassId)}"
+                val className = classifier.getClassName(sceneClassId)
+                classificationText.value = load_classificationSuccess(className)
+
                 showClassificationDialog.value = true
 
                 // Auto-hide after 3 seconds
@@ -405,10 +449,8 @@ class CaptionActivity : ComponentActivity() {
     // Navigation handlers
     private fun handleHomeClick() {
         if (AppConfig.haptics) vibrate(haptic_model0())
-        soundManager.play(SoundConstants.BACK_ID, 0.7f, 0.7f) {
-            finish()
-            startActivity(Intent(this, HomeActivity::class.java))
-        }
+        finish()
+        startActivity(Intent(this, HomeActivity::class.java))
     }
 
     private fun handleCameraClick() {
@@ -423,7 +465,7 @@ class CaptionActivity : ComponentActivity() {
             )
             takePictureLauncher.launch(currentPhotoUri!!)
         } catch (e: Exception) {
-            Log.e(TAG, "Error launching camera", e)
+            Log.e(TAG, "❌ Error launching camera", e)
         }
     }
 
@@ -438,27 +480,34 @@ class CaptionActivity : ComponentActivity() {
         )
     }
 
+    private fun handleRetry() {
+        if (AppConfig.haptics) vibrate(haptic_model0())
+        showErrorDialog.value = false
+        handleCameraClick()
+    }
+
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         return when (keyCode) {
             KeyEvent.KEYCODE_VOLUME_UP -> {
-                // Go home
+                // Go home (always)
                 handleHomeClick()
                 true
             }
+
             KeyEvent.KEYCODE_VOLUME_DOWN -> {
-                // Take another photo (only when result is shown)
+                // Take photo (only when result shown)
                 if (showResult.value) {
                     handleCameraClick()
                 }
                 true
             }
+
             else -> super.onKeyDown(keyCode, event)
         }
     }
 
     override fun onPause() {
         super.onPause()
-        soundManager.releaseCallback()
         ttsManager.stopSpeaking()
         mainHandler.removeCallbacksAndMessages(null)
     }
@@ -474,7 +523,8 @@ fun CaptionScreen(
     showLoading: Boolean,
     loadingText: String,
     showResult: Boolean,
-    showSettings: Boolean,
+    showErrorDialog: Boolean,
+    errorMessage: String,
     showClassificationDialog: Boolean,
     classificationText: String,
     captionText: String,
@@ -486,159 +536,204 @@ fun CaptionScreen(
     onHomeClick: () -> Unit,
     onCameraClick: () -> Unit,
     onSpeakClick: () -> Unit,
-    onSettingsClick: () -> Unit,
-    onClassificationDismiss: () -> Unit
+    onErrorRetry: () -> Unit,
+    onErrorOk: () -> Unit
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val screenWidth = maxWidth
         val screenHeight = maxHeight
 
         // Background
+        Box(modifier = Modifier.fillMaxSize()) {
+            Image(
+                painter = painterResource(R.drawable.app_background),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+
+            // Main caption screen (when result ready)
+            if (showResult) {
+                MainCaptionScreen(
+                    screenHeight = screenHeight,
+                    captionText = captionText,
+                    captionerLatency = captionerLatency,
+                    foundInCache = foundInCache,
+                    currentTextSize = currentTextSize,
+                    textSizes = textSizes,
+                    onTextSizeChange = onTextSizeChange,
+                    onHomeClick = onHomeClick,
+                    onCameraClick = onCameraClick,
+                    onSpeakClick = onSpeakClick
+                )
+            }
+
+            // Loading overlay (instant enter, fade out exit)
+            LoadingComponent(
+                isVisible = showLoading,
+                loadingText = loadingText,
+                animSpec = Pair(
+                    fadeIn(
+                        initialAlpha = 0f,
+                        animationSpec = tween(durationMillis = 0)  // Instant enter
+                    ),
+                    fadeOut(
+                        targetAlpha = 0f,
+                        animationSpec = tween(durationMillis = Constants.ANIMATION_DELAY)  // Fade out
+                    )
+                )
+            )
+
+            // Classification notification (top)
+            AnimatedVisibility(
+                visible = showClassificationDialog,
+                enter = slideInVertically(initialOffsetY = { -it }),
+                exit = slideOutVertically(targetOffsetY = { -it }),
+                modifier = Modifier.align(Alignment.TopCenter)
+            ) {
+                SceneClassifiedNotification(classificationText)
+            }
+
+            // Error dialog
+            NotificationDialog(
+                isVisible = showErrorDialog,
+                type = LoadProfileActivity.NotificationType.ERROR,
+                message = errorMessage,
+                showTwoButtons = true,
+                firstButtonLabel = if (AppConfig.mainLanguage.code == "en") "Retry" else "Reîncearcă",
+                secondButtonLabel = if (AppConfig.mainLanguage.code == "en") "OK" else "OK",
+                firstButtonClick = onErrorRetry,
+                secondButtonClick = onErrorOk
+            )
+        }
+    }
+}
+
+@Composable
+fun MainCaptionScreen(
+    screenHeight: Dp,
+    captionText: String,
+    captionerLatency: Long,
+    foundInCache: Boolean,
+    currentTextSize: Float,
+    textSizes: List<Float>,
+    onTextSizeChange: (Float) -> Unit,
+    onHomeClick: () -> Unit,
+    onCameraClick: () -> Unit,
+    onSpeakClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(colorResource(R.color.app_background))
-        )
-
-        // Loading screen
-        if (showLoading) {
-            LoadingComponent(
-                text = loadingText,
-                showText = true
-            )
-        }
-
-        // Result screen
-        if (showResult) {
+                .background(colorResource(R.color.std_purple).copy(alpha = 0.6f))
+        ) {
             Column(
                 modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Caption section
-                Box(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f)
-                        .background(Color.White)
+                        .height(screenHeight * 0.69f)
+                        .clip(
+                            RoundedCornerShape(
+                                bottomStart = 16.dp,
+                                bottomEnd = 16.dp
+                            )
+                        )
+                        .background(colorResource(R.color.std_purple)),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // Purple overlay (60% alpha)
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(colorResource(R.color.std_purple).copy(alpha = 0.6f))
-                    )
-
-                    // Caption content
                     Column(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .padding(24.dp),
-                        verticalArrangement = Arrangement.Center,
+                            .fillMaxWidth()
+                            .padding(30.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // Caption text
+                        Spacer(modifier = Modifier.height(screenHeight * 0.075f))
+
+                        // Caption text (centered, scrollable if needed)
                         Text(
                             text = captionText,
                             fontSize = currentTextSize.sp,
                             color = Color.White,
                             textAlign = TextAlign.Center,
                             fontFamily = robotoExtraBold,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
-                                .padding(16.dp),
-                            lineHeight = (currentTextSize * 1.3f).sp
+                            lineHeight = (currentTextSize * 1.5f).sp
                         )
-
-                        // Inference time and cache indicator
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // Inference time box
+                    }
+                    // Bottom info section
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(5.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Lightning bolt icon (cache hit indicator)
+                        if (!foundInCache) {
                             Box(
                                 modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(colorResource(R.color.std_light_purple)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Bolt,
+                                    contentDescription = "Found in cache",
+                                    tint = colorResource(R.color.error_red),
+                                    modifier = Modifier.size(30.dp)
+                                )
+                            }
+                        } else
+                        // Inference time box
+                            Box(
+                                modifier = Modifier
+                                    .height(40.dp)
                                     .clip(RoundedCornerShape(16.dp))
-                                    .background(Color.White.copy(alpha = 0.3f))
-                                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                                    .background(colorResource(R.color.std_light_purple))
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     text = "${captionerLatency}ms",
-                                    fontSize = 16.sp,
-                                    color = Color.White,
+                                    fontSize = Constants.STD_ERROR_FONT_SIZE.sp,
+                                    color = colorResource(R.color.std_purple),
                                     fontFamily = robotoExtraBold
                                 )
                             }
-
-                            // Lightning bolt icon (cache hit indicator)
-                            if (foundInCache) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .clip(CircleShape)
-                                        .background(colorResource(R.color.std_green)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Bolt,
-                                        contentDescription = "Found in cache",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                }
-                            }
-                        }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Bottom
+                ) {
+                    TextSizeSlider(
+                        textSizes = textSizes,
+                        currentTextSize = currentTextSize,
+                        onTextSizeChange = onTextSizeChange
+                    )
 
-                // Text size slider
-                TextSizeSlider(
-                    screenWidth = screenWidth,
-                    textSizes = textSizes,
-                    currentTextSize = currentTextSize,
-                    onTextSizeChange = onTextSizeChange
-                )
+                    Spacer(Modifier.height(20.dp))
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Navigation buttons
-                NavigationSection(
-                    onHomeClick = onHomeClick,
-                    onCameraClick = onCameraClick,
-                    onSpeakClick = onSpeakClick,
-                    onSettingsClick = onSettingsClick
-                )
-
-                Spacer(modifier = Modifier.height(32.dp))
+                    // Navigation section (bottom)
+                    NavigationSection(
+                        onHomeClick = onHomeClick,
+                        onCameraClick = onCameraClick,
+                        onSpeakClick = onSpeakClick
+                    )
+                }
             }
-        }
-
-        // Classification notification
-        AnimatedVisibility(
-            visible = showClassificationDialog,
-            enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
-            exit = fadeOut() + slideOutVertically(targetOffsetY = { -it })
-        ) {
-            ClassificationNotification(
-                text = classificationText,
-                onDismiss = onClassificationDismiss
-            )
-        }
-
-        // Settings panel
-        AnimatedVisibility(
-            visible = showSettings,
-            enter = slideInHorizontally(initialOffsetX = { it }),
-            exit = slideOutHorizontally(targetOffsetX = { it })
-        ) {
-            SettingsPanel(
-                onClose = { onSettingsClick() }
-            )
         }
     }
 }
@@ -647,65 +742,75 @@ fun CaptionScreen(
 fun NavigationSection(
     onHomeClick: () -> Unit,
     onCameraClick: () -> Unit,
-    onSpeakClick: () -> Unit,
-    onSettingsClick: () -> Unit
+    onSpeakClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 32.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
+            .padding(bottom = 43.dp),
+        horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Home button (left)
+        // Home button (left, smaller, rounded)
         NavigationButton(
-            icon = Icons.Default.Home,
-            contentDescription = "Home",
+            modifier = Modifier
+                .size(
+                    width = Constants.NAV_BUTTONS_WIDTH.dp * 0.6f,
+                    height = Constants.NAV_BUTTONS_HEIGHT.dp * 0.8f
+                )
+                .clip(RoundedCornerShape(100)),
+            icon = Icons.Filled.Home,
+            contentDescription = if (AppConfig.mainLanguage.code == "en") "Home" else "Acasă",
             onClick = onHomeClick,
-            size = 56.dp,
-            iconSize = 28.dp
+            iconSize = 42.dp
         )
 
-        // Camera button (center - larger)
+        Spacer(Modifier.width(22.5.dp))
+
+        // Camera button (center, larger, rounded corners)
         NavigationButton(
-            icon = Icons.Default.PhotoCamera,
+            modifier = Modifier
+                .size(
+                    width = Constants.NAV_BUTTONS_WIDTH.dp,
+                    height = Constants.NAV_BUTTONS_HEIGHT.dp
+                )
+                .clip(RoundedCornerShape(16.dp)),
+            icon = Icons.Filled.PhotoCamera,
             contentDescription = "Camera",
             onClick = onCameraClick,
-            size = 72.dp,
-            iconSize = 36.dp,
-            backgroundColor = colorResource(R.color.std_purple)
+            iconSize = 58.dp
         )
 
-        // Speak button (right)
+        Spacer(Modifier.width(22.5.dp))
+
+        // Speak button (right, smaller, rounded)
         NavigationButton(
-            icon = Icons.Default.VolumeUp,
-            contentDescription = "Speak",
+            modifier = Modifier
+                .size(
+                    width = Constants.NAV_BUTTONS_WIDTH.dp * 0.6f,
+                    height = Constants.NAV_BUTTONS_HEIGHT.dp * 0.8f
+                )
+                .clip(RoundedCornerShape(100)),
+            icon = Icons.AutoMirrored.Filled.VolumeUp,
+            contentDescription = if (AppConfig.mainLanguage.code == "en") "Speak text" else "Vorbeste textul",
             onClick = onSpeakClick,
-            size = 56.dp,
-            iconSize = 28.dp
+            iconSize = 42.dp
         )
     }
 }
 
 @Composable
 fun NavigationButton(
+    modifier: Modifier,
     icon: ImageVector,
     contentDescription: String,
     onClick: () -> Unit,
-    size: Dp,
     iconSize: Dp,
-    backgroundColor: Color = colorResource(R.color.std_green)
 ) {
     Box(
-        modifier = Modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(backgroundColor)
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onTap = { onClick() }
-                )
-            },
+        modifier = modifier
+            .background(colorResource(R.color.std_purple))
+            .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Icon(
@@ -718,158 +823,62 @@ fun NavigationButton(
 }
 
 @Composable
-fun ClassificationNotification(
-    text: String,
-    onDismiss: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(colorResource(R.color.std_green))
-            .padding(16.dp)
-            .pointerInput(Unit) {
-                detectTapGestures(onTap = { onDismiss() })
-            }
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Info,
-                contentDescription = "Info",
-                tint = Color.White,
-                modifier = Modifier.size(24.dp)
-            )
-
-            Text(
-                text = text,
-                fontSize = 16.sp,
-                color = Color.White,
-                fontFamily = robotoExtraBold,
-                modifier = Modifier.weight(1f)
-            )
-        }
-    }
-}
-
-@Composable
-fun SettingsPanel(
-    onClose: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxHeight()
-            .width(300.dp)
-            .background(colorResource(R.color.app_background))
-            .padding(16.dp)
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Header
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Settings",
-                    fontSize = 24.sp,
-                    color = Color.White,
-                    fontFamily = robotoExtraBold
-                )
-
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(colorResource(R.color.std_purple))
-                        .pointerInput(Unit) {
-                            detectTapGestures(onTap = { onClose() })
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Close",
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Settings content
-            Text(
-                text = "Caption settings coming soon...",
-                fontSize = 16.sp,
-                color = Color.White.copy(alpha = 0.7f),
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-    }
-}
-
-// Text Size Slider (reuse from StaticDetectionActivity or create simple version)
-@Composable
 fun TextSizeSlider(
-    screenWidth: Dp,
     textSizes: List<Float>,
     currentTextSize: Float,
     onTextSizeChange: (Float) -> Unit
 ) {
-    val currentIndex = textSizes.indexOf(currentTextSize).coerceAtLeast(0)
-
-    Box(
+    Column(
         modifier = Modifier
-            .width(screenWidth * 0.8f)
-            .height(60.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color.White.copy(alpha = 0.1f))
-            .padding(8.dp)
+            .fillMaxWidth(0.65f),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Row(
-            modifier = Modifier.fillMaxSize(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            textSizes.forEachIndexed { index, size ->
-                val isSelected = index == currentIndex
+        Text(
+            text = if (AppConfig.mainLanguage.code == "en") "Text size" else "Dimensiunea textului",
+            color = Color.White,
+            fontSize = Constants.STD_FONT_SIZE.sp,
+            fontFamily = robotoExtraBold
+        )
 
-                Box(
-                    modifier = Modifier
-                        .size(if (isSelected) 40.dp else 32.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (isSelected)
-                                colorResource(R.color.std_purple)
-                            else
-                                Color.White.copy(alpha = 0.3f)
-                        )
-                        .pointerInput(Unit) {
-                            detectTapGestures(
-                                onTap = {
-                                    if (AppConfig.haptics) vibrate(haptic_model0())
-                                    onTextSizeChange(size)
-                                }
-                            )
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "A",
-                        fontSize = (size / 2).sp,
-                        color = if (isSelected) Color.White else Color.Gray,
-                        fontFamily = robotoExtraBold
-                    )
-                }
-            }
-        }
+        CustomSlider(
+            value = currentTextSize,
+            onValueChange = onTextSizeChange,
+            valueRange = textSizes.first()..textSizes.last(),
+            steps = 0,
+            thumbStyle = ThumbStyle.BAR,  // ROUND, BAR, or DOUBLE_BAR
+            thumbColor = Color.Black,
+            thumbWidth = 8.dp,
+            thumbHeight = 55.dp,
+            trackHeight = 40.dp,
+            activeTrackColor = colorResource(R.color.std_purple),
+            inactiveTrackColor = Color.White,
+            trackShadow = 5.dp,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
+}
+
+@Preview(name = "Caption Screen Preview", showBackground = true, widthDp = 412, heightDp = 917)
+@Composable
+fun CaptionScreenPreview() {
+    CaptionScreen(
+        showLoading = false,
+        loadingText = "",
+        showResult = true,
+        showErrorDialog = false,
+        showClassificationDialog = false,
+        classificationText = load_classificationSuccess("kitchen"),
+        captionText = "A modern kitchen with stainless steel appliances and granite countertops, featuring a large island and pendant lighting",
+        captionerLatency = 4500,
+        foundInCache = true,
+        currentTextSize = 28f,
+        textSizes = listOf(20f, 24f, 28f, 32f, 36f, 40f, 44f),
+        onTextSizeChange = {},
+        onHomeClick = {},
+        onCameraClick = {},
+        onSpeakClick = {},
+        onErrorRetry = {},
+        onErrorOk = {},
+        errorMessage = ""
+    )
 }
