@@ -2,8 +2,8 @@
 
 package com.visionassist.appspace.activities.tabs.home.caption
 
-import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
@@ -64,20 +64,22 @@ import androidx.core.net.toUri
 import com.visionassist.appspace.BaseActivity
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
-import com.visionassist.appspace.activities.main.HomeActivity
 import com.visionassist.appspace.activities.newprofile.LoadProfileActivity
-import com.visionassist.appspace.activities.tabs.home.caption.PerceptualHash.computeHash
+import com.visionassist.appspace.activities.tabs.home.caption.SemanticHash.computeFromDetections
 import com.visionassist.appspace.activities.tabs.home.detection.SceneClassifiedNotification
 import com.visionassist.appspace.activities.tabs.reports.EnvironmentReportsManagerKt
 import com.visionassist.appspace.jetpack.design.CustomSlider
 import com.visionassist.appspace.jetpack.design.LoadingComponent
 import com.visionassist.appspace.jetpack.design.NotificationDialog
 import com.visionassist.appspace.jetpack.design.ThumbStyle
+import com.visionassist.appspace.jetpack.managers.ErrorDialogManager
 import com.visionassist.appspace.models.classifier.YOLOClassifier
 import com.visionassist.appspace.utils.AppConfig
 import com.visionassist.appspace.utils.BackgroundTaskExecutor
 import com.visionassist.appspace.utils.Constants
 import com.visionassist.appspace.utils.haptic_model0
+import com.visionassist.appspace.utils.load_captionError
+import com.visionassist.appspace.utils.load_captioningScene
 import com.visionassist.appspace.utils.load_classificationSuccess
 import com.visionassist.appspace.utils.robotoExtraBold
 import com.visionassist.appspace.utils.saveToHashCache
@@ -104,9 +106,9 @@ class CaptionActivity : BaseActivity() {
     private var tokenIds: List<Int>? = null
     private var captionText: String = ""
     private var captionerLatency: Long = 0
-    private var classifierLatency: Long = 0
     private var sceneClassId: Int = -1
     private var foundInCache: Boolean = false
+    private var classifierFinished: Boolean = false
 
     // UI States
     private val showLoading = mutableStateOf(true)
@@ -168,11 +170,14 @@ class CaptionActivity : BaseActivity() {
                 onCameraClick = { handleCameraClick() },
                 onSpeakClick = { handleSpeakClick() },
                 onErrorRetry = { handleRetry() },
-                onErrorOk = { handleHomeClick() }
+                onErrorOk = {
+                    showErrorDialog.value=false
+                    handleHomeClick()
+                }
             )
         }
 
-
+        loadingText.value = load_captioningScene(this)
         mainHandler.postDelayed({
             // Get image URI from intent
             val imageUriString = intent.getStringExtra(Constants.EXTRA_IMAGE_URI)
@@ -191,7 +196,7 @@ class CaptionActivity : BaseActivity() {
             {
                 // Load bitmap from URI
                 val inputStream = contentResolver.openInputStream(imageUri)
-                val bitmap = android.graphics.BitmapFactory.decodeStream(inputStream)
+                val bitmap = BitmapFactory.decodeStream(inputStream)
                 inputStream?.close()
 
                 if (bitmap == null) {
@@ -208,10 +213,9 @@ class CaptionActivity : BaseActivity() {
                         originalBitmap = result
                         startCaptionProcess(result)
                     } else {
-                        errorMessage.value = if (AppConfig.mainLanguage.code == "en")
-                            "Failed to generate caption. You can try again or return to home page"
-                        else
-                            "Nu s-a reușit generarea descrierii textuale. Poți încearca din nou sau poți să revii în pagina principala"
+                        errorMessage.value = load_captionError(
+                            PhoneStatusMonitor.getInstance().currentContext
+                        )
                         showLoading.value = false
                         mainHandler.postDelayed({
                             showErrorDialog.value = true
@@ -221,10 +225,9 @@ class CaptionActivity : BaseActivity() {
 
                 override fun onError(e: Exception) {
                     Log.e(TAG, "Error loading bitmap", e)
-                    errorMessage.value = if (AppConfig.mainLanguage.code == "en")
-                        "Failed to generate caption. You can try again or return to home page"
-                    else
-                        "Nu s-a reușit generarea descrierii textuale. Poți încearca din nou sau poți să revii în pagina principala"
+                    errorMessage.value = load_captionError(
+                        PhoneStatusMonitor.getInstance().currentContext
+                    )
                     showLoading.value = false
                     mainHandler.postDelayed({
                         showErrorDialog.value = true
@@ -239,10 +242,7 @@ class CaptionActivity : BaseActivity() {
         showLoading.value = true
         showResult.value = false
         showErrorDialog.value = false
-        loadingText.value = if (AppConfig.mainLanguage.code == "en")
-            "Processing image..."
-        else
-            "Procesez imaginea..."
+        loadingText.value = load_captioningScene(this)
 
         processImageUri(imageUri)
     }
@@ -250,210 +250,193 @@ class CaptionActivity : BaseActivity() {
     private fun startCaptionProcess(bitmap: Bitmap) {
         BackgroundTaskExecutor.getInstance().executeAsync(
             {
-                // Step 1: Compute perceptual hash
-                val hash = computeHash(bitmap)
-                Log.d(TAG, "Image hash: $hash")
-                imageHash = hash
+                if (AppConfig.hash_caching == null)
+                    return@executeAsync null
 
-                val cachedTokens = searchHashCache(hash)
+                val detectorModel = PhoneStatusMonitor.getInstance().modelManager.detector
+                val detectorWrapper = detectorModel
+                    .acquireDetector(
+                        false,
+                        5
+                    )
+                if (detectorWrapper == null)
+                    return@executeAsync null
 
-                cachedTokens
+                val detector = detectorWrapper.detector
+                val detectionResult = detector.detectObjects(bitmap, "CaptionActivity")
+                detectorModel.releaseDetector(detectorWrapper)
+
+                if (detectionResult.classIndices.isEmpty())
+                    return@executeAsync null
+
+                imageHash = computeFromDetections(detectionResult, bitmap.width, bitmap.height)
+                    ?: return@executeAsync null
+
+                return@executeAsync searchHashCache(imageHash)
             },
             object : BackgroundTaskExecutor.TaskCallback<List<Int>?> {
                 override fun onSuccess(result: List<Int>?) {
+                    runClassifier(bitmap)
+
                     if (result != null) {
-                        // ⚡ Found in cache!
-                        Log.d(TAG, "⚡ Caption found in cache: ${result.size} tokens")
+                        Log.d(TAG, "Caption found in cache: ${result.size} tokens")
                         foundInCache = true
                         tokenIds = result
-
-                        // Decode tokens
-                        val tokenArray = result.map { it.toLong() }.toLongArray()
-                        captionText = tokenizer.decode(tokenArray)
-
-                        // Run classifier if needed (for env reports)
-                        if (AppConfig.env_reports) {
-                            runClassifier(bitmap, onCacheHit = true)
-                        } else {
-                            // Translate if needed and show result
-                            translateAndShowResult()
-                        }
+                        captionAndTranslate()
                     } else {
-                        // ❌ Not found in cache - generate caption
-                        Log.d(TAG, "❌ Caption not found in cache, generating...")
-                        foundInCache = false
+                        Log.d(TAG, "Caption not found in cache, generating...")
                         generateCaption(bitmap)
                     }
                 }
 
                 override fun onError(e: Exception) {
                     Log.e(TAG, "❌ Error in cache search", e)
-                    // Fallback to generation
-                    foundInCache = false
-                    generateCaption(bitmap)
+                    errorMessage.value = load_captionError(
+                        PhoneStatusMonitor.getInstance().currentContext
+                    )
+                    showLoading.value = false
+                    mainHandler.postDelayed({
+                        showErrorDialog.value = true
+                    }, Constants.ANIMATION_DELAY.toLong())
                 }
             }
         )
     }
 
     private fun generateCaption(bitmap: Bitmap) {
-        loadingText.value = if (AppConfig.mainLanguage.code == "en")
-            "Generating caption..."
-        else
-            "Generez descriere..."
-
         // Launch captioner task
         BackgroundTaskExecutor.getInstance().executeAsync(
             {
                 val startTime = System.currentTimeMillis()
-                val tokens = captioner.generateCaption(bitmap)
-                val latency = System.currentTimeMillis() - startTime
+                tokenIds = captioner.generateCaption(bitmap).toList()
+                captionerLatency = System.currentTimeMillis() - startTime
 
-                Log.d(TAG, "✅ Caption generated: ${tokens.size} tokens in ${latency}ms")
+                if (AppConfig.hash_caching != null) {
+                    PhoneStatusMonitor.getInstance().writingToHCFinished = false
+                    saveToHashCache(imageHash, tokenIds!!.toList())
+                }
 
-                Pair(tokens.toList(), latency)
+                captionText = tokenizer.decode(tokenIds?.toIntArray())
+
+                if (AppConfig.mainLanguage.code == "ro" && translator != null)
+                    captionText = translator.translate(captionText)
             },
-            object : BackgroundTaskExecutor.TaskCallback<Pair<List<Int>, Long>> {
-                override fun onSuccess(result: Pair<List<Int>, Long>) {
-                    tokenIds = result.first
-                    captionerLatency = result.second
-
-                    // Decode tokens
-                    val tokenArray = result.first.map { it.toLong() }.toLongArray()
-                    captionText = tokenizer.decode(tokenArray)
-
-                    Log.d(TAG, "📝 Caption text: $captionText")
-
-                    // Save to hash cache
-                    saveToHashCache(imageHash, result.first)
-
-                    // Run classifier if needed
-                    if (AppConfig.env_reports) {
-                        runClassifier(bitmap, onCacheHit = false)
-                    } else {
-                        // Translate if needed and show result
-                        translateAndShowResult()
-                    }
-                }
-
-                override fun onError(e: Exception) {
-                    Log.e(TAG, "❌ Error generating caption", e)
+            {
+                foundInCache = false
+                showResultScreen()
+            },
+            {
+                errorMessage.value = load_captionError(
+                    PhoneStatusMonitor.getInstance().currentContext
+                )
+                showLoading.value = false
+                mainHandler.postDelayed({
                     showErrorDialog.value = true
-                    showLoading.value = false
-                }
+                }, Constants.ANIMATION_DELAY.toLong())
             }
         )
     }
 
-    private fun runClassifier(bitmap: Bitmap, onCacheHit: Boolean) {
-        loadingText.value = if (AppConfig.mainLanguage.code == "en")
-            "Classifying scene..."
-        else
-            "Clasificare scena..."
-
+    private fun runClassifier(bitmap: Bitmap) {
+        if (!AppConfig.env_reports) {
+            classifierFinished = true
+            return
+        }
         BackgroundTaskExecutor.getInstance().executeAsync(
             {
                 val startTime = System.currentTimeMillis()
                 val classId = classifier.detectScene(bitmap, "CaptionActivity")
                 val latency = System.currentTimeMillis() - startTime
 
-                Log.d(TAG, "✅ Scene classified: $classId in ${latency}ms")
+                EnvironmentReportsManagerKt.writeCaptionReport(
+                    this@CaptionActivity,
+                    classId,
+                    latency
+                )
 
-                Pair(classId, latency)
+                classId
             },
-            object : BackgroundTaskExecutor.TaskCallback<Pair<Int, Long>> {
-                override fun onSuccess(result: Pair<Int, Long>) {
-                    sceneClassId = result.first
-                    classifierLatency = result.second
-
-                    // Write to env reports
-                    if (!onCacheHit) {
-                        // Caption generated (not from cache)
-                        EnvironmentReportsManagerKt.writeCaptionReport(
-                            this@CaptionActivity,
-                            sceneClassId,
-                            captionerLatency,
-                            classifierLatency
-                        )
-                    } else {
-                        // Caption from cache
-                        EnvironmentReportsManagerKt.writeCaptionReportCacheHit(
-                            this@CaptionActivity,
-                            sceneClassId,
-                            classifierLatency
-                        )
-                    }
-
-                    // Translate if needed and show result
-                    translateAndShowResult()
+            object : BackgroundTaskExecutor.TaskCallback<Int> {
+                override fun onSuccess(result: Int) {
+                    sceneClassId = result
+                    classifierFinished = true
                 }
 
                 override fun onError(e: Exception) {
-                    Log.e(TAG, "❌ Error classifying scene", e)
+                    Log.e(TAG, "Error classifying scene", e)
+                    sceneClassId = -1
+                    classifierFinished = true
                     // Continue anyway
-                    translateAndShowResult()
                 }
             }
         )
     }
 
-    private fun translateAndShowResult() {
-        if (AppConfig.mainLanguage.code == "ro" && translator != null) {
-            loadingText.value = "Traduc..."
+    private fun captionAndTranslate() {
+        BackgroundTaskExecutor.getInstance().executeAsync(
+            {
+                captionText = tokenizer.decode(tokenIds?.toIntArray())
 
-            BackgroundTaskExecutor.getInstance().executeAsync(
-                {
-                    translator!!.translate(captionText)
-                },
-                object : BackgroundTaskExecutor.TaskCallback<String?> {
-                    override fun onSuccess(result: String?) {
-                        if (result != null) {
-                            captionText = result
-                            Log.d(TAG, "✅ Translated caption: $result")
-                        }
-                        showResultScreen()
-                    }
-
-                    override fun onError(e: Exception) {
-                        Log.e(TAG, "❌ Error translating", e)
-                        // Show English caption anyway
-                        showResultScreen()
-                    }
-                }
-            )
-        } else {
-            showResultScreen()
-        }
+                if (AppConfig.mainLanguage.code == "ro" && translator != null)
+                    captionText = translator.translate(captionText)
+            },
+            {
+                showResultScreen()
+            },
+            {
+                errorMessage.value = load_captionError(
+                    PhoneStatusMonitor.getInstance().currentContext
+                )
+                showLoading.value = false
+                mainHandler.postDelayed({
+                    showErrorDialog.value = true
+                }, Constants.ANIMATION_DELAY.toLong())
+            }
+        )
     }
 
     private fun showResultScreen() {
-        showLoading.value = false
-        showResult.value = true
+        val classifierCheckRunnable = object : Runnable {
+            override fun run() {
+                if (classifierFinished) {
+                    showResult()
+                } else {
+                    Log.i(TAG, "Classifier isn't ready yet")
+                    mainHandler.postDelayed(this, 100)
+                }
+            }
+        }
+        mainHandler.post(classifierCheckRunnable)
+    }
 
-        // Show classification notification if scene was classified
-        if (sceneClassId >= 0) {
-            mainHandler.postDelayed({
+    private fun showResult() {
+        showLoading.value = false
+
+        mainHandler.postDelayed({
+            showResult.value = true
+
+            // Show classification notification if scene was classified
+            if (sceneClassId > -1) {
                 val className = classifier.getClassName(sceneClassId)
                 classificationText.value = load_classificationSuccess(className)
-
                 showClassificationDialog.value = true
 
-                // Auto-hide after 3 seconds
                 mainHandler.postDelayed({
                     showClassificationDialog.value = false
-                }, 3000)
-            }, 500)
-        }
+                }, 4500)
+            }
+        }, Constants.ANIMATION_DELAY.toLong())
     }
 
     // Navigation handlers
     private fun handleHomeClick() {
         if (AppConfig.haptics) vibrate(haptic_model0())
         finish()
-        startActivity(Intent(this, HomeActivity::class.java))
     }
 
     private fun handleCameraClick() {
+        if(!PhoneStatusMonitor.getInstance().writingToHCFinished)return
+
         if (AppConfig.haptics) vibrate(haptic_model0())
 
         try {
@@ -465,8 +448,16 @@ class CaptionActivity : BaseActivity() {
             )
             takePictureLauncher.launch(currentPhotoUri!!)
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error launching camera", e)
+            Log.e(TAG, "Error launching camera", e)
+            showCameraError()
         }
+    }
+
+    private fun showCameraError() {
+        val monitor = PhoneStatusMonitor.getInstance()
+        val errorDialog = ErrorDialogManager(this)
+        errorDialog.setupDialog(Constants.CAMERA_MAKE_PHOTO)
+        monitor.shutdownApp(errorDialog, this)
     }
 
     private fun handleSpeakClick() {
@@ -476,12 +467,12 @@ class CaptionActivity : BaseActivity() {
             AppConfig.tts_pitch,
             AppConfig.tts_speech_rate,
             false,
-            haptic_model0()
+            null
         )
     }
 
     private fun handleRetry() {
-        if (AppConfig.haptics) vibrate(haptic_model0())
+        if(!PhoneStatusMonitor.getInstance().writingToHCFinished)return
         showErrorDialog.value = false
         handleCameraClick()
     }
@@ -509,11 +500,11 @@ class CaptionActivity : BaseActivity() {
     override fun onPause() {
         super.onPause()
         ttsManager.stopSpeaking()
-        mainHandler.removeCallbacksAndMessages(null)
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        mainHandler.removeCallbacksAndMessages(null)
         originalBitmap?.recycle()
     }
 }
@@ -677,7 +668,7 @@ fun MainCaptionScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         // Lightning bolt icon (cache hit indicator)
-                        if (!foundInCache) {
+                        if (foundInCache) {
                             Box(
                                 modifier = Modifier
                                     .size(40.dp)
@@ -703,7 +694,7 @@ fun MainCaptionScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = "${captionerLatency}ms",
+                                    text=String.format("%.1f sec", captionerLatency / 1000f),
                                     fontSize = Constants.STD_ERROR_FONT_SIZE.sp,
                                     color = colorResource(R.color.std_purple),
                                     fontFamily = robotoExtraBold

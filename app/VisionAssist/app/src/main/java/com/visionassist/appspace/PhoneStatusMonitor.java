@@ -41,6 +41,7 @@ public class PhoneStatusMonitor implements Application.ActivityLifecycleCallback
     private boolean errorShown = false;
     private boolean isPaused = false;
     public boolean profileLoaded = false;
+    public boolean writingToHCFinished = true;
     public boolean isReturningFromPermissions = false;
     private TTSManager ttsManager;
     private SoundManager soundManager;

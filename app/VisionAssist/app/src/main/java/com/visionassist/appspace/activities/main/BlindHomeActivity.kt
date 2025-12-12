@@ -378,9 +378,10 @@ class BlindHomeActivity : BaseActivity() {
 
         onPermissionGranted = {
             checkPhoneStatusAndNavigate {
-                val intent = Intent(this, BlindCaptionActivity::class.java)
-                startActivity(intent)
-                finish()
+                if (PhoneStatusMonitor.getInstance().writingToHCFinished) {
+                    val intent = Intent(this, BlindCaptionActivity::class.java)
+                    startActivity(intent)
+                }
             }
         }
         PermissionChecker.checkAndRequestPermissions(this, AppConfig.blindness, onPermissionGranted)
@@ -870,10 +871,10 @@ fun BlindHomeScreen(
                 screenHeight = screenHeight,
                 text = tutorialText,
                 textShowSpeed =
-                if (PhoneStatusMonitor.getInstance().ttsManager.currentLocale.language == "en")
-                    (Constants.TTS_CHAR_DELAY_EN / AppConfig.tts_speech_rate).toLong()
-                else
-                    (Constants.TTS_CHAR_DELAY_RO / AppConfig.tts_speech_rate).toLong(),
+                    if (PhoneStatusMonitor.getInstance().ttsManager.currentLocale.language == "en")
+                        (Constants.TTS_CHAR_DELAY_EN / AppConfig.tts_speech_rate).toLong()
+                    else
+                        (Constants.TTS_CHAR_DELAY_RO / AppConfig.tts_speech_rate).toLong(),
                 onClick = onTutorialClick,
                 onSwipeUp = onTutorialSwipeUp,
                 enabled = enableTutorial

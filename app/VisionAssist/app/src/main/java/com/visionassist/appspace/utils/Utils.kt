@@ -4,7 +4,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.graphics.Bitmap
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -17,8 +16,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.core.content.ContextCompat.getSystemService
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
-import com.visionassist.appspace.activities.tabs.home.caption.PerceptualHash.isSimilar
-import com.visionassist.appspace.activities.tabs.home.caption.PerceptualHash.similarity
+import com.visionassist.appspace.activities.tabs.home.caption.SemanticHash.similarity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -814,7 +812,7 @@ fun load_speakNoObjectsFound(index: Int): String {
     }
 }
 
-fun searchHashCache(targetHash: String, similarityThreshold: Float = 90f): List<Int>? {
+fun searchHashCache(targetHash: String): List<Int>? {
     try {
         val context = PhoneStatusMonitor.getInstance().currentContext
         val cacheFile = File(FileUtils.getProfileDirectory(context), Constants.HASH_CACHE_FILE_NAME)
@@ -874,28 +872,16 @@ fun searchHashCache(targetHash: String, similarityThreshold: Float = 90f): List<
                         val recordHash = parts[0]
                         val tokensPart = parts[1]
 
-                        // Compute similarity
-                        val similarity = similarity(targetHash, recordHash)
-
-                        if (similarity >= similarityThreshold) {
+                        if (similarity(targetHash, recordHash)) {
                             // Found match!
-                            Log.d(
-                                "HashCache",
-                                "Thread $threadId: FOUND! Similarity: ${similarity}%"
-                            )
+                            Log.d("HashCache", "Thread $threadId: FOUND SIMILARITY!")
 
                             // Try to set result (only first thread succeeds)
-                            synchronized(foundResult) {
-                                if (!foundResult.get()) {
-                                    foundResult.set(true)
-
-                                    // Parse tokens
-                                    val tokens =
-                                        tokensPart.split("_").mapNotNull { it.toIntOrNull() }
-                                    resultTokens = tokens
-
-                                    Log.d("HashCache", "Result set: ${tokens.size} tokens")
-                                }
+                            if (foundResult.compareAndSet(false, true)) {
+                                // Parse tokens
+                                resultTokens = tokensPart.split("_").mapNotNull { it.toIntOrNull() }
+                                Log.d("HashCache", "Result set: ${resultTokens.size} tokens")
+                                latch.countDown()
                             }
                             break
                         }
@@ -904,13 +890,14 @@ fun searchHashCache(targetHash: String, similarityThreshold: Float = 90f): List<
                     Log.e("HashCache", "Thread $threadId error", e)
                 } finally {
                     finishedThreads.incrementAndGet()
-                    latch.countDown()
+                    if (finishedThreads.get() == threadCount)
+                        latch.countDown()
                 }
             }.start()
         }
 
         // Wait for threads to finish (max 5 seconds timeout)
-        val finished = latch.await(5, TimeUnit.SECONDS)
+        val finished = latch.await(Constants.MAX_WAIT_SIMILARITY.toLong(), TimeUnit.MILLISECONDS)
 
         if (!finished) {
             Log.w("HashCache", "Search timeout after 5 seconds")
@@ -930,53 +917,79 @@ fun searchHashCache(targetHash: String, similarityThreshold: Float = 90f): List<
 }
 
 fun saveToHashCache(hash: String, tokenIds: List<Int>) {
-    try {
-        val context = PhoneStatusMonitor.getInstance().currentContext
-        val cacheFile = File(FileUtils.getProfileDirectory(context), Constants.HASH_CACHE_FILE_NAME)
+    BackgroundTaskExecutor.getInstance().executeAsync(
+        {
+            try {
+                val context = PhoneStatusMonitor.getInstance().currentContext
+                val cacheFile =
+                    File(FileUtils.getProfileDirectory(context), Constants.HASH_CACHE_FILE_NAME)
 
-        // Determine max records based on env_reports mode
-        val maxRecords = if (AppConfig.env_reports) 5000 else 2500
-        val removeCount = (maxRecords * 0.25).toInt()
+                // Determine max records based on env_reports mode
+                val maxRecords =
+                    if (AppConfig.hash_caching.equals("heavy")) Constants.HC_MAX_RECORDS_HEAVY else Constants.HC_MAX_RECORDS_LIGHT
+                val removeCount = (maxRecords * 0.40).toInt()
 
-        // Read existing records
-        val existingRecords = if (cacheFile.exists()) {
-            cacheFile.readLines().toMutableList()
-        } else {
-            mutableListOf()
-        }
-
-        // Create new record: "hash:tokenId0_tokenId1_tokenId2"
-        val tokenString = tokenIds.joinToString("_")
-        val newRecord = "$hash:$tokenString"
-
-        // Check if file is too large
-        if (existingRecords.size >= maxRecords) {
-            Log.d(
-                "HashCache",
-                "Cache full (${existingRecords.size}/$maxRecords), removing $removeCount old records"
-            )
-            // Remove oldest records (from beginning)
-            repeat(removeCount) {
-                if (existingRecords.isNotEmpty()) {
-                    existingRecords.removeAt(0)
+                // Read existing records
+                val existingRecords = if (cacheFile.exists()) {
+                    cacheFile.readLines().toMutableList()
+                } else {
+                    mutableListOf()
                 }
+
+                // Create new record: "hash:tokenId0_tokenId1_tokenId2"
+                val tokenString = tokenIds.joinToString("_")
+                val newRecord = "$hash:$tokenString"
+
+                // Check if file is too large
+                if (existingRecords.size >= maxRecords) {
+                    Log.d(
+                        "HashCache",
+                        "Cache full (${existingRecords.size}/$maxRecords), removing $removeCount old records"
+                    )
+                    // Remove oldest records (from beginning)
+                    repeat(removeCount) {
+                        if (existingRecords.isNotEmpty()) {
+                            existingRecords.removeAt(0)
+                        }
+                    }
+                }
+
+                // Add new record
+                existingRecords.add(newRecord)
+
+                // Write back to file
+                BufferedWriter(FileWriter(cacheFile)).use { writer ->
+                    existingRecords.forEach { record ->
+                        writer.write(record)
+                        writer.newLine()
+                    }
+                }
+
+                Log.d("HashCache", "Saved to cache: ${existingRecords.size} total records")
+            } catch (e: Exception) {
+                Log.e("HashCache", "Error saving to cache", e)
             }
-        }
+        },
+        {
+            PhoneStatusMonitor.getInstance().writingToHCFinished = true
+        },
+        {
+            PhoneStatusMonitor.getInstance().writingToHCFinished = true
+        })
+}
 
-        // Add new record
-        existingRecords.add(newRecord)
+fun load_captioningScene(context: Context): String {
+    return when (AppConfig.mainLanguage.code) {
+        "en" -> context.getString(R.string.captioning_scene_en)
+        "ro" -> context.getString(R.string.captioning_scene_ro)
+        else -> context.getString(R.string.captioning_scene_en)
+    }
+}
 
-        // Write back to file
-        BufferedWriter(FileWriter(cacheFile)).use { writer ->
-            existingRecords.forEach { record ->
-                writer.write(record)
-                writer.newLine()
-            }
-        }
-
-        Log.d("HashCache", "Saved to cache: ${existingRecords.size} total records")
-
-    } catch (e: Exception) {
-        Log.e("HashCache", "Error saving to cache", e)
+fun load_captionError(context: Context): String {
+    return when (AppConfig.mainLanguage.code) {
+        "en" -> context.getString(R.string.caption_error_en)
+        "ro" -> context.getString(R.string.caption_error_ro)
+        else -> context.getString(R.string.caption_error_en)
     }
 }

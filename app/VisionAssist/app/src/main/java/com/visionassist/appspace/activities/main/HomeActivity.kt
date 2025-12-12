@@ -375,9 +375,13 @@ class HomeActivity : BaseActivity() {
                     else -> CaptionActivity::class.java
                 }
             )
+
+            if (classOpt!=0)
+                if(!PhoneStatusMonitor.getInstance().writingToHCFinished)
+                    return
+
             intent.putExtra(Constants.EXTRA_IMAGE_URI, currentPhotoUri.toString())
             startActivity(intent)
-            finish()
         } catch (e: Exception) {
             Log.e(TAG, "Error navigating to FindMyObjectActivity", e)
             showCameraError()
@@ -1612,12 +1616,12 @@ fun BottomNavigationBar(
                 icon = {
                     Icon(
                         imageVector = Icons.Filled.Description,
-                        contentDescription = if (AppConfig.mainLanguage.code == "en") "Reports" else "Rapoarte de mediu"
+                        contentDescription = "Reports"
                     )
                 },
                 label = {
                     Text(
-                        if (AppConfig.mainLanguage.code == "en") "Reports" else "Rapoarte de mediu",
+                        "Reports",
                         fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
                         fontFamily = robotoLight
                     )

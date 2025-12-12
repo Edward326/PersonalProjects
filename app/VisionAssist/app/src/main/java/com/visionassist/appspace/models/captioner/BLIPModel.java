@@ -20,7 +20,7 @@ import ai.onnxruntime.OrtException;
 import ai.onnxruntime.OrtSession;
 
 public class BLIPModel {
-    private static final String TAG = "BlipCaptioner";
+    private static final String TAG = "BLIPModel";
 
     private OrtEnvironment ortEnvironment;
     private OrtSession ortSession;
@@ -221,7 +221,7 @@ public class BLIPModel {
                 float[][][] logits = (float[][][]) outputTensor.getValue();
 
                 // Get next token from the last position
-                long nextToken = getNextToken(logits[0][currentLength - 1]); // Use last position
+                int nextToken = getNextToken(logits[0][currentLength - 1]); // Use last position
 
                 Log.d(TAG, "Generated token: " + nextToken + " (" + tokenizer.getTokenString(nextToken) + ")");
 
@@ -293,7 +293,7 @@ public class BLIPModel {
         return inputs;
     }
 
-    private long getNextToken(float[] logits) {
+    private int getNextToken(float[] logits) {
         // Simple greedy decoding - choose token with highest probability
         int bestToken = 0;
         float bestScore = logits[0];
@@ -313,7 +313,7 @@ public class BLIPModel {
         return bestToken;
     }
 
-    private long sampleFromLogits(float[] logits, float temperature) {
+    private int sampleFromLogits(float[] logits, float temperature) {
         // Apply temperature scaling
         float[] scaledLogits = new float[logits.length];
         float maxLogit = Float.NEGATIVE_INFINITY;

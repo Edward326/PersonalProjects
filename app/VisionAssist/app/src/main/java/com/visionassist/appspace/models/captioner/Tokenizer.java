@@ -1,9 +1,12 @@
 package com.visionassist.appspace.models.captioner;
+
 import android.content.Context;
 import android.util.Log;
+
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.visionassist.appspace.utils.FileUtils;
+
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -21,14 +24,14 @@ public class Tokenizer {
     private static final String TAG = "BLIPTokenizer";
 
     // BERT/BLIP special token IDs (standard values)
-    public static final long PAD_TOKEN = 0;      // [PAD]
-    public static final long UNK_TOKEN = 100;    // [UNK]
-    public static final long CLS_TOKEN = 101;    // [CLS] - BOS for BLIP
-    public static final long SEP_TOKEN = 102;    // [SEP] - EOS for BLIP
-    public static final long MASK_TOKEN = 103;   // [MASK]
+    public static final int PAD_TOKEN = 0;      // [PAD]
+    public static final int UNK_TOKEN = 100;    // [UNK]
+    public static final int CLS_TOKEN = 101;    // [CLS] - BOS for BLIP
+    public static final int SEP_TOKEN = 102;    // [SEP] - EOS for BLIP
+    public static final int MASK_TOKEN = 103;   // [MASK]
 
-    private Map<String, Long> tokenToId;
-    private Map<Long, String> idToToken;
+    private Map<String, Integer> tokenToId;
+    private Map<Integer, String> idToToken;
     private Context context;
     private boolean isLoaded = false;
     private int vocabSize = 0;
@@ -97,8 +100,8 @@ public class Tokenizer {
         while ((line = reader.readLine()) != null) {
             String token = line.trim();
             if (!token.isEmpty()) {
-                tokenToId.put(token, (long) tokenId);
-                idToToken.put((long) tokenId, token);
+                tokenToId.put(token, tokenId);
+                idToToken.put(tokenId, token);
                 tokenId++;
             }
         }
@@ -113,11 +116,12 @@ public class Tokenizer {
         Log.d(TAG, "Loading vocabulary from JSON: " + filename);
 
         String jsonContent = FileUtils.loadAssetAsString(context, filename);
-        Type type = new TypeToken<Map<String, Integer>>(){}.getType();
+        Type type = new TypeToken<Map<String, Integer>>() {
+        }.getType();
         Map<String, Integer> vocab = new Gson().fromJson(jsonContent, type);
 
         for (Map.Entry<String, Integer> entry : vocab.entrySet()) {
-            long tokenId = entry.getValue().longValue();
+            int tokenId = entry.getValue();
             String token = entry.getKey();
             tokenToId.put(token, tokenId);
             idToToken.put(tokenId, token);
@@ -178,14 +182,14 @@ public class Tokenizer {
 
         // Add essential words starting from ID 2000
         for (int i = 0; i < captionWords.length; i++) {
-            addToken(captionWords[i], 2000L + i);
+            addToken(captionWords[i], 2000 + i);
         }
 
         vocabSize = tokenToId.size();
         Log.d(TAG, "Created minimal vocabulary with " + vocabSize + " tokens");
     }
 
-    private void addToken(String token, long id) {
+    private void addToken(String token, int id) {
         tokenToId.put(token, id);
         idToToken.put(id, token);
     }
@@ -201,7 +205,7 @@ public class Tokenizer {
         // Log some common words if they exist
         String[] checkWords = {"a", "the", "person", "image", "photo", "picture"};
         for (String word : checkWords) {
-            Long id = tokenToId.get(word);
+            Integer id = tokenToId.get(word);
             if (id != null) {
                 Log.d(TAG, "Found word '" + word + "' with ID: " + id);
             }
@@ -209,20 +213,36 @@ public class Tokenizer {
     }
 
     // Public API methods
-    public long getBosToken() { return CLS_TOKEN; }
-    public long getEosToken() { return SEP_TOKEN; }
-    public long getPadToken() { return PAD_TOKEN; }
-    public long getUnkToken() { return UNK_TOKEN; }
+    public long getBosToken() {
+        return CLS_TOKEN;
+    }
 
-    public boolean isLoaded() { return isLoaded; }
-    public int getVocabSize() { return vocabSize; }
+    public long getEosToken() {
+        return SEP_TOKEN;
+    }
+
+    public long getPadToken() {
+        return PAD_TOKEN;
+    }
+
+    public long getUnkToken() {
+        return UNK_TOKEN;
+    }
+
+    public boolean isLoaded() {
+        return isLoaded;
+    }
+
+    public int getVocabSize() {
+        return vocabSize;
+    }
 
     /**
      * Basic tokenization - splits text into words and maps to IDs
      */
-    public long[] encode(String text) {
+    public int[] encode(String text) {
         if (text == null || text.trim().isEmpty()) {
-            return new long[]{CLS_TOKEN, SEP_TOKEN};
+            return new int[]{CLS_TOKEN, SEP_TOKEN};
         }
 
         // Simple tokenization for captions
@@ -231,7 +251,7 @@ public class Tokenizer {
                 .replaceAll("\\s+", " ")
                 .trim();
 
-        List<Long> tokens = new ArrayList<>();
+        List<Integer> tokens = new ArrayList<>();
         tokens.add(CLS_TOKEN); // Start token
 
         // Tokenize words
@@ -243,7 +263,7 @@ public class Tokenizer {
             String[] parts = word.split("(?=[.,!?])|(?<=[.,!?])");
             for (String part : parts) {
                 if (!part.isEmpty()) {
-                    long tokenId = tokenToId.getOrDefault(part, UNK_TOKEN);
+                    Integer tokenId = tokenToId.getOrDefault(part, UNK_TOKEN);
                     tokens.add(tokenId);
                 }
             }
@@ -251,13 +271,13 @@ public class Tokenizer {
 
         tokens.add(SEP_TOKEN); // End token
 
-        return tokens.stream().mapToLong(Long::longValue).toArray();
+        return tokens.stream().mapToInt(Integer::intValue).toArray();
     }
 
     /**
      * Decode token IDs back to readable text
      */
-    public String decode(long[] tokenIds) {
+    public String decode(int[] tokenIds) {
         if (tokenIds == null || tokenIds.length == 0) {
             return "";
         }
@@ -265,7 +285,7 @@ public class Tokenizer {
         StringBuilder text = new StringBuilder();
         boolean first = true;
 
-        for (long tokenId : tokenIds) {
+        for (int tokenId : tokenIds) {
             String token = idToToken.get(tokenId);
             if (token == null) {
                 Log.w(TAG, "Unknown token ID: " + tokenId);
@@ -306,12 +326,8 @@ public class Tokenizer {
         // Fallback if decoding fails
         if (result.isEmpty()) {
             return "A scene with various objects.";
-        }
-
-        // Capitalize first letter
-        if (result.length() > 0) {
+        } else
             result = Character.toUpperCase(result.charAt(0)) + result.substring(1);
-        }
 
         // Ensure it ends with punctuation
         if (!result.matches(".*[.!?]$")) {
@@ -324,7 +340,7 @@ public class Tokenizer {
     /**
      * Get token string by ID
      */
-    public String getTokenString(long tokenId) {
+    public String getTokenString(int tokenId) {
         return idToToken.getOrDefault(tokenId, "[UNK]");
     }
 

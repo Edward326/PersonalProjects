@@ -116,10 +116,11 @@ fun CustomSlider(
             activeTrackColor = activeTrackColor,
             inactiveTrackColor = inactiveTrackColor,
             showSteps = showSteps,
-            stepsColor=stepsColor,
+            stepsColor = stepsColor,
             enabled = enabled,
             activeTrackSpacingMultiplier = activeTrackSpacingMultiplier
         )
+
         SliderOrientation.VERTICAL -> VerticalCustomSlider(
             value = value,
             onValueChange = onValueChange,
@@ -137,7 +138,7 @@ fun CustomSlider(
             activeTrackColor = activeTrackColor,
             inactiveTrackColor = inactiveTrackColor,
             showSteps = showSteps,
-            stepsColor=stepsColor,
+            stepsColor = stepsColor,
             enabled = enabled,
             activeTrackSpacingMultiplier = activeTrackSpacingMultiplier
         )
@@ -254,26 +255,48 @@ private fun HorizontalCustomSlider(
             )
 
             // Draw active track (from start to thumb position, with padding)
-            val activeTrackSpacing = activeTrackSpacingMultiplier // Spacing
-            val activeEndX = trackPadding + (availableTrackWidth * normalizedValue) - activeTrackSpacing
+            val activeTrackSpacing =
+                activeTrackSpacingMultiplier  // Fixed spacing in pixels (e.g., 20f)
+            val thumbPositionX = trackPadding + (availableTrackWidth * normalizedValue)
+            val activeEndX = thumbPositionX - activeTrackSpacing  // Always stop BEFORE thumb
 
+// Only draw active track if there's actually space for it
             if (activeEndX > trackPadding) {
-                drawLine(
-                    color = activeTrackColor,
-                    start = Offset(size.height / 2, size.height / 2),
-                    end = Offset(size.height / 2+trackPadding, size.height / 2),
-                    strokeWidth = size.height,
-                    cap = StrokeCap.Round  // Flat end
-                )
+                val roundedStartLength = size.height / 2f  // Length of rounded cap
 
-                // Draw flat rectangle for middle/end (no cap at end = flat)
-                if (activeEndX > trackPadding + size.height / 2) {
+                // Calculate where rounded start ends
+                val roundedEndX = trackPadding + roundedStartLength
+
+                if (activeEndX <= roundedEndX) {
+                    // Case 1: activeEndX is within the rounded start portion
+                    // Only draw a partial rounded line (no separate flat section)
                     drawLine(
                         color = activeTrackColor,
-                        start = Offset(trackPadding + size.height / 2, size.height / 2),
+                        start = Offset(trackPadding, size.height / 2),
                         end = Offset(activeEndX, size.height / 2),
                         strokeWidth = size.height,
-                        cap = StrokeCap.Butt  // Flat end
+                        cap = StrokeCap.Round  // Rounded start (naturally ends before reaching full circle)
+                    )
+                } else {
+                    // Case 2: activeEndX extends beyond rounded start
+                    // Draw rounded start + flat section
+
+                    // Draw rounded start
+                    drawLine(
+                        color = activeTrackColor,
+                        start = Offset(trackPadding, size.height / 2),
+                        end = Offset(roundedEndX, size.height / 2),
+                        strokeWidth = size.height,
+                        cap = StrokeCap.Round  // Creates rounded left cap
+                    )
+
+                    // Draw flat section from end of rounded start to activeEndX
+                    drawLine(
+                        color = activeTrackColor,
+                        start = Offset(roundedEndX, size.height / 2),
+                        end = Offset(activeEndX, size.height / 2),
+                        strokeWidth = size.height,
+                        cap = StrokeCap.Butt  // Flat end (no cap)
                     )
                 }
             }
@@ -319,7 +342,8 @@ private fun HorizontalCustomSlider(
         val availableThumbWidth = sliderWidth - (thumbPadding * 2)
 
         // Calculate centered thumb offset with padding
-        val thumbOffset = (thumbPadding + (availableThumbWidth * normalizedValue) - with(LocalDensity.current) { thumbActualWidth.toPx() } / 2f).roundToInt()
+        val thumbOffset =
+            (thumbPadding + (availableThumbWidth * normalizedValue) - with(LocalDensity.current) { thumbActualWidth.toPx() } / 2f).roundToInt()
 
         // Custom thumb
         CustomThumb(
@@ -462,7 +486,8 @@ private fun VerticalCustomSlider(
                 val stepHeight = availableHeight / steps
 
                 for (i in 0..steps) {
-                    val y = size.height - circleRadius - (stepHeight * i)  // From bottom up with padding
+                    val y =
+                        size.height - circleRadius - (stepHeight * i)  // From bottom up with padding
                     drawCircle(
                         color = if (y >= size.height * (1 - normalizedValue))
                             stepsColor
@@ -493,7 +518,8 @@ private fun VerticalCustomSlider(
         val availableThumbHeight = sliderHeight - (thumbPaddingVertical * 2)
 
         // Calculate centered thumb offset with padding
-        val thumbOffsetVertical = -(thumbPaddingVertical + (availableThumbHeight * normalizedValue) - with(LocalDensity.current) { thumbActualHeight.toPx() } / 2f).roundToInt()
+        val thumbOffsetVertical =
+            -(thumbPaddingVertical + (availableThumbHeight * normalizedValue) - with(LocalDensity.current) { thumbActualHeight.toPx() } / 2f).roundToInt()
 
         // Custom thumb (vertical orientation)
         Box(
@@ -572,6 +598,7 @@ private fun CustomThumb(
             thumbColor = thumbColor,
             orientation = orientation
         )
+
         ThumbStyle.BAR -> BarThumb(
             offset = offset,
             width = thumbWidth,
@@ -579,6 +606,7 @@ private fun CustomThumb(
             thumbColor = thumbColor,
             orientation = orientation
         )
+
         ThumbStyle.DOUBLE_BAR -> DoubleBarThumb(
             offset = offset,
             width = thumbWidth,

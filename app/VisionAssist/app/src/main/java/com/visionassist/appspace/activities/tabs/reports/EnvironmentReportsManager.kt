@@ -10,7 +10,8 @@ import java.io.BufferedWriter
 import java.io.File
 import java.io.FileWriter
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
 
 object EnvironmentReportsManagerKt {
     private const val TAG = "EnvReportsManager"
@@ -83,7 +84,6 @@ object EnvironmentReportsManagerKt {
     fun writeCaptionReport(
         context: Context,
         sceneClassId: Int,
-        captionerLatency: Long,
         classifierLatency: Long
     ) {
         if (!AppConfig.env_reports) {
@@ -104,10 +104,9 @@ object EnvironmentReportsManagerKt {
                 ).format(Date())
 
                 val logEntry = String.format(
-                    "[%s] CAPTION_GENERATED | SceneID: %d | CaptionerLatency: %dms | ClassifierLatency: %dms%n",
+                    "[%s] CAPTION_GENERATED | SceneID: %d | ClassifierLatency: %dms%n",
                     timestamp,
                     sceneClassId,
-                    captionerLatency,
                     classifierLatency
                 )
 
@@ -118,61 +117,6 @@ object EnvironmentReportsManagerKt {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error in writeCaptionReport", e)
-        }
-    }
-
-    /**
-     * Write caption report when found in cache (only classifier ran)
-     */
-    @SuppressLint("DefaultLocale")
-    fun writeCaptionReportCacheHit(
-        context: Context,
-        sceneClassId: Int,
-        classifierLatency: Long
-    ) {
-        if (!AppConfig.env_reports) {
-            Log.d(TAG, "Environment reports disabled, skipping write")
-            return
-        }
-
-        try {
-            val reportFile = File(
-                FileUtils.getProfileDirectory(context),
-                Constants.ENV_REPORTS_FILE_NAME
-            )
-
-            BufferedWriter(FileWriter(reportFile, true)).use { writer ->
-                val timestamp = SimpleDateFormat(
-                    "yyyy-MM-dd HH:mm:ss",
-                    Locale.getDefault()
-                ).format(Date())
-
-                val logEntry = String.format(
-                    "[%s] CAPTION_CACHE_HIT | SceneID: %d | ClassifierLatency: %dms%n",
-                    timestamp,
-                    sceneClassId,
-                    classifierLatency
-                )
-
-                writer.write(logEntry)
-                writer.flush()
-
-                Log.d(TAG, "Caption cache hit report written: ${logEntry.trim()}")
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error in writeCaptionReportCacheHit", e)
-        }
-    }
-
-    /**
-     * Clear all environment reports
-     */
-    fun clearReports(context: Context) {
-        try {
-            FileUtils.createProfileDirFile(Constants.ENV_REPORTS_FILE_NAME)
-            Log.d(TAG, "Reports cleared")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error clearing reports", e)
         }
     }
 
@@ -194,32 +138,6 @@ object EnvironmentReportsManagerKt {
         } catch (e: Exception) {
             Log.e(TAG, "Error reading reports", e)
             emptyList()
-        }
-    }
-
-    /**
-     * Get report file path
-     */
-    fun getReportFilePath(context: Context): String {
-        val reportFile = File(
-            FileUtils.getProfileDirectory(context),
-            Constants.ENV_REPORTS_FILE_NAME
-        )
-        return reportFile.absolutePath
-    }
-
-    /**
-     * Check if reports exist
-     */
-    fun hasReports(context: Context): Boolean {
-        return try {
-            val reportFile = File(
-                FileUtils.getProfileDirectory(context),
-                Constants.ENV_REPORTS_FILE_NAME
-            )
-            reportFile.exists() && reportFile.length() > 0
-        } catch (_: Exception) {
-            false
         }
     }
 }

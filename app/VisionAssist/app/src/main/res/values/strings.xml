@@ -210,10 +210,16 @@
     <string name="navigating_to_settings_ro">Navigare către pagina de setări</string>
 
     <!-- StaticDetectionActivity -->
-    <string name="scanning_scene_en">Scanning the scene...</string>
-    <string name="scanning_scene_ro">Se scanează scena în care te aflii...</string>
-    <string name="no_objects_found_en">No objects detected in the image.</string>
-    <string name="no_objects_found_ro">Nu au fost detectate obiecte în imagine.</string>
+    <string name="scanning_scene_en">Scanning the scene…</string>
+    <string name="scanning_scene_ro">Se scanează scena în care te aflii…</string>
+    <string name="no_objects_found_en">No objects detected in the image</string>
+    <string name="no_objects_found_ro">Nu au fost detectate obiecte în imagine</string>
+
+    <!-- CaptionActivity -->
+    <string name="captioning_scene_en">Generating scene description…</string>
+    <string name="captioning_scene_ro">Se generează descrierea textuală a scenei în care te aflii…</string>
+    <string name="caption_error_en">Failed to generate caption. You can try again or return to home page</string>
+    <string name="caption_error_ro">Nu s-a reușit generarea descrierii textuale. Poți încearca din nou sau poți să revii în pagina principala</string>
 
 
     <!-- Common values -->

@@ -23,6 +23,7 @@ public class Constants {
     // Detection Thresholds
     public static final float CONFIDENCE_THRESHOLD = 0.6f;
     public static final float NMS_THRESHOLD = 0.45f;
+    public static final float MAX_WAIT_SIMILARITY = 5000;
 
     // Drawing Configuration
     public static final float BBOX_STROKE_WIDTH_SCREEN = 0.01f;
@@ -33,6 +34,9 @@ public class Constants {
     public static final float TTS_PITCH = 1.0f;
     public static final float TTS_CHAR_DELAY_EN = 71.42f;
     public static final float TTS_CHAR_DELAY_RO = 76.92f;
+    public static final int HC_MAX_RECORDS_HEAVY = 1000;
+    public static final int HC_MAX_RECORDS_LIGHT = 500;
+
 
     // Profile Storage Configuration - NEW
     public static final String PROFILE_FOLDER_NAME = "visionassist_data";
