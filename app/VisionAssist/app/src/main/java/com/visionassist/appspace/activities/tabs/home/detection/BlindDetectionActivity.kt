@@ -598,7 +598,7 @@ class BlindDetectionActivity : ComponentActivity() {
             if(ttsManager.currentLocale.language=="en")
                 "Returning to home page"
             else
-                "Se revine în pagina prinipală"
+                "Se revine în pagina principală"
             ,
             AppConfig.tts_pitch,
             AppConfig.tts_speech_rate,

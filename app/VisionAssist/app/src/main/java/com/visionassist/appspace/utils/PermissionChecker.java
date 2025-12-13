@@ -8,7 +8,9 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+
 import androidx.core.content.ContextCompat;
+
 import com.visionassist.appspace.PhoneStatusMonitor;
 import com.visionassist.appspace.R;
 import com.visionassist.appspace.activities.newprofile.PermissionsActivity;

@@ -993,3 +993,11 @@ fun load_captionError(context: Context): String {
         else -> context.getString(R.string.caption_error_en)
     }
 }
+
+fun load_captionError2(context: Context): String {
+    return when (PhoneStatusMonitor.getInstance().ttsManager.currentLocale.language) {
+        "en" -> context.getString(R.string.blind_caption_error_en)
+        "ro" -> context.getString(R.string.blind_caption_error_ro)
+        else -> context.getString(R.string.blind_caption_error_en)
+    }
+}

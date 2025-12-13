@@ -221,6 +221,10 @@
     <string name="caption_error_en">Failed to generate caption. You can try again or return to home page</string>
     <string name="caption_error_ro">Nu s-a reușit generarea descrierii textuale. Poți încearca din nou sau poți să revii în pagina principala</string>
 
+    <!-- CaptionActivity -->
+    <string name="blind_caption_error_en">Failed to generate caption. You can try again or return to home page. This dialog is center on the screen, press the left side of the screen to retry caption, or right to return to home page</string>
+    <string name="blind_caption_error_ro">Nu s-a reușit generarea descrierii textuale. Poți încearca din nou sau poți să revii în pagina principala. Această dialog este situat central pe ecran, apăsați pe partea stângă a ecranului pentru a reîncerca sau dreaptă pentru a reveni în pagina principală</string>
+
 
     <!-- Common values -->
     <string name="forward_arrow">Forward arrow</string>

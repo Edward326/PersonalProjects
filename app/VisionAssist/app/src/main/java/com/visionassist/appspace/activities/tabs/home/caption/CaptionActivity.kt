@@ -2,6 +2,7 @@
 
 package com.visionassist.appspace.activities.tabs.home.caption
 
+import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -185,7 +186,7 @@ class CaptionActivity : BaseActivity() {
                 val imageUri = imageUriString.toUri()
                 processImageUri(imageUri)
             } else {
-                Log.e(TAG, "❌ No image URI provided")
+                Log.e(TAG, "No image URI provided")
                 finish()
             }
         }, 500)
@@ -282,7 +283,7 @@ class CaptionActivity : BaseActivity() {
                         Log.d(TAG, "Caption found in cache: ${result.size} tokens")
                         foundInCache = true
                         tokenIds = result
-                        captionAndTranslate()
+                        decodeAndTranslate()
                     } else {
                         Log.d(TAG, "Caption not found in cache, generating...")
                         generateCaption(bitmap)
@@ -372,7 +373,7 @@ class CaptionActivity : BaseActivity() {
         )
     }
 
-    private fun captionAndTranslate() {
+    private fun decodeAndTranslate() {
         BackgroundTaskExecutor.getInstance().executeAsync(
             {
                 captionText = tokenizer.decode(tokenIds?.toIntArray())
@@ -599,6 +600,7 @@ fun CaptionScreen(
     }
 }
 
+@SuppressLint("DefaultLocale")
 @Composable
 fun MainCaptionScreen(
     screenHeight: Dp,

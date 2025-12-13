@@ -3,6 +3,7 @@
 package com.visionassist.appspace.activities.main
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -11,6 +12,8 @@ import android.util.Log
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityManager
 import androidx.activity.compose.setContent
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts.TakePicture
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -46,6 +49,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.FileProvider
 import com.visionassist.appspace.BaseActivity
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
@@ -53,6 +57,7 @@ import com.visionassist.appspace.activities.tabs.home.caption.BlindCaptionActivi
 import com.visionassist.appspace.activities.tabs.home.detection.BlindDetectionActivity
 import com.visionassist.appspace.activities.tabs.home.findmyobjects.BlindFindMyObjectActivity
 import com.visionassist.appspace.activities.tabs.settings.BlindSettingsActivity
+import com.visionassist.appspace.jetpack.managers.ErrorDialogManager
 import com.visionassist.appspace.models.sttengine.SpeechRecognizer
 import com.visionassist.appspace.sound.SoundConstants
 import com.visionassist.appspace.utils.AppConfig
@@ -76,6 +81,8 @@ import com.visionassist.appspace.utils.load_tutorialDialog
 import com.visionassist.appspace.utils.load_unavailableSTT
 import com.visionassist.appspace.utils.robotoSemibold
 import com.visionassist.appspace.utils.vibrate
+import java.io.File
+import java.io.IOException
 
 class BlindHomeActivity : BaseActivity() {
     private val TAG = "BlindHomeActivity"
@@ -124,8 +131,14 @@ class BlindHomeActivity : BaseActivity() {
     private var syncStatus: Int = 0
     private var syncDays: Int = 0
 
+    // Camera intent parameters
+    private lateinit var takePictureLauncher: ActivityResultLauncher<Uri>
+    private lateinit var currentPhotoUri: Uri
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        registerCameraLauncher()
 
         // Get sync status
         val dbManager = PhoneStatusMonitor.getInstance().dbManager
@@ -157,6 +170,37 @@ class BlindHomeActivity : BaseActivity() {
         }
     }
 
+    @Suppress("DEPRECATION")
+    private fun registerCameraLauncher() {
+        takePictureLauncher = registerForActivityResult(
+            TakePicture()
+        ) { isSuccess ->
+            if (isSuccess) {
+                try {
+                    val intent = Intent(this, BlindCaptionActivity::class.java)
+                    intent.putExtra(Constants.EXTRA_IMAGE_URI, currentPhotoUri.toString())
+                    startActivity(intent)
+                } catch (e: IOException) {
+                    Log.e(TAG, "Error loading captured image", e)
+                    showCameraError()
+                }
+            } else {
+                Log.e(TAG, "Image capture failed or cancelled")
+                uiLocked = false
+                locked = false
+            }
+        }
+
+        Log.d(TAG, "Camera launcher registered")
+    }
+
+    private fun showCameraError() {
+        val monitor = PhoneStatusMonitor.getInstance()
+        val errorDialog = ErrorDialogManager(monitor.currentActivity)
+        errorDialog.setupDialog(Constants.CAMERA_MAKE_PHOTO)
+        monitor.shutdownApp(errorDialog, monitor.currentContext)
+    }
+
     override fun onResume() {
         super.onResume()
 
@@ -181,6 +225,29 @@ class BlindHomeActivity : BaseActivity() {
             returnFromFindMyObject = false
             playSound = false
             handleSpeechDialogTap()
+        }
+    }
+
+    private fun launchCamera() {
+        try {
+            val photoFile = File.createTempFile(
+                "temp_visionassist",
+                ".jpg",
+                cacheDir
+            )
+
+            currentPhotoUri = FileProvider.getUriForFile(
+                this,
+                "$packageName.fileprovider",
+                photoFile
+            )
+
+            Log.d(TAG, "Launching camera with URI: $currentPhotoUri")
+
+            takePictureLauncher.launch(currentPhotoUri)
+        } catch (e: IOException) {
+            Log.e(TAG, "Error creating temp file", e)
+            showCameraError()
         }
     }
 
@@ -365,9 +432,7 @@ class BlindHomeActivity : BaseActivity() {
 
         onPermissionGranted = {
             checkPhoneStatusAndNavigate {
-                val intent = Intent(this, BlindDetectionActivity::class.java)
-                startActivity(intent)
-                finish()
+                launchCamera()
             }
         }
         PermissionChecker.checkAndRequestPermissions(this, AppConfig.blindness, onPermissionGranted)
@@ -378,10 +443,8 @@ class BlindHomeActivity : BaseActivity() {
 
         onPermissionGranted = {
             checkPhoneStatusAndNavigate {
-                if (PhoneStatusMonitor.getInstance().writingToHCFinished) {
-                    val intent = Intent(this, BlindCaptionActivity::class.java)
-                    startActivity(intent)
-                }
+                if (PhoneStatusMonitor.getInstance().writingToHCFinished)
+                    launchCamera()
             }
         }
         PermissionChecker.checkAndRequestPermissions(this, AppConfig.blindness, onPermissionGranted)
