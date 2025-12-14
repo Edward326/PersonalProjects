@@ -1001,3 +1001,11 @@ fun load_captionError2(context: Context): String {
         else -> context.getString(R.string.blind_caption_error_en)
     }
 }
+
+fun load_loadingReports(context: Context): String {
+    return when (AppConfig.mainLanguage.code) {
+        "en" -> context.getString(R.string.making_reports_en)
+        "ro" -> context.getString(R.string.making_reports_ro)
+        else -> context.getString(R.string.making_reports_en)
+    }
+}

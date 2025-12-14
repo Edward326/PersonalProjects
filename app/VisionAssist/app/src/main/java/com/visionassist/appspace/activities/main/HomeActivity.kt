@@ -236,8 +236,7 @@ class HomeActivity : BaseActivity() {
                 onNavigateReports = ::handleNavigateReports,
                 onNavigateSettings = ::handleNavigateSettings,
                 onSpeechDialogTap = ::handleSpeechDialogTap,
-                navigateFun = ::navigateToLiveOrStatic,
-                onSwipeToLeft = ::handleSwipeToLeft
+                navigateFun = ::navigateToLiveOrStatic
             )
         }
     }
@@ -480,21 +479,8 @@ class HomeActivity : BaseActivity() {
     private fun handleNavigateSettings() {
         if (!uiLocked) {
             vibrateIfEnabled()
-            val intent = Intent(this, SettingsActivity::class.java)
-            startActivity(intent)
-            finish()
-        }
-    }
 
-    private fun handleSwipeToLeft() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            val intent = Intent(
-                this, if (AppConfig.env_reports)
-                    EnvironmentReportsActivity::class.java
-                else
-                    SettingsActivity::class.java
-            )
+            val intent = Intent(this, SettingsActivity::class.java)
             startActivity(intent)
             finish()
         }
@@ -838,7 +824,6 @@ fun HomeScreen(
     onNavigateSettings: () -> Unit,
     onSpeechDialogTap: () -> Unit,
     navigateFun: () -> Unit,
-    onSwipeToLeft: () -> Unit
 ) {
     BoxWithConstraints(
         modifier = Modifier
@@ -862,7 +847,10 @@ fun HomeScreen(
                             val threshold = (screenWidth * Constants.MIN_HDISTANCE_THRESHOLD).toPx()
                             when {
                                 swipeStartX <= -threshold -> {
-                                    onSwipeToLeft()
+                                    if(AppConfig.env_reports)
+                                        onNavigateReports()
+                                    else
+                                        onNavigateSettings()
                                 }
                             }
                             swipeStartX = 0f
@@ -1798,7 +1786,6 @@ fun HomeActivityPreview() {
         onNavigateSettings = {},
         onSpeechDialogTap = {},
         navigateFun = {},
-        onSwipeToLeft = {}
     )
 }
 
@@ -1832,7 +1819,6 @@ fun HomeActivityWithOptionsPreview() {
         onNavigateSettings = {},
         onSpeechDialogTap = {},
         navigateFun = {},
-        onSwipeToLeft = {}
     )
 }
 
@@ -1866,6 +1852,5 @@ fun HomeActivityWithSpeakingDialogPreview() {
         onNavigateSettings = {},
         onSpeechDialogTap = {},
         navigateFun = {},
-        onSwipeToLeft = {}
     )
 }

@@ -703,7 +703,7 @@ fun StaticDetectionScreen(
                 .fillMaxSize()
         ) {
             Image(
-                painter = painterResource(R.drawable.app_background),
+                painter = painterResource(R.drawable.app_background2),
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
