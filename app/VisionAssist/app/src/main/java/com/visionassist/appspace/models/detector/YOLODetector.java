@@ -74,7 +74,7 @@ public class YOLODetector {
         }
     }
 
-    private void loadClassNames() throws IOException {
+    public void loadClassNames() throws IOException {
         try {
             String classNameFile = AppConfig.mainLanguage.getCode().equals("en") ? Constants.DETECTOR_CLASSES_FILE_EN : Constants.DETECTOR_CLASSES_FILE_RO;
             classNames = FileUtils.loadClassNames(context, classNameFile);

@@ -1009,3 +1009,19 @@ fun load_loadingReports(context: Context): String {
         else -> context.getString(R.string.making_reports_en)
     }
 }
+
+fun load_loadingReportsError(context: Context): String {
+    return when (AppConfig.mainLanguage.code) {
+        "en" -> context.getString(R.string.making_reports_error_en)
+        "ro" -> context.getString(R.string.making_reports_error_ro)
+        else -> context.getString(R.string.making_reports_error_en)
+    }
+}
+
+fun load_reportsEmpty(context: Context): String {
+    return when (AppConfig.mainLanguage.code) {
+        "en" -> context.getString(R.string.reports_empty_error_en)
+        "ro" -> context.getString(R.string.reports_empty_error_en)
+        else -> context.getString(R.string.reports_empty_error_en)
+    }
+}

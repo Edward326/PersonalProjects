@@ -202,7 +202,7 @@ class StaticDetectionActivity : ComponentActivity() {
                 Log.e(TAG, "No image URI provided!")
                 showError(Constants.INTENT_URI_IS_NULL)
             }
-        }, 500)
+        }, 1000)
     }
 
     @Suppress("DEPRECATION")

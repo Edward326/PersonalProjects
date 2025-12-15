@@ -166,7 +166,7 @@ class BlindCaptionActivity : BaseActivity() {
                 Log.e(TAG, "No image URI provided")
                 finish()
             }
-        }, 500)
+        }, 1000)
     }
 
     private fun processImageUri(imageUri: Uri) {

@@ -375,8 +375,8 @@ class HomeActivity : BaseActivity() {
                 }
             )
 
-            if (classOpt!=0)
-                if(!PhoneStatusMonitor.getInstance().writingToHCFinished)
+            if (classOpt != 0)
+                if (!PhoneStatusMonitor.getInstance().writingToHCFinished)
                     return
 
             intent.putExtra(Constants.EXTRA_IMAGE_URI, currentPhotoUri.toString())
@@ -487,7 +487,7 @@ class HomeActivity : BaseActivity() {
     }
 
     private fun launchSpeechRecognition(firstTimeSpeak: Boolean) {
-        requestToStop=false
+        requestToStop = false
         if (firstTimeSpeak) {
             if (AppConfig.mainLanguage.code == "ro") {
                 hasToExecAfterResume = true
@@ -847,7 +847,7 @@ fun HomeScreen(
                             val threshold = (screenWidth * Constants.MIN_HDISTANCE_THRESHOLD).toPx()
                             when {
                                 swipeStartX <= -threshold -> {
-                                    if(AppConfig.env_reports)
+                                    if (AppConfig.env_reports)
                                         onNavigateReports()
                                     else
                                         onNavigateSettings()
@@ -1566,7 +1566,8 @@ fun BottomNavigationBar(
     onNavigateHome: () -> Unit,
     onNavigateReports: () -> Unit,
     onNavigateSettings: () -> Unit,
-    showReports: Boolean
+    showReports: Boolean,
+    selected: Int = 0
 ) {
     NavigationBar(
         containerColor = colorResource(R.color.std_light_purple)
@@ -1582,11 +1583,11 @@ fun BottomNavigationBar(
                 Text(
                     text = if (AppConfig.mainLanguage.code == "en") "Home" else "Acasă",
                     fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
-                    fontFamily = robotoExtraBold
+                    fontFamily = if(selected==0)robotoExtraBold else robotoLight
                 )
 
             },
-            selected = true,
+            selected = selected == 0,
             colors = NavigationBarItemColors(
                 selectedIconColor = Color.White,
                 unselectedIconColor = Color(0xFF828188),
@@ -1611,10 +1612,10 @@ fun BottomNavigationBar(
                     Text(
                         "Reports",
                         fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
-                        fontFamily = robotoLight
+                        fontFamily = if(selected==1)robotoExtraBold else robotoLight
                     )
                 },
-                selected = false,
+                selected = selected == 1,
                 onClick = onNavigateReports,
                 colors = NavigationBarItemColors(
                     selectedIconColor = Color.White,
@@ -1639,10 +1640,10 @@ fun BottomNavigationBar(
                 Text(
                     if (AppConfig.mainLanguage.code == "en") "Settings" else "Setări",
                     fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
-                    fontFamily = robotoLight
+                    fontFamily = if(selected==2)robotoExtraBold else robotoLight
                 )
             },
-            selected = false,
+            selected = selected == 2,
             onClick = onNavigateSettings,
             colors = NavigationBarItemColors(
                 selectedIconColor = Color.White,

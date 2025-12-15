@@ -2,8 +2,12 @@ package com.visionassist.appspace.models.detector;
 
 import android.content.Context;
 import android.util.Log;
+
 import com.visionassist.appspace.utils.AppConfig;
 import com.visionassist.appspace.utils.Constants;
+import com.visionassist.appspace.utils.FileUtils;
+
+import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -41,12 +45,13 @@ public class YOLODetectorPool {
     private volatile boolean isInitialized = false;
     private volatile boolean initializationFailed = false;
     private String failureReason = null;
+    public Map<Integer, String> classNames;
 
     // Memory constants (in bytes)
     public static final long MB = 1_048_576L;
     private static final long THREAD_MEM_USED = 14 * MB;
     public long ACTUAL_THREAD_MEM_USED_MB;
-    private static final int STD_NO_THREADS=2;
+    private static final int STD_NO_THREADS = 2;
 
     public YOLODetectorPool(Context context) {
         this.context = context;
@@ -74,6 +79,9 @@ public class YOLODetectorPool {
         long startTime = System.currentTimeMillis();
 
         try {
+            String classNameFile = AppConfig.mainLanguage.getCode().equals("en") ? Constants.DETECTOR_CLASSES_FILE_EN : Constants.DETECTOR_CLASSES_FILE_RO;
+            classNames = FileUtils.loadClassNames(context, classNameFile);
+
             // Step 1: Calculate available memory
             MemoryInfo memoryInfo = calculateAvailableMemory();
             logMemoryInfo(memoryInfo);
@@ -191,17 +199,16 @@ public class YOLODetectorPool {
         // Calculate max instances that fit in memory
         long modelInstances = memory.usableMemory / ACTUAL_THREAD_MEM_USED_MB;
 
-        if(modelInstances>=STD_NO_THREADS+2)
+        if (modelInstances >= STD_NO_THREADS + 2)
             return new PoolConfiguration(2, STD_NO_THREADS);
-        else
-        {
-            if(modelInstances<2)
-                return new PoolConfiguration(0,0);
+        else {
+            if (modelInstances < 2)
+                return new PoolConfiguration(0, 0);
             else {
-                if(modelInstances<3)
-                return new PoolConfiguration(2,1);
+                if (modelInstances < 3)
+                    return new PoolConfiguration(2, 1);
                 else
-                    return new PoolConfiguration(2,((int)modelInstances)-2);
+                    return new PoolConfiguration(2, ((int) modelInstances) - 2);
             }
         }
     }
@@ -448,5 +455,9 @@ public class YOLODetectorPool {
             this.detector = detector;
             this.type = type;
         }
+    }
+
+    public String getClassName(int i){
+        return classNames.getOrDefault(i,"unknown");
     }
 }

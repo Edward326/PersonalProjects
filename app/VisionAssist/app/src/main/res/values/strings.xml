@@ -228,6 +228,10 @@
     <!-- EnvironmentReportsActivity -->
     <string name="making_reports_en">Loading statistics…</string>
     <string name="making_reports_ro">Se încarcă statisticile…</string>
+    <string name="making_reports_error_en">Failed to load reports page. You can try again or return to home page</string>
+    <string name="making_reports_error_ro">Nu s-a reușit încărcarea raportului. Poți încearca din nou sau poți să revii în pagina principala</string>
+    <string name="reports_empty_error_en">At the moment the reports database is empty. After you will use the models, reports will show up here</string>
+    <string name="reports_empty_error_ro">În acest moment, baza de date cu rapoarte este goală. După ce veți utiliza modelele, rapoartele vor apărea aici</string>
 
 
     <!-- Common values -->

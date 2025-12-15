@@ -2,11 +2,13 @@
 
 package com.visionassist.appspace.activities.tabs.reports
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.view.KeyEvent
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -17,6 +19,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -66,12 +69,17 @@ import com.visionassist.appspace.BaseActivity
 import com.visionassist.appspace.R
 import com.visionassist.appspace.activities.main.BottomNavigationBar
 import com.visionassist.appspace.activities.main.HomeActivity
+import com.visionassist.appspace.activities.newprofile.LoadProfileActivity
 import com.visionassist.appspace.activities.tabs.settings.SettingsActivity
 import com.visionassist.appspace.jetpack.design.LoadingComponent
+import com.visionassist.appspace.jetpack.design.NotificationDialog
+import com.visionassist.appspace.jetpack.managers.InfoNotificationManager
 import com.visionassist.appspace.utils.AppConfig
 import com.visionassist.appspace.utils.Constants
 import com.visionassist.appspace.utils.haptic_model0
 import com.visionassist.appspace.utils.load_loadingReports
+import com.visionassist.appspace.utils.load_loadingReportsError
+import com.visionassist.appspace.utils.load_reportsEmpty
 import com.visionassist.appspace.utils.robotoExtraBold
 import com.visionassist.appspace.utils.vibrate
 import kotlinx.coroutines.launch
@@ -86,6 +94,8 @@ class EnvironmentReportsActivity : BaseActivity() {
     private val showLoading = mutableStateOf(true)
     private val loadingText = mutableStateOf("")
     private val showResults = mutableStateOf(false)
+    private val showErrorDialog = mutableStateOf(false)
+    private val errorMessage = mutableStateOf("")
 
     // Statistics data
     private var statistics: EnvironmentStatistics? = null
@@ -93,6 +103,8 @@ class EnvironmentReportsActivity : BaseActivity() {
 
     // Destroyed flag
     private var isDestroyed = false
+
+    private val infoNotificationManager = InfoNotificationManager(this)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -103,6 +115,8 @@ class EnvironmentReportsActivity : BaseActivity() {
             EnvironmentReportsScreen(
                 showLoading = showLoading.value,
                 loadingText = loadingText.value,
+                showErrorDialog = showErrorDialog.value,
+                errorMessage = errorMessage.value,
                 showResults = showResults.value,
                 statistics = statistics,
                 selectedSceneIndex = selectedSceneIndex.value,
@@ -110,19 +124,32 @@ class EnvironmentReportsActivity : BaseActivity() {
                 onNavigateHome = ::handleNavigateHome,
                 onNavigateReports = ::handleNavigateReports,
                 onNavigateSettings = ::handleNavigateSettings,
+                onErrorRetry = { handleRetry() },
+                onErrorOk = {
+                    showErrorDialog.value = false
+                    handleNavigateHome()
+                }
             )
         }
 
-        // Start processing reports
+        mainHandler.postDelayed({
+            processReports()
+        }, 1000)
+    }
+
+    private fun handleRetry() {
+        vibrateIfEnabled()
+
+        showErrorDialog.value = false
+        showLoading.value = true
         processReports()
     }
 
     private fun processReports() {
-        EnvironmentReportsManagerKt.processReportsAsync(context = this, onSuccess = { stats ->
-            if (isDestroyed) return@processReportsAsync
-
-            mainHandler.post {
-                if (isDestroyed) return@post
+        EnvironmentReportsManagerKt.processReportsAsync(
+            context = this,
+            onSuccess = { stats ->
+                if (isDestroyed) return@processReportsAsync
 
                 statistics = stats
                 showLoading.value = false
@@ -130,19 +157,19 @@ class EnvironmentReportsActivity : BaseActivity() {
                 // Delay before showing results (like CaptionActivity)
                 mainHandler.postDelayed({
                     if (isDestroyed) return@postDelayed
-                    showResults.value = true
+
+                    if (statistics!!.allEmpty())
+                        infoNotificationManager.showNotification(
+                            load_reportsEmpty(this),
+                            { handleNavigateHome() },
+                            "OK"
+                        )
+                    else
+                        showResults.value = true
                 }, Constants.ANIMATION_DELAY.toLong())
 
-                Log.d(
-                    TAG,
-                    "Statistics loaded: ${stats.scenesList.size} scenes, ${stats.objectsList.size} objects"
-                )
-            }
-        }, onError = { e ->
-            if (isDestroyed) return@processReportsAsync
-
-            mainHandler.post {
-                if (isDestroyed) return@post
+            }, onError = { e ->
+                if (isDestroyed) return@processReportsAsync
 
                 Log.e(TAG, "Error processing reports", e)
                 // Show empty statistics
@@ -151,10 +178,10 @@ class EnvironmentReportsActivity : BaseActivity() {
 
                 mainHandler.postDelayed({
                     if (isDestroyed) return@postDelayed
-                    showResults.value = true
+                    errorMessage.value = load_loadingReportsError(this)
+                    showErrorDialog.value = true
                 }, Constants.ANIMATION_DELAY.toLong())
-            }
-        })
+            })
     }
 
     private fun vibrateIfEnabled() {
@@ -187,6 +214,21 @@ class EnvironmentReportsActivity : BaseActivity() {
         selectedSceneIndex.value = index
     }
 
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        when (keyCode) {
+            KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                Log.d(TAG, "Volume button down pressed")
+                return true
+            }
+
+            KeyEvent.KEYCODE_VOLUME_UP -> {
+                Log.d(TAG, "Volume button up pressed")
+                return true
+            }
+        }
+        return super.onKeyDown(keyCode, event)
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         isDestroyed = true
@@ -198,6 +240,8 @@ class EnvironmentReportsActivity : BaseActivity() {
 fun EnvironmentReportsScreen(
     showLoading: Boolean,
     loadingText: String,
+    showErrorDialog: Boolean,
+    errorMessage: String,
     showResults: Boolean,
     statistics: EnvironmentStatistics?,
     selectedSceneIndex: Int?,
@@ -205,6 +249,8 @@ fun EnvironmentReportsScreen(
     onNavigateHome: () -> Unit,
     onNavigateReports: () -> Unit,
     onNavigateSettings: () -> Unit,
+    onErrorRetry: () -> Unit,
+    onErrorOk: () -> Unit
 ) {
     var showStatsPanel by remember { mutableStateOf(false) }
 
@@ -212,13 +258,12 @@ fun EnvironmentReportsScreen(
         modifier = Modifier.fillMaxSize()
     ) {
         val screenHeight = maxHeight
-        val screenWidth = maxWidth
         val navbarHeight = 90.dp / maxHeight
         val sectionMain = 1.0f - navbarHeight
 
         // Background image
         Image(
-            painter = painterResource(R.drawable.app_background),
+            painter = painterResource(R.drawable.app_background2),
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
@@ -236,41 +281,40 @@ fun EnvironmentReportsScreen(
             )
         )
 
-        Column {
-            Box(modifier = Modifier.height(screenHeight * 0.045f))
-
-            // Logo
-            Image(
-                painter = painterResource(R.drawable.vision_assist_logo),
-                contentDescription = "app logo",
-                modifier = Modifier.size(Constants.LOGO_SIZE.dp)
-            )
-        }
+        NotificationDialog(
+            isVisible = showErrorDialog,
+            type = LoadProfileActivity.NotificationType.ERROR,
+            message = errorMessage,
+            showTwoButtons = true,
+            firstButtonLabel = if (AppConfig.mainLanguage.code == "en") "Retry" else "Reîncearcă",
+            secondButtonLabel = if (AppConfig.mainLanguage.code == "en") "OK" else "OK",
+            firstButtonClick = onErrorRetry,
+            secondButtonClick = onErrorOk
+        )
 
         if (showResults && statistics != null) {
+            // Background image
+            Image(
+                painter = painterResource(R.drawable.app_background),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+
+            Column {
+                Box(modifier = Modifier.height(screenHeight * 0.045f))
+
+                // Logo
+                Image(
+                    painter = painterResource(R.drawable.vision_assist_logo),
+                    contentDescription = "app logo",
+                    modifier = Modifier.size(Constants.LOGO_SIZE.dp)
+                )
+            }
+
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .pointerInput(Unit) {
-                        var swipeStartX = 0f
-                        detectHorizontalDragGestures(onDragStart = {
-                            swipeStartX = 0f
-                        }, onDragEnd = {
-                            val threshold = (screenWidth * Constants.MIN_HDISTANCE_THRESHOLD).toPx()
-                            when {
-                                swipeStartX <= -threshold -> {
-                                    onNavigateSettings()
-                                }
-
-                                swipeStartX >= threshold -> {
-                                    onNavigateHome()
-                                }
-                            }
-                            swipeStartX = 0f
-                        }, onHorizontalDrag = { _, dragAmount ->
-                            swipeStartX += dragAmount
-                        })
-                    }
             ) {
                 // Main content
                 Column(
@@ -287,7 +331,10 @@ fun EnvironmentReportsScreen(
                     ) {
                         // Tab 1: Most common scenes
                         ScrollableTab(
-                            title = "Most common scenes",
+                            title = if (AppConfig.mainLanguage.code == "en")
+                                "Most common scenes"
+                            else
+                                "Spații întâlnite des",
                             items = statistics.scenesList.map { it.first to it.second },
                             shape = RoundedCornerShape(
                                 topStart = 32.dp,
@@ -299,7 +346,10 @@ fun EnvironmentReportsScreen(
 
                         // Tab 2: Most common objects
                         ScrollableTab(
-                            title = "Most common objects",
+                            title = if (AppConfig.mainLanguage.code == "en")
+                                "Most common objects"
+                            else
+                                "Obiecte întâlnite des",
                             items = statistics.objectsList.map { it.first to it.second },
                             shape = RoundedCornerShape(16.dp)
                         )
@@ -351,12 +401,13 @@ fun EnvironmentReportsScreen(
                         onNavigateHome = onNavigateHome,
                         onNavigateReports = onNavigateReports,
                         onNavigateSettings = onNavigateSettings,
-                        showReports = AppConfig.env_reports
+                        showReports = AppConfig.env_reports,
+                        selected=1
                     )
                 }
 
                 AnimatedVisibility(
-                    visible = !showStatsPanel,
+                    visible = showStatsPanel,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth(),
@@ -385,101 +436,12 @@ fun EnvironmentReportsScreen(
 }
 
 @Composable
-fun StatsPanel(
-    avgThreads: Float,
-    avgDetectorLatency: Float,
-    avgClassifierLatency: Float,
-    avgBatteryUsage: Float,
-    onClose: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
-            .background(Color.White)  // Pink background
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Text(
-            text = "Statistics",
-            fontSize = 22.sp,
-            fontFamily = robotoExtraBold,
-            color = Color.Black
-        )
-
-        // Stats rows
-        StatsRow(
-            label = "Average Threads",
-            value = avgThreads.toInt().toString()
-        )
-
-        StatsRow(
-            label = "Detector Latency",
-            value = "${avgDetectorLatency.toInt()}ms"
-        )
-
-        StatsRow(
-            label = "Classifier Latency",
-            value = "${avgClassifierLatency.toInt()}ms"
-        )
-
-        StatsRow(
-            label = "Battery Usage Increase",
-            value = String.format("%.2f%%", avgBatteryUsage)
-        )
-
-        // Header with close button
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top=10.dp)
-                .clickable { onClose() }
-            ,
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = "Close",
-                fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
-                color = colorResource(R.color.error_red),
-                fontFamily = robotoExtraBold
-            )
-        }
-    }
-}
-
-@Composable
-fun StatsRow(label: String, value: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(32.dp))
-            .background(Color(0xFFFFC4D6))
-            .padding(horizontal = 12.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = label,
-            fontSize = Constants.STD_ERROR_FONT_SIZE.sp,
-            color = Color.Black,
-            fontFamily = robotoExtraBold
-        )
-
-        Text(
-            text = value,
-            fontSize = Constants.STD_ERROR_FONT_SIZE.sp,
-            color = colorResource(R.color.std_purple),
-            fontFamily = robotoExtraBold
-        )
-    }
-}
-
-@Composable
 fun ScrollableTab(
     title: String, items: List<Pair<String, Int>>,  // (name, count)
     shape: RoundedCornerShape
 ) {
+    if (items.isEmpty()) return
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -493,7 +455,7 @@ fun ScrollableTab(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(32.dp))
-                .background(Color(0xFFFFC4D6))
+                .background(Color(0xFFFFDCE7))
                 .padding(vertical = 12.dp),
             contentAlignment = Alignment.Center
         ) {
@@ -501,7 +463,8 @@ fun ScrollableTab(
                 text = title,
                 fontSize = Constants.STD_ERROR_FONT_SIZE.sp,
                 color = Color.Black,
-                fontFamily = robotoExtraBold
+                fontFamily = robotoExtraBold,
+                textAlign = TextAlign.Center
             )
         }
 
@@ -517,29 +480,18 @@ fun ScrollableItemRow(items: List<Pair<String, Int>>, sum: Int) {
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
 
-    var dragStartX by remember { mutableStateOf(0f) }
-
     LazyRow(
-        state = listState, modifier = Modifier
+        state = listState,
+        modifier = Modifier
             .fillMaxWidth()
             .pointerInput(Unit) {
-                detectHorizontalDragGestures(onDragStart = {
-                    dragStartX = 0f
-                }, onDragEnd = {
-                    if (kotlin.math.abs(dragStartX) > 500f) {  // Fast swipe threshold
-                        val currentIndex = listState.firstVisibleItemIndex
-                        val direction = if (dragStartX < 0) 3 else -3  // Jump by 3
-                        val targetIndex = (currentIndex + direction).coerceIn(0, items.size - 1)
-
-                        coroutineScope.launch {
-                            listState.animateScrollToItem(targetIndex)
-                        }
+                detectHorizontalDragGestures(onHorizontalDrag = { _, dragAmount ->
+                    coroutineScope.launch {
+                        listState.animateScrollBy(dragAmount)
                     }
-                    dragStartX = 0f
-                }, onHorizontalDrag = { _, dragAmount ->
-                    dragStartX += dragAmount
                 })
-            }, horizontalArrangement = Arrangement.spacedBy(12.dp)
+            },
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         itemsIndexed(items) { index, (name, count) ->
             ItemCard(
@@ -557,13 +509,13 @@ fun ItemCard(name: String, percentage: Int, color: Color) {
         modifier = Modifier
             .clip(RoundedCornerShape(32.dp))
             .background(Color.White)
-            .padding(horizontal = 12.dp, vertical = 12.dp),
+            .padding(horizontal = 7.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(30.dp)
+                .size(35.dp)
                 .clip(RoundedCornerShape(16.dp))
                 .background(color),
             contentAlignment = Alignment.Center
@@ -593,6 +545,8 @@ fun ObjectsBySceneTab(
     onSceneSelected: (Int?) -> Unit,
     shape: RoundedCornerShape
 ) {
+    if (statistics.objectsBySceneList.isEmpty()) return
+
     var showSceneDropdown by remember { mutableStateOf(false) }
 
     Column(
@@ -608,15 +562,19 @@ fun ObjectsBySceneTab(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(32.dp))
-                .background(Color(0xFFFFC4D6))
+                .background(Color(0xFFFFDCE7))
                 .padding(vertical = 12.dp),
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "Objects by scene",
+                text = if (AppConfig.mainLanguage.code == "en")
+                    "Most common objects by scene"
+                else
+                    "Obiecte întâlnite des, in diferite spații",
                 fontSize = Constants.STD_ERROR_FONT_SIZE.sp,
                 color = Color.Black,
-                fontFamily = robotoExtraBold
+                fontFamily = robotoExtraBold,
+                textAlign = TextAlign.Center
             )
         }
 
@@ -646,7 +604,10 @@ fun ObjectsBySceneTab(
                         text = if (selectedSceneIndex != null && selectedSceneIndex < statistics.scenesList.size) {
                             statistics.scenesList[selectedSceneIndex].first
                         } else {
-                            "Select a scene"
+                            if (AppConfig.mainLanguage.code == "en")
+                                "Select a scene"
+                            else
+                                "Selectează un spațiu"
                         }, fontSize = Constants.STD_FONT_SIZE.sp, color = Color.Gray
                     )
                 }
@@ -702,6 +663,112 @@ fun ObjectsBySceneTab(
                 )
             }
         }
+    }
+}
+
+@SuppressLint("DefaultLocale")
+@Composable
+fun StatsPanel(
+    avgThreads: Float,
+    avgDetectorLatency: Float,
+    avgClassifierLatency: Float,
+    avgBatteryUsage: Float,
+    onClose: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
+            .background(Color.White)  // Pink background
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Text(
+            text = if (AppConfig.mainLanguage.code == "en")
+                "More statistics"
+            else
+                "Mai multe statistici",
+            fontSize = 22.sp,
+            fontFamily = robotoExtraBold,
+            color = Color.Black
+        )
+
+        if (avgThreads.toInt() != 0)
+        // Stats rows
+            StatsRow(
+                label = if (AppConfig.mainLanguage.code == "en")
+                    "Average number of threads"
+                else
+                    "Media numărului firelor de executie",
+                value = avgThreads.toInt().toString()
+            )
+
+        if (avgDetectorLatency.toInt() != 0)
+            StatsRow(
+                label = "Detector Latency",
+                value = "${avgDetectorLatency.toInt()}ms"
+            )
+
+        StatsRow(
+            label = "Classifier Latency",
+            value = "${avgClassifierLatency.toInt()}ms"
+        )
+
+        if (avgBatteryUsage.toInt() != 0)
+            StatsRow(
+                label = if (AppConfig.mainLanguage.code == "en")
+                    "Battery Usage Increase"
+                else
+                    "Creșterea medie a utilizării bateriei",
+                value = String.format("%.2f%%", avgBatteryUsage)
+            )
+
+        // Header with close button
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 10.dp)
+                .clickable { onClose() },
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = if (AppConfig.mainLanguage.code == "en")
+                    "Close"
+                else
+                    "Închide",
+                fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
+                color = colorResource(R.color.error_red),
+                fontFamily = robotoExtraBold
+            )
+        }
+    }
+}
+
+@Composable
+fun StatsRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(32.dp))
+            .background(Color(0xFFFFC4D6))
+            .padding(horizontal = 12.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            fontSize = Constants.STD_ERROR_FONT_SIZE.sp,
+            color = Color.Black,
+            fontFamily = robotoExtraBold
+        )
+
+        Text(
+            text = value,
+            fontSize = Constants.STD_ERROR_FONT_SIZE.sp,
+            color = colorResource(R.color.std_purple),
+            fontFamily = robotoExtraBold
+        )
     }
 }
 
@@ -769,11 +836,16 @@ fun EnvironmentReportsActivityPreview() {
     EnvironmentReportsScreen(
         showLoading = false,
         loadingText = "",
+        showErrorDialog = false,
+        errorMessage = "",
         showResults = true,
         statistics = sampleStats,
         selectedSceneIndex = null,
         onSceneSelected = {},
         onNavigateHome = {},
         onNavigateReports = {},
-        onNavigateSettings = {})
+        onNavigateSettings = {},
+        onErrorRetry = {},
+        onErrorOk = {}
+    )
 }

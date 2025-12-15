@@ -14,10 +14,20 @@ import java.io.FileWriter
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import kotlin.math.min
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.locks.ReentrantLock
 
 object EnvironmentReportsManagerKt {
     private const val TAG = "EnvReportsManager"
+
+    // Fine-grained locks with tryLock support
+    private val scenesLock = ReentrantLock()
+    private val objectsLock = ReentrantLock()
+    private val objectsBySceneLock = ReentrantLock()
+    private val avgNoThreadsLock = ReentrantLock()
+    private val avgDetectorLatencyLock = ReentrantLock()
+    private val avgClassifierLatencyLock = ReentrantLock()
+    private val avgBatteryUsageLock = ReentrantLock()
 
     @SuppressLint("DefaultLocale")
     fun writeDetectionReport(
@@ -142,15 +152,14 @@ object EnvironmentReportsManagerKt {
                     Log.d(TAG, "Processing ${lines.size} report lines")
 
                     // Calculate thread count
-                    val threadCount = min(5, (lines.size + 99) / 100)  // Ceil division, max 5
+                    val threadCount = if (lines.size <= 10) 1 else 5
 
                     // Create shared statistics database
                     val stats = EnvironmentStatistics()
-                    val statsLock = Any()  // Lock for synchronized access
 
                     if (threadCount == 1) {
                         // Single-threaded processing
-                        processLines(lines, stats, statsLock)
+                        processLines(lines, stats)
                     } else {
                         // Multi-threaded processing
                         val linesPerThread = lines.size / threadCount
@@ -163,7 +172,7 @@ object EnvironmentReportsManagerKt {
                             val threadLines = lines.subList(startIdx, endIdx)
 
                             val thread = Thread {
-                                processLines(threadLines, stats, statsLock)
+                                processLines(threadLines, stats)
                             }
                             threads.add(thread)
                             thread.start()
@@ -200,7 +209,6 @@ object EnvironmentReportsManagerKt {
                 override fun onError(e: Exception) {
                     Log.e(TAG, "Error classifying scene", e)
                     onError(e)
-                    // Continue anyway
                 }
             }
         )
@@ -208,25 +216,51 @@ object EnvironmentReportsManagerKt {
 
     private fun processLines(
         lines: List<String>,
-        stats: EnvironmentStatistics,
-        lock: Any
+        stats: EnvironmentStatistics
     ) {
+        // Queue for deferred operations
+        val deferredOperations = ConcurrentLinkedQueue<() -> Unit>()
+
         for (line in lines) {
             try {
                 if (line.contains("CAPTION_GENERATED")) {
-                    // Format: [timestamp] CAPTION_GENERATED | SceneID: X | ClassifierLatency: Xms
-                    processCaptionLine(line, stats, lock)
+                    processCaptionLine(line, stats, deferredOperations)
                 } else if (line.contains("SceneID:")) {
-                    // Format: [timestamp] SceneID: X | ObjectsID: [...] | Threads used: X | ...
-                    processDetectionLine(line, stats, lock)
+                    processDetectionLine(line, stats, deferredOperations)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error processing line: $line", e)
             }
         }
+
+        // Process queued operations with skip-and-retry
+        processQueuedOperations(deferredOperations)
     }
 
-    private fun processCaptionLine(line: String, stats: EnvironmentStatistics, lock: Any) {
+    /**
+     * Process queued operations with non-blocking skip-and-retry
+     * - Try each operation
+     * - If locked (throws exception), skip and re-queue
+     * - Continue until queue is empty
+     */
+    private fun processQueuedOperations(queue: ConcurrentLinkedQueue<() -> Unit>) {
+        while (queue.isNotEmpty()) {
+            val operation = queue.poll()
+
+            try {
+                operation!!()
+            } catch (_: IllegalStateException) {
+                // Lock was busy, re-queue for next pass
+                queue.add(operation)
+            }
+        }
+    }
+
+    private fun processCaptionLine(
+        line: String,
+        stats: EnvironmentStatistics,
+        deferredQueue: ConcurrentLinkedQueue<() -> Unit>
+    ) {
         try {
             // Extract scene ID
             val sceneIdMatch = Regex("SceneID:\\s*(\\d+)").find(line)
@@ -237,28 +271,45 @@ object EnvironmentReportsManagerKt {
             val latency = latencyMatch?.groupValues?.get(1)?.toLongOrNull() ?: return
 
             // Convert scene ID to name
-            val sceneName = PhoneStatusMonitor.getInstance().modelManager.classifier.getClassName(sceneId)
+            val sceneName =
+                PhoneStatusMonitor.getInstance().modelManager.classifier.getClassName(sceneId)
 
-            // Add to scene list (synchronized)
-            addToSceneList(stats, sceneName, lock)
-
-            // Update classifier latency average (synchronized)
-            updateClassifierLatency(stats, latency, lock)
+            // Try to execute immediately or queue
+            tryOrQueue(deferredQueue) { addToSceneList(stats, sceneName) }
+            tryOrQueue(deferredQueue) { updateClassifierLatency(stats, latency) }
 
         } catch (e: Exception) {
             Log.e(TAG, "Error processing caption line", e)
         }
     }
 
-    private fun processDetectionLine(line: String, stats: EnvironmentStatistics, lock: Any) {
+    // Helper to try immediate execution or queue if locked
+    private inline fun tryOrQueue(
+        queue: ConcurrentLinkedQueue<() -> Unit>,
+        noinline operation: () -> Unit
+    ) {
+        try {
+            operation()
+        } catch (_: Exception) {
+            // If failed due to lock contention, queue it
+            queue.add(operation)
+        }
+    }
+
+    private fun processDetectionLine(
+        line: String,
+        stats: EnvironmentStatistics,
+        deferredQueue: ConcurrentLinkedQueue<() -> Unit>
+    ) {
         try {
             // Extract scene ID
             val sceneIdMatch = Regex("SceneID:\\s*(\\d+)").find(line)
             val sceneId = sceneIdMatch?.groupValues?.get(1)?.toIntOrNull() ?: return
-            val sceneName = PhoneStatusMonitor.getInstance().modelManager.classifier.getClassName(sceneId)
+            val sceneName =
+                PhoneStatusMonitor.getInstance().modelManager.classifier.getClassName(sceneId)
 
-            // Extract objects IDs
-            val objectsMatch = Regex("ObjectsID:\\s*\\[([^]]*)]").find(line)
+            // Extract objects IDs (FIXED REGEX)
+            val objectsMatch = Regex("""ObjectsID:\s*\[([^]]*)]""").find(line)
             val objectsStr = objectsMatch?.groupValues?.get(1) ?: ""
             val objectIds = if (objectsStr == "none" || objectsStr.isBlank()) {
                 emptyList()
@@ -282,126 +333,144 @@ object EnvironmentReportsManagerKt {
             val batteryMatch = Regex("BatteryUsageIncrease:\\s*([\\d.]+)%").find(line)
             val batteryUsage = batteryMatch?.groupValues?.get(1)?.toFloatOrNull() ?: return
 
-            // Add to scene list (synchronized)
-            addToSceneList(stats, sceneName, lock)
+            // Try to execute immediately or queue
+            tryOrQueue(deferredQueue) { addToSceneList(stats, sceneName) }
 
-            // Add objects (synchronized)
             for (objectId in objectIds) {
-                val detectorModel = PhoneStatusMonitor.getInstance().modelManager.detector.acquireDetector(
-                    true,
-                    5
-                ).detector
+                val detectorModel = PhoneStatusMonitor.getInstance().modelManager.detector
 
                 val objectName = detectorModel.getClassName(objectId)
-                addToObjectList(stats, objectName, lock)
-                addToObjectsBySceneList(stats, sceneName, objectName, lock)
+                tryOrQueue(deferredQueue) { addToObjectList(stats, objectName) }
+                tryOrQueue(deferredQueue) { addToObjectsBySceneList(stats, sceneName, objectName) }
             }
 
-            // Update averages (synchronized)
-            updateThreadCount(stats, threads, lock)
-            updateDetectorLatency(stats, detectorLatency, lock)
-            updateClassifierLatency(stats, classifierLatency, lock)
-            updateBatteryUsage(stats, batteryUsage, lock)
+            tryOrQueue(deferredQueue) { updateThreadCount(stats, threads) }
+            tryOrQueue(deferredQueue) { updateDetectorLatency(stats, detectorLatency) }
+            tryOrQueue(deferredQueue) { updateClassifierLatency(stats, classifierLatency) }
+            tryOrQueue(deferredQueue) { updateBatteryUsage(stats, batteryUsage) }
 
         } catch (e: Exception) {
             Log.e(TAG, "Error processing detection line", e)
         }
     }
 
-    private fun addToSceneList(stats: EnvironmentStatistics, sceneName: String, lock: Any) {
-        synchronized(lock) {
+    private fun addToSceneList(stats: EnvironmentStatistics, sceneName: String) {
+        if (!scenesLock.tryLock()) {
+            throw IllegalStateException("Lock busy")  // Signal to queue
+        }
+        try {
             val existing = stats.scenesList.find { it.first == sceneName }
             if (existing != null) {
-                // Increment count
                 val idx = stats.scenesList.indexOf(existing)
                 stats.scenesList[idx] = existing.copy(second = existing.second + 1)
             } else {
-                // Add new
                 stats.scenesList.add(Pair(sceneName, 1))
             }
+        } finally {
+            scenesLock.unlock()
         }
     }
 
-    private fun addToObjectList(stats: EnvironmentStatistics, objectName: String, lock: Any) {
-        synchronized(lock) {
+    private fun addToObjectList(stats: EnvironmentStatistics, objectName: String) {
+        if (!objectsLock.tryLock()) {
+            throw IllegalStateException("Lock busy")
+        }
+        try {
             val existing = stats.objectsList.find { it.first == objectName }
             if (existing != null) {
-                // Increment count
                 val idx = stats.objectsList.indexOf(existing)
                 stats.objectsList[idx] = existing.copy(second = existing.second + 1)
             } else {
-                // Add new
                 stats.objectsList.add(Pair(objectName, 1))
             }
+        } finally {
+            objectsLock.unlock()
         }
     }
 
     private fun addToObjectsBySceneList(
         stats: EnvironmentStatistics,
         sceneName: String,
-        objectName: String,
-        lock: Any
+        objectName: String
     ) {
-        synchronized(lock) {
-            // Find scene
+        if (!objectsBySceneLock.tryLock()) {
+            throw IllegalStateException("Lock busy")
+        }
+        try {
             val sceneEntry = stats.objectsBySceneList.find { it.first == sceneName }
 
             if (sceneEntry != null) {
-                // Scene exists, add/increment object
                 val objectList = sceneEntry.second
                 val existingObject = objectList.find { it.first == objectName }
 
                 if (existingObject != null) {
-                    // Increment object count
                     val idx = objectList.indexOf(existingObject)
                     objectList[idx] = existingObject.copy(second = existingObject.second + 1)
                 } else {
-                    // Add new object
                     objectList.add(Pair(objectName, 1))
                 }
             } else {
-                // Scene doesn't exist, create new entry
                 val objectList = mutableListOf(Pair(objectName, 1))
                 stats.objectsBySceneList.add(Pair(sceneName, objectList))
             }
+        } finally {
+            objectsBySceneLock.unlock()
         }
     }
 
-    private fun updateThreadCount(stats: EnvironmentStatistics, threads: Int, lock: Any) {
-        synchronized(lock) {
+    private fun updateThreadCount(stats: EnvironmentStatistics, threads: Int) {
+        if (!avgNoThreadsLock.tryLock()) {
+            throw IllegalStateException("Lock busy")
+        }
+        try {
             stats.detectionRecordCount++
             val n = stats.detectionRecordCount
-            // Running average: avg_new = (avg_old * (n-1) + new_value) / n
             stats.avgNoThreads = ((stats.avgNoThreads * (n - 1)) + threads) / n
+        } finally {
+            avgNoThreadsLock.unlock()
         }
     }
 
-    private fun updateDetectorLatency(stats: EnvironmentStatistics, latency: Long, lock: Any) {
-        synchronized(lock) {
+    private fun updateDetectorLatency(stats: EnvironmentStatistics, latency: Long) {
+        if (!avgDetectorLatencyLock.tryLock()) {
+            throw IllegalStateException("Lock busy")
+        }
+        try {
             val n = stats.detectionRecordCount
             if (n > 0) {
                 stats.avgDetectorLatency = ((stats.avgDetectorLatency * (n - 1)) + latency) / n
             }
+        } finally {
+            avgDetectorLatencyLock.unlock()
         }
     }
 
-    private fun updateClassifierLatency(stats: EnvironmentStatistics, latency: Long, lock: Any) {
-        synchronized(lock) {
-            // Update for both detection and caption records
+    private fun updateClassifierLatency(stats: EnvironmentStatistics, latency: Long) {
+        if (!avgClassifierLatencyLock.tryLock()) {
+            throw IllegalStateException("Lock busy")
+        }
+        try {
             val totalRecords = stats.detectionRecordCount + stats.captionRecordCount + 1
             stats.captionRecordCount++
             stats.avgClassifierLatency =
                 ((stats.avgClassifierLatency * (totalRecords - 1)) + latency) / totalRecords
+        } finally {
+            avgClassifierLatencyLock.unlock()
         }
     }
 
-    private fun updateBatteryUsage(stats: EnvironmentStatistics, usage: Float, lock: Any) {
-        synchronized(lock) {
+    private fun updateBatteryUsage(stats: EnvironmentStatistics, usage: Float) {
+        if (!avgBatteryUsageLock.tryLock()) {
+            throw IllegalStateException("Lock busy")
+        }
+        try {
             val n = stats.detectionRecordCount
             if (n > 0) {
                 stats.avgPercMoreBatteryUsed =
                     ((stats.avgPercMoreBatteryUsed * (n - 1)) + usage) / n
             }
+        } finally {
+            avgBatteryUsageLock.unlock()
         }
     }
 

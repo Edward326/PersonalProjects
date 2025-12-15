@@ -38,4 +38,8 @@ data class EnvironmentStatistics(
             objects.sortByDescending { it.second }
         }
     }
+
+    fun allEmpty(): Boolean{
+        return scenesList.isEmpty() && objectsList.isEmpty() && objectsBySceneList.isEmpty()
+    }
 }
