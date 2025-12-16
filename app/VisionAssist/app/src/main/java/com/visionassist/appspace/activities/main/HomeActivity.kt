@@ -1492,7 +1492,8 @@ fun SyncStatusSection(
     syncStatus: Int,
     syncDays: Int,
     showInfoButton: Boolean,
-    onInfoClick: () -> Unit
+    onInfoClick: () -> Unit,
+    showVersion: Boolean = false
 ) {
     // Main row ALWAYS exists
     Row(
@@ -1556,7 +1557,22 @@ fun SyncStatusSection(
                     onClick = onInfoClick,
                     isPulsing = true
                 )
-            }
+            } else
+                if (showVersion) {
+                    Text(
+                        text = "version: ",
+                        fontSize = Constants.STD_FONT_SIZE.sp,
+                        fontFamily = robotoLight,
+                        color = colorResource(R.color.std_cyan)
+                    )
+                    Text(
+                        text = Constants.APP_VERSION,
+                        fontSize = Constants.STD_FONT_SIZE.sp,
+                        fontFamily = robotoExtraBold,
+                        color = colorResource(R.color.std_cyan)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                }
         }
     }
 }
@@ -1583,7 +1599,7 @@ fun BottomNavigationBar(
                 Text(
                     text = if (AppConfig.mainLanguage.code == "en") "Home" else "Acasă",
                     fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
-                    fontFamily = if(selected==0)robotoExtraBold else robotoLight
+                    fontFamily = if (selected == 0) robotoExtraBold else robotoLight
                 )
 
             },
@@ -1612,7 +1628,7 @@ fun BottomNavigationBar(
                     Text(
                         "Reports",
                         fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
-                        fontFamily = if(selected==1)robotoExtraBold else robotoLight
+                        fontFamily = if (selected == 1) robotoExtraBold else robotoLight
                     )
                 },
                 selected = selected == 1,
@@ -1640,7 +1656,7 @@ fun BottomNavigationBar(
                 Text(
                     if (AppConfig.mainLanguage.code == "en") "Settings" else "Setări",
                     fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
-                    fontFamily = if(selected==2)robotoExtraBold else robotoLight
+                    fontFamily = if (selected == 2) robotoExtraBold else robotoLight
                 )
             },
             selected = selected == 2,

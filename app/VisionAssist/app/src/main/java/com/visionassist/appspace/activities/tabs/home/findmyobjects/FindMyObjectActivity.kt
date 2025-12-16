@@ -171,7 +171,7 @@ class FindMyObjectActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        classifier= if(AppConfig.env_reports)
+        classifier = if (AppConfig.env_reports)
             PhoneStatusMonitor.getInstance().modelManager.classifier
         else
             YOLOClassifier(this)
@@ -189,7 +189,7 @@ class FindMyObjectActivity : ComponentActivity() {
                 motionMonitor.linearSpeed > Constants.LINEAR_SPEED_THRESHOLD || motionMonitor.rotationSpeed > Constants.ROTATION_SPEED_THRESHOLD
         }
 
-        lightMonitor= LightManager(
+        lightMonitor = LightManager(
             this,
             mainHandler
         ) {
@@ -255,7 +255,10 @@ class FindMyObjectActivity : ComponentActivity() {
                 isFlashlightOn = true
                 Log.d(TAG, "🔦 Flashlight turned ON via CameraX")
             } else {
-                Log.w(TAG, "Cannot turn ON flashlight: hasFlash=${currentCamera?.cameraInfo?.hasFlashUnit()}, isOn=$isFlashlightOn")
+                Log.w(
+                    TAG,
+                    "Cannot turn ON flashlight: hasFlash=${currentCamera?.cameraInfo?.hasFlashUnit()}, isOn=$isFlashlightOn"
+                )
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error turning flashlight ON via CameraX", e)
@@ -359,7 +362,7 @@ class FindMyObjectActivity : ComponentActivity() {
 
         try {
             cameraProvider?.unbindAll()
-            currentCamera=cameraProvider?.bindToLifecycle(
+            currentCamera = cameraProvider?.bindToLifecycle(
                 this, cameraSelector, preview, imageCapture
             )
             Log.d(TAG, "Camera bound")
@@ -371,9 +374,10 @@ class FindMyObjectActivity : ComponentActivity() {
     private fun startDetectionProcess() {
         // Start phone status monitoring
         PhoneStatusMonitor.getInstance().startMonitoring(mainHandler) {
-            resultsReady.set(true);batteryCheckRunning.value = false;motionMonitor.stopMonitoring();lightMonitor.stopMonitoring();turnFlashlightOff()
+            resultsReady.set(true); batteryCheckRunning.value =
+            false; motionMonitor.stopMonitoring(); lightMonitor.stopMonitoring(); turnFlashlightOff()
         }
-        if (canSwitchModels)
+        if (canSwitchModels && AppConfig.SoA)
             motionMonitor.startMonitoring()
         lightMonitor.startMonitoring()
         // Start battery level check
@@ -672,7 +676,7 @@ class FindMyObjectActivity : ComponentActivity() {
         // Signal stop
         stopDetection.set(true)
         PhoneStatusMonitor.getInstance().stopMonitoring()
-        motionMonitor.stopMonitoring();lightMonitor.stopMonitoring();turnFlashlightOff()
+        motionMonitor.stopMonitoring(); lightMonitor.stopMonitoring(); turnFlashlightOff()
         batteryCheckRunning.value = false
 
         // Remove found classes
@@ -771,7 +775,7 @@ class FindMyObjectActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
         PhoneStatusMonitor.getInstance().stopMonitoring()
-        motionMonitor.stopMonitoring();lightMonitor.stopMonitoring();turnFlashlightOff()
+        motionMonitor.stopMonitoring(); lightMonitor.stopMonitoring(); turnFlashlightOff()
         batteryCheckRunning.value = false
         mainHandler.removeCallbacksAndMessages(null)
         updateHandler.removeCallbacksAndMessages(null)

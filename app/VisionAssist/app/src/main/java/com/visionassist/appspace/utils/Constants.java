@@ -3,6 +3,9 @@ package com.visionassist.appspace.utils;
 import android.os.Build;
 
 public class Constants {
+    // Version Number
+    public static final String APP_VERSION = "1.0.0";
+
     // Model Configuration
     public static final String YOLO_MODEL_DETECTOR_ACC_FILE = "yolov8s_mobile.onnx";
     public static final String YOLO_MODEL_DETECTOR_SPEED_FILE = "yolov8n_mobile.onnx";

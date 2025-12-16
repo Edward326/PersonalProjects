@@ -309,7 +309,7 @@ class LiveDetectionActivity : ComponentActivity() {
             batteryCheckRunning.value = false; motionMonitor.stopMonitoring()
             lightMonitor.stopMonitoring(); turnFlashlightOff()
         }
-        if (canSwitchModels)
+        if (canSwitchModels && AppConfig.SoA)
             motionMonitor.startMonitoring()
         lightMonitor.startMonitoring()
         // Start battery level check
@@ -476,7 +476,7 @@ class LiveDetectionActivity : ComponentActivity() {
                     object : BackgroundTaskExecutor.TaskCallback<ThreadResult?> {
                         override fun onSuccess(result: ThreadResult?) {
                             if (result == null || result.detectionResult == null) {
-                                if(result?.bitmap !=null){
+                                if (result?.bitmap != null) {
                                     addBitmapToList(result.bitmap)
                                 }
                                 updateLatencyStats(
@@ -675,7 +675,7 @@ fun LiveDetectionScreen(
 
         MemoryWarningNotification(showMemoryWarning)
 
-        if (resultBitmap==null) {
+        if (resultBitmap == null) {
             // Detection phase - Camera + FPS Slider
             DetectionPhase(
                 onCameraReady = onCameraReady

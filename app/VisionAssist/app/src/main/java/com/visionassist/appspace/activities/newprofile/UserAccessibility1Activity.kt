@@ -1144,7 +1144,7 @@ class UserAccessibility1Activity : ComponentActivity() {
                 // Haptics switch
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = if (AppConfig.mainLanguage.code == "en") "Haptics" else "Vibrații",
+                        text = if (AppConfig.mainLanguage.code == "en") "Haptics" else "Feedback vibrații",
                         fontSize = Constants.STD_FONT_SIZE.sp,
                         color = colorResource(R.color.std_cyan),
                         fontFamily = robotoSemibold

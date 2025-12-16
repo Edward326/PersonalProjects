@@ -334,9 +334,9 @@ class BlindDetectionActivity : ComponentActivity() {
             // Start phone status monitoring
             PhoneStatusMonitor.getInstance().startMonitoring(mainHandler) {
                 resultsReady.set(true); batteryCheckRunning.value = false
-                motionMonitor.stopMonitoring();lightMonitor.stopMonitoring();turnFlashlightOff()
+                motionMonitor.stopMonitoring(); lightMonitor.stopMonitoring(); turnFlashlightOff()
             }
-            if (canSwitchModels)
+            if (canSwitchModels && AppConfig.SoA)
                 motionMonitor.startMonitoring()
             lightMonitor.startMonitoring()
             // Start battery level check
@@ -576,7 +576,7 @@ class BlindDetectionActivity : ComponentActivity() {
         // Signal stop
         stopDetection.set(true)
         PhoneStatusMonitor.getInstance().stopMonitoring()
-        motionMonitor.stopMonitoring();lightMonitor.stopMonitoring();turnFlashlightOff()
+        motionMonitor.stopMonitoring(); lightMonitor.stopMonitoring(); turnFlashlightOff()
         batteryCheckRunning.value = false
 
         // Set result bitmap
@@ -595,11 +595,10 @@ class BlindDetectionActivity : ComponentActivity() {
         soundManager.releaseCallback()
         ttsManager.stopSpeaking()
         ttsManager.speak(
-            if(ttsManager.currentLocale.language=="en")
+            if (ttsManager.currentLocale.language == "en")
                 "Returning to home page"
             else
-                "Se revine în pagina principală"
-            ,
+                "Se revine în pagina principală",
             AppConfig.tts_pitch,
             AppConfig.tts_speech_rate,
             false,
@@ -888,7 +887,7 @@ class BlindDetectionActivity : ComponentActivity() {
         soundManager.releaseCallback()
         ttsManager.stopSpeaking()
         PhoneStatusMonitor.getInstance()
-            .stopMonitoring();lightMonitor.stopMonitoring();turnFlashlightOff()
+            .stopMonitoring(); lightMonitor.stopMonitoring(); turnFlashlightOff()
         motionMonitor.stopMonitoring()
         batteryCheckRunning.value = false
         mainHandler.removeCallbacksAndMessages(null)

@@ -22,7 +22,10 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <!-- Microphone permission - all API levels (API 24+) -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-
+    <!-- Quick Action feature permissions -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SHORT_SERVICE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!-- Other basic permissions -->
     <uses-permission android:name="android.permission.VIBRATE" />
@@ -143,6 +146,24 @@
             android:name=".activities.tabs.home.findmyobjects.BlindFindMyObjectActivity"
             android:screenOrientation="portrait" />
 
+        <service
+            android:name=".services.LockScreenService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="shortService"
+            android:stopWithTask="false">
+            <!-- stopWithTask="false" keeps service running when app is closed -->
+        </service>
+
+        <receiver
+            android:name=".services.BootCompletedReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
 
         <provider
             android:name="androidx.core.content.FileProvider"

@@ -1,5 +1,6 @@
 package com.visionassist.appspace.utils
 
+import android.annotation.SuppressLint
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -794,19 +795,19 @@ fun load_speakNoObjectsFound(index: Int): String {
     return when (PhoneStatusMonitor.getInstance().ttsManager.currentLanguage) {
         "en" ->
             if (index + 1 > 1)
-                "The application detected ${index} objects in your environment"
+                "The application detected $index objects in your environment"
             else
                 "The application detected an single object in your environment"
 
         "ro" ->
             if (index + 1 > 1)
-                "Aplicația a detectat ${index} obiecte în spațiul în care vă aflați"
+                "Aplicația a detectat $index obiecte în spațiul în care vă aflați"
             else
                 "Aplicația a detectat un singur obiect în spațiul în care vă aflați"
 
         else ->
             if (index + 1 > 1)
-                "The application detected ${index} objects in your environment"
+                "The application detected $index objects in your environment"
             else
                 "The application detected an single object in your environment"
     }
@@ -1023,5 +1024,303 @@ fun load_reportsEmpty(context: Context): String {
         "en" -> context.getString(R.string.reports_empty_error_en)
         "ro" -> context.getString(R.string.reports_empty_error_en)
         else -> context.getString(R.string.reports_empty_error_en)
+    }
+}
+
+fun getLanguageText(context: Context): String {
+    return if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.language_option_en)
+    } else {
+        context.getString(R.string.language_option_ro)
+    }
+}
+
+fun getQuickActionText(context: Context): String {
+    return context.getString(R.string.quick_action_option_en)
+}
+
+fun getHapticsText(context: Context): String {
+    return if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.haptics_option_en)
+    } else {
+        context.getString(R.string.haptics_option_ro)
+    }
+}
+
+fun getSoAText(context: Context): String {
+    return context.getString(R.string.soa_option_en)
+}
+
+fun getAppearanceSectionText(context: Context): String {
+    return if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.appearance_section_en)
+    } else {
+        context.getString(R.string.appearance_section_ro)
+    }
+}
+
+fun getStorageSectionText(context: Context): String {
+    return if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.storage_section_en)
+    } else {
+        context.getString(R.string.storage_section_ro)
+    }
+}
+
+fun getAccountSectionText(context: Context): String {
+    return if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.account_section_en)
+    } else {
+        context.getString(R.string.account_section_ro)
+    }
+}
+
+fun getChangeDetectionColorsText(context: Context): String {
+    return if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.change_detection_colors_en)
+    } else {
+        context.getString(R.string.change_detection_colors_ro)
+    }
+}
+
+fun getChangeCaptionColorsText(context: Context): String {
+    return if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.change_caption_colors_en)
+    } else {
+        context.getString(R.string.change_caption_colors_ro)
+    }
+}
+
+fun getClearCacheText(context: Context): String {
+    return if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.clear_cache_en)
+    } else {
+        context.getString(R.string.clear_cache_ro)
+    }
+}
+
+fun getClearReportsText(context: Context): String {
+    return if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.clear_reports_en)
+    } else {
+        context.getString(R.string.clear_reports_ro)
+    }
+}
+
+fun getSyncProfileText(context: Context): String {
+    return if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.sync_profile_en)
+    } else {
+        context.getString(R.string.sync_profile_ro)
+    }
+}
+
+fun getLogOutText(context: Context): String {
+    return if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.log_out_en)
+    } else {
+        context.getString(R.string.log_out_ro)
+    }
+}
+
+fun getDeleteAccountText(context: Context): String {
+    return if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.delete_account_en)
+    } else {
+        context.getString(R.string.delete_account_ro)
+    }
+}
+
+fun getExportProfileText(context: Context): String {
+    return if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.export_profile_en)
+    } else {
+        context.getString(R.string.export_profile_ro)
+    }
+}
+
+fun getApplyingSettingsText(context: Context): String {
+    return if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.applying_settings_en)
+    } else {
+        context.getString(R.string.applying_settings_ro)
+    }
+}
+
+fun getLoggingOffText(context: Context): String {
+    return if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.logging_off_en)
+    } else {
+        context.getString(R.string.logging_off_ro)
+    }
+}
+
+fun calculateHashCacheSize(): Long {
+    val hashSize = 8L // 8 bytes for hash (hex)
+    val tokenSize = 20L * 4L + 20L // 20 tokens * 4 bytes + 20 separators = 100 bytes
+    val recordSize = hashSize + tokenSize // ~108 bytes per record
+
+    val maxRecords = when (AppConfig.hash_caching) {
+        "light" -> Constants.HC_MAX_RECORDS_LIGHT.toLong()
+        "heavy" -> Constants.HC_MAX_RECORDS_HEAVY.toLong()
+        else -> 0L
+    }
+
+    return recordSize * maxRecords
+}
+
+fun getCurrentHashCacheSize(context: Context): Long {
+    val file = File(FileUtils.getProfileDirectory(context), Constants.HASH_CACHE_FILE_NAME)
+    return if (file.exists()) file.length() else 0L
+}
+
+fun getCurrentEnvReportsSize(context: Context): Long {
+    val file = File(FileUtils.getProfileDirectory(context), Constants.ENV_REPORTS_FILE_NAME)
+    return if (file.exists()) file.length() else 0L
+}
+
+@SuppressLint("DefaultLocale")
+fun formatSizeKB(bytes: Long): String {
+    val kb = bytes / 1024.0
+    return String.format("%.1f KB", kb)
+}
+
+@SuppressLint("DefaultLocale")
+fun formatPercentage(current: Long, total: Long): String {
+    if (total == 0L) return "0.0%"
+    val percentage = (current.toFloat() / total * 100)
+    return String.format("%.1f%%", percentage)
+}
+
+fun getQuickActionInfoMessage(context: Context): String {
+    val body = if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.quick_action_info_en)
+    } else {
+        context.getString(R.string.quick_action_info_ro)
+    }
+
+    return body
+}
+
+fun getSoAInfoMessage(context: Context): String {
+    val body = if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.soa_info_en)
+    } else {
+        context.getString(R.string.soa_info_ro)
+    }
+
+    return body
+}
+
+fun getClearCacheConfirmMessage(context: Context): String {
+    val body = if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.clear_cache_message_en)
+    } else {
+        context.getString(R.string.clear_cache_message_ro)
+    }
+
+    return body
+}
+
+fun getClearReportsConfirmMessage(context: Context): String {
+    val body = if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.clear_reports_message_en)
+    } else {
+        context.getString(R.string.clear_reports_message_ro)
+    }
+
+    return body
+}
+
+fun getLogoutConfirmMessage(context: Context): String {
+    val body = if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.logout_message_en)
+    } else {
+        context.getString(R.string.logout_message_ro)
+    }
+
+    return body
+}
+
+fun getDeleteAccountConfirmMessage(context: Context): String {
+    val body = if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.delete_account_message_en)
+    } else {
+        context.getString(R.string.delete_account_message_ro)
+    }
+
+    return body
+}
+
+
+fun getLanguageChangedMessage(context: Context): String {
+    return if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.language_changed_en)
+    } else {
+        context.getString(R.string.language_changed_ro)
+    }
+}
+
+fun getQuickActionEnabledMessage(context: Context): String {
+    return if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.quick_action_enabled_en)
+    } else {
+        context.getString(R.string.quick_action_enabled_ro)
+    }
+}
+
+fun getQuickActionDisabledMessage(context: Context): String {
+    return if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.quick_action_disabled_en)
+    } else {
+        context.getString(R.string.quick_action_disabled_ro)
+    }
+}
+
+fun getCacheClearedMessage(context: Context): String {
+    return if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.cache_cleared_en)
+    } else {
+        context.getString(R.string.cache_cleared_ro)
+    }
+}
+
+fun getReportsClearedMessage(context: Context): String {
+    return if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.reports_cleared_en)
+    } else {
+        context.getString(R.string.reports_cleared_ro)
+    }
+}
+
+fun getProfileSyncedMessage(context: Context): String {
+    return if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.profile_synced_en)
+    } else {
+        context.getString(R.string.profile_synced_ro)
+    }
+}
+
+fun getProfileSyncErrorMessage(context: Context): String {
+    return if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.profile_sync_error_en)
+    } else {
+        context.getString(R.string.profile_sync_error_ro)
+    }
+}
+
+fun getProfileExportedMessage(context: Context): String {
+    return if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.profile_exported_en)
+    } else {
+        context.getString(R.string.profile_exported_ro)
+    }
+}
+
+fun getProfileExportErrorMessage(context: Context): String {
+    return if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.profile_export_error_en)
+    } else {
+        context.getString(R.string.profile_export_error_ro)
     }
 }

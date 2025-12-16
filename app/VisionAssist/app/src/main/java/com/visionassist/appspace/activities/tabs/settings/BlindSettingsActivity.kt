@@ -17,6 +17,7 @@ import androidx.core.content.FileProvider
 import com.visionassist.appspace.BaseActivity
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
+import com.visionassist.appspace.activities.main.HomeScreen
 import com.visionassist.appspace.activities.tabs.home.caption.CaptionActivity
 import com.visionassist.appspace.activities.tabs.home.detection.LiveDetectionActivity
 import com.visionassist.appspace.activities.tabs.home.detection.StaticDetectionActivity
@@ -142,7 +143,6 @@ class BlindSettingsActivity : BaseActivity() {
                 onNavigateSettings = ::handleNavigateSettings,
                 onSpeechDialogTap = ::handleSpeechDialogTap,
                 navigateFun = ::navigateToLiveOrStatic,
-                onSwipeToLeft = ::handleSwipeToLeft
             )
         }
     }
@@ -382,20 +382,6 @@ class BlindSettingsActivity : BaseActivity() {
         if (!uiLocked) {
             vibrateIfEnabled()
             val intent = Intent(this, SettingsActivity::class.java)
-            startActivity(intent)
-            finish()
-        }
-    }
-
-    private fun handleSwipeToLeft() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            val intent = Intent(
-                this, if (AppConfig.env_reports)
-                    EnvironmentReportsActivity::class.java
-                else
-                    SettingsActivity::class.java
-            )
             startActivity(intent)
             finish()
         }

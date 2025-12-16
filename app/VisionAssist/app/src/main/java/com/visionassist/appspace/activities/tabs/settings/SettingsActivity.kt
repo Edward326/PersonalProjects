@@ -7,1748 +7,1275 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.DocumentsContract
 import android.util.Log
 import android.view.KeyEvent
 import androidx.activity.compose.setContent
-import androidx.activity.result.ActivityResultLauncher
-import androidx.activity.result.contract.ActivityResultContracts.TakePicture
-import androidx.compose.animation.AnimatedContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.automirrored.filled.ArrowBackIos
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material.icons.filled.SyncProblem
-import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemColors
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.FileProvider
 import com.visionassist.appspace.BaseActivity
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
-import com.visionassist.appspace.activities.tabs.home.caption.CaptionActivity
-import com.visionassist.appspace.activities.tabs.home.detection.LiveDetectionActivity
-import com.visionassist.appspace.activities.tabs.home.detection.StaticDetectionActivity
-import com.visionassist.appspace.activities.tabs.home.findmyobjects.FindMyObjectActivity
+import com.visionassist.appspace.activities.main.BottomNavigationBar
+import com.visionassist.appspace.activities.main.HomeActivity
+import com.visionassist.appspace.activities.main.SyncStatusSection
+import com.visionassist.appspace.activities.newprofile.ConfigurationActivity
+import com.visionassist.appspace.activities.newprofile.UserAccessibility1Activity
 import com.visionassist.appspace.activities.tabs.reports.EnvironmentReportsActivity
-import com.visionassist.appspace.jetpack.managers.ErrorDialogManager
-import com.visionassist.appspace.models.sttengine.SpeechRecognizer
-import com.visionassist.appspace.sound.SoundConstants
+import com.visionassist.appspace.database.DBManager
+import com.visionassist.appspace.database.NetworkUtils
+import com.visionassist.appspace.jetpack.design.LanguageSelector
+import com.visionassist.appspace.jetpack.design.LoadingComponent
+import com.visionassist.appspace.jetpack.design.QuickActionSelector
+import com.visionassist.appspace.jetpack.managers.InfoNotificationManager
+import com.visionassist.appspace.models.ttsengine.TTSManager
+import com.visionassist.appspace.services.LockScreenService
 import com.visionassist.appspace.utils.AppConfig
 import com.visionassist.appspace.utils.BackgroundTaskExecutor
 import com.visionassist.appspace.utils.Constants
-import com.visionassist.appspace.utils.CustomColorSchema
-import com.visionassist.appspace.utils.DetectionOption
-import com.visionassist.appspace.utils.PermissionChecker
-import com.visionassist.appspace.utils.TypewriterColorSchema
+import com.visionassist.appspace.utils.FileUtils
+import com.visionassist.appspace.utils.Language
+import com.visionassist.appspace.utils.calculateHashCacheSize
+import com.visionassist.appspace.utils.formatPercentage
+import com.visionassist.appspace.utils.formatSizeKB
+import com.visionassist.appspace.utils.getAccountSectionText
+import com.visionassist.appspace.utils.getAppearanceSectionText
+import com.visionassist.appspace.utils.getApplyingSettingsText
+import com.visionassist.appspace.utils.getCacheClearedMessage
+import com.visionassist.appspace.utils.getChangeCaptionColorsText
+import com.visionassist.appspace.utils.getChangeDetectionColorsText
+import com.visionassist.appspace.utils.getClearCacheConfirmMessage
+import com.visionassist.appspace.utils.getClearCacheText
+import com.visionassist.appspace.utils.getClearReportsConfirmMessage
+import com.visionassist.appspace.utils.getClearReportsText
+import com.visionassist.appspace.utils.getCurrentEnvReportsSize
+import com.visionassist.appspace.utils.getCurrentHashCacheSize
+import com.visionassist.appspace.utils.getDeleteAccountConfirmMessage
+import com.visionassist.appspace.utils.getDeleteAccountText
+import com.visionassist.appspace.utils.getExportProfileText
+import com.visionassist.appspace.utils.getHapticsText
+import com.visionassist.appspace.utils.getLanguageChangedMessage
+import com.visionassist.appspace.utils.getLanguageText
+import com.visionassist.appspace.utils.getLogOutText
+import com.visionassist.appspace.utils.getLoggingOffText
+import com.visionassist.appspace.utils.getLogoutConfirmMessage
+import com.visionassist.appspace.utils.getProfileExportErrorMessage
+import com.visionassist.appspace.utils.getProfileExportedMessage
+import com.visionassist.appspace.utils.getProfileSyncErrorMessage
+import com.visionassist.appspace.utils.getProfileSyncedMessage
+import com.visionassist.appspace.utils.getQuickActionDisabledMessage
+import com.visionassist.appspace.utils.getQuickActionEnabledMessage
+import com.visionassist.appspace.utils.getQuickActionInfoMessage
+import com.visionassist.appspace.utils.getQuickActionText
+import com.visionassist.appspace.utils.getReportsClearedMessage
+import com.visionassist.appspace.utils.getSoAInfoMessage
+import com.visionassist.appspace.utils.getSoAText
+import com.visionassist.appspace.utils.getStorageSectionText
+import com.visionassist.appspace.utils.getSyncProfileText
 import com.visionassist.appspace.utils.haptic_model0
-import com.visionassist.appspace.utils.load_captionTutorial
-import com.visionassist.appspace.utils.load_detectionTutorial
-import com.visionassist.appspace.utils.load_errorSTT
-import com.visionassist.appspace.utils.load_errorSTTRuntime
-import com.visionassist.appspace.utils.load_homeTitle
-import com.visionassist.appspace.utils.load_speakTutorial
-import com.visionassist.appspace.utils.load_syncErrorText
-import com.visionassist.appspace.utils.load_syncStatusText
-import com.visionassist.appspace.utils.load_unavailableSTT
-import com.visionassist.appspace.utils.robotoBold
 import com.visionassist.appspace.utils.robotoExtraBold
-import com.visionassist.appspace.utils.robotoExtraBoldItalic
-import com.visionassist.appspace.utils.robotoLight
 import com.visionassist.appspace.utils.robotoSemibold
 import com.visionassist.appspace.utils.vibrate
-import kotlinx.coroutines.delay
+import org.json.JSONObject
 import java.io.File
-import java.io.IOException
 
 class SettingsActivity : BaseActivity() {
-    private val TAG = "HomeActivity"
+    private val TAG = "SettingsActivity"
 
-    // State variables
-    private val titleText = mutableStateOf("")
-
-    // Tutorial info button states
-    private val speakInfoClickCount = mutableStateOf(1)
-    private var basicInfoClickCount = 1
-    private var basicInfoClickCount2 = 1
-
-    // Detection button states
-    private val showDetectionOptions = mutableStateOf(false)
-    private val selectedDetectionOption = mutableStateOf<DetectionOption?>(null)
-    private val detectionIconColor = mutableStateOf(R.color.std_purple_dark)
-
-    // Speech recognition parameters
-    private val speechRecognizer = PhoneStatusMonitor.getInstance()
-        .modelManager.speechRecognizer
-    private val soundManager = PhoneStatusMonitor.getInstance()
-        .soundManager
-    private val ttsManager = PhoneStatusMonitor.getInstance()
-        .ttsManager
-    private val showSpeechDialog = mutableStateOf(false)
-    private val speechText = mutableStateOf("")
-    private val speechProcessText = mutableStateOf("")
-    private val isSpeaking = mutableStateOf(true)
-    private val retrySpeech = mutableStateOf(false)
-    private val sendSpeech = mutableStateOf(false)
-    private lateinit var matchedIndices: List<SpeechRecognizer.MatchedObject>
-    private lateinit var classNames: List<String>
-
-    // Volume button tracking
-    private var locked = false
-    private var lockedVolumeDown = false
-    private var uiLocked = false
-    private var handleVolumeDownControl = false
-
-    // Runnable for navigation to an activity
-    private var onPermissionGranted = {}
-    private var classOpt = 0
-
-    // Camera intent parameters
-    private lateinit var takePictureLauncher: ActivityResultLauncher<Uri>
-    private lateinit var currentPhotoUri: Uri
-
-    // Main handler
     private val mainHandler = Handler(Looper.getMainLooper())
-    private lateinit var afterResumeRunnable: Runnable
-    private var hasToExecAfterResume = false
-    private var returnFromFindMyObject = false
+    private val ttsHandler = Handler(Looper.getMainLooper())
 
-    private var syncStatus: Int = 0
-    private var syncDays: Int = 0
+    // Managers
+    private lateinit var ttsManager: TTSManager
+    private lateinit var dbManager: DBManager
+    private lateinit var infoNotificationManager: InfoNotificationManager
+
+    // UI States
+    private val showLoading = mutableStateOf(false)
+    private val loadingText = mutableStateOf("")
+    private val showInfoDialog = mutableStateOf(false)
+    private val infoMessage = mutableStateOf("")
+    private val showNotifDialog = mutableStateOf(false)
+    private val notifMessage = mutableStateOf("")
+    private val notifFirstLabel = mutableStateOf("")
+    private val notifSecondLabel = mutableStateOf("")
+    private val showSlideNotif = mutableStateOf(false)
+    private val slideMessage = mutableStateOf("")
+    private val currentSection = mutableStateOf(0)
+
+    // Size displays
+    private val hashCacheSize = mutableStateOf("")
+    private val hashCachePercent = mutableStateOf("")
+    private val envReportsSize = mutableStateOf("")
+
+    // Settings states
+    private val selectedLanguage = mutableStateOf(AppConfig.mainLanguage)
+    private val selectedQuickAction = mutableStateOf("Disabled")
+    private val hapticsEnabled = mutableStateOf(AppConfig.haptics)
+    private val soAEnabled = mutableStateOf(false)
+
+    // Flags
+    private var waitingForTTSLanguage = false
+    private var exportErrorCode = 0
+    private var exportFilesCompleted = 0
+    private var profileData: JSONObject? = null
+
+    // File picker launcher
+    private val exportProfileLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        uri?.let { handleExportProfileResult(it) }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        registerCameraLauncher()
+        ttsManager = PhoneStatusMonitor.getInstance().ttsManager
+        dbManager = PhoneStatusMonitor.getInstance().dbManager
 
-        // Load initial title
-        titleText.value = load_homeTitle()
-
-        // Get sync status
-        val dbManager = PhoneStatusMonitor.getInstance().dbManager
-        syncStatus = dbManager.statusOverview
-        syncDays = if (syncStatus > 0) dbManager.diffDays.toInt() else 0
-
-        uiLocked = true
-        locked = true
-        PhoneStatusMonitor.getInstance().soundManager.play(SoundConstants.OPEN_UP_ID, 1f, 1f) {
-            uiLocked = false
-            locked = false
+        // Load profile data
+        try {
+            val profileFile = File(FileUtils.getProfileDirectory(this), Constants.PROFILE_FILE_NAME)
+            if (profileFile.exists()) {
+                profileData = JSONObject(profileFile.readText())
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error loading profile", e)
         }
 
-        //Log.d(TAG, FileUtils.readProfileFileAsString(this, Constants.ENV_REPORTS_FILE_NAME))
+        // Calculate initial sizes
+        calculateSizes()
+
+        // Setup info notification manager
+        infoNotificationManager = InfoNotificationManager(this)
+
+        val dbManager = PhoneStatusMonitor.getInstance().dbManager
 
         setContent {
-            HomeScreen(
-                titleText = titleText.value,
-                syncStatus = syncStatus,
-                syncDays = syncDays,
-                showDetectionOptions = showDetectionOptions.value,
-                detectionIconColor = detectionIconColor.value,
-                selectedDetectionOption = selectedDetectionOption.value,
-                showSpeechDialog = showSpeechDialog.value,
-                speechText = speechText.value,
-                speechProcessText = speechProcessText.value,
-                isSpeaking = isSpeaking.value,
-                onDetectionClick = ::handleDetectionClick,
-                onDetectionOptionSelected = ::handleDetectionOptionSelected,
-                onCaptionClick = ::handleCaptionClick,
-                onDetectionInfoClick = ::handleDetectionInfoClick,
-                onCaptionInfoClick = ::handleCaptionInfoClick,
-                onSpeakInfoClick = ::handleSpeakInfoClick,
+            SettingsScreen(
+                showLoading = showLoading.value,
+                loadingText = loadingText.value,
+                showInfoDialog = showInfoDialog.value,
+                infoMessage = infoMessage.value,
+                showNotifDialog = showNotifDialog.value,
+                notifMessage = notifMessage.value,
+                notifFirstLabel = notifFirstLabel.value,
+                notifSecondLabel = notifSecondLabel.value,
+                showSlideNotif = showSlideNotif.value,
+                slideMessage = slideMessage.value,
+                currentSection = currentSection.value,
+                selectedLanguage = selectedLanguage.value,
+                selectedQuickAction = selectedQuickAction.value,
+                hapticsEnabled = hapticsEnabled.value,
+                soAEnabled = soAEnabled.value,
+                hashCacheSize = hashCacheSize.value,
+                hashCachePercent = hashCachePercent.value,
+                envReportsSize = envReportsSize.value,
+                hasRemoteProfile = getStatusOverview() == 1 || getStatusOverview() == 2,
+                onLanguageChange = ::handleLanguageChange,
+                onQuickActionChange = ::handleQuickActionChange,
+                onQuickActionInfoClick = ::handleQuickActionInfo,
+                onHapticsToggle = ::handleHapticsToggle,
+                onSoAToggle = ::handleSoAToggle,
+                onSoAInfoClick = ::handleSoAInfo,
+                onChangeDetectionColors = ::handleChangeDetectionColors,
+                onChangeCaptionColors = ::handleChangeCaptionColors,
+                onClearCache = ::handleClearCache,
+                onClearReports = ::handleClearReports,
+                onSyncProfile = ::handleSyncProfile,
+                onLogout = ::handleLogout,
+                onDeleteAccount = ::handleDeleteAccount,
+                onExportProfile = ::handleExportProfile,
                 onNavigateHome = ::handleNavigateHome,
                 onNavigateReports = ::handleNavigateReports,
                 onNavigateSettings = ::handleNavigateSettings,
-                onSpeechDialogTap = ::handleSpeechDialogTap,
-                navigateFun = ::navigateToLiveOrStatic,
-                onSwipeToLeft = ::handleSwipeToLeft
+                onSectionChange = { section -> currentSection.value = section },
+                onInfoDialogDismiss = { showInfoDialog.value = false },
+                onNotifDialogFirstButton = ::handleNotifFirstButton,
+                onNotifDialogSecondButton = ::handleNotifSecondButton,
+                syncStatus = dbManager.statusOverview,
+                syncDays = dbManager.diffDays
             )
         }
-    }
-
-    @Suppress("DEPRECATION")
-    private fun registerCameraLauncher() {
-        takePictureLauncher = registerForActivityResult(
-            TakePicture()
-        ) { isSuccess ->
-            if (isSuccess) {
-                try {
-                    navigateToFindMyObjectWithBitmap()
-                } catch (e: IOException) {
-                    Log.e(TAG, "Error loading captured image", e)
-                    showCameraError()
-                }
-            } else {
-                Log.e(TAG, "Image capture failed or cancelled")
-                uiLocked = false
-                locked = false
-            }
-        }
-
-        Log.d(TAG, "Camera launcher registered")
     }
 
     override fun onResume() {
         super.onResume()
 
-        if (PhoneStatusMonitor.getInstance().isReturningFromPermissions)
-            PermissionChecker.checkAndRequestPermissions(
-                this,
-                AppConfig.blindness,
-                onPermissionGranted
-            )
-
-        if (hasToExecAfterResume) {
-            hasToExecAfterResume = false
-            mainHandler.post(afterResumeRunnable)
-        }
-
-        if (returnFromFindMyObject) {
-            returnFromFindMyObject = false
-            handleSpeechDialogTap()
+        if (waitingForTTSLanguage) {
+            ttsHandler.removeCallbacksAndMessages(null)
+            Log.d(TAG, "Returned from TTS settings, rechecking language")
+            ttsManager.recheckPendingLanguage()
+            waitForTTSAndReload()
         }
     }
 
-    private fun handleDetectionClick() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            showDetectionOptions.value = !showDetectionOptions.value
-            detectionIconColor.value = if (showDetectionOptions.value) {
-                R.color.std_cyan
+    private fun calculateSizes() {
+        val currentHashSize = getCurrentHashCacheSize(this)
+        val totalHashSize = calculateHashCacheSize()
+
+        hashCacheSize.value = formatSizeKB(currentHashSize)
+        hashCachePercent.value = formatPercentage(currentHashSize, totalHashSize)
+
+        val currentReportsSize = getCurrentEnvReportsSize(this)
+        envReportsSize.value = formatSizeKB(currentReportsSize)
+    }
+
+    private fun handleLanguageChange(language: Language) {
+        vibrateIfNeeded()
+        showLoading.value = true
+        loadingText.value = getApplyingSettingsText(this)
+
+        mainHandler.postDelayed({
+            selectedLanguage.value = language
+            AppConfig.mainLanguage = language
+
+            setTTSLanguage()
+        }, 500)
+    }
+
+    private fun setTTSLanguage() {
+        if (!AppConfig.mainLanguage.code.equals(
+                ttsManager.currentLocale.language,
+                ignoreCase = true
+            )
+        ) {
+            Log.d(TAG, "TTS needs language change")
+            waitingForTTSLanguage = true
+            ttsManager.changeLanguage(AppConfig.mainLanguage, this)
+            waitForTTSAndReload()
+        } else {
+            Log.d(TAG, "TTS already correct language")
+            waitForTTSAndReload()
+        }
+    }
+
+    private fun waitForTTSAndReload() {
+        val checkTTS = object : Runnable {
+            override fun run() {
+                if (ttsManager.isReady) {
+                    Log.d(TAG, "TTS ready, reloading UI")
+                    waitingForTTSLanguage = false
+                    showLoading.value = false
+
+                    // Show notification
+                    slideMessage.value = getLanguageChangedMessage(this@SettingsActivity)
+                    showSlideNotif.value = true
+
+                    // Hide after delay
+                    mainHandler.postDelayed({
+                        showSlideNotif.value = false
+                    }, 3000)
+                } else {
+                    Log.w(TAG, "TTS not ready, retrying...")
+                    ttsHandler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS.toLong())
+                }
+            }
+        }
+        ttsHandler.post(checkTTS)
+    }
+
+    private fun handleQuickActionChange(action: String) {
+        vibrateIfNeeded()
+        showLoading.value = true
+        loadingText.value = getApplyingSettingsText(this)
+
+        mainHandler.postDelayed({
+            selectedQuickAction.value = action
+
+            if (action == "Disabled") {
+                LockScreenService.stopService(this)
+                slideMessage.value = getQuickActionDisabledMessage(this)
             } else {
-                selectedDetectionOption.value = null
-                R.color.std_purple_dark
+                LockScreenService.startService(this, action)
+                slideMessage.value = getQuickActionEnabledMessage(this)
             }
-        }
+
+            showLoading.value = false
+            showSlideNotif.value = true
+
+            mainHandler.postDelayed({
+                showSlideNotif.value = false
+            }, 3000)
+        }, 500)
     }
 
-    private fun handleDetectionOptionSelected(option: DetectionOption?, navigate: Boolean) {
-        if (option != null) {
-            if (selectedDetectionOption.value != option) {
-                vibrateIfEnabled()
-                selectedDetectionOption.value = option
+    private fun handleQuickActionInfo() {
+        vibrateIfNeeded()
+        infoMessage.value = getQuickActionInfoMessage(this)
+        showInfoDialog.value = true
+    }
+
+    private fun handleHapticsToggle(enabled: Boolean) {
+        vibrateIfNeeded()
+        hapticsEnabled.value = enabled
+        AppConfig.haptics = enabled
+
+        showSlideNotif.value = true
+        mainHandler.postDelayed({
+            showSlideNotif.value = false
+        }, 2000)
+    }
+
+    private fun handleSoAToggle(enabled: Boolean) {
+        vibrateIfNeeded()
+        soAEnabled.value = enabled
+        AppConfig.SoA = enabled
+
+        showSlideNotif.value = true
+        mainHandler.postDelayed({
+            showSlideNotif.value = false
+        }, 2000)
+    }
+
+    private fun handleSoAInfo() {
+        vibrateIfNeeded()
+        infoMessage.value = getSoAInfoMessage(this)
+        showInfoDialog.value = true
+    }
+
+    private fun handleChangeDetectionColors() {
+        vibrateIfNeeded()
+        val intent = Intent(this, UserAccessibility1Activity::class.java).apply {
+            putExtra("EXTRA_USERACC_OPTION", 1)
+            putExtra("EXTRA_USERACC_OPTION2", true)
+        }
+        startActivity(intent)
+    }
+
+    private fun handleChangeCaptionColors() {
+        vibrateIfNeeded()
+        val intent = Intent(this, UserAccessibility1Activity::class.java).apply {
+            putExtra("EXTRA_USERACC_OPTION", 2)
+            putExtra("EXTRA_USERACC_OPTION2", true)
+        }
+        startActivity(intent)
+    }
+
+    private fun handleClearCache() {
+        vibrateIfNeeded()
+        notifMessage.value = getClearCacheConfirmMessage(this)
+        notifFirstLabel.value = if (AppConfig.mainLanguage.code == "en") {
+            getString(R.string.dont_button_en)
+        } else {
+            getString(R.string.dont_button_ro)
+        }
+        notifSecondLabel.value = if (AppConfig.mainLanguage.code == "en") {
+            getString(R.string.clear_button_en)
+        } else {
+            getString(R.string.clear_button_ro)
+        }
+        showNotifDialog.value = true
+    }
+
+    private fun executeClearCache() {
+        showLoading.value = true
+        loadingText.value = getApplyingSettingsText(this)
+
+        mainHandler.postDelayed({
+            try {
+                FileUtils.createProfileDirFile(Constants.HASH_CACHE_FILE_NAME)
+                calculateSizes()
+                slideMessage.value = getCacheClearedMessage(this)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error clearing cache", e)
+                slideMessage.value = "Error clearing cache"
             }
-        } else
-            selectedDetectionOption.value = null
-        if (navigate) {
-            navigateToLiveOrStatic()
-        }
+
+            showLoading.value = false
+            showSlideNotif.value = true
+
+            mainHandler.postDelayed({
+                showSlideNotif.value = false
+            }, 3000)
+        }, 500)
     }
 
-    private fun navigateToLiveOrStatic() {
-        when (selectedDetectionOption.value) {
-            DetectionOption.LIVE -> launchLiveDetection()
-            DetectionOption.STATIC -> launchStaticDetection()
-            else -> {
-                handleDetectionClick()
+    private fun handleClearReports() {
+        vibrateIfNeeded()
+        notifMessage.value = getClearReportsConfirmMessage(this)
+        notifFirstLabel.value = if (AppConfig.mainLanguage.code == "en") {
+            getString(R.string.dont_button_en)
+        } else {
+            getString(R.string.dont_button_ro)
+        }
+        notifSecondLabel.value = if (AppConfig.mainLanguage.code == "en") {
+            getString(R.string.clear_button_en)
+        } else {
+            getString(R.string.clear_button_ro)
+        }
+        showNotifDialog.value = true
+    }
+
+    private fun executeClearReports() {
+        showLoading.value = true
+        loadingText.value = getApplyingSettingsText(this)
+
+        mainHandler.postDelayed({
+            try {
+                FileUtils.createProfileDirFile(Constants.ENV_REPORTS_FILE_NAME)
+                calculateSizes()
+                slideMessage.value = getReportsClearedMessage(this)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error clearing reports", e)
+                slideMessage.value = "Error clearing reports"
             }
-        }
+
+            showLoading.value = false
+            showSlideNotif.value = true
+
+            mainHandler.postDelayed({
+                showSlideNotif.value = false
+            }, 3000)
+        }, 500)
     }
 
-    private fun launchLiveDetection() {
-        onPermissionGranted = {
-            checkPhoneStatusAndNavigate {
-                // Navigate to LiveDetectionActivity
-                val intent = Intent(this, LiveDetectionActivity::class.java)
-                startActivity(intent)
-                finish()
+    private fun handleSyncProfile() {
+        vibrateIfNeeded()
+
+        if (!NetworkUtils.isNetworkConnected(this)) {
+            notifMessage.value = if (AppConfig.mainLanguage.code == "en") {
+                "Internet Connection Failed~Please check your internet connection and try again"
+            } else {
+                "Conexiunea la Internet a Eșuat~Vă rugăm să verificați conexiunea la internet și să încercați din nou"
             }
+            notifFirstLabel.value = getString(R.string.ok_button_en)
+
+            showNotifDialog.value = true
+            return
         }
-        PermissionChecker.checkAndRequestPermissions(this, AppConfig.blindness, onPermissionGranted)
-    }
 
-    private fun launchStaticDetection() {
-        classOpt = 0
-        onPermissionGranted = {
-            checkPhoneStatusAndNavigate {
-                launchCamera()
-            }
-        }
-        PermissionChecker.checkAndRequestPermissions(this, AppConfig.blindness, onPermissionGranted)
-    }
+        showLoading.value = true
+        loadingText.value = getApplyingSettingsText(this)
 
-    private fun launchCamera() {
-        try {
-            val photoFile = File.createTempFile(
-                "temp_visionassist",
-                ".jpg",
-                cacheDir
-            )
+        mainHandler.postDelayed({
+            BackgroundTaskExecutor.getInstance().executeAsync(
+                {
+                    profileData?.let { dbManager.syncProfile(it) }
+                    return@executeAsync 0
+                },
+                object : BackgroundTaskExecutor.TaskCallback<Int> {
+                    override fun onSuccess(result: Int?) {
+                        mainHandler.post {
+                            showLoading.value = false
 
-            currentPhotoUri = FileProvider.getUriForFile(
-                this,
-                "$packageName.fileprovider",
-                photoFile
-            )
+                            slideMessage.value = when (getStatusOverview()) {
+                                1 -> getProfileSyncedMessage(this@SettingsActivity)
+                                2 -> getProfileSyncErrorMessage(this@SettingsActivity)
+                                else -> getProfileSyncedMessage(this@SettingsActivity)
+                            }
 
-            Log.d(TAG, "Launching camera with URI: $currentPhotoUri")
+                            showSlideNotif.value = true
 
-            takePictureLauncher.launch(currentPhotoUri)
-        } catch (e: IOException) {
-            Log.e(TAG, "Error creating temp file", e)
-            showCameraError()
-        }
-    }
+                            mainHandler.postDelayed({
+                                showSlideNotif.value = false
+                            }, 3000)
+                        }
+                    }
 
-    private fun navigateToFindMyObjectWithBitmap() {
-        try {
-            val intent = Intent(
-                this,
-                when (classOpt) {
-                    0 -> StaticDetectionActivity::class.java
-                    else -> CaptionActivity::class.java
+                    override fun onError(e: Exception?) {
+                        mainHandler.post {
+                            showLoading.value = false
+                            slideMessage.value = getProfileSyncErrorMessage(this@SettingsActivity)
+                            showSlideNotif.value = true
+
+                            mainHandler.postDelayed({
+                                showSlideNotif.value = false
+                            }, 3000)
+                        }
+                    }
                 }
             )
-            intent.putExtra(Constants.EXTRA_IMAGE_URI, currentPhotoUri.toString())
-            startActivity(intent)
-            finish()
-        } catch (e: Exception) {
-            Log.e(TAG, "Error navigating to FindMyObjectActivity", e)
-            showCameraError()
+        }, 500)
+    }
+
+    private fun handleLogout() {
+        vibrateIfNeeded()
+        notifMessage.value = getLogoutConfirmMessage(this)
+        notifFirstLabel.value = if (AppConfig.mainLanguage.code == "en") {
+            getString(R.string.dont_button_en)
+        } else {
+            getString(R.string.dont_button_ro)
         }
-    }
-
-    private fun showCameraError() {
-        val monitor = PhoneStatusMonitor.getInstance()
-        val errorDialog = ErrorDialogManager(monitor.currentActivity)
-        errorDialog.setupDialog(Constants.CAMERA_MAKE_PHOTO)
-        monitor.shutdownApp(errorDialog, monitor.currentContext)
-    }
-
-    private fun handleCaptionClick() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            launchCaptionActivity()
+        notifSecondLabel.value = if (AppConfig.mainLanguage.code == "en") {
+            getString(R.string.logout_button_en)
+        } else {
+            getString(R.string.logout_button_ro)
         }
+        showNotifDialog.value = true
     }
 
-    private fun launchCaptionActivity() {
-        classOpt = 1
-        onPermissionGranted = {
-            checkPhoneStatusAndNavigate {
-                launchCamera()
+    private fun executeLogout() {
+        showLoading.value = true
+        loadingText.value = getLoggingOffText(this)
+
+        mainHandler.postDelayed({
+            try {
+                // Delete all local files
+                FileUtils.deleteProfileDirFile(Constants.ENV_REPORTS_FILE_NAME)
+                FileUtils.deleteProfileDirFile(Constants.HASH_CACHE_FILE_NAME)
+                FileUtils.deleteProfileDirFile(Constants.PROFILE_FILE_NAME)
+
+                showLoading.value = false
+
+                // Navigate to configuration
+                val intent = Intent(this, ConfigurationActivity::class.java)
+                startActivity(intent)
+                finish()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error during logout", e)
+                showLoading.value = false
+            }
+        }, 500)
+    }
+
+    private fun handleDeleteAccount() {
+        vibrateIfNeeded()
+        notifMessage.value = getDeleteAccountConfirmMessage(this)
+        notifFirstLabel.value = if (AppConfig.mainLanguage.code == "en") {
+            getString(R.string.dont_button_en)
+        } else {
+            getString(R.string.dont_button_ro)
+        }
+        notifSecondLabel.value = if (AppConfig.mainLanguage.code == "en") {
+            getString(R.string.delete_button_en)
+        } else {
+            getString(R.string.delete_button_ro)
+        }
+        showNotifDialog.value = true
+    }
+
+    private fun executeDeleteAccount() {
+        showLoading.value = true
+        loadingText.value = getLoggingOffText(this)
+
+        mainHandler.postDelayed({
+            try {
+                // Delete local files first
+                FileUtils.deleteProfileDirFile(Constants.ENV_REPORTS_FILE_NAME)
+                FileUtils.deleteProfileDirFile(Constants.HASH_CACHE_FILE_NAME)
+                FileUtils.deleteProfileDirFile(Constants.PROFILE_FILE_NAME)
+
+                // Delete from Firebase
+                dbManager.deleteAccount(
+                    this,
+                    {
+                        mainHandler.post {
+                            showLoading.value = false
+                            val intent = Intent(this, ConfigurationActivity::class.java)
+                            startActivity(intent)
+                            finish()
+                        }
+                    },
+                    { e ->
+                        mainHandler.post {
+                            Log.e(TAG, "Error deleting account", e)
+                            showLoading.value = false
+                            // Still navigate even if Firebase delete fails
+                            val intent = Intent(this, ConfigurationActivity::class.java)
+                            startActivity(intent)
+                            finish()
+                        }
+                    }
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "Error during delete account", e)
+                showLoading.value = false
+            }
+        }, 500)
+    }
+
+    private fun handleExportProfile() {
+        vibrateIfNeeded()
+        exportProfileLauncher.launch(null)
+    }
+
+    private fun handleExportProfileResult(uri: Uri) {
+        showLoading.value = true
+        loadingText.value = getApplyingSettingsText(this)
+
+        mainHandler.postDelayed({
+            exportErrorCode = 0
+            exportFilesCompleted = 0
+
+            // Copy profile.json
+            BackgroundTaskExecutor.getInstance().executeAsync(
+                {
+                    copyFileToUri(uri, Constants.PROFILE_FILE_NAME)
+                    return@executeAsync 0
+                },
+                object : BackgroundTaskExecutor.TaskCallback<Int> {
+                    override fun onSuccess(result: Int?) {
+                        synchronized(this@SettingsActivity) {
+                            exportFilesCompleted++
+                        }
+                    }
+
+                    override fun onError(e: Exception?) {
+                        synchronized(this@SettingsActivity) {
+                            exportErrorCode = 1
+                            exportFilesCompleted++
+                        }
+                    }
+                }
+            )
+
+            // Copy hash cache
+            BackgroundTaskExecutor.getInstance().executeAsync(
+                {
+                    copyFileToUri(uri, Constants.HASH_CACHE_FILE_NAME)
+                    return@executeAsync 0
+                },
+                object : BackgroundTaskExecutor.TaskCallback<Int> {
+                    override fun onSuccess(result: Int?) {
+                        synchronized(this@SettingsActivity) {
+                            exportFilesCompleted++
+                        }
+                    }
+
+                    override fun onError(e: Exception?) {
+                        synchronized(this@SettingsActivity) {
+                            exportErrorCode = 1
+                            exportFilesCompleted++
+                        }
+                    }
+                }
+            )
+
+            // Copy env reports
+            BackgroundTaskExecutor.getInstance().executeAsync(
+                {
+                    copyFileToUri(uri, Constants.ENV_REPORTS_FILE_NAME)
+                    return@executeAsync 0
+                },
+                object : BackgroundTaskExecutor.TaskCallback<Int> {
+                    override fun onSuccess(result: Int?) {
+                        synchronized(this@SettingsActivity) {
+                            exportFilesCompleted++
+                        }
+                    }
+
+                    override fun onError(e: Exception?) {
+                        synchronized(this@SettingsActivity) {
+                            exportErrorCode = 1
+                            exportFilesCompleted++
+                        }
+                    }
+                }
+            )
+
+            // Wait for all copies to complete
+            waitForExportCompletion()
+        }, 500)
+    }
+
+    private fun waitForExportCompletion() {
+        val checkCompletion = object : Runnable {
+            override fun run() {
+                synchronized(this@SettingsActivity) {
+                    if (exportFilesCompleted >= 3) {
+                        mainHandler.post {
+                            showLoading.value = false
+
+                            slideMessage.value = if (exportErrorCode == 0) {
+                                getProfileExportedMessage(this@SettingsActivity)
+                            } else {
+                                getProfileExportErrorMessage(this@SettingsActivity)
+                            }
+
+                            showSlideNotif.value = true
+
+                            mainHandler.postDelayed({
+                                showSlideNotif.value = false
+                            }, 3000)
+                        }
+                    } else {
+                        mainHandler.postDelayed(this, Constants.WAIT_CHECK)
+                    }
+                }
             }
         }
-        PermissionChecker.checkAndRequestPermissions(this, AppConfig.blindness, onPermissionGranted)
+        mainHandler.post(checkCompletion)
     }
 
-    private fun handleDetectionInfoClick() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            titleText.value = load_detectionTutorial(this, getNextInfoStep())
-        }
-    }
+    private fun copyFileToUri(targetUri: Uri, fileName: String) {
+        val sourceFile = File(FileUtils.getProfileDirectory(this), fileName)
+        if (!sourceFile.exists()) return
 
-    private fun handleCaptionInfoClick() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            titleText.value = load_captionTutorial(this, getNextInfoStep2())
-        }
-    }
+        val resolver = contentResolver
+        val folderUri = DocumentsContract.buildDocumentUriUsingTree(
+            targetUri,
+            DocumentsContract.getTreeDocumentId(targetUri)
+        )
 
-    private fun handleSpeakInfoClick() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
+        val newFileUri = DocumentsContract.createDocument(
+            resolver,
+            folderUri,
+            "application/octet-stream",
+            fileName
+        )
 
-            titleText.value = load_speakTutorial(this, speakInfoClickCount.value)
-
-            // Reset after showing all messages
-            if (speakInfoClickCount.value == 7) {
-                speakInfoClickCount.value = 0
-            } else
-                speakInfoClickCount.value++
-        }
-    }
-
-    private fun getNextInfoStep(): Int {
-        // Simple counter for tutorial steps
-        if (++basicInfoClickCount == 4) {
-            basicInfoClickCount = 1
-            return 0
-        } else {
-            return basicInfoClickCount - 1
-        }
-    }
-
-    private fun getNextInfoStep2(): Int {
-        // Simple counter for tutorial steps
-        if (++basicInfoClickCount2 == 4) {
-            basicInfoClickCount2 = 1
-            return 0
-        } else {
-            return basicInfoClickCount2 - 1
+        newFileUri?.let { uri ->
+            resolver.openOutputStream(uri)?.use { outputStream ->
+                sourceFile.inputStream().use { inputStream ->
+                    inputStream.copyTo(outputStream)
+                }
+            }
         }
     }
 
     private fun handleNavigateHome() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            // Already on home, do nothing
-        }
+        vibrateIfNeeded()
+        val intent = Intent(this, HomeActivity::class.java)
+        startActivity(intent)
+        finish()
     }
 
     private fun handleNavigateReports() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-
-            val intent = Intent(this, EnvironmentReportsActivity::class.java)
-            startActivity(intent)
-            finish()
-        }
+        vibrateIfNeeded()
+        val intent = Intent(this, EnvironmentReportsActivity::class.java)
+        startActivity(intent)
+        finish()
     }
 
     private fun handleNavigateSettings() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            val intent = Intent(this, SettingsActivity::class.java)
-            startActivity(intent)
-            finish()
+        vibrateIfNeeded()
+        // Already in settings, do nothing
+    }
+
+    private fun handleNotifFirstButton() {
+        // First button is always "Don't" - just hide dialog
+        showNotifDialog.value = false
+    }
+
+    private fun handleNotifSecondButton() {
+        // Second button executes the action
+        showNotifDialog.value = false
+
+        // Determine which action based on current dialog message
+        when {
+            notifMessage.value.contains("cache", ignoreCase = true) -> executeClearCache()
+            notifMessage.value.contains("reports", ignoreCase = true) -> executeClearReports()
+            notifMessage.value.contains("log out", ignoreCase = true) ||
+                    notifMessage.value.contains("deconectare", ignoreCase = true) -> executeLogout()
+
+            notifMessage.value.contains("delete account", ignoreCase = true) ||
+                    notifMessage.value.contains(
+                        "șterge contul",
+                        ignoreCase = true
+                    ) -> executeDeleteAccount()
         }
     }
 
-    private fun handleSwipeToLeft() {
-        if (!uiLocked) {
-            vibrateIfEnabled()
-            val intent = Intent(
-                this, if (AppConfig.env_reports)
-                    EnvironmentReportsActivity::class.java
-                else
-                    SettingsActivity::class.java
-            )
-            startActivity(intent)
-            finish()
+    private fun vibrateIfNeeded() {
+        if (AppConfig.haptics) {
+            vibrate(haptic_model0())
         }
     }
 
-    private fun launchSpeechRecognition(firstTimeSpeak: Boolean) {
-        if (firstTimeSpeak) {
-            if (AppConfig.mainLanguage.code == "ro") {
-                hasToExecAfterResume = true
-                soundManager.play(SoundConstants.STT_ERROR_ID, 0.7f, 0.7f) {
-                    ttsManager.speak(
-                        load_unavailableSTT(this),
-                        AppConfig.tts_pitch,
-                        AppConfig.tts_speech_rate,
-                        false,
-                        null
-                    )
-                }
-                afterResumeRunnable = object : Runnable {
-                    override fun run() {
-                        if (ttsManager.isDoneSpeaking) {
-                            uiLocked = false
-                            locked = false
-                        } else {
-                            mainHandler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS.toLong())
+    private fun getStatusOverview(): Int {
+        return try {
+            profileData?.let {
+                if (it.has("remoteProfile") && it.getBoolean("remoteProfile")) {
+                    // Check if synced
+                    if (it.has("syncStatus")) {
+                        when (it.getString("syncStatus")) {
+                            "synced" -> 1
+                            "error" -> 2
+                            else -> 0
                         }
-                    }
-                }
-                mainHandler.postDelayed(
-                    afterResumeRunnable,
-                    SoundConstants.getDuration(SoundConstants.STT_ERROR_ID).toLong() + 500
-                )
-            } else
-                if (speechRecognizer == null) {
-                    soundManager.play(SoundConstants.STT_ERROR_ID, 0.7f, 0.7f) {
-                        ttsManager.speak(
-                            load_errorSTT(this),
-                            AppConfig.tts_pitch,
-                            AppConfig.tts_speech_rate,
-                            false,
-                            null
-                        )
-                    }
-                    afterResumeRunnable = object : Runnable {
-                        override fun run() {
-                            if (ttsManager.isDoneSpeaking) {
-                                uiLocked = false
-                                locked = false
-                            } else {
-                                mainHandler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS.toLong())
-                            }
-                        }
-                    }
-                    mainHandler.postDelayed(
-                        afterResumeRunnable,
-                        SoundConstants.getDuration(SoundConstants.STT_ERROR_ID).toLong() + 500
-                    )
-                } else {
-                    retrySpeech.value = false
-                    sendSpeech.value = false
-                    showSpeechDialog.value = true
-                    speakingProcess()
-                }
-        } else {
-            speakingProcess()
-        }
-    }
-
-    private fun formatRecognizedText(text: String): String {
-        if (text.isBlank()) return text
-
-        // Replace [unk] with ??
-        var formatted = text.replace("[unk]", "??")
-
-        // Capitalize first letter if it's not ??
-        if (formatted.isNotEmpty() && !formatted.startsWith("??")) {
-            formatted = formatted.replaceFirstChar {
-                if (it.isLowerCase()) it.titlecase() else it.toString()
-            }
-        }
-
-        return formatted
-    }
-
-    private fun speakingProcess() {
-        lockedVolumeDown = false
-        isSpeaking.value = true
-        speechText.value = "Listening..."
-        soundManager.play(SoundConstants.STT_SPEAK_OPEN_ID, 0.7f, 0.7f) {
-            speechRecognizer.startListening(object :
-                SpeechRecognizer.RecognitionCallback {
-                override fun onResult(recognizedText: String, isFinalResult: Boolean) {
-                    if (isFinalResult) {
-                        isSpeaking.value = false
-                        speechText.value = formatRecognizedText(recognizedText)
-                        mainHandler.postDelayed({ processRecognizedSpeech() }, 1000)
-
-                        /*
-                        sendSpeech.value = true
-                        retrySpeech.value = true
-                        locked = false
-                        vibrateIfEnabled()*/
                     } else {
-                        speechText.value = formatRecognizedText(recognizedText)
+                        1
                     }
-                }
-
-                override fun onError(error: String) {
-                    hasToExecAfterResume = true
-                    soundManager.play(SoundConstants.STT_ERROR_ID, 0.7f, 0.7f) {
-                        ttsManager.speak(
-                            load_errorSTTRuntime(PhoneStatusMonitor.getInstance().currentContext),
-                            AppConfig.tts_pitch,
-                            AppConfig.tts_speech_rate,
-                            false,
-                            null
-                        )
-                    }
-                    afterResumeRunnable = object : Runnable {
-                        override fun run() {
-                            if (ttsManager.isDoneSpeaking) {
-                                handleSpeechDialogTap()
-                            } else {
-                                mainHandler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS.toLong())
-                            }
-                        }
-                    }
-                    mainHandler.postDelayed(
-                        afterResumeRunnable,
-                        SoundConstants.getDuration(SoundConstants.STT_ERROR_ID).toLong() + 500
-                    )
-                }
-            })
-        }
-    }
-
-    private fun processRecognizedSpeech() {
-        speechProcessText.value = "Matching known objects..."
-
-        var finishedLoading = false
-        val backgroundTask = BackgroundTaskExecutor.getInstance()
-        backgroundTask.executeAsync(
-            {
-                matchedIndices = speechRecognizer.processRecognizedText(speechText.value)
-
-                if (!matchedIndices.isEmpty()) {
-                    classNames = matchedIndices.map { it.matchedWord }
-                }
-                return@executeAsync 0
-            },
-            object : BackgroundTaskExecutor.TaskCallback<Int> {
-                override fun onSuccess(result: Int) {
-                    finishedLoading = true
-                }
-
-                override fun onError(e: Exception) {
-                    finishedLoading = true
-                }
-            }
-        )
-
-        val checkRunnable = object : Runnable {
-            override fun run() {
-                if (finishedLoading) {
-                    processTextOutput()
                 } else {
-                    mainHandler.postDelayed(this, 500)
+                    0
                 }
-            }
+            } ?: 0
+        } catch (_: Exception) {
+            0
         }
-        mainHandler.postDelayed(checkRunnable, 2000)
-    }
-
-    private fun processTextOutput() {
-        if (matchedIndices.isEmpty()) {
-            speechProcessText.value = "No matched known classes"
-            retrySpeech.value = true
-            sendSpeech.value = false
-            lockedVolumeDown = true
-            locked = false
-            vibrateIfEnabled()
-        } else {
-            speechProcessText.value = "Matched: ${classNames.joinToString(", ")}"
-            retrySpeech.value = true
-            sendSpeech.value = true
-            locked = false
-            vibrateIfEnabled()
-        }
-    }
-
-    private fun sendProcessedSpeech() {
-        val classIndices = IntArray(matchedIndices.size) { matchedIndices[it].classIndex }
-        val matchedWords = Array(matchedIndices.size) { matchedIndices[it].matchedWord }
-
-        val intent = Intent(this, FindMyObjectActivity::class.java).apply {
-            putExtra(Constants.EXTRA_MATCHED_INDICES, classIndices)
-            putExtra(Constants.EXTRA_SYNONYMS_WORDS, matchedWords)
-        }
-        returnFromFindMyObject = true
-        startActivity(intent)
-
-        //finish()
-    }
-
-    private fun handleSpeechDialogTap() {
-        // Cancel speech recognition
-        mainHandler.removeCallbacksAndMessages(null)
-        soundManager.releaseCallback()
-        speechRecognizer.stopListening()
-        locked = true
-        lockedVolumeDown = false
-        showSpeechDialog.value = false
-        mainHandler.postDelayed({
-            uiLocked = false
-            retrySpeech.value = false
-            sendSpeech.value = false
-            isSpeaking.value = false
-            speechText.value = ""
-            speechProcessText.value = ""
-            locked = false
-        }, Constants.ANIMATION_DELAY.toLong())
-    }
-
-    private fun resetSpeechStates() {
-        speechProcessText.value = ""
-        speechText.value = ""
-        //cancelSpeech.value = true
-        retrySpeech.value = false
-        sendSpeech.value = false
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         when (keyCode) {
-            KeyEvent.KEYCODE_VOLUME_UP -> {
-                if (!locked) {
-                    //uiLocked=true
-                    if (retrySpeech.value) {
-                        // Retry speech recognition
-                        locked = true
-                        resetSpeechStates()
-                        launchSpeechRecognition(false)
-                    } else {
-                        uiLocked = true
-                        locked = true
-                        // Launch static detection
-                        launchStaticDetection()
-                    }
-                }
+            KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                Log.d(TAG, "Volume button down pressed")
                 return true
             }
 
-            KeyEvent.KEYCODE_VOLUME_DOWN -> {
-                if (!locked) {
-                    uiLocked = true
-                    if (!handleVolumeDownControl) {
-                        if (!showSpeechDialog.value)
-                            handleVolumeDownControl = true
-                        mainHandler.removeCallbacksAndMessages(null)
-                        mainHandler.postDelayed(
-                            { handleSingleVolumeDown() }, Constants.VOLUME_DOWN_DELAY_MS.toLong()
-                        )
-                    } else {
-                        mainHandler.removeCallbacksAndMessages(null)
-                        locked = true
-                        handleVolumeDownControl = false
-                        launchSpeechRecognition(true)
-                    }
-                }
+            KeyEvent.KEYCODE_VOLUME_UP -> {
+                Log.d(TAG, "Volume button up pressed")
                 return true
             }
         }
         return super.onKeyDown(keyCode, event)
     }
 
-    private fun handleSingleVolumeDown() {
-        when {
-            sendSpeech.value -> {
-                locked = true
-                // Process recognized text
-                sendProcessedSpeech()
-            }
-
-            else -> {
-                if (!lockedVolumeDown)
-                // Launch caption activity
-                    launchCaptionActivity()
-            }
-        }
-    }
-
-    private fun vibrateIfEnabled() {
-        if (AppConfig.haptics) {
-            vibrate(haptic_model0())
-        }
-    }
-
-    private fun checkPhoneStatusAndNavigate(onSuccess: () -> Unit) {
-        PhoneStatusMonitor.getInstance().checkPhoneStatus()
-        // If check passes, execute success callback
-        onSuccess()
-    }
-
-    override fun onPause() {
-        super.onPause()
+    override fun onDestroy() {
+        super.onDestroy()
         mainHandler.removeCallbacksAndMessages(null)
-        soundManager.releaseCallback()
-        ttsManager.stopSpeaking()
+        ttsHandler.removeCallbacksAndMessages(null)
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(
-    titleText: String,
-    syncStatus: Int,
-    syncDays: Int,
-    showDetectionOptions: Boolean,
-    detectionIconColor: Int,
-    selectedDetectionOption: DetectionOption?,
-    showSpeechDialog: Boolean,
-    speechText: String,
-    speechProcessText: String,
-    isSpeaking: Boolean,
-    onDetectionClick: () -> Unit,
-    onDetectionOptionSelected: (DetectionOption?, navigate: Boolean) -> Unit,
-    onCaptionClick: () -> Unit,
-    onDetectionInfoClick: () -> Unit,
-    onCaptionInfoClick: () -> Unit,
-    onSpeakInfoClick: () -> Unit,
-    onNavigateHome: () -> Unit,
-    onNavigateReports: () -> Unit,
-    onNavigateSettings: () -> Unit,
-    onSpeechDialogTap: () -> Unit,
-    navigateFun: () -> Unit,
-    onSwipeToLeft: () -> Unit
+fun SettingsScreen(
+    // Loading state
+    showLoading: Boolean = false,
+    loadingText: String = "",
+
+    // Info dialog
+    showInfoDialog: Boolean = false,
+    infoMessage: String = "",
+
+    // Notification dialog (two buttons)
+    showNotifDialog: Boolean = false,
+    notifMessage: String = "",
+    notifFirstLabel: String = "",
+    notifSecondLabel: String = "",
+
+    // Slide notification
+    showSlideNotif: Boolean = false,
+    slideMessage: String = "",
+
+    // Current section (0=Appearance, 1=Storage, 2=Account)
+    currentSection: Int = 0,
+
+    // Settings states
+    selectedLanguage: Language = Language("en", "English", "US"),
+    selectedQuickAction: String = "Disabled",
+    hapticsEnabled: Boolean = true,
+    soAEnabled: Boolean = false,
+
+    // Size displays
+    hashCacheSize: String = "0.0 KB",
+    hashCachePercent: String = "0.0%",
+    envReportsSize: String = "0.0 KB",
+
+    // Profile status
+    hasRemoteProfile: Boolean = false,
+
+    // Handlers
+    onLanguageChange: (Language) -> Unit = {},
+    onQuickActionChange: (String) -> Unit = {},
+    onQuickActionInfoClick: () -> Unit = {},
+    onHapticsToggle: (Boolean) -> Unit = {},
+    onSoAToggle: (Boolean) -> Unit = {},
+    onSoAInfoClick: () -> Unit = {},
+    onChangeDetectionColors: () -> Unit = {},
+    onChangeCaptionColors: () -> Unit = {},
+    onClearCache: () -> Unit = {},
+    onClearReports: () -> Unit = {},
+    onSyncProfile: () -> Unit = {},
+    onLogout: () -> Unit = {},
+    onDeleteAccount: () -> Unit = {},
+    onExportProfile: () -> Unit = {},
+    onNavigateHome: () -> Unit = {},
+    onNavigateReports: () -> Unit = {},
+    onNavigateSettings: () -> Unit = {},
+    onSectionChange: (Int) -> Unit = {},
+    onInfoDialogDismiss: () -> Unit = {},
+    onNotifDialogFirstButton: () -> Unit = {},
+    onNotifDialogSecondButton: () -> Unit = {},
+    syncStatus: Int = 0,
+    syncDays: Long = 0
 ) {
     BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxSize()
+        modifier = Modifier.fillMaxSize()
     ) {
         val screenHeight = maxHeight
-        val screenWidth = maxWidth
         val navbarHeight = 90.dp / maxHeight
         val sectionMain = 1.0f - navbarHeight
+
+        // Background image
+        Image(
+            painter = painterResource(R.drawable.app_background),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
 
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(Unit) {
-                    var swipeStartX = 0f
-                    detectHorizontalDragGestures(
-                        onDragStart = {
-                            swipeStartX = 0f
-                        },
-                        onDragEnd = {
-                            val threshold = (screenWidth * Constants.MIN_HDISTANCE_THRESHOLD).toPx()
-                            when {
-                                swipeStartX <= -threshold -> {
-                                    onSwipeToLeft()
-                                }
-                            }
-                            swipeStartX = 0f
-                        },
-                        onHorizontalDrag = { _, dragAmount ->
-                            swipeStartX += dragAmount
-                        }
-                    )
-                }
         ) {
-            // Background image
-            Image(
-                painter = painterResource(R.drawable.app_background),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-
             // Main content
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .fillMaxHeight(sectionMain)
             ) {
-                Box(modifier = Modifier.height(screenHeight * 0.045f))
+                Spacer(modifier = Modifier.height(16.dp))
 
-                // Logo
-                Image(
-                    painter = painterResource(R.drawable.vision_assist_logo),
-                    contentDescription = "app logo",
-                    modifier = Modifier.size(Constants.LOGO_SIZE.dp)
+                TopSettingsSection(
+                    selectedLanguage = selectedLanguage,
+                    selectedQuickAction = selectedQuickAction,
+                    hapticsEnabled = hapticsEnabled,
+                    soAEnabled = soAEnabled,
+                    onLanguageChange = onLanguageChange,
+                    onQuickActionChange = onQuickActionChange,
+                    onQuickActionInfoClick = onQuickActionInfoClick,
+                    onHapticsToggle = onHapticsToggle,
+                    onSoAToggle = onSoAToggle,
+                    onSoAInfoClick = onSoAInfoClick
                 )
 
-                // Title with typewriter animation
-                TypewriterText(
-                    text = titleText,
+                SlideableSections(
+                    currentSection = currentSection,
+                    hashCacheSize = hashCacheSize,
+                    hashCachePercent = hashCachePercent,
+                    envReportsSize = envReportsSize,
+                    hasRemoteProfile = hasRemoteProfile,
+                    onChangeDetectionColors = onChangeDetectionColors,
+                    onChangeCaptionColors = onChangeCaptionColors,
+                    onClearCache = onClearCache,
+                    onClearReports = onClearReports,
+                    onSyncProfile = onSyncProfile,
+                    onLogout = onLogout,
+                    onDeleteAccount = onDeleteAccount,
+                    onSectionChange = onSectionChange
+                )
+
+                // Export Profile Button
+                Button(
+                    onClick = onExportProfile,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp),
-                    colorSchema = TypewriterColorSchema(
-                        wordColorSchema = CustomColorSchema(
-                            color = colorResource(R.color.std_purple),
-                            fontFamily = robotoSemibold,
-                            fontSize = Constants.STD_SUBTITLE_SIZE.sp
-                        ),
-                        outlinedWordColorSchema = CustomColorSchema(
-                            color = colorResource(R.color.std_purple_dark),
-                            fontFamily = robotoExtraBold,
-                            fontSize = Constants.STD_SUBTITLE_SIZE.sp
-                        )
+                        .padding(horizontal = 24.dp)
+                        .height(Constants.STD_BUTTON_HEIGHT.dp),
+                    shape = RoundedCornerShape(32.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colorResource(R.color.std_purple)
                     )
-                )
+                ) {
+                    Text(
+                        text = getExportProfileText(PhoneStatusMonitor.getInstance().currentContext),
+                        fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
+                        color = Color.White,
+                        fontFamily = robotoExtraBold
+                    )
+                }
 
-                Box(modifier = Modifier.height(screenWidth * 0.05f))
+                Spacer(modifier = Modifier.height(8.dp))
 
-                // Detection Button with options
-                DetectionButtonSection(
-                    showOptions = showDetectionOptions,
-                    iconColor = detectionIconColor,
-                    selectedOption = selectedDetectionOption,
-                    screenWidth = screenWidth,
-                    showInfoButton = AppConfig.showTutorial,
-                    onDetectionClick = onDetectionClick,
-                    onIconPress = onDetectionClick,
-                    onOptionSelected = onDetectionOptionSelected,
-                    onInfoClick = onDetectionInfoClick,
-                    navigate = navigateFun
-                )
-
-
-                Box(modifier = Modifier.height(screenHeight * 0.04f))
-
-                // Caption Button
-                CaptionButtonSection(
-                    screenWidth = screenWidth,
-                    showInfoButton = AppConfig.showTutorial,
-                    onCaptionClick = onCaptionClick,
-                    onInfoClick = onCaptionInfoClick
-                )
-
-                //Box(modifier = Modifier.height(screenHeight * 0.21f))
-
-                Spacer(modifier = Modifier.weight(1f))
-
+                // Sync Status Section
                 SyncStatusSection(
-                    syncStatus = syncStatus,
-                    syncDays = syncDays,
-                    showInfoButton = AppConfig.showTutorial && AppConfig.mainLanguage.code == "en",
-                    onInfoClick = onSpeakInfoClick
+                    syncStatus,
+                    syncDays.toInt(),
+                    false,
+                    {},
+                    true
                 )
-            }
 
+                Spacer(modifier = Modifier.height(8.dp))
+            }
 
             // Bottom Navigation Bar
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .fillMaxHeight(navbarHeight),
+                    .fillMaxHeight(navbarHeight)
             ) {
+                // Bottom Navigation
                 BottomNavigationBar(
-                    onNavigateHome = onNavigateHome,
-                    onNavigateReports = onNavigateReports,
-                    onNavigateSettings = onNavigateSettings,
-                    showReports = AppConfig.env_reports
+                    onNavigateHome,
+                    onNavigateReports,
+                    onNavigateSettings,
+                    AppConfig.env_reports,
+                    2
                 )
             }
 
-            // Speech Recognition Dialog
-            SpeechRecognitionDialog(
-                isVisible = showSpeechDialog,
-                speechText = speechText,
-                processText = speechProcessText,
-                isSpeaking = isSpeaking,
-                onTap = onSpeechDialogTap
-            )
-        }
-    }
-}
-
-@Composable
-fun TypewriterText(
-    text: String,
-    modifier: Modifier = Modifier,
-    colorSchema: TypewriterColorSchema,
-    textShowSpeed: Long = 70
-) {
-    var displayedText by remember { mutableStateOf("") }
-
-    LaunchedEffect(text) {
-        displayedText = ""
-        text.forEachIndexed { index, _ ->
-            delay(textShowSpeed) // Typing speed
-            displayedText = text.take(index + 1)
-        }
-    }
-
-    // Parse text with ~ separator
-    val parts = displayedText.split("~")
-
-    Text(
-        text = buildAnnotatedString {
-            when (parts.size) {
-                1 -> {
-                    withStyle(
-                        style = SpanStyle(
-                            color = colorSchema.wordColorSchema.color,
-                            fontFamily = colorSchema.wordColorSchema.fontFamily,
-                            fontSize = colorSchema.wordColorSchema.fontSize
-                        )
-                    ) {
-                        append(parts[0])
-                    }
-                }
-
-                3 -> {
-                    withStyle(
-                        style = SpanStyle(
-                            color = colorSchema.wordColorSchema.color,
-                            fontFamily = colorSchema.wordColorSchema.fontFamily,
-                            fontSize = colorSchema.wordColorSchema.fontSize
-                        )
-                    ) {
-                        append(parts[0])
-                    }
-                    withStyle(
-                        style = SpanStyle(
-                            color = colorSchema.outlinedWordColorSchema.color,
-                            fontFamily = colorSchema.outlinedWordColorSchema.fontFamily,
-                            fontSize = colorSchema.outlinedWordColorSchema.fontSize
-                        )
-                    ) {
-                        append(parts[1])
-                    }
-                    withStyle(
-                        style = SpanStyle(
-                            color = colorSchema.wordColorSchema.color,
-                            fontFamily = colorSchema.wordColorSchema.fontFamily,
-                            fontSize = colorSchema.wordColorSchema.fontSize
-                        )
-                    ) {
-                        append(parts[2])
-                    }
-                }
-            }
-        },
-        textAlign = TextAlign.Center,
-        modifier = modifier
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun DetectionButtonSection(
-    showOptions: Boolean,
-    iconColor: Int,
-    selectedOption: DetectionOption?,
-    screenWidth: Dp,
-    showInfoButton: Boolean,
-    onDetectionClick: () -> Unit,
-    onIconPress: () -> Unit,
-    onOptionSelected: (DetectionOption?, navigate: Boolean) -> Unit,
-    onInfoClick: () -> Unit,
-    navigate: () -> Unit
-) {
-    // Button dimensions
-    val buttonHeight = Constants.STD_BUTTON_PAGE_HEIGHT.dp
-    val optionWidth = screenWidth * 0.21f
-    val detectionX = screenWidth * 0.23f
-
-    // ✅ NEW: Drag detection state
-    val density = LocalDensity.current
-
-    // Helper function to determine which button is being hovered
-    fun getHoveredOption(position: Offset): DetectionOption? {
-        if (!showOptions) return null
-
-        with(density) {
-            // Static button bounds (left of detection)
-            val staticLeft = (detectionX - optionWidth - 5.dp).toPx()
-            val staticRight = (detectionX - 5.dp).toPx()
-            val staticTop = buttonHeight.toPx()
-            val staticBottom = (buttonHeight + buttonHeight).toPx()
-
-            if (position.x in staticLeft..staticRight &&
-                position.y in staticTop..staticBottom
-            ) {
-                return DetectionOption.STATIC
-            }
-
-            // Live button bounds (above detection, rotated)
-            val liveLeft = detectionX.toPx()
-            val liveRight = (detectionX + buttonHeight).toPx() // Rotated: width is height
-            val liveTop = (buttonHeight - optionWidth - 4.dp).toPx()
-            val liveBottom = (buttonHeight - 4.dp).toPx()
-
-            if (position.x in liveLeft..liveRight &&
-                position.y in liveTop..liveBottom
-            ) {
-                return DetectionOption.LIVE
-            }
-        }
-
-        return null
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height((Constants.STD_BUTTON_PAGE_HEIGHT).dp + optionWidth)
-            .pointerInput(showOptions) {
-                // ✅ Detect drag gestures when options are visible
-                if (showOptions) {
-                    detectDragGestures(
-                        onDragStart = { offset ->
-                            onOptionSelected(getHoveredOption(offset), false)
-                        },
-                        onDrag = { change, _ ->
-                            onOptionSelected(getHoveredOption(change.position), false)
-                        },
-                        onDragEnd = {
-                            navigate()
-                        },
-                        onDragCancel = {
-                            navigate()
-                        }
-                    )
-                }
-            }
-    ) {
-        // === STATIC BUTTON (Slides LEFT) ===
-        AnimatedVisibility(
-            visible = showOptions,
-            enter = slideInHorizontally(
-                initialOffsetX = { it },
-                animationSpec = tween(250)
-            ),
-            exit = slideOutHorizontally(
-                targetOffsetX = { it },
-                animationSpec = tween(250)
-            ),
-            modifier = Modifier
-                .offset(
-                    x = detectionX - optionWidth - 5.dp,
-                    y = buttonHeight
+            // Loading overlay
+            LoadingComponent(
+                isVisible = showLoading,
+                loadingText = loadingText,
+                animSpec = Pair(
+                    fadeIn(initialAlpha = 0f, animationSpec = tween(durationMillis = 0)),
+                    fadeOut(targetAlpha = 0f, animationSpec = tween(durationMillis = 0))
                 )
-        ) {
-            OptionButton(
-                text = "Static",
-                isSelected = selectedOption == DetectionOption.STATIC,
-                onClick = { onOptionSelected(DetectionOption.STATIC, true) },
-                width = optionWidth,
-                height = buttonHeight,
-                isRotated = false
-            )
-        }
-
-        // === LIVE BUTTON (Slides UP, rotated 90°) ===
-        AnimatedVisibility(
-            visible = showOptions,
-            enter = slideInVertically(
-                initialOffsetY = { it },
-                animationSpec = tween(250)
-            ),
-            exit = slideOutVertically(
-                targetOffsetY = { it },
-                animationSpec = tween(250)
-            ),
-            modifier = Modifier
-                .offset(
-                    x = detectionX,
-                    y = buttonHeight - optionWidth - 8.dp
-                )
-        ) {
-            OptionButton(
-                text = "Live",
-                isSelected = selectedOption == DetectionOption.LIVE,
-                onClick = { onOptionSelected(DetectionOption.LIVE, true) },
-                width = optionWidth,
-                height = buttonHeight,
-                isRotated = true
-            )
-        }
-
-        // === DETECTION BUTTON (Fixed position) ===
-        Row(
-            modifier = Modifier
-                .offset(x = detectionX, y = buttonHeight)
-                .fillMaxWidth(0.77f),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            MainActionButton(
-                shape = RoundedCornerShape(
-                    topStart = 5.dp,
-                    topEnd = 31.dp,
-                    bottomStart = 5.dp,
-                    bottomEnd = 5.dp
-                ),
-                text = if (AppConfig.mainLanguage.code == "en") "Detection" else "Detecție",
-                iconRes = R.drawable.detection_icon,
-                iconColor = iconColor,
-                screenWidth = screenWidth,
-                onClick = onDetectionClick,
-                onIconPress = onIconPress
             )
 
-            if (showInfoButton) {
-                InfoButtonWithPulse(
-                    onClick = onInfoClick,
-                    isPulsing = true
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun CaptionButtonSection(
-    screenWidth: Dp,
-    showInfoButton: Boolean,
-    onCaptionClick: () -> Unit,
-    onInfoClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height((Constants.STD_BUTTON_PAGE_HEIGHT).dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .offset(x = screenWidth * 0.23f)
-                .fillMaxWidth(0.77f),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Caption Button
-            MainActionButton(
-                shape = RoundedCornerShape(
-                    topStart = 5.dp,
-                    topEnd = 5.dp,
-                    bottomStart = 31.dp,
-                    bottomEnd = 31.dp
-                ),
-                predefinedIcon = Icons.Filled.TextFields,
-                text = if (AppConfig.mainLanguage.code == "en") "Caption" else "Descriere textuală",
-                iconColor = R.color.std_purple_dark,
-                screenWidth = screenWidth,
-                onClick = onCaptionClick,
-                onIconPress = onCaptionClick, // No special behavior
+            /*
+            // Info Dialog
+            InfoNotificationDialog(
+                isVisible = showInfoDialog,
+                message = infoMessage,
+                twoButtons = false,
+                firstButtonLabel = if (AppConfig.mainLanguage.code == "en") "OK" else "OK",
+                onFirstButtonClick = onInfoDialogDismiss
             )
 
-            // Info button
-            if (showInfoButton) {
-                Spacer(modifier = Modifier.width(15.dp))
-                InfoButtonWithPulse(
-                    onClick = onInfoClick,
-                    isPulsing = true
-                )
-            }
-        }
-    }
-}
+            // Notification Dialog (Two Buttons)
+            InfoNotificationDialog(
+                isVisible = showNotifDialog,
+                message = notifMessage,
+                twoButtons = true,
+                firstButtonLabel = notifFirstLabel,
+                secondButtonLabel = notifSecondLabel,
+                onFirstButtonClick = onNotifDialogFirstButton,
+                onSecondButtonClick = onNotifDialogSecondButton
+            )
+             */
 
-@Composable
-fun OptionButton(
-    text: String,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    width: Dp,
-    height: Dp,
-    isRotated: Boolean
-) {
-    if (isRotated) {
-        // Rotated button (for "Live" - vertical)
-        Button(
-            onClick = onClick,
-            modifier = Modifier
-                .width(height) // Swap dimensions
-                .height(height)
-                .shadow(
-                    3.dp, RoundedCornerShape(
-                        topStart = 31.dp,
-                        topEnd = 31.dp,
-                        bottomStart = 5.dp,
-                        bottomEnd = 5.dp
+            // Slide Down Notification
+            AnimatedVisibility(
+                visible = showSlideNotif,
+                enter = slideInVertically(
+                    initialOffsetY = { -it },
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow
                     )
                 ),
-            shape = RoundedCornerShape(
-                topStart = 31.dp,
-                topEnd = 31.dp,
-                bottomStart = 5.dp,
-                bottomEnd = 5.dp
-            ),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = if (isSelected) {
-                    colorResource(R.color.std_purple_dark)
-                } else {
-                    colorResource(R.color.std_cyan)
-                },
-                contentColor = Color.White
-            ),
-            contentPadding = PaddingValues(0.dp)
-        ) {
-            Text(
-                text = text,
-                fontSize = 22.sp,
-                fontFamily = robotoExtraBoldItalic
-            )
-        }
-    } else {
-        // Regular button (for "Static" - horizontal)
-        Button(
-            onClick = onClick,
-            modifier = Modifier
-                .width(width)
-                .height(height)
-                .shadow(
-                    3.dp, RoundedCornerShape(
-                        topStart = 31.dp,
-                        topEnd = 5.dp,
-                        bottomStart = 31.dp,
-                        bottomEnd = 5.dp
+                exit = slideOutVertically(
+                    targetOffsetY = { -it },
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessMedium
                     )
                 ),
-            shape = RoundedCornerShape(
-                topStart = 31.dp,
-                topEnd = 5.dp,
-                bottomStart = 31.dp,
-                bottomEnd = 5.dp
-            ),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = if (isSelected) {
-                    colorResource(R.color.std_purple_dark)
-                } else {
-                    colorResource(R.color.std_cyan)
-                },
-                contentColor = Color.White
-            ),
-            contentPadding = PaddingValues(0.dp)
-        ) {
-            Text(
-                text = text,
-                fontSize = 22.sp,
-                fontFamily = robotoExtraBoldItalic
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun MainActionButton(
-    shape: Shape,
-    predefinedIcon: ImageVector? = null,
-    text: String,
-    iconRes: Int = 0,
-    iconColor: Int,
-    screenWidth: Dp,
-    onClick: () -> Unit,
-    onIconPress: () -> Unit
-) {
-    val buttonWidth = screenWidth * 0.6f
-    // Main button
-    Button(
-        onClick = onClick,
-        modifier = Modifier
-            .shadow(
-                3.dp,
-                shape
-            )
-            .width(buttonWidth)
-            .height(Constants.STD_BUTTON_PAGE_HEIGHT.dp),
-        shape = shape,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Color.White,
-            contentColor = colorResource(R.color.std_purple)
-        ),
-        contentPadding = PaddingValues(0.dp)
-    ) {
-        // Icon button (circle)
-        Box(
-            modifier = Modifier
-                .size(56.dp)
-                .shadow(3.dp, CircleShape)
-                .clip(CircleShape)
-                .background(colorResource(iconColor))
-                .pointerInput(Unit) {
-                    detectTapGestures(
-                        onTap = {
-                            onIconPress()
-                        }
-                    )
-                },
-            contentAlignment = Alignment.Center
-        ) {
-            if (predefinedIcon == null) {
-                Icon(
-                    painter = painterResource(iconRes),
-                    contentDescription = "Action icon",
-                    tint = Color.White.copy(alpha = 0.7f),
-                    modifier = Modifier.size(28.dp)
-                )
-            } else {
-                Icon(
-                    imageVector = predefinedIcon,
-                    contentDescription = "Action icon",
-                    tint = Color.White.copy(alpha = 0.7f),
-                    modifier = Modifier.size(28.dp)
-                )
-            }
-        }
-        Spacer(modifier = Modifier.width(buttonWidth * 0.05f))
-        Text(
-            text = text,
-            fontSize = Constants.STD_SUBTITLE_SIZE.sp,
-            fontFamily = robotoBold,
-            color = colorResource(R.color.std_purple_dark)
-        )
-    }
-}
-
-@Composable
-fun InfoButtonWithPulse(
-    onClick: () -> Unit,
-    isPulsing: Boolean,
-    modifier: Modifier = Modifier
-) {
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-
-    // Scale animation for the pulse circle (grows from 1.0 to 1.4)
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.3f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = 1500,
-                easing = FastOutSlowInEasing
-            ),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "pulse_scale"
-    )
-
-    // Alpha animation for the pulse circle (fades from 0.4 to 0.0)
-    val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.4f,
-        targetValue = 0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = 1500,
-                easing = FastOutSlowInEasing
-            ),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "pulse_alpha"
-    )
-
-    Box(
-        modifier = modifier.size(Constants.STD_INFO_BUTTON_SIZE.dp * 1.3f),
-        contentAlignment = Alignment.Center
-    ) {
-        // Pulse circle (behind the button) - only visible when pulsing
-        if (isPulsing) {
-            Box(
                 modifier = Modifier
-                    .size(Constants.STD_INFO_BUTTON_SIZE.dp)
-                    .scale(pulseScale)
-                    .background(
-                        color = colorResource(R.color.std_purple).copy(alpha = pulseAlpha),
-                        shape = CircleShape
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 16.dp)
+            ) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = colorResource(R.color.std_purple)
+                    ),
+                    elevation = CardDefaults.cardElevation(8.dp)
+                ) {
+                    Text(
+                        text = slideMessage,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        color = Color.White,
+                        fontSize = Constants.STD_FONT_SIZE.sp,
+                        fontFamily = robotoSemibold
                     )
-            )
-        }
-
-        // Actual button (ALWAYS constant size)
-        IconButton(
-            onClick = onClick,
-            modifier = Modifier
-                .size(Constants.STD_INFO_BUTTON_SIZE.dp)
-                .background(
-                    color = colorResource(R.color.std_purple).copy(alpha = 0.0f),
-                    shape = CircleShape
-                )
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Info,
-                contentDescription = "Info",
-                tint = colorResource(R.color.std_purple),
-                modifier = Modifier.size((Constants.STD_INFO_BUTTON_SIZE).dp)
-            )
+                }
+            }
         }
     }
 }
 
 @Composable
-fun SyncStatusSection(
-    syncStatus: Int,
-    syncDays: Int,
-    showInfoButton: Boolean,
-    onInfoClick: () -> Unit
+fun TopSettingsSection(
+    selectedLanguage: Language,
+    selectedQuickAction: String,
+    hapticsEnabled: Boolean,
+    soAEnabled: Boolean,
+    onLanguageChange: (Language) -> Unit,
+    onQuickActionChange: (String) -> Unit,
+    onQuickActionInfoClick: () -> Unit,
+    onHapticsToggle: (Boolean) -> Unit,
+    onSoAToggle: (Boolean) -> Unit,
+    onSoAInfoClick: () -> Unit
 ) {
-    // Main row ALWAYS exists
     Row(
-        modifier = Modifier
-            .fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
+        modifier = Modifier.padding(horizontal = 24.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // === FIRST ROW: 0.7 weight (Sync on LEFT) ===
-        Row(
+        // Left Column
+        Column(
             modifier = Modifier
-                .weight(0.7f)
-                .padding(start = 10.dp),
-            horizontalArrangement = Arrangement.Start,  // Align LEFT
-            verticalAlignment = Alignment.CenterVertically
+                .weight(1f)
+                .fillMaxHeight(),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            if (syncStatus > 0) {
-                // Sync circle icon
-                Box(
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (syncStatus == 1) colorResource(R.color.checked_green) else colorResource(
-                                R.color.error_red
-                            )
+            // Language Label
+            Text(
+                text = getLanguageText(PhoneStatusMonitor.getInstance().currentContext),
+                fontSize = 12.sp,
+                color = colorResource(R.color.std_cyan),
+                fontFamily = robotoExtraBold
+            )
+
+            // Language Selector
+            LanguageSelector(
+                selectedLanguage = selectedLanguage,
+                availableLanguages = listOf(
+                    Language("en", "English", "US"),
+                    Language("ro", "Română", "RO")
+                ),
+                onLanguageSelected = onLanguageChange
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Quick Action Label
+            Text(
+                text = getQuickActionText(PhoneStatusMonitor.getInstance().currentContext),
+                fontSize = 12.sp,
+                color = colorResource(R.color.std_cyan),
+                fontFamily = robotoExtraBold
+            )
+
+            // Quick Action Row (Selector + Info Button)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Quick Action Selector
+                Box(modifier = Modifier.weight(1f)) {
+                    QuickActionSelector(
+                        selectedOption = selectedQuickAction,
+                        availableOptions = listOf(
+                            "Disabled",
+                            "Detection-static",
+                            "Detection-dynamic",
+                            "Caption"
                         ),
-                    contentAlignment = Alignment.Center
+                        onOptionSelected = onQuickActionChange
+                    )
+                }
+
+                // Info Button
+                IconButton(
+                    onClick = onQuickActionInfoClick,
+                    modifier = Modifier.size(Constants.STD_INFO_BUTTON_SIZE.dp)
                 ) {
                     Icon(
-                        imageVector = if (syncStatus == 1) Icons.Filled.Sync else Icons.Filled.SyncProblem,
-                        contentDescription = if (AppConfig.mainLanguage.code == "en") "Sync status" else "Status sincronizare",
-                        tint = Color.White,
-                        modifier = Modifier.size(21.dp)
+                        imageVector = Icons.Filled.Info,
+                        contentDescription = "Info",
+                        tint = colorResource(R.color.std_purple),
+                        modifier = Modifier.size(Constants.STD_INFO_BUTTON_SIZE.dp)
                     )
                 }
-
-                Spacer(modifier = Modifier.width(5.dp))
-
-                // Sync text
-                Text(
-                    text = if (syncStatus == 1) {
-                        load_syncStatusText(syncDays)
-                    } else {
-                        load_syncErrorText(LocalContext.current)
-                    },
-                    fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
-                    fontFamily = robotoSemibold,
-                    color = colorResource(if (syncStatus == 1) R.color.std_cyan_dark else R.color.error_red)
-                )
             }
         }
 
-        // === SECOND ROW: Remaining weight (Info on RIGHT) ===
-        Row(
-            modifier = Modifier.weight(1f - 0.7f), // Rest of the weight
-            horizontalArrangement = Arrangement.End,  // Align RIGHT
-            verticalAlignment = Alignment.CenterVertically
+        // Right Column
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight(),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            if (showInfoButton) {
-                InfoButtonWithPulse(
-                    onClick = onInfoClick,
-                    isPulsing = true
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun BottomNavigationBar(
-    onNavigateHome: () -> Unit,
-    onNavigateReports: () -> Unit,
-    onNavigateSettings: () -> Unit,
-    showReports: Boolean
-) {
-    NavigationBar(
-        containerColor = colorResource(R.color.std_light_purple)
-    ) {
-        NavigationBarItem(
-            icon = {
-                Icon(
-                    imageVector = Icons.Filled.Home,
-                    contentDescription = if (AppConfig.mainLanguage.code == "en") "Home" else "Acasă"
-                )
-            },
-            label = {
+            // Haptics Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
-                    text = if (AppConfig.mainLanguage.code == "en") "Home" else "Acasă",
-                    fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
+                    text = getHapticsText(PhoneStatusMonitor.getInstance().currentContext),
+                    fontSize = 14.sp,
+                    color = colorResource(R.color.std_cyan),
                     fontFamily = robotoExtraBold
                 )
 
-            },
-            selected = true,
-            colors = NavigationBarItemColors(
-                selectedIconColor = Color.White,
-                unselectedIconColor = Color(0xFF828188),
-                selectedIndicatorColor = colorResource(R.color.std_purple),
-                selectedTextColor = Color.Black,
-                unselectedTextColor = Color(0xFF828188),
-                disabledIconColor = Color.White,
-                disabledTextColor = Color.White
-            ),
-            onClick = onNavigateHome
-        )
-
-        if (showReports) {
-            NavigationBarItem(
-                icon = {
-                    Icon(
-                        imageVector = Icons.Filled.Description,
-                        contentDescription = if (AppConfig.mainLanguage.code == "en") "Reports" else "Rapoarte de mediu"
+                Switch(
+                    checked = hapticsEnabled,
+                    onCheckedChange = onHapticsToggle,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = colorResource(R.color.std_purple),
+                        uncheckedThumbColor = Color.White,
+                        uncheckedTrackColor = Color.Gray
                     )
-                },
-                label = {
-                    Text(
-                        if (AppConfig.mainLanguage.code == "en") "Reports" else "Rapoarte de mediu",
-                        fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
-                        fontFamily = robotoLight
-                    )
-                },
-                selected = false,
-                onClick = onNavigateReports,
-                colors = NavigationBarItemColors(
-                    selectedIconColor = Color.White,
-                    unselectedIconColor = Color(0xFF828188),
-                    selectedIndicatorColor = colorResource(R.color.std_purple),
-                    selectedTextColor = Color.Black,
-                    unselectedTextColor = Color(0xFF828188),
-                    disabledIconColor = Color.White,
-                    disabledTextColor = Color.White
                 )
-            )
-        }
+            }
 
-        NavigationBarItem(
-            icon = {
-                Icon(
-                    imageVector = Icons.Filled.Settings,
-                    contentDescription = if (AppConfig.mainLanguage.code == "en") "Settings" else "Setări"
-                )
-            },
-            label = {
-                Text(
-                    if (AppConfig.mainLanguage.code == "en") "Settings" else "Setări",
-                    fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
-                    fontFamily = robotoLight
-                )
-            },
-            selected = false,
-            onClick = onNavigateSettings,
-            colors = NavigationBarItemColors(
-                selectedIconColor = Color.White,
-                unselectedIconColor = Color(0xFF615E65),
-                selectedIndicatorColor = colorResource(R.color.std_purple),
-                selectedTextColor = Color.Black,
-                unselectedTextColor = Color(0xFF828188),
-                disabledIconColor = Color.White,
-                disabledTextColor = Color.White
-            )
-        )
-    }
-}
+            Spacer(modifier = Modifier.height(8.dp))
 
-@Composable
-fun SpeechRecognitionDialog(
-    isVisible: Boolean,
-    speechText: String,
-    processText: String,
-    isSpeaking: Boolean,
-    onTap: () -> Unit
-) {
-    AnimatedVisibility(
-        visible = isVisible,
-        enter = fadeIn(animationSpec = tween(Constants.ANIMATION_DELAY)),
-        exit = fadeOut(animationSpec = tween(Constants.ANIMATION_DELAY))
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Gray.copy(alpha = 0.8f))
-                .pointerInput(Unit) {
-                    detectTapGestures {
-                        onTap()
-                    }
-                },
-            contentAlignment = Alignment.Center
-        ) {
-            val hasProcessText = processText.isNotEmpty()
-
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-                modifier = Modifier
-                    .fillMaxWidth(0.85f)
-                    .animateContentSize()
+            // SoA Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // === TOP TEXT (processText when exists, speechText when it doesn't) ===
-                AnimatedContent(
-                    targetState = hasProcessText,
-                    transitionSpec = {
-                        if (targetState) {
-                            // ProcessText appearing: fade in
-                            fadeIn(animationSpec = tween(Constants.ANIMATION_DELAY))
-                                .togetherWith(fadeOut(animationSpec = tween(0)))
-                        } else {
-                            // ProcessText disappearing: instant reset (no animation)
-                            fadeIn(animationSpec = tween(0))
-                                .togetherWith(fadeOut(animationSpec = tween(0)))
-                        }
-                    },
-                    label = "top_text_animation"
-                ) { showingProcess ->
-                    if (showingProcess) {
-                        // Show processText at top (title size, white)
-                        Text(
-                            text = processText,
-                            fontSize = Constants.STD_TITLE_SIZE.sp,
-                            fontFamily = robotoSemibold,
-                            color = Color.White,
-                            textAlign = TextAlign.Center
-                        )
-                    } else {
-                        // Show speechText at top (title size, colored)
-                        Text(
-                            text = speechText,
-                            fontSize = Constants.STD_TITLE_SIZE.sp,
-                            fontFamily = robotoSemibold,
-                            color = if (isSpeaking) {
-                                Color.White
-                            } else {
-                                colorResource(R.color.std_light_purple)
-                            },
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
+                Text(
+                    text = getSoAText(PhoneStatusMonitor.getInstance().currentContext),
+                    fontSize = 14.sp,
+                    color = colorResource(R.color.std_cyan),
+                    fontFamily = robotoExtraBold
+                )
 
-                // === BOTTOM TEXT (speechText slides down when processText appears) ===
-                if (hasProcessText) {
-                    Spacer(modifier = Modifier.height(24.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Switch(
+                        checked = soAEnabled,
+                        onCheckedChange = onSoAToggle,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = colorResource(R.color.std_purple),
+                            uncheckedThumbColor = Color.White,
+                            uncheckedTrackColor = Color.Gray
+                        )
+                    )
 
-                    // Animated appearance of bottom speechText
-                    AnimatedVisibility(
-                        visible = true,
-                        enter = slideInVertically(
-                            initialOffsetY = { -it / 2 }, // Slide from above
-                            animationSpec = tween(Constants.ANIMATION_DELAY)
-                        ) + fadeIn(animationSpec = tween(Constants.ANIMATION_DELAY))
+                    IconButton(
+                        onClick = onSoAInfoClick,
+                        modifier = Modifier.size(Constants.STD_INFO_BUTTON_SIZE.dp)
                     ) {
-                        Text(
-                            text = speechText,
-                            fontSize = Constants.STD_SLIDER_INFO_SIZE.sp, // Small font
-                            fontFamily = robotoSemibold,
-                            color = if (isSpeaking) {
-                                Color.White
-                            } else {
-                                colorResource(R.color.std_light_purple)
-                            },
-                            textAlign = TextAlign.Center
+                        Icon(
+                            imageVector = Icons.Filled.Info,
+                            contentDescription = "Info",
+                            tint = colorResource(R.color.std_purple),
+                            modifier = Modifier.size(Constants.STD_INFO_BUTTON_SIZE.dp)
                         )
                     }
                 }
@@ -1757,99 +1284,626 @@ fun SpeechRecognitionDialog(
     }
 }
 
-@Preview(name = "Home Activity", showBackground = true, widthDp = 412, heightDp = 917)
 @Composable
-fun HomeActivityPreview() {
-    HomeScreen(
-        titleText = "Hello ~Eduard~,\nwhat can I do for you?",
-        syncStatus = 1,
-        syncDays = 5,
-        showDetectionOptions = false,
-        detectionIconColor = R.color.std_purple_dark,
-        selectedDetectionOption = null,
-        showSpeechDialog = false,
-        speechText = "",
-        speechProcessText = "",
-        isSpeaking = true,
-        onDetectionClick = {},
-        onDetectionOptionSelected = { _, _ -> },
-        onCaptionClick = {},
-        onDetectionInfoClick = {},
-        onCaptionInfoClick = {},
-        onSpeakInfoClick = {},
-        onNavigateHome = {},
-        onNavigateReports = {},
-        onNavigateSettings = {},
-        onSpeechDialogTap = {},
-        navigateFun = {},
-        onSwipeToLeft = {}
-    )
+fun SlideableSections(
+    currentSection: Int,
+    hashCacheSize: String,
+    hashCachePercent: String,
+    envReportsSize: String,
+    hasRemoteProfile: Boolean,
+    onChangeDetectionColors: () -> Unit,
+    onChangeCaptionColors: () -> Unit,
+    onClearCache: () -> Unit,
+    onClearReports: () -> Unit,
+    onSyncProfile: () -> Unit,
+    onLogout: () -> Unit,
+    onDeleteAccount: () -> Unit,
+    onSectionChange: (Int) -> Unit
+) {
+    var dragOffset by remember { mutableStateOf(0f) }
+    val maxSections = if (hasRemoteProfile) 3 else 2
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                detectDragGestures(
+                    onDragEnd = {
+                        val threshold = size.width * 0.3f
+                        when {
+                            dragOffset < -threshold && currentSection < maxSections - 1 -> {
+                                onSectionChange(currentSection + 1)
+                            }
+
+                            dragOffset > threshold && currentSection > 0 -> {
+                                onSectionChange(currentSection - 1)
+                            }
+                        }
+                        dragOffset = 0f
+                    },
+                    onDrag = { change, dragAmount ->
+                        change.consume()
+                        dragOffset += dragAmount.x
+                    }
+                )
+            }
+    ) {
+        when (currentSection) {
+            0 -> AppearanceSection(
+                onChangeDetectionColors = onChangeDetectionColors,
+                onChangeCaptionColors = onChangeCaptionColors,
+                showRightArrow = true,
+                onRightArrowClick = { onSectionChange(1) }
+            )
+
+            1 -> StorageSection(
+                hashCacheSize = hashCacheSize,
+                hashCachePercent = hashCachePercent,
+                envReportsSize = envReportsSize,
+                onClearCache = onClearCache,
+                onClearReports = onClearReports,
+                showLeftArrow = true,
+                showRightArrow = hasRemoteProfile,
+                onLeftArrowClick = { onSectionChange(0) },
+                onRightArrowClick = { if (hasRemoteProfile) onSectionChange(2) }
+            )
+
+            2 -> if (hasRemoteProfile) {
+                AccountSection(
+                    onSyncProfile = onSyncProfile,
+                    onLogout = onLogout,
+                    onDeleteAccount = onDeleteAccount,
+                    showLeftArrow = true,
+                    onLeftArrowClick = { onSectionChange(1) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun AppearanceSection(
+    onChangeDetectionColors: () -> Unit,
+    onChangeCaptionColors: () -> Unit,
+    showRightArrow: Boolean,
+    onRightArrowClick: () -> Unit
+) {
+    val context = LocalContext.current
+
+    BoxWithConstraints(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        val screenWidth = maxWidth
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Title
+            Text(
+                text = getAppearanceSectionText(context),
+                fontSize = Constants.STD_ERROR_FONT_SIZE.sp,
+                color = colorResource(R.color.std_purple),
+                fontFamily = robotoExtraBold
+            )
+
+            // Options
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Button(
+                    onClick = onChangeDetectionColors,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(Constants.STD_BUTTON_HEIGHT.dp),
+                    shape = RoundedCornerShape(32.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colorResource(R.color.std_purple)
+                    )
+                ) {
+                    Text(
+                        text = getChangeDetectionColorsText(context),
+                        fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
+                        color = Color.White
+                    )
+                }
+
+                Button(
+                    onClick = onChangeCaptionColors,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(Constants.STD_BUTTON_HEIGHT.dp),
+                    shape = RoundedCornerShape(32.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colorResource(R.color.std_purple)
+                    )
+                ) {
+                    Text(
+                        text = getChangeCaptionColorsText(context),
+                        fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
+                        color = Color.White
+                    )
+                }
+            }
+        }
+
+        // Arrow Buttons
+        if (showRightArrow) {
+            IconButton(
+                onClick = onRightArrowClick,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .width((screenWidth * 0.12f))
+                    .fillMaxHeight()
+                    .background(
+                        color = colorResource(R.color.std_light_purple),
+                        shape = RoundedCornerShape(
+                            topStart = 100.dp,
+                            bottomStart = 100.dp
+                        )
+                    )
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                    contentDescription = "Next",
+                    tint = colorResource(R.color.std_purple),
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun StorageSection(
+    hashCacheSize: String,
+    hashCachePercent: String,
+    envReportsSize: String,
+    onClearCache: () -> Unit,
+    onClearReports: () -> Unit,
+    showLeftArrow: Boolean,
+    showRightArrow: Boolean,
+    onLeftArrowClick: () -> Unit,
+    onRightArrowClick: () -> Unit
+) {
+    val context = LocalContext.current
+
+    BoxWithConstraints(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        val screenWidth = maxWidth
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Title
+            Text(
+                text = getStorageSectionText(context),
+                fontSize = Constants.STD_ERROR_FONT_SIZE.sp,
+                color = colorResource(R.color.std_purple),
+                fontFamily = robotoExtraBold
+            )
+
+            // Options
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Clear Cache Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Button(
+                        onClick = onClearCache,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(Constants.STD_BUTTON_HEIGHT.dp),
+                        shape = RoundedCornerShape(32.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = colorResource(R.color.std_purple)
+                        )
+                    ) {
+                        Text(
+                            text = getClearCacheText(context),
+                            fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
+                            color = Color.White
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    // Size Display
+                    Card(
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = colorResource(R.color.std_light_purple)
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = hashCacheSize,
+                                fontSize = 12.sp,
+                                color = colorResource(R.color.std_purple),
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "($hashCachePercent)",
+                                fontSize = 10.sp,
+                                color = colorResource(R.color.std_purple)
+                            )
+                        }
+                    }
+                }
+
+                // Clear Reports Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Button(
+                        onClick = onClearReports,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(Constants.STD_BUTTON_HEIGHT.dp),
+                        shape = RoundedCornerShape(32.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = colorResource(R.color.std_purple)
+                        )
+                    ) {
+                        Text(
+                            text = getClearReportsText(context),
+                            fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
+                            color = Color.White
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    // Size Display
+                    Card(
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = colorResource(R.color.std_light_purple)
+                        )
+                    ) {
+                        Text(
+                            text = envReportsSize,
+                            fontSize = 12.sp,
+                            color = colorResource(R.color.std_purple),
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(8.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // Arrow Buttons
+        if (showLeftArrow) {
+            IconButton(
+                onClick = onLeftArrowClick,
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .width((screenWidth * 0.12f))
+                    .fillMaxHeight()
+                    .background(
+                        color = colorResource(R.color.std_light_purple),
+                        shape = RoundedCornerShape(
+                            topEnd = 100.dp,
+                            bottomEnd = 100.dp
+                        )
+                    )
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBackIos,
+                    contentDescription = "Previous",
+                    tint = colorResource(R.color.std_purple),
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+        }
+
+        if (showRightArrow) {
+            IconButton(
+                onClick = onRightArrowClick,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .width((screenWidth * 0.12f))
+                    .fillMaxHeight()
+                    .background(
+                        color = colorResource(R.color.std_light_purple),
+                        shape = RoundedCornerShape(
+                            topStart = 100.dp,
+                            bottomStart = 100.dp
+                        )
+                    )
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                    contentDescription = "Next",
+                    tint = colorResource(R.color.std_purple),
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun AccountSection(
+    onSyncProfile: () -> Unit,
+    onLogout: () -> Unit,
+    onDeleteAccount: () -> Unit,
+    showLeftArrow: Boolean,
+    onLeftArrowClick: () -> Unit
+) {
+    val context = LocalContext.current
+
+    BoxWithConstraints(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        val screenWidth = maxWidth
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Title
+            Text(
+                text = getAccountSectionText(context),
+                fontSize = Constants.STD_ERROR_FONT_SIZE.sp,
+                color = colorResource(R.color.std_purple),
+                fontFamily = robotoExtraBold
+            )
+
+            // Options
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Button(
+                    onClick = onSyncProfile,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(Constants.STD_BUTTON_HEIGHT.dp),
+                    shape = RoundedCornerShape(32.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colorResource(R.color.std_purple)
+                    )
+                ) {
+                    Text(
+                        text = getSyncProfileText(context),
+                        fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
+                        color = Color.White
+                    )
+                }
+
+                Button(
+                    onClick = onLogout,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(Constants.STD_BUTTON_HEIGHT.dp),
+                    shape = RoundedCornerShape(32.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colorResource(R.color.std_purple)
+                    )
+                ) {
+                    Text(
+                        text = getLogOutText(context),
+                        fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
+                        color = Color.White
+                    )
+                }
+
+                Button(
+                    onClick = onDeleteAccount,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(Constants.STD_BUTTON_HEIGHT.dp),
+                    shape = RoundedCornerShape(32.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Red
+                    )
+                ) {
+                    Text(
+                        text = getDeleteAccountText(context),
+                        fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
+                        color = Color.White
+                    )
+                }
+            }
+        }
+
+        // Arrow Button
+        if (showLeftArrow) {
+            IconButton(
+                onClick = onLeftArrowClick,
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .width((screenWidth * 0.12f))
+                    .fillMaxHeight()
+                    .background(
+                        color = colorResource(R.color.std_light_purple),
+                        shape = RoundedCornerShape(
+                            topEnd = 100.dp,
+                            bottomEnd = 100.dp
+                        )
+                    )
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBackIos,
+                    contentDescription = "Previous",
+                    tint = colorResource(R.color.std_purple),
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+        }
+    }
 }
 
 @Preview(
-    name = "Home Activity - Detection Options Visible",
+    name = "Settings Screen - Appearance Section",
     showBackground = true,
     widthDp = 412,
     heightDp = 917
 )
 @Composable
-fun HomeActivityWithOptionsPreview() {
-    HomeScreen(
-        titleText = "Hello ~Eduard~,\nwhat can I do for you?",
-        syncStatus = 1,
-        syncDays = 5,
-        showDetectionOptions = true,
-        detectionIconColor = R.color.std_cyan,
-        selectedDetectionOption = DetectionOption.LIVE,
-        showSpeechDialog = false,
-        speechText = "",
-        speechProcessText = "",
-        isSpeaking = true,
-        onDetectionClick = {},
-        onDetectionOptionSelected = { _, _ -> },
-        onCaptionClick = {},
-        onDetectionInfoClick = {},
-        onCaptionInfoClick = {},
-        onSpeakInfoClick = {},
+fun SettingsScreenPreview1() {
+    SettingsScreen(
+        showLoading = false,
+        loadingText = "",
+        showInfoDialog = false,
+        infoMessage = "",
+        showNotifDialog = false,
+        notifMessage = "",
+        notifFirstLabel = "Cancel",
+        notifSecondLabel = "OK",
+        showSlideNotif = false,
+        slideMessage = "",
+        currentSection = 0,
+        selectedLanguage = Language("en", "English", "US"),
+        selectedQuickAction = "Disabled",
+        hapticsEnabled = true,
+        soAEnabled = true,
+        hashCacheSize = "256.5 KB",
+        hashCachePercent = "12.3%",
+        envReportsSize = "1.2 MB",
+        hasRemoteProfile = true,
+        onLanguageChange = {},
+        onQuickActionChange = {},
+        onQuickActionInfoClick = {},
+        onHapticsToggle = {},
+        onSoAToggle = {},
+        onSoAInfoClick = {},
+        onChangeDetectionColors = {},
+        onChangeCaptionColors = {},
+        onClearCache = {},
+        onClearReports = {},
+        onSyncProfile = {},
+        onLogout = {},
+        onDeleteAccount = {},
+        onExportProfile = {},
         onNavigateHome = {},
         onNavigateReports = {},
         onNavigateSettings = {},
-        onSpeechDialogTap = {},
-        navigateFun = {},
-        onSwipeToLeft = {}
+        onSectionChange = {},
+        onInfoDialogDismiss = {},
+        onNotifDialogFirstButton = {},
+        onNotifDialogSecondButton = {}
     )
 }
 
 @Preview(
-    name = "Home Activity - Speaking Dialog Enabled",
+    name = "Settings Screen - Storage Section",
     showBackground = true,
     widthDp = 412,
     heightDp = 917
 )
 @Composable
-fun HomeActivityWithSpeakingDialogPreview() {
-    HomeScreen(
-        titleText = "Hello ~Eduard~,\nwhat can I do for you?",
-        syncStatus = 1,
-        syncDays = 5,
-        showDetectionOptions = false,
-        detectionIconColor = R.color.std_purple_dark,
-        selectedDetectionOption = DetectionOption.LIVE,
-        showSpeechDialog = true,
-        speechText = "Where is my phone, tablet, apple, and laptop",
-        speechProcessText = "ddd",
-        isSpeaking = false,
-        onDetectionClick = {},
-        onDetectionOptionSelected = { _, _ -> },
-        onCaptionClick = {},
-        onDetectionInfoClick = {},
-        onCaptionInfoClick = {},
-        onSpeakInfoClick = {},
+fun SettingsScreenPreview2() {
+    SettingsScreen(
+        showLoading = false,
+        loadingText = "",
+        showInfoDialog = false,
+        infoMessage = "",
+        showNotifDialog = false,
+        notifMessage = "",
+        notifFirstLabel = "Cancel",
+        notifSecondLabel = "OK",
+        showSlideNotif = false,
+        slideMessage = "",
+        currentSection = 1,
+        selectedLanguage = Language("en", "English", "US"),
+        selectedQuickAction = "Disabled",
+        hapticsEnabled = true,
+        soAEnabled = true,
+        hashCacheSize = "256.5 KB",
+        hashCachePercent = "12.3%",
+        envReportsSize = "1.2 MB",
+        hasRemoteProfile = true,
+        onLanguageChange = {},
+        onQuickActionChange = {},
+        onQuickActionInfoClick = {},
+        onHapticsToggle = {},
+        onSoAToggle = {},
+        onSoAInfoClick = {},
+        onChangeDetectionColors = {},
+        onChangeCaptionColors = {},
+        onClearCache = {},
+        onClearReports = {},
+        onSyncProfile = {},
+        onLogout = {},
+        onDeleteAccount = {},
+        onExportProfile = {},
         onNavigateHome = {},
         onNavigateReports = {},
         onNavigateSettings = {},
-        onSpeechDialogTap = {},
-        navigateFun = {},
-        onSwipeToLeft = {}
+        onSectionChange = {},
+        onInfoDialogDismiss = {},
+        onNotifDialogFirstButton = {},
+        onNotifDialogSecondButton = {}
+    )
+}
+
+@Preview(
+    name = "Settings Screen - Account Section",
+    showBackground = true,
+    widthDp = 412,
+    heightDp = 917
+)
+@Composable
+fun SettingsScreenPreview3() {
+    SettingsScreen(
+        showLoading = false,
+        loadingText = "",
+        showInfoDialog = false,
+        infoMessage = "",
+        showNotifDialog = false,
+        notifMessage = "",
+        notifFirstLabel = "Cancel",
+        notifSecondLabel = "OK",
+        showSlideNotif = false,
+        slideMessage = "",
+        currentSection = 2,
+        selectedLanguage = Language("en", "English", "US"),
+        selectedQuickAction = "Disabled",
+        hapticsEnabled = true,
+        soAEnabled = true,
+        hashCacheSize = "256.5 KB",
+        hashCachePercent = "12.3%",
+        envReportsSize = "1.2 MB",
+        hasRemoteProfile = true,
+        onLanguageChange = {},
+        onQuickActionChange = {},
+        onQuickActionInfoClick = {},
+        onHapticsToggle = {},
+        onSoAToggle = {},
+        onSoAInfoClick = {},
+        onChangeDetectionColors = {},
+        onChangeCaptionColors = {},
+        onClearCache = {},
+        onClearReports = {},
+        onSyncProfile = {},
+        onLogout = {},
+        onDeleteAccount = {},
+        onExportProfile = {},
+        onNavigateHome = {},
+        onNavigateReports = {},
+        onNavigateSettings = {},
+        onSectionChange = {},
+        onInfoDialogDismiss = {},
+        onNotifDialogFirstButton = {},
+        onNotifDialogSecondButton = {}
     )
 }

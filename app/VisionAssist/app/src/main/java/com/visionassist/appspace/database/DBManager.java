@@ -15,6 +15,7 @@ import org.json.JSONObject;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
@@ -182,6 +183,112 @@ public class DBManager {
             Log.e(TAG, "Error in createAccount", e);
             status = DBConstants.ACCOUNT_CREATION_FAILED;
             return null;
+        }
+    }
+
+    public void deleteAccount(Context context, Runnable onSuccess, java.util.function.Consumer<Exception> onError) {
+        Log.d(TAG, "Starting account deletion process");
+
+        try {
+            // Step 1: Read profile.json to get email
+            File profileFile = new File(FileUtils.getProfileDirectory(context), Constants.PROFILE_FILE_NAME);
+
+            if (!profileFile.exists()) {
+                Log.e(TAG, "Profile file not found");
+                onError.accept(new Exception("Profile file not found"));
+                return;
+            }
+
+            // Read profile data
+            FileInputStream fis = new FileInputStream(profileFile);
+            byte[] data = new byte[(int) profileFile.length()];
+            fis.read(data);
+            fis.close();
+
+            String profileContent = new String(data, StandardCharsets.UTF_8);
+            JSONObject profileData = new JSONObject(profileContent);
+
+            String email = profileData.getString("email");
+            Log.d(TAG, "Email extracted from profile: " + email);
+
+            // Step 2: Get current Firebase user
+            FirebaseUser currentUser = auth.getCurrentUser();
+
+            if (currentUser == null) {
+                Log.e(TAG, "No user currently signed in");
+                onError.accept(new Exception("No user signed in"));
+                return;
+            }
+
+            Log.d(TAG, "Current user UID: " + currentUser.getUid());
+
+            // Step 3: Delete from Firebase Authentication
+            CountDownLatch authLatch = new CountDownLatch(1);
+            AtomicBoolean authDeleteSuccess = new AtomicBoolean(false);
+            Exception[] authException = {null};
+
+            currentUser.delete()
+                    .addOnSuccessListener(aVoid -> {
+                        Log.d(TAG, "User deleted from Firebase Authentication successfully");
+                        authDeleteSuccess.set(true);
+                        authLatch.countDown();
+                    })
+                    .addOnFailureListener(e -> {
+                        Log.e(TAG, "Failed to delete user from Firebase Authentication", e);
+                        authException[0] = e;
+                        authLatch.countDown();
+                    });
+
+            authLatch.await();
+
+            // Check if auth deletion failed
+            if (!authDeleteSuccess.get()) {
+                Log.e(TAG, "Authentication deletion failed");
+                onError.accept(authException[0] != null ? authException[0] : new Exception("Auth deletion failed"));
+                return;
+            }
+
+            // Step 4: Delete from Firestore
+            CountDownLatch firestoreLatch = new CountDownLatch(1);
+            AtomicBoolean firestoreDeleteSuccess = new AtomicBoolean(false);
+            Exception[] firestoreException = {null};
+
+            firebaseDb.collection(DBConstants.FIREBASE_USERS_COLLECTION)
+                    .document(email)
+                    .delete()
+                    .addOnSuccessListener(aVoid -> {
+                        Log.d(TAG, "User document deleted from Firestore successfully");
+                        firestoreDeleteSuccess.set(true);
+                        firestoreLatch.countDown();
+                    })
+                    .addOnFailureListener(e -> {
+                        Log.e(TAG, "Failed to delete user document from Firestore", e);
+                        firestoreException[0] = e;
+                        firestoreLatch.countDown();
+                    });
+
+            firestoreLatch.await();
+
+            // Check if Firestore deletion failed
+            if (!firestoreDeleteSuccess.get()) {
+                Log.e(TAG, "Firestore deletion failed");
+                onError.accept(firestoreException[0] != null ? firestoreException[0] : new Exception("Firestore deletion failed"));
+                return;
+            }
+
+            // Step 5: Both deletions successful
+            Log.d(TAG, "Account deletion completed successfully");
+            onSuccess.run();
+
+        } catch (JSONException e) {
+            Log.e(TAG, "Error parsing profile JSON", e);
+            onError.accept(e);
+        } catch (InterruptedException e) {
+            Log.e(TAG, "Interrupted while deleting account", e);
+            onError.accept(e);
+        } catch (Exception e) {
+            Log.e(TAG, "Error deleting account", e);
+            onError.accept(e);
         }
     }
 

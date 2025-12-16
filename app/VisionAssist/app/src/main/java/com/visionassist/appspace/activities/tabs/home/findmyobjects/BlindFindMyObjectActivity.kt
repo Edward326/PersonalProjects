@@ -127,10 +127,11 @@ class BlindFindMyObjectActivity : ComponentActivity() {
             this,
             mainHandler
         ) {
-            preferNanoModel = motionMonitor.linearSpeed > Constants.LINEAR_SPEED_THRESHOLD || motionMonitor.rotationSpeed>Constants.ROTATION_SPEED_THRESHOLD
+            preferNanoModel =
+                motionMonitor.linearSpeed > Constants.LINEAR_SPEED_THRESHOLD || motionMonitor.rotationSpeed > Constants.ROTATION_SPEED_THRESHOLD
         }
 
-        lightMonitor= LightManager(
+        lightMonitor = LightManager(
             this,
             mainHandler
         ) {
@@ -196,7 +197,10 @@ class BlindFindMyObjectActivity : ComponentActivity() {
                 isFlashlightOn = true
                 Log.d(TAG, "🔦 Flashlight turned ON via CameraX")
             } else {
-                Log.w(TAG, "Cannot turn ON flashlight: hasFlash=${currentCamera?.cameraInfo?.hasFlashUnit()}, isOn=$isFlashlightOn")
+                Log.w(
+                    TAG,
+                    "Cannot turn ON flashlight: hasFlash=${currentCamera?.cameraInfo?.hasFlashUnit()}, isOn=$isFlashlightOn"
+                )
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error turning flashlight ON via CameraX", e)
@@ -274,7 +278,7 @@ class BlindFindMyObjectActivity : ComponentActivity() {
         soundManager.play(SoundConstants.FIND_MY_OBJECT_DONE_ID, 0.7f, 0.7f) {
             currentSentenceIndex = 0
             isSpeakingPhase = false
-            locked=false
+            locked = false
         }
     }
 
@@ -318,7 +322,7 @@ class BlindFindMyObjectActivity : ComponentActivity() {
 
         try {
             cameraProvider?.unbindAll()
-            currentCamera=cameraProvider?.bindToLifecycle(
+            currentCamera = cameraProvider?.bindToLifecycle(
                 this, cameraSelector, preview, imageCapture
             )
             Log.d(TAG, "Camera bound")
@@ -332,9 +336,9 @@ class BlindFindMyObjectActivity : ComponentActivity() {
             // Start phone status monitoring
             PhoneStatusMonitor.getInstance().startMonitoring(mainHandler) {
                 resultsReady.set(true); batteryCheckRunning.value =
-                false; motionMonitor.stopMonitoring();lightMonitor.stopMonitoring();turnFlashlightOff()
+                false; motionMonitor.stopMonitoring(); lightMonitor.stopMonitoring(); turnFlashlightOff()
             }
-            if (canSwitchModels)
+            if (canSwitchModels && AppConfig.SoA)
                 motionMonitor.startMonitoring()
             lightMonitor.startMonitoring()
             // Start battery level check
@@ -377,7 +381,7 @@ class BlindFindMyObjectActivity : ComponentActivity() {
                             preferNanoModel,  // Prefer nano if moving fast
                             5  // 5 second timeout
                         )
-                        if(detectorWrapper==null)
+                        if (detectorWrapper == null)
                             return@executeAsync ThreadResult(null, null, 0)
 
                         val detector = detectorWrapper.detector
@@ -400,7 +404,8 @@ class BlindFindMyObjectActivity : ComponentActivity() {
                         }
 
                         // Filter detection result
-                        val filteredResult = filterDetectionResult(detectionResult, foundClasses, detector )
+                        val filteredResult =
+                            filterDetectionResult(detectionResult, foundClasses, detector)
                         currentDetectorModel.releaseDetector(detectorWrapper)
 
                         // Now classifier is done, return result
@@ -585,7 +590,7 @@ class BlindFindMyObjectActivity : ComponentActivity() {
         // Signal stop
         stopDetection.set(true)
         PhoneStatusMonitor.getInstance().stopMonitoring()
-        motionMonitor.stopMonitoring();lightMonitor.stopMonitoring();turnFlashlightOff()
+        motionMonitor.stopMonitoring(); lightMonitor.stopMonitoring(); turnFlashlightOff()
         batteryCheckRunning.value = false
 
         // Remove found classes
@@ -822,7 +827,8 @@ class BlindFindMyObjectActivity : ComponentActivity() {
         super.onPause()
         soundManager.releaseCallback()
         ttsManager.stopSpeaking()
-        PhoneStatusMonitor.getInstance().stopMonitoring();lightMonitor.stopMonitoring();turnFlashlightOff()
+        PhoneStatusMonitor.getInstance()
+            .stopMonitoring(); lightMonitor.stopMonitoring(); turnFlashlightOff()
         motionMonitor.stopMonitoring()
         batteryCheckRunning.value = false
         mainHandler.removeCallbacksAndMessages(null)
