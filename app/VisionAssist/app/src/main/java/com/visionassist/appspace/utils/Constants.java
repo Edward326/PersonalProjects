@@ -52,6 +52,7 @@ public class Constants {
     public static final String EXTRA_WELCOME_OPTION = "welcome_option";
     public static final String EXTRA_USERINFO_OPTION = "userinfo_option";
     public static final String EXTRA_USERACC_OPTION = "useracc_option";
+    public static final String EXTRA_USERACC_OPTION2 = "useracc_option2";
     public static final String EXTRA_HCACHING_OPTION = "hcaching_option";
     public static final String EXTRA_IMAGE_URI = "image_uri";
     public static final String EXTRA_MATCHED_INDICES = "class_indices";

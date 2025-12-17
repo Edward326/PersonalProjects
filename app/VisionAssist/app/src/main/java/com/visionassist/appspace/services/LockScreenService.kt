@@ -21,12 +21,12 @@ class LockScreenService : Service() {
     private val NOTIFICATION_ID = 1001
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val quickAction = intent?.getStringExtra("QUICK_ACTION") ?: "Disabled"
+        val quickActionIndex = intent?.getIntExtra("QUICK_ACTION_INDEX", 0) ?: 0
 
-        Log.d(TAG, "LockScreenService started with action: $quickAction")
+        Log.d(TAG, "LockScreenService started with action index: $quickActionIndex")
 
-        if (quickAction == "Disabled") {
-            Log.d(TAG, "Quick action is disabled, stopping service")
+        if (quickActionIndex == 0) {
+            Log.d(TAG, "Quick action is disabled (index 0), stopping service")
             if (Constants.API_LEVEL >= Build.VERSION_CODES.N) {
                 stopForeground(STOP_FOREGROUND_REMOVE)
             } else {
@@ -39,9 +39,9 @@ class LockScreenService : Service() {
 
         createNotificationChannel()
 
-        // Create intent to launch MainActivity with quick action target
+        // Create intent to launch MainActivity with quick action index
         val launchIntent = Intent(this, MainActivity::class.java).apply {
-            putExtra("QUICK_ACTION_TARGET", quickAction)
+            putExtra("QUICK_ACTION_INDEX", quickActionIndex)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         }
 
@@ -56,10 +56,13 @@ class LockScreenService : Service() {
             }
         )
 
+        // Get action name for display
+        val actionName = getActionName(quickActionIndex)
+
         // Build notification
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("VisionAssist Quick Action")
-            .setContentText("Tap to open $quickAction")
+            .setContentText("Tap to open $actionName")
             .setSmallIcon(R.drawable.vision_assist_logo)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(pendingIntent)
@@ -70,7 +73,7 @@ class LockScreenService : Service() {
 
         startForeground(NOTIFICATION_ID, notification)
 
-        Log.d(TAG, "Foreground notification started for: $quickAction")
+        Log.d(TAG, "Foreground notification started for index: $quickActionIndex")
 
         return START_STICKY
     }
@@ -93,6 +96,15 @@ class LockScreenService : Service() {
         }
     }
 
+    private fun getActionName(index: Int): String {
+        return when (index) {
+            1 -> "Detection-static"
+            2 -> "Detection-dynamic"
+            3 -> "Caption"
+            else -> "Quick Action"
+        }
+    }
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
@@ -101,9 +113,29 @@ class LockScreenService : Service() {
     }
 
     companion object {
-        fun startService(context: android.content.Context, quickAction: String) {
+        private const val PREFS_NAME = "VisionAssistPrefs"
+        private const val KEY_QUICK_ACTION_INDEX = "quick_action_index"
+
+        // Quick Action Indexes
+        const val ACTION_DISABLED = 0
+
+        /**
+         * Start the service with a quick action index
+         * @param context Application context
+         * @param actionIndex 0=Disabled, 1=Detection-static, 2=Detection-dynamic, 3=Caption
+         */
+        fun startService(context: android.content.Context, actionIndex: Int) {
+            // Save to SharedPreferences for persistence
+            saveQuickActionIndex(context, actionIndex)
+
+            if (actionIndex == ACTION_DISABLED) {
+                // If disabled, just stop the service
+                stopService(context)
+                return
+            }
+
             val intent = Intent(context, LockScreenService::class.java).apply {
-                putExtra("QUICK_ACTION", quickAction)
+                putExtra("QUICK_ACTION_INDEX", actionIndex)
             }
 
             if (Constants.API_LEVEL >= Build.VERSION_CODES.O) {
@@ -113,9 +145,32 @@ class LockScreenService : Service() {
             }
         }
 
+        /**
+         * Stop the service
+         */
         fun stopService(context: android.content.Context) {
+            // Clear from SharedPreferences
+            saveQuickActionIndex(context, ACTION_DISABLED)
+
             val intent = Intent(context, LockScreenService::class.java)
             context.stopService(intent)
+        }
+
+        /**
+         * Get the current quick action index
+         * @return 0=Disabled, 1=Detection-static, 2=Detection-dynamic, 3=Caption
+         */
+        fun getCurrentQuickActionIndex(context: android.content.Context): Int {
+            val prefs = context.getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            return prefs.getInt(KEY_QUICK_ACTION_INDEX, ACTION_DISABLED)
+        }
+
+        /**
+         * Save the quick action index to SharedPreferences
+         */
+        private fun saveQuickActionIndex(context: android.content.Context, actionIndex: Int) {
+            val prefs = context.getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            prefs.edit().putInt(KEY_QUICK_ACTION_INDEX, actionIndex).apply()
         }
     }
 }

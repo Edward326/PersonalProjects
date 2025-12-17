@@ -66,7 +66,7 @@ fun QuickActionSelector(
         "Detection-dynamic",
         "Caption"
     ),
-    onOptionSelected: (String) -> Unit
+    onOptionSelected: (Int) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
     var currentOption by remember { mutableStateOf(selectedOption) }
@@ -189,7 +189,9 @@ fun QuickActionSelector(
                     onClick = {
                         currentOption = option
                         expanded = false
-                        onOptionSelected(option)
+                        onOptionSelected(
+                            availableOptions.indexOf(option)
+                        )
                     }
                 )
             }

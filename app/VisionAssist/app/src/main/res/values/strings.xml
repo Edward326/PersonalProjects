@@ -290,8 +290,6 @@
     <string name="language_changed_ro">Limba a fost schimbată cu succes</string>
     <string name="quick_action_enabled_en">Quick action enabled on lock screen</string>
     <string name="quick_action_enabled_ro">Quick action activat pe ecranul de blocare</string>
-    <string name="quick_action_disabled_en">Quick action disabled</string>
-    <string name="quick_action_disabled_ro">Acțiune rapidă dezactivată</string>
     <string name="cache_cleared_en">Cache cleared successfully</string>
     <string name="cache_cleared_ro">Cache-ul a fost șters cu succes</string>
     <string name="reports_cleared_en">Reports cleared successfully</string>
@@ -305,10 +303,14 @@
     <string name="profile_export_error_en">An error occurred during export. Please try again</string>
     <string name="profile_export_error_ro">A apărut o eroare în timpul exportului. Vă rugăm încercați din nou</string>
     <string name="ok_button_en">OK</string>
-    <string name="quick_action_disabled">Disabled</string>
-    <string name="quick_action_detection_static">Detection-static</string>
-    <string name="quick_action_detection_dynamic">Detection-dynamic</string>
-    <string name="quick_action_caption">Caption</string>
+    <string name="quick_action_disabled_en">Disabled</string>
+    <string name="quick_action_disabled_ro">Dezactivat</string>
+    <string name="quick_action_detection_static_en">Detection-static</string>
+    <string name="quick_action_detection_static_ro">Detecție-static</string>
+    <string name="quick_action_detection_dynamic_en">Detection-dynamic</string>
+    <string name="quick_action_detection_dynamic_ro">Detecție-dinamic</string>
+    <string name="quick_action_caption_en">Caption</string>
+    <string name="quick_action_caption_ro">Descriere textuală</string>
 
 
     <!-- Common values -->

@@ -13,6 +13,8 @@ import android.view.KeyEvent
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -36,10 +38,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBackIos
-import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -54,17 +55,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.visionassist.appspace.BaseActivity
@@ -74,16 +79,20 @@ import com.visionassist.appspace.activities.main.BottomNavigationBar
 import com.visionassist.appspace.activities.main.HomeActivity
 import com.visionassist.appspace.activities.main.SyncStatusSection
 import com.visionassist.appspace.activities.newprofile.ConfigurationActivity
+import com.visionassist.appspace.activities.newprofile.LoadProfileActivity
 import com.visionassist.appspace.activities.newprofile.UserAccessibility1Activity
+import com.visionassist.appspace.activities.tabs.home.detection.SceneClassifiedNotification
 import com.visionassist.appspace.activities.tabs.reports.EnvironmentReportsActivity
 import com.visionassist.appspace.database.DBManager
 import com.visionassist.appspace.database.NetworkUtils
 import com.visionassist.appspace.jetpack.design.LanguageSelector
 import com.visionassist.appspace.jetpack.design.LoadingComponent
+import com.visionassist.appspace.jetpack.design.NotificationDialog
 import com.visionassist.appspace.jetpack.design.QuickActionSelector
 import com.visionassist.appspace.jetpack.managers.InfoNotificationManager
 import com.visionassist.appspace.models.ttsengine.TTSManager
 import com.visionassist.appspace.services.LockScreenService
+import com.visionassist.appspace.services.LockScreenService.Companion.getCurrentQuickActionIndex
 import com.visionassist.appspace.utils.AppConfig
 import com.visionassist.appspace.utils.BackgroundTaskExecutor
 import com.visionassist.appspace.utils.Constants
@@ -117,6 +126,7 @@ import com.visionassist.appspace.utils.getProfileExportErrorMessage
 import com.visionassist.appspace.utils.getProfileExportedMessage
 import com.visionassist.appspace.utils.getProfileSyncErrorMessage
 import com.visionassist.appspace.utils.getProfileSyncedMessage
+import com.visionassist.appspace.utils.getQuickAccessType
 import com.visionassist.appspace.utils.getQuickActionDisabledMessage
 import com.visionassist.appspace.utils.getQuickActionEnabledMessage
 import com.visionassist.appspace.utils.getQuickActionInfoMessage
@@ -128,8 +138,9 @@ import com.visionassist.appspace.utils.getStorageSectionText
 import com.visionassist.appspace.utils.getSyncProfileText
 import com.visionassist.appspace.utils.haptic_model0
 import com.visionassist.appspace.utils.robotoExtraBold
-import com.visionassist.appspace.utils.robotoSemibold
+import com.visionassist.appspace.utils.robotoLight
 import com.visionassist.appspace.utils.vibrate
+import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.io.File
 
@@ -140,8 +151,8 @@ class SettingsActivity : BaseActivity() {
     private val ttsHandler = Handler(Looper.getMainLooper())
 
     // Managers
-    private lateinit var ttsManager: TTSManager
-    private lateinit var dbManager: DBManager
+    private val ttsManager: TTSManager = PhoneStatusMonitor.getInstance().ttsManager
+    private val dbManager: DBManager = PhoneStatusMonitor.getInstance().dbManager
     private lateinit var infoNotificationManager: InfoNotificationManager
 
     // UI States
@@ -164,7 +175,7 @@ class SettingsActivity : BaseActivity() {
 
     // Settings states
     private val selectedLanguage = mutableStateOf(AppConfig.mainLanguage)
-    private val selectedQuickAction = mutableStateOf("Disabled")
+    private val selectedQuickAction = mutableStateOf(getCurrentQuickActionIndex(this))
     private val hapticsEnabled = mutableStateOf(AppConfig.haptics)
     private val soAEnabled = mutableStateOf(false)
 
@@ -184,12 +195,9 @@ class SettingsActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        ttsManager = PhoneStatusMonitor.getInstance().ttsManager
-        dbManager = PhoneStatusMonitor.getInstance().dbManager
-
         // Load profile data
         try {
-            val profileFile = File(FileUtils.getProfileDirectory(this), Constants.PROFILE_FILE_NAME)
+            val profileFile = FileUtils.getProfileFile(this)
             if (profileFile.exists()) {
                 profileData = JSONObject(profileFile.readText())
             }
@@ -209,12 +217,8 @@ class SettingsActivity : BaseActivity() {
             SettingsScreen(
                 showLoading = showLoading.value,
                 loadingText = loadingText.value,
-                showInfoDialog = showInfoDialog.value,
-                infoMessage = infoMessage.value,
-                showNotifDialog = showNotifDialog.value,
-                notifMessage = notifMessage.value,
-                notifFirstLabel = notifFirstLabel.value,
-                notifSecondLabel = notifSecondLabel.value,
+                showNotification = showNotifDialog.value,
+                notificationMessage = notifMessage.value,
                 showSlideNotif = showSlideNotif.value,
                 slideMessage = slideMessage.value,
                 currentSection = currentSection.value,
@@ -244,9 +248,7 @@ class SettingsActivity : BaseActivity() {
                 onNavigateReports = ::handleNavigateReports,
                 onNavigateSettings = ::handleNavigateSettings,
                 onSectionChange = { section -> currentSection.value = section },
-                onInfoDialogDismiss = { showInfoDialog.value = false },
-                onNotifDialogFirstButton = ::handleNotifFirstButton,
-                onNotifDialogSecondButton = ::handleNotifSecondButton,
+                firstButtonClick = ::handleNotifFirstButton,
                 syncStatus = dbManager.statusOverview,
                 syncDays = dbManager.diffDays
             )
@@ -277,31 +279,24 @@ class SettingsActivity : BaseActivity() {
 
     private fun handleLanguageChange(language: Language) {
         vibrateIfNeeded()
-        showLoading.value = true
+
+        if (language.code == selectedLanguage.value.code) return
+
         loadingText.value = getApplyingSettingsText(this)
+        showLoading.value = true
 
         mainHandler.postDelayed({
             selectedLanguage.value = language
             AppConfig.mainLanguage = language
-
             setTTSLanguage()
         }, 500)
     }
 
     private fun setTTSLanguage() {
-        if (!AppConfig.mainLanguage.code.equals(
-                ttsManager.currentLocale.language,
-                ignoreCase = true
-            )
-        ) {
-            Log.d(TAG, "TTS needs language change")
-            waitingForTTSLanguage = true
-            ttsManager.changeLanguage(AppConfig.mainLanguage, this)
-            waitForTTSAndReload()
-        } else {
-            Log.d(TAG, "TTS already correct language")
-            waitForTTSAndReload()
-        }
+        Log.d(TAG, "Changing TTS language")
+        waitingForTTSLanguage = true
+        ttsManager.changeLanguage(AppConfig.mainLanguage, this)
+        waitForTTSAndReload()
     }
 
     private fun waitForTTSAndReload() {
@@ -310,16 +305,17 @@ class SettingsActivity : BaseActivity() {
                 if (ttsManager.isReady) {
                     Log.d(TAG, "TTS ready, reloading UI")
                     waitingForTTSLanguage = false
+                    slideMessage.value = getLanguageChangedMessage(this@SettingsActivity)
+
                     showLoading.value = false
 
                     // Show notification
-                    slideMessage.value = getLanguageChangedMessage(this@SettingsActivity)
                     showSlideNotif.value = true
 
                     // Hide after delay
                     mainHandler.postDelayed({
                         showSlideNotif.value = false
-                    }, 3000)
+                    }, 4500)
                 } else {
                     Log.w(TAG, "TTS not ready, retrying...")
                     ttsHandler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS.toLong())
@@ -329,15 +325,18 @@ class SettingsActivity : BaseActivity() {
         ttsHandler.post(checkTTS)
     }
 
-    private fun handleQuickActionChange(action: String) {
+    private fun handleQuickActionChange(action: Int) {
         vibrateIfNeeded()
-        showLoading.value = true
+
+        if (action == selectedQuickAction.value) return
+
         loadingText.value = getApplyingSettingsText(this)
+        showLoading.value = true
 
         mainHandler.postDelayed({
             selectedQuickAction.value = action
 
-            if (action == "Disabled") {
+            if (action == 0) {
                 LockScreenService.stopService(this)
                 slideMessage.value = getQuickActionDisabledMessage(this)
             } else {
@@ -350,49 +349,47 @@ class SettingsActivity : BaseActivity() {
 
             mainHandler.postDelayed({
                 showSlideNotif.value = false
-            }, 3000)
+            }, 4500)
         }, 500)
     }
 
     private fun handleQuickActionInfo() {
         vibrateIfNeeded()
-        infoMessage.value = getQuickActionInfoMessage(this)
-        showInfoDialog.value = true
+        infoNotificationManager.showNotification(
+            getQuickActionInfoMessage(this),
+            { infoNotificationManager.hideNotification() },
+            "OK"
+        )
     }
 
     private fun handleHapticsToggle(enabled: Boolean) {
-        vibrateIfNeeded()
+        if (!AppConfig.haptics) {
+            vibrate(haptic_model0())
+        }
         hapticsEnabled.value = enabled
         AppConfig.haptics = enabled
-
-        showSlideNotif.value = true
-        mainHandler.postDelayed({
-            showSlideNotif.value = false
-        }, 2000)
     }
 
     private fun handleSoAToggle(enabled: Boolean) {
         vibrateIfNeeded()
         soAEnabled.value = enabled
         AppConfig.SoA = enabled
-
-        showSlideNotif.value = true
-        mainHandler.postDelayed({
-            showSlideNotif.value = false
-        }, 2000)
     }
 
     private fun handleSoAInfo() {
         vibrateIfNeeded()
-        infoMessage.value = getSoAInfoMessage(this)
-        showInfoDialog.value = true
+        infoNotificationManager.showNotification(
+            getSoAInfoMessage(this),
+            { infoNotificationManager.hideNotification() },
+            "OK"
+        )
     }
 
     private fun handleChangeDetectionColors() {
         vibrateIfNeeded()
         val intent = Intent(this, UserAccessibility1Activity::class.java).apply {
-            putExtra("EXTRA_USERACC_OPTION", 1)
-            putExtra("EXTRA_USERACC_OPTION2", true)
+            putExtra(Constants.EXTRA_USERACC_OPTION, 1)
+            putExtra(Constants.EXTRA_USERACC_OPTION2, true)
         }
         startActivity(intent)
     }
@@ -400,8 +397,8 @@ class SettingsActivity : BaseActivity() {
     private fun handleChangeCaptionColors() {
         vibrateIfNeeded()
         val intent = Intent(this, UserAccessibility1Activity::class.java).apply {
-            putExtra("EXTRA_USERACC_OPTION", 2)
-            putExtra("EXTRA_USERACC_OPTION2", true)
+            putExtra(Constants.EXTRA_USERACC_OPTION, 2)
+            putExtra(Constants.EXTRA_USERACC_OPTION2, true)
         }
         startActivity(intent)
     }
@@ -503,43 +500,40 @@ class SettingsActivity : BaseActivity() {
         loadingText.value = getApplyingSettingsText(this)
 
         mainHandler.postDelayed({
-            BackgroundTaskExecutor.getInstance().executeAsync(
-                {
-                    profileData?.let { dbManager.syncProfile(it) }
-                    return@executeAsync 0
-                },
-                object : BackgroundTaskExecutor.TaskCallback<Int> {
-                    override fun onSuccess(result: Int?) {
-                        mainHandler.post {
-                            showLoading.value = false
+            BackgroundTaskExecutor.getInstance().executeAsync({
+                profileData?.let { dbManager.syncProfile(it) }
+                return@executeAsync 0
+            }, object : BackgroundTaskExecutor.TaskCallback<Int> {
+                override fun onSuccess(result: Int?) {
+                    mainHandler.post {
+                        showLoading.value = false
 
-                            slideMessage.value = when (getStatusOverview()) {
-                                1 -> getProfileSyncedMessage(this@SettingsActivity)
-                                2 -> getProfileSyncErrorMessage(this@SettingsActivity)
-                                else -> getProfileSyncedMessage(this@SettingsActivity)
-                            }
-
-                            showSlideNotif.value = true
-
-                            mainHandler.postDelayed({
-                                showSlideNotif.value = false
-                            }, 3000)
+                        slideMessage.value = when (getStatusOverview()) {
+                            1 -> getProfileSyncedMessage(this@SettingsActivity)
+                            2 -> getProfileSyncErrorMessage(this@SettingsActivity)
+                            else -> getProfileSyncedMessage(this@SettingsActivity)
                         }
-                    }
 
-                    override fun onError(e: Exception?) {
-                        mainHandler.post {
-                            showLoading.value = false
-                            slideMessage.value = getProfileSyncErrorMessage(this@SettingsActivity)
-                            showSlideNotif.value = true
+                        showSlideNotif.value = true
 
-                            mainHandler.postDelayed({
-                                showSlideNotif.value = false
-                            }, 3000)
-                        }
+                        mainHandler.postDelayed({
+                            showSlideNotif.value = false
+                        }, 3000)
                     }
                 }
-            )
+
+                override fun onError(e: Exception?) {
+                    mainHandler.post {
+                        showLoading.value = false
+                        slideMessage.value = getProfileSyncErrorMessage(this@SettingsActivity)
+                        showSlideNotif.value = true
+
+                        mainHandler.postDelayed({
+                            showSlideNotif.value = false
+                        }, 3000)
+                    }
+                }
+            })
         }, 500)
     }
 
@@ -611,27 +605,23 @@ class SettingsActivity : BaseActivity() {
                 FileUtils.deleteProfileDirFile(Constants.PROFILE_FILE_NAME)
 
                 // Delete from Firebase
-                dbManager.deleteAccount(
-                    this,
-                    {
-                        mainHandler.post {
-                            showLoading.value = false
-                            val intent = Intent(this, ConfigurationActivity::class.java)
-                            startActivity(intent)
-                            finish()
-                        }
-                    },
-                    { e ->
-                        mainHandler.post {
-                            Log.e(TAG, "Error deleting account", e)
-                            showLoading.value = false
-                            // Still navigate even if Firebase delete fails
-                            val intent = Intent(this, ConfigurationActivity::class.java)
-                            startActivity(intent)
-                            finish()
-                        }
+                dbManager.deleteAccount(this, {
+                    mainHandler.post {
+                        showLoading.value = false
+                        val intent = Intent(this, ConfigurationActivity::class.java)
+                        startActivity(intent)
+                        finish()
                     }
-                )
+                }, { e ->
+                    mainHandler.post {
+                        Log.e(TAG, "Error deleting account", e)
+                        showLoading.value = false
+                        // Still navigate even if Firebase delete fails
+                        val intent = Intent(this, ConfigurationActivity::class.java)
+                        startActivity(intent)
+                        finish()
+                    }
+                })
             } catch (e: Exception) {
                 Log.e(TAG, "Error during delete account", e)
                 showLoading.value = false
@@ -653,70 +643,61 @@ class SettingsActivity : BaseActivity() {
             exportFilesCompleted = 0
 
             // Copy profile.json
-            BackgroundTaskExecutor.getInstance().executeAsync(
-                {
-                    copyFileToUri(uri, Constants.PROFILE_FILE_NAME)
-                    return@executeAsync 0
-                },
-                object : BackgroundTaskExecutor.TaskCallback<Int> {
-                    override fun onSuccess(result: Int?) {
-                        synchronized(this@SettingsActivity) {
-                            exportFilesCompleted++
-                        }
-                    }
-
-                    override fun onError(e: Exception?) {
-                        synchronized(this@SettingsActivity) {
-                            exportErrorCode = 1
-                            exportFilesCompleted++
-                        }
+            BackgroundTaskExecutor.getInstance().executeAsync({
+                copyFileToUri(uri, Constants.PROFILE_FILE_NAME)
+                return@executeAsync 0
+            }, object : BackgroundTaskExecutor.TaskCallback<Int> {
+                override fun onSuccess(result: Int?) {
+                    synchronized(this@SettingsActivity) {
+                        exportFilesCompleted++
                     }
                 }
-            )
+
+                override fun onError(e: Exception?) {
+                    synchronized(this@SettingsActivity) {
+                        exportErrorCode = 1
+                        exportFilesCompleted++
+                    }
+                }
+            })
 
             // Copy hash cache
-            BackgroundTaskExecutor.getInstance().executeAsync(
-                {
-                    copyFileToUri(uri, Constants.HASH_CACHE_FILE_NAME)
-                    return@executeAsync 0
-                },
-                object : BackgroundTaskExecutor.TaskCallback<Int> {
-                    override fun onSuccess(result: Int?) {
-                        synchronized(this@SettingsActivity) {
-                            exportFilesCompleted++
-                        }
-                    }
-
-                    override fun onError(e: Exception?) {
-                        synchronized(this@SettingsActivity) {
-                            exportErrorCode = 1
-                            exportFilesCompleted++
-                        }
+            BackgroundTaskExecutor.getInstance().executeAsync({
+                copyFileToUri(uri, Constants.HASH_CACHE_FILE_NAME)
+                return@executeAsync 0
+            }, object : BackgroundTaskExecutor.TaskCallback<Int> {
+                override fun onSuccess(result: Int?) {
+                    synchronized(this@SettingsActivity) {
+                        exportFilesCompleted++
                     }
                 }
-            )
+
+                override fun onError(e: Exception?) {
+                    synchronized(this@SettingsActivity) {
+                        exportErrorCode = 1
+                        exportFilesCompleted++
+                    }
+                }
+            })
 
             // Copy env reports
-            BackgroundTaskExecutor.getInstance().executeAsync(
-                {
-                    copyFileToUri(uri, Constants.ENV_REPORTS_FILE_NAME)
-                    return@executeAsync 0
-                },
-                object : BackgroundTaskExecutor.TaskCallback<Int> {
-                    override fun onSuccess(result: Int?) {
-                        synchronized(this@SettingsActivity) {
-                            exportFilesCompleted++
-                        }
-                    }
-
-                    override fun onError(e: Exception?) {
-                        synchronized(this@SettingsActivity) {
-                            exportErrorCode = 1
-                            exportFilesCompleted++
-                        }
+            BackgroundTaskExecutor.getInstance().executeAsync({
+                copyFileToUri(uri, Constants.ENV_REPORTS_FILE_NAME)
+                return@executeAsync 0
+            }, object : BackgroundTaskExecutor.TaskCallback<Int> {
+                override fun onSuccess(result: Int?) {
+                    synchronized(this@SettingsActivity) {
+                        exportFilesCompleted++
                     }
                 }
-            )
+
+                override fun onError(e: Exception?) {
+                    synchronized(this@SettingsActivity) {
+                        exportErrorCode = 1
+                        exportFilesCompleted++
+                    }
+                }
+            })
 
             // Wait for all copies to complete
             waitForExportCompletion()
@@ -758,15 +739,11 @@ class SettingsActivity : BaseActivity() {
 
         val resolver = contentResolver
         val folderUri = DocumentsContract.buildDocumentUriUsingTree(
-            targetUri,
-            DocumentsContract.getTreeDocumentId(targetUri)
+            targetUri, DocumentsContract.getTreeDocumentId(targetUri)
         )
 
         val newFileUri = DocumentsContract.createDocument(
-            resolver,
-            folderUri,
-            "application/octet-stream",
-            fileName
+            resolver, folderUri, "application/octet-stream", fileName
         )
 
         newFileUri?.let { uri ->
@@ -810,14 +787,17 @@ class SettingsActivity : BaseActivity() {
         when {
             notifMessage.value.contains("cache", ignoreCase = true) -> executeClearCache()
             notifMessage.value.contains("reports", ignoreCase = true) -> executeClearReports()
-            notifMessage.value.contains("log out", ignoreCase = true) ||
-                    notifMessage.value.contains("deconectare", ignoreCase = true) -> executeLogout()
+            notifMessage.value.contains(
+                "log out",
+                ignoreCase = true
+            ) || notifMessage.value.contains("deconectare", ignoreCase = true) -> executeLogout()
 
-            notifMessage.value.contains("delete account", ignoreCase = true) ||
-                    notifMessage.value.contains(
-                        "șterge contul",
-                        ignoreCase = true
-                    ) -> executeDeleteAccount()
+            notifMessage.value.contains(
+                "delete account",
+                ignoreCase = true
+            ) || notifMessage.value.contains(
+                "șterge contul", ignoreCase = true
+            ) -> executeDeleteAccount()
         }
     }
 
@@ -864,54 +844,27 @@ class SettingsActivity : BaseActivity() {
         }
         return super.onKeyDown(keyCode, event)
     }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        mainHandler.removeCallbacksAndMessages(null)
-        ttsHandler.removeCallbacksAndMessages(null)
-    }
 }
 
 @Composable
 fun SettingsScreen(
-    // Loading state
-    showLoading: Boolean = false,
-    loadingText: String = "",
-
-    // Info dialog
-    showInfoDialog: Boolean = false,
-    infoMessage: String = "",
-
-    // Notification dialog (two buttons)
-    showNotifDialog: Boolean = false,
-    notifMessage: String = "",
-    notifFirstLabel: String = "",
-    notifSecondLabel: String = "",
-
-    // Slide notification
-    showSlideNotif: Boolean = false,
-    slideMessage: String = "",
-
-    // Current section (0=Appearance, 1=Storage, 2=Account)
-    currentSection: Int = 0,
-
-    // Settings states
-    selectedLanguage: Language = Language("en", "English", "US"),
-    selectedQuickAction: String = "Disabled",
-    hapticsEnabled: Boolean = true,
-    soAEnabled: Boolean = false,
-
-    // Size displays
-    hashCacheSize: String = "0.0 KB",
-    hashCachePercent: String = "0.0%",
-    envReportsSize: String = "0.0 KB",
-
-    // Profile status
-    hasRemoteProfile: Boolean = false,
-
-    // Handlers
+    showLoading: Boolean,
+    loadingText: String,
+    showNotification: Boolean,
+    notificationMessage: String,
+    showSlideNotif: Boolean,
+    slideMessage: String,
+    currentSection: Int,
+    selectedLanguage: Language,
+    selectedQuickAction: Int,
+    hapticsEnabled: Boolean,
+    soAEnabled: Boolean,
+    hashCacheSize: String,
+    hashCachePercent: String,
+    envReportsSize: String,
+    hasRemoteProfile: Boolean,
     onLanguageChange: (Language) -> Unit = {},
-    onQuickActionChange: (String) -> Unit = {},
+    onQuickActionChange: (Int) -> Unit = {},
     onQuickActionInfoClick: () -> Unit = {},
     onHapticsToggle: (Boolean) -> Unit = {},
     onSoAToggle: (Boolean) -> Unit = {},
@@ -928,16 +881,14 @@ fun SettingsScreen(
     onNavigateReports: () -> Unit = {},
     onNavigateSettings: () -> Unit = {},
     onSectionChange: (Int) -> Unit = {},
-    onInfoDialogDismiss: () -> Unit = {},
-    onNotifDialogFirstButton: () -> Unit = {},
-    onNotifDialogSecondButton: () -> Unit = {},
-    syncStatus: Int = 0,
-    syncDays: Long = 0
+    firstButtonClick: () -> Unit = {},
+    syncStatus: Int,
+    syncDays: Long
 ) {
     BoxWithConstraints(
         modifier = Modifier.fillMaxSize()
     ) {
-        val screenHeight = maxHeight
+        val screenWidth = maxWidth
         val navbarHeight = 90.dp / maxHeight
         val sectionMain = 1.0f - navbarHeight
 
@@ -950,8 +901,7 @@ fun SettingsScreen(
         )
 
         Box(
-            modifier = Modifier
-                .fillMaxSize()
+            modifier = Modifier.fillMaxSize()
         ) {
             // Main content
             Column(
@@ -959,69 +909,84 @@ fun SettingsScreen(
                     .fillMaxWidth()
                     .fillMaxHeight(sectionMain)
             ) {
-                Spacer(modifier = Modifier.height(16.dp))
-
-                TopSettingsSection(
-                    selectedLanguage = selectedLanguage,
-                    selectedQuickAction = selectedQuickAction,
-                    hapticsEnabled = hapticsEnabled,
-                    soAEnabled = soAEnabled,
-                    onLanguageChange = onLanguageChange,
-                    onQuickActionChange = onQuickActionChange,
-                    onQuickActionInfoClick = onQuickActionInfoClick,
-                    onHapticsToggle = onHapticsToggle,
-                    onSoAToggle = onSoAToggle,
-                    onSoAInfoClick = onSoAInfoClick
-                )
-
-                SlideableSections(
-                    currentSection = currentSection,
-                    hashCacheSize = hashCacheSize,
-                    hashCachePercent = hashCachePercent,
-                    envReportsSize = envReportsSize,
-                    hasRemoteProfile = hasRemoteProfile,
-                    onChangeDetectionColors = onChangeDetectionColors,
-                    onChangeCaptionColors = onChangeCaptionColors,
-                    onClearCache = onClearCache,
-                    onClearReports = onClearReports,
-                    onSyncProfile = onSyncProfile,
-                    onLogout = onLogout,
-                    onDeleteAccount = onDeleteAccount,
-                    onSectionChange = onSectionChange
-                )
-
-                // Export Profile Button
-                Button(
-                    onClick = onExportProfile,
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp)
-                        .height(Constants.STD_BUTTON_HEIGHT.dp),
-                    shape = RoundedCornerShape(32.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = colorResource(R.color.std_purple)
-                    )
+                        .weight(0.3f),
+                    contentAlignment = Alignment.BottomCenter
                 ) {
-                    Text(
-                        text = getExportProfileText(PhoneStatusMonitor.getInstance().currentContext),
-                        fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
-                        color = Color.White,
-                        fontFamily = robotoExtraBold
+                    //Spacer(modifier = Modifier.height(screenHeight * 0.07f))
+
+                    TopSettingsSection(
+                        selectedLanguage = selectedLanguage,
+                        selectedQuickAction = selectedQuickAction,
+                        hapticsEnabled = hapticsEnabled,
+                        soAEnabled = soAEnabled,
+                        onLanguageChange = onLanguageChange,
+                        onQuickActionChange = onQuickActionChange,
+                        onQuickActionInfoClick = onQuickActionInfoClick,
+                        onHapticsToggle = onHapticsToggle,
+                        onSoAToggle = onSoAToggle,
+                        onSoAInfoClick = onSoAInfoClick
                     )
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(0.5f)
+                ) {
+                    SlideableSections(
+                        currentSection = currentSection,
+                        hashCacheSize = hashCacheSize,
+                        hashCachePercent = hashCachePercent,
+                        envReportsSize = envReportsSize,
+                        hasRemoteProfile = hasRemoteProfile,
+                        onChangeDetectionColors = onChangeDetectionColors,
+                        onChangeCaptionColors = onChangeCaptionColors,
+                        onClearCache = onClearCache,
+                        onClearReports = onClearReports,
+                        onSyncProfile = onSyncProfile,
+                        onLogout = onLogout,
+                        onDeleteAccount = onDeleteAccount,
+                        onSectionChange = onSectionChange,
+                        screenWidth = screenWidth
+                    )
+                }
 
-                // Sync Status Section
-                SyncStatusSection(
-                    syncStatus,
-                    syncDays.toInt(),
-                    false,
-                    {},
-                    true
-                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(0.2f),
+                    verticalArrangement = Arrangement.Bottom
+                ) {
+                    // Export Profile Button
+                    Button(
+                        onClick = onExportProfile,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(Constants.STD_BUTTON_HEIGHT.dp)
+                            .padding(horizontal = 24.dp),
+                        shape = RoundedCornerShape(32.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = colorResource(R.color.std_purple)
+                        )
+                    ) {
+                        Text(
+                            text = getExportProfileText(LocalContext.current),
+                            fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
+                            color = Color.White,
+                            fontFamily = robotoExtraBold
+                        )
+                    }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Sync Status Section
+                    SyncStatusSection(
+                        syncStatus, syncDays.toInt(), false, {}, true
+                    )
+                }
             }
 
             // Bottom Navigation Bar
@@ -1033,86 +998,33 @@ fun SettingsScreen(
             ) {
                 // Bottom Navigation
                 BottomNavigationBar(
-                    onNavigateHome,
-                    onNavigateReports,
-                    onNavigateSettings,
-                    AppConfig.env_reports,
-                    2
+                    onNavigateHome, onNavigateReports, onNavigateSettings, AppConfig.env_reports, 2
                 )
             }
 
             // Loading overlay
             LoadingComponent(
-                isVisible = showLoading,
-                loadingText = loadingText,
-                animSpec = Pair(
+                isVisible = showLoading, loadingText = loadingText, animSpec = Pair(
                     fadeIn(initialAlpha = 0f, animationSpec = tween(durationMillis = 0)),
                     fadeOut(targetAlpha = 0f, animationSpec = tween(durationMillis = 0))
                 )
             )
 
-            /*
-            // Info Dialog
-            InfoNotificationDialog(
-                isVisible = showInfoDialog,
-                message = infoMessage,
-                twoButtons = false,
-                firstButtonLabel = if (AppConfig.mainLanguage.code == "en") "OK" else "OK",
-                onFirstButtonClick = onInfoDialogDismiss
+            NotificationDialog(
+                isVisible = showNotification,
+                type = LoadProfileActivity.NotificationType.NO_INTERNET,
+                message = notificationMessage,
+                firstButtonClick = firstButtonClick,
             )
-
-            // Notification Dialog (Two Buttons)
-            InfoNotificationDialog(
-                isVisible = showNotifDialog,
-                message = notifMessage,
-                twoButtons = true,
-                firstButtonLabel = notifFirstLabel,
-                secondButtonLabel = notifSecondLabel,
-                onFirstButtonClick = onNotifDialogFirstButton,
-                onSecondButtonClick = onNotifDialogSecondButton
-            )
-             */
 
             // Slide Down Notification
             AnimatedVisibility(
                 visible = showSlideNotif,
-                enter = slideInVertically(
-                    initialOffsetY = { -it },
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessLow
-                    )
-                ),
-                exit = slideOutVertically(
-                    targetOffsetY = { -it },
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness = Spring.StiffnessMedium
-                    )
-                ),
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 16.dp)
+                enter = slideInVertically(initialOffsetY = { -it }),
+                exit = slideOutVertically(targetOffsetY = { -it }),
+                modifier = Modifier.align(Alignment.TopCenter)
             ) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = colorResource(R.color.std_purple)
-                    ),
-                    elevation = CardDefaults.cardElevation(8.dp)
-                ) {
-                    Text(
-                        text = slideMessage,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        color = Color.White,
-                        fontSize = Constants.STD_FONT_SIZE.sp,
-                        fontFamily = robotoSemibold
-                    )
-                }
+                SceneClassifiedNotification(slideMessage)
             }
         }
     }
@@ -1121,74 +1033,74 @@ fun SettingsScreen(
 @Composable
 fun TopSettingsSection(
     selectedLanguage: Language,
-    selectedQuickAction: String,
+    selectedQuickAction: Int,
     hapticsEnabled: Boolean,
     soAEnabled: Boolean,
     onLanguageChange: (Language) -> Unit,
-    onQuickActionChange: (String) -> Unit,
+    onQuickActionChange: (Int) -> Unit,
     onQuickActionInfoClick: () -> Unit,
     onHapticsToggle: (Boolean) -> Unit,
     onSoAToggle: (Boolean) -> Unit,
     onSoAInfoClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    val listOfQuickAction = remember(selectedLanguage) {
+        listOf(
+            getQuickAccessType(context, 0),
+            getQuickAccessType(context, 1),
+            getQuickAccessType(context, 2),
+            getQuickAccessType(context, 3)
+        )
+    }
+
     Row(
-        modifier = Modifier.padding(horizontal = 24.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        modifier = Modifier.padding(start = 24.dp), horizontalArrangement = Arrangement.SpaceBetween
     ) {
         // Left Column
         Column(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight(),
-            verticalArrangement = Arrangement.SpaceBetween
+            horizontalAlignment = Alignment.Start
         ) {
             // Language Label
             Text(
-                text = getLanguageText(PhoneStatusMonitor.getInstance().currentContext),
+                text = getLanguageText(LocalContext.current),
                 fontSize = 12.sp,
-                color = colorResource(R.color.std_cyan),
+                color = colorResource(R.color.std_cyan_dark),
                 fontFamily = robotoExtraBold
             )
+
+            Spacer(modifier = Modifier.height(3.dp))
 
             // Language Selector
             LanguageSelector(
-                selectedLanguage = selectedLanguage,
-                availableLanguages = listOf(
-                    Language("en", "English", "US"),
-                    Language("ro", "Română", "RO")
-                ),
-                onLanguageSelected = onLanguageChange
+                selectedLanguage = selectedLanguage, availableLanguages = listOf(
+                    Language("en", "English", "US"), Language("ro", "Română", "RO")
+                ), onLanguageSelected = onLanguageChange
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             // Quick Action Label
             Text(
-                text = getQuickActionText(PhoneStatusMonitor.getInstance().currentContext),
+                text = getQuickActionText(LocalContext.current),
                 fontSize = 12.sp,
-                color = colorResource(R.color.std_cyan),
+                color = colorResource(R.color.std_cyan_dark),
                 fontFamily = robotoExtraBold
             )
 
+            Spacer(modifier = Modifier.height(3.dp))
+
             // Quick Action Row (Selector + Info Button)
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Quick Action Selector
-                Box(modifier = Modifier.weight(1f)) {
-                    QuickActionSelector(
-                        selectedOption = selectedQuickAction,
-                        availableOptions = listOf(
-                            "Disabled",
-                            "Detection-static",
-                            "Detection-dynamic",
-                            "Caption"
-                        ),
-                        onOptionSelected = onQuickActionChange
-                    )
-                }
+                QuickActionSelector(
+                    selectedOption = getQuickAccessType(LocalContext.current, selectedQuickAction),
+                    availableOptions = listOfQuickAction,
+                    onOptionSelected = onQuickActionChange
+                )
+
+                Spacer(modifier = Modifier.width(5.dp))
 
                 // Info Button
                 IconButton(
@@ -1207,23 +1119,24 @@ fun TopSettingsSection(
 
         // Right Column
         Column(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight(),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.padding(top = 23.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalAlignment = Alignment.End
         ) {
             // Haptics Row
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.padding(end = 36.dp),
+                horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = getHapticsText(PhoneStatusMonitor.getInstance().currentContext),
-                    fontSize = 14.sp,
-                    color = colorResource(R.color.std_cyan),
+                    text = getHapticsText(LocalContext.current),
+                    fontSize = Constants.STD_FONT_SIZE.sp,
+                    color = colorResource(R.color.std_cyan_dark),
                     fontFamily = robotoExtraBold
                 )
+
+                Spacer(modifier = Modifier.width(9.dp))
 
                 Switch(
                     checked = hapticsEnabled,
@@ -1242,15 +1155,17 @@ fun TopSettingsSection(
             // SoA Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = getSoAText(PhoneStatusMonitor.getInstance().currentContext),
-                    fontSize = 14.sp,
-                    color = colorResource(R.color.std_cyan),
+                    text = getSoAText(LocalContext.current),
+                    fontSize = Constants.STD_FONT_SIZE.sp,
+                    color = colorResource(R.color.std_cyan_dark),
                     fontFamily = robotoExtraBold
                 )
+
+                Spacer(modifier = Modifier.width(9.dp))
 
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -1298,64 +1213,145 @@ fun SlideableSections(
     onSyncProfile: () -> Unit,
     onLogout: () -> Unit,
     onDeleteAccount: () -> Unit,
-    onSectionChange: (Int) -> Unit
+    onSectionChange: (Int) -> Unit,
+    screenWidth: Dp
 ) {
     var dragOffset by remember { mutableStateOf(0f) }
     val maxSections = if (hasRemoteProfile) 3 else 2
 
+    // Animated offset for smooth transitions
+    val animatedOffset = remember { Animatable(0f) }
+    val coroutineScope = rememberCoroutineScope()
+
+    // Section offset based on current section + drag
+    val sectionOffset = animatedOffset.value + dragOffset
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .pointerInput(Unit) {
+            .pointerInput(currentSection, maxSections) {
                 detectDragGestures(
+                    onDragStart = {
+                        // Reset animated offset when starting new drag
+                        coroutineScope.launch {
+                            animatedOffset.snapTo(0f)
+                        }
+                    },
                     onDragEnd = {
-                        val threshold = size.width * 0.3f
+                        val threshold = size.width * Constants.MIN_HDISTANCE_THRESHOLD
+
                         when {
-                            dragOffset < -threshold && currentSection < maxSections - 1 -> {
-                                onSectionChange(currentSection + 1)
+                            // Swipe left (next section)
+                            dragOffset <= -threshold && currentSection < maxSections - 1 -> {
+                                coroutineScope.launch {
+                                    // Animate rest of the way
+                                    animatedOffset.animateTo(
+                                        targetValue = -size.width.toFloat(),
+                                        animationSpec = tween(
+                                            durationMillis = 250,
+                                            easing = FastOutSlowInEasing
+                                        )
+                                    )
+                                    // Change section
+                                    onSectionChange(currentSection + 1)
+                                    // Reset offset
+                                    animatedOffset.snapTo(0f)
+                                }
                             }
 
-                            dragOffset > threshold && currentSection > 0 -> {
-                                onSectionChange(currentSection - 1)
+                            // Swipe right (previous section)
+                            dragOffset >= threshold && currentSection > 0 -> {
+                                coroutineScope.launch {
+                                    // Animate rest of the way
+                                    animatedOffset.animateTo(
+                                        targetValue = size.width.toFloat(),
+                                        animationSpec = tween(
+                                            durationMillis = 250,
+                                            easing = FastOutSlowInEasing
+                                        )
+                                    )
+                                    // Change section
+                                    onSectionChange(currentSection - 1)
+                                    // Reset offset
+                                    animatedOffset.snapTo(0f)
+                                }
+                            }
+
+                            // Didn't pass threshold - spring back
+                            else -> {
+                                coroutineScope.launch {
+                                    animatedOffset.animateTo(
+                                        targetValue = -dragOffset,  // Animate back to 0
+                                        animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                                            stiffness = Spring.StiffnessMedium
+                                        )
+                                    )
+                                }
                             }
                         }
+
+                        // Reset drag offset
                         dragOffset = 0f
                     },
                     onDrag = { change, dragAmount ->
                         change.consume()
-                        dragOffset += dragAmount.x
+
+                        // Update drag offset (live dragging!)
+                        val newOffset = dragOffset + dragAmount.x
+
+                        // Constrain dragging at edges
+                        dragOffset = when (// At first section - prevent drag right
+                            currentSection) {
+                            0 if newOffset > 0 -> {
+                                newOffset * 0.3f  // Rubber band effect
+                            }
+                            // At last section - prevent drag left
+                            maxSections - 1 if newOffset < 0 -> {
+                                newOffset * 0.3f  // Rubber band effect
+                            }
+
+                            else -> newOffset
+                        }
                     }
                 )
             }
     ) {
-        when (currentSection) {
-            0 -> AppearanceSection(
-                onChangeDetectionColors = onChangeDetectionColors,
-                onChangeCaptionColors = onChangeCaptionColors,
-                showRightArrow = true,
-                onRightArrowClick = { onSectionChange(1) }
-            )
-
-            1 -> StorageSection(
-                hashCacheSize = hashCacheSize,
-                hashCachePercent = hashCachePercent,
-                envReportsSize = envReportsSize,
-                onClearCache = onClearCache,
-                onClearReports = onClearReports,
-                showLeftArrow = true,
-                showRightArrow = hasRemoteProfile,
-                onLeftArrowClick = { onSectionChange(0) },
-                onRightArrowClick = { if (hasRemoteProfile) onSectionChange(2) }
-            )
-
-            2 -> if (hasRemoteProfile) {
-                AccountSection(
-                    onSyncProfile = onSyncProfile,
-                    onLogout = onLogout,
-                    onDeleteAccount = onDeleteAccount,
-                    showLeftArrow = true,
-                    onLeftArrowClick = { onSectionChange(1) }
+        // Render sections with offset
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    // Apply horizontal translation based on drag
+                    translationX = sectionOffset
+                }
+        ) {
+            when (currentSection) {
+                0 -> AppearanceSection(
+                    onChangeDetectionColors = onChangeDetectionColors,
+                    onChangeCaptionColors = onChangeCaptionColors,
+                    screenWidth = screenWidth,
+                    hasRemoteProfile = hasRemoteProfile
                 )
+
+                1 -> StorageSection(
+                    hashCacheSize = hashCacheSize,
+                    hashCachePercent = hashCachePercent,
+                    envReportsSize = envReportsSize,
+                    onClearCache = onClearCache,
+                    onClearReports = onClearReports,
+                    screenWidth = screenWidth,
+                    hasRemoteProfile = hasRemoteProfile
+                )
+
+                2 -> if (hasRemoteProfile) {
+                    AccountSection(
+                        onSyncProfile = onSyncProfile,
+                        onLogout = onLogout,
+                        onDeleteAccount = onDeleteAccount,
+                        screenWidth = screenWidth
+                    )
+                }
             }
         }
     }
@@ -1365,93 +1361,98 @@ fun SlideableSections(
 fun AppearanceSection(
     onChangeDetectionColors: () -> Unit,
     onChangeCaptionColors: () -> Unit,
-    showRightArrow: Boolean,
-    onRightArrowClick: () -> Unit
+    screenWidth: Dp,
+    hasRemoteProfile: Boolean
 ) {
-    val context = LocalContext.current
-
-    BoxWithConstraints(
-        modifier = Modifier.fillMaxSize()
+    Column(
+        modifier = Modifier
+            .fillMaxHeight()
+            .fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceEvenly
     ) {
-        val screenWidth = maxWidth
+        // Title
+        Text(
+            text = getAppearanceSectionText(LocalContext.current),
+            fontSize = Constants.STD_SUBTITLE_SIZE.sp,
+            color = colorResource(R.color.std_cyan_dark),
+            fontFamily = robotoExtraBold,
+            textAlign = TextAlign.Center
+        )
 
+        // Options
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 24.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.SpaceBetween
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Title
-            Text(
-                text = getAppearanceSectionText(context),
-                fontSize = Constants.STD_ERROR_FONT_SIZE.sp,
-                color = colorResource(R.color.std_purple),
-                fontFamily = robotoExtraBold
-            )
-
-            // Options
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+            Button(
+                onClick = onChangeDetectionColors,
+                modifier = Modifier
+                    .width(screenWidth * 0.5f)
+                    .height(Constants.STD_BUTTON_HEIGHT.dp),
+                shape = RoundedCornerShape(32.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colorResource(R.color.std_purple_dark)
+                )
             ) {
-                Button(
-                    onClick = onChangeDetectionColors,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(Constants.STD_BUTTON_HEIGHT.dp),
-                    shape = RoundedCornerShape(32.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = colorResource(R.color.std_purple)
-                    )
-                ) {
-                    Text(
-                        text = getChangeDetectionColorsText(context),
-                        fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
-                        color = Color.White
-                    )
-                }
+                Text(
+                    text = getChangeDetectionColorsText(LocalContext.current),
+                    fontSize = Constants.STD_ERROR_FONT_SIZE.sp,
+                    color = Color.White,
+                    fontFamily = robotoExtraBold,
+                    textAlign = TextAlign.Center
+                )
+            }
 
-                Button(
-                    onClick = onChangeCaptionColors,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(Constants.STD_BUTTON_HEIGHT.dp),
-                    shape = RoundedCornerShape(32.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = colorResource(R.color.std_purple)
-                    )
-                ) {
-                    Text(
-                        text = getChangeCaptionColorsText(context),
-                        fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
-                        color = Color.White
-                    )
-                }
+            Button(
+                onClick = onChangeCaptionColors,
+                modifier = Modifier
+                    .width(screenWidth * 0.5f)
+                    .height(Constants.STD_BUTTON_HEIGHT.dp),
+                shape = RoundedCornerShape(32.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colorResource(R.color.std_purple_dark)
+                )
+            ) {
+                Text(
+                    text = getChangeCaptionColorsText(LocalContext.current),
+                    fontSize = Constants.STD_ERROR_FONT_SIZE.sp,
+                    color = Color.White,
+                    fontFamily = robotoExtraBold,
+                    textAlign = TextAlign.Center
+                )
             }
         }
 
-        // Arrow Buttons
-        if (showRightArrow) {
-            IconButton(
-                onClick = onRightArrowClick,
+        Row(
+            modifier = Modifier
+                .width(screenWidth * 0.17f)
+                .height(Constants.STD_BUTTON_HEIGHT.dp / 2)
+                .clip(RoundedCornerShape(32.dp))
+                .background(Color(0x66808080)),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
                 modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .width((screenWidth * 0.12f))
-                    .fillMaxHeight()
-                    .background(
-                        color = colorResource(R.color.std_light_purple),
-                        shape = RoundedCornerShape(
-                            topStart = 100.dp,
-                            bottomStart = 100.dp
-                        )
-                    )
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                    contentDescription = "Next",
-                    tint = colorResource(R.color.std_purple),
-                    modifier = Modifier.size(32.dp)
+                    .size(7.dp)
+                    .clip(CircleShape)
+                    .background(Color.White)
+            )
+
+            Box(
+                modifier = Modifier
+                    .size(7.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xB3808080))  // Semi-transparent gray
+            )
+
+            if (hasRemoteProfile)
+                Box(
+                    modifier = Modifier
+                        .size(7.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xB3808080))  // Semi-transparent gray
                 )
-            }
         }
     }
 }
@@ -1463,178 +1464,164 @@ fun StorageSection(
     envReportsSize: String,
     onClearCache: () -> Unit,
     onClearReports: () -> Unit,
-    showLeftArrow: Boolean,
-    showRightArrow: Boolean,
-    onLeftArrowClick: () -> Unit,
-    onRightArrowClick: () -> Unit
+    screenWidth: Dp,
+    hasRemoteProfile: Boolean
 ) {
-    val context = LocalContext.current
-
-    BoxWithConstraints(
-        modifier = Modifier.fillMaxSize()
+    Column(
+        modifier = Modifier
+            .fillMaxHeight()
+            .fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceEvenly
     ) {
-        val screenWidth = maxWidth
+        // Title
+        Text(
+            text = getStorageSectionText(LocalContext.current),
+            fontSize = Constants.STD_SUBTITLE_SIZE.sp,
+            color = colorResource(R.color.std_cyan_dark),
+            fontFamily = robotoExtraBold,
+            textAlign = TextAlign.Center
+        )
 
+        // Options
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 24.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.SpaceBetween
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Title
-            Text(
-                text = getStorageSectionText(context),
-                fontSize = Constants.STD_ERROR_FONT_SIZE.sp,
-                color = colorResource(R.color.std_purple),
-                fontFamily = robotoExtraBold
+            // Clear Cache Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Button(
+                    onClick = onClearCache,
+                    modifier = Modifier
+                        .width(screenWidth * 0.5f)
+                        .height(Constants.STD_BUTTON_HEIGHT.dp),
+                    shape = RoundedCornerShape(32.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colorResource(R.color.std_purple_dark)
+                    )
+                ) {
+                    Text(
+                        text = getClearCacheText(LocalContext.current),
+                        fontSize = Constants.STD_ERROR_FONT_SIZE.sp,
+                        color = Color.White,
+                        fontFamily = robotoExtraBold,
+                        textAlign = TextAlign.Center
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Size Display
+                Card(
+                    modifier = Modifier.width(screenWidth * 0.15f),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = colorResource(R.color.std_light_purple)
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = hashCacheSize,
+                            fontSize = Constants.STD_FONT_SIZE.sp,
+                            color = colorResource(R.color.std_purple),
+                            fontFamily = robotoExtraBold,
+                            textAlign = TextAlign.Center
+                        )
+                        Text(
+                            text = "($hashCachePercent)",
+                            fontSize = Constants.STD_FONT_SIZE_LW.sp,
+                            color = colorResource(R.color.std_purple),
+                            fontFamily = robotoLight,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
+
+            // Clear Reports Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Button(
+                    onClick = onClearReports,
+                    modifier = Modifier
+                        .width(screenWidth * 0.5f)
+                        .height(Constants.STD_BUTTON_HEIGHT.dp),
+                    shape = RoundedCornerShape(32.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colorResource(R.color.std_purple_dark)
+                    )
+                ) {
+                    Text(
+                        text = getClearReportsText(LocalContext.current),
+                        fontSize = Constants.STD_ERROR_FONT_SIZE.sp,
+                        color = Color.White,
+                        fontFamily = robotoExtraBold,
+                        textAlign = TextAlign.Center
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Size Display
+                Card(
+                    modifier = Modifier.width(screenWidth * 0.15f),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = colorResource(R.color.std_light_purple)
+                    )
+                ) {
+                    Text(
+                        text = envReportsSize,
+                        fontSize = Constants.STD_FONT_SIZE.sp,
+                        color = colorResource(R.color.std_purple),
+                        fontFamily = robotoExtraBold,
+                        modifier = Modifier.padding(8.dp),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+
+        Row(
+            modifier = Modifier
+                .width(screenWidth * 0.17f)
+                .height(Constants.STD_BUTTON_HEIGHT.dp / 2)
+                .clip(RoundedCornerShape(32.dp))
+                .background(Color(0x66808080)),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(7.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xB3808080))  // Semi-transparent gray
             )
 
-            // Options
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Clear Cache Row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Button(
-                        onClick = onClearCache,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(Constants.STD_BUTTON_HEIGHT.dp),
-                        shape = RoundedCornerShape(32.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = colorResource(R.color.std_purple)
-                        )
-                    ) {
-                        Text(
-                            text = getClearCacheText(context),
-                            fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
-                            color = Color.White
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    // Size Display
-                    Card(
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = colorResource(R.color.std_light_purple)
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(8.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = hashCacheSize,
-                                fontSize = 12.sp,
-                                color = colorResource(R.color.std_purple),
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "($hashCachePercent)",
-                                fontSize = 10.sp,
-                                color = colorResource(R.color.std_purple)
-                            )
-                        }
-                    }
-                }
-
-                // Clear Reports Row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Button(
-                        onClick = onClearReports,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(Constants.STD_BUTTON_HEIGHT.dp),
-                        shape = RoundedCornerShape(32.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = colorResource(R.color.std_purple)
-                        )
-                    ) {
-                        Text(
-                            text = getClearReportsText(context),
-                            fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
-                            color = Color.White
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    // Size Display
-                    Card(
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = colorResource(R.color.std_light_purple)
-                        )
-                    ) {
-                        Text(
-                            text = envReportsSize,
-                            fontSize = 12.sp,
-                            color = colorResource(R.color.std_purple),
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(8.dp)
-                        )
-                    }
-                }
-            }
-        }
-
-        // Arrow Buttons
-        if (showLeftArrow) {
-            IconButton(
-                onClick = onLeftArrowClick,
+            Box(
                 modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .width((screenWidth * 0.12f))
-                    .fillMaxHeight()
-                    .background(
-                        color = colorResource(R.color.std_light_purple),
-                        shape = RoundedCornerShape(
-                            topEnd = 100.dp,
-                            bottomEnd = 100.dp
-                        )
-                    )
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBackIos,
-                    contentDescription = "Previous",
-                    tint = colorResource(R.color.std_purple),
-                    modifier = Modifier.size(32.dp)
-                )
-            }
-        }
+                    .size(7.dp)
+                    .clip(CircleShape)
+                    .background(Color.White)
+            )
 
-        if (showRightArrow) {
-            IconButton(
-                onClick = onRightArrowClick,
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .width((screenWidth * 0.12f))
-                    .fillMaxHeight()
-                    .background(
-                        color = colorResource(R.color.std_light_purple),
-                        shape = RoundedCornerShape(
-                            topStart = 100.dp,
-                            bottomStart = 100.dp
-                        )
-                    )
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                    contentDescription = "Next",
-                    tint = colorResource(R.color.std_purple),
-                    modifier = Modifier.size(32.dp)
+            if (hasRemoteProfile)
+                Box(
+                    modifier = Modifier
+                        .size(7.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xB3808080))  // Semi-transparent gray
                 )
-            }
         }
     }
 }
@@ -1644,110 +1631,115 @@ fun AccountSection(
     onSyncProfile: () -> Unit,
     onLogout: () -> Unit,
     onDeleteAccount: () -> Unit,
-    showLeftArrow: Boolean,
-    onLeftArrowClick: () -> Unit
+    screenWidth: Dp
 ) {
-    val context = LocalContext.current
-
-    BoxWithConstraints(
-        modifier = Modifier.fillMaxSize()
+    Column(
+        modifier = Modifier
+            .fillMaxHeight()
+            .fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceEvenly
     ) {
-        val screenWidth = maxWidth
+        // Title
+        Text(
+            text = getAccountSectionText(LocalContext.current),
+            fontSize = Constants.STD_SUBTITLE_SIZE.sp,
+            color = colorResource(R.color.std_cyan_dark),
+            fontFamily = robotoExtraBold,
+            textAlign = TextAlign.Center
+        )
 
+        // Options
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 24.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.SpaceBetween
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Title
-            Text(
-                text = getAccountSectionText(context),
-                fontSize = Constants.STD_ERROR_FONT_SIZE.sp,
-                color = colorResource(R.color.std_purple),
-                fontFamily = robotoExtraBold
-            )
-
-            // Options
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+            Button(
+                onClick = onSyncProfile,
+                modifier = Modifier
+                    .width(screenWidth * 0.5f)
+                    .height(Constants.STD_BUTTON_HEIGHT.dp),
+                shape = RoundedCornerShape(32.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colorResource(R.color.std_purple_dark)
+                )
             ) {
-                Button(
-                    onClick = onSyncProfile,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(Constants.STD_BUTTON_HEIGHT.dp),
-                    shape = RoundedCornerShape(32.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = colorResource(R.color.std_purple)
-                    )
-                ) {
-                    Text(
-                        text = getSyncProfileText(context),
-                        fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
-                        color = Color.White
-                    )
-                }
+                Text(
+                    text = getSyncProfileText(LocalContext.current),
+                    fontSize = Constants.STD_ERROR_FONT_SIZE.sp,
+                    color = Color.White,
+                    fontFamily = robotoExtraBold,
+                    textAlign = TextAlign.Center
+                )
+            }
 
-                Button(
-                    onClick = onLogout,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(Constants.STD_BUTTON_HEIGHT.dp),
-                    shape = RoundedCornerShape(32.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = colorResource(R.color.std_purple)
-                    )
-                ) {
-                    Text(
-                        text = getLogOutText(context),
-                        fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
-                        color = Color.White
-                    )
-                }
+            Button(
+                onClick = onLogout,
+                modifier = Modifier
+                    .width(screenWidth * 0.5f)
+                    .height(Constants.STD_BUTTON_HEIGHT.dp),
+                shape = RoundedCornerShape(32.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colorResource(R.color.std_purple_dark)
+                )
+            ) {
+                Text(
+                    text = getLogOutText(LocalContext.current),
+                    fontSize = Constants.STD_ERROR_FONT_SIZE.sp,
+                    color = Color.White,
+                    fontFamily = robotoExtraBold,
+                    textAlign = TextAlign.Center
+                )
+            }
 
-                Button(
-                    onClick = onDeleteAccount,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(Constants.STD_BUTTON_HEIGHT.dp),
-                    shape = RoundedCornerShape(32.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Red
-                    )
-                ) {
-                    Text(
-                        text = getDeleteAccountText(context),
-                        fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
-                        color = Color.White
-                    )
-                }
+            Button(
+                onClick = onDeleteAccount,
+                modifier = Modifier
+                    .width(screenWidth * 0.5f)
+                    .height(Constants.STD_BUTTON_HEIGHT.dp),
+                shape = RoundedCornerShape(32.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Red
+                )
+            ) {
+                Text(
+                    text = getDeleteAccountText(LocalContext.current),
+                    fontSize = Constants.STD_ERROR_FONT_SIZE.sp,
+                    color = Color.White,
+                    fontFamily = robotoExtraBold,
+                    textAlign = TextAlign.Center
+                )
             }
         }
 
-        // Arrow Button
-        if (showLeftArrow) {
-            IconButton(
-                onClick = onLeftArrowClick,
+        Row(
+            modifier = Modifier
+                .width(screenWidth * 0.17f)
+                .height(Constants.STD_BUTTON_HEIGHT.dp / 2)
+                .clip(RoundedCornerShape(32.dp))
+                .background(Color(0x66808080)),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
                 modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .width((screenWidth * 0.12f))
-                    .fillMaxHeight()
-                    .background(
-                        color = colorResource(R.color.std_light_purple),
-                        shape = RoundedCornerShape(
-                            topEnd = 100.dp,
-                            bottomEnd = 100.dp
-                        )
-                    )
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBackIos,
-                    contentDescription = "Previous",
-                    tint = colorResource(R.color.std_purple),
-                    modifier = Modifier.size(32.dp)
-                )
-            }
+                    .size(7.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xB3808080))  // Semi-transparent gray
+            )
+
+            Box(
+                modifier = Modifier
+                    .size(7.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xB3808080))  // Semi-transparent gray
+            )
+
+            Box(
+                modifier = Modifier
+                    .size(7.dp)
+                    .clip(CircleShape)
+                    .background(Color.White)  // Semi-transparent gray
+            )
         }
     }
 }
@@ -1763,17 +1755,13 @@ fun SettingsScreenPreview1() {
     SettingsScreen(
         showLoading = false,
         loadingText = "",
-        showInfoDialog = false,
-        infoMessage = "",
-        showNotifDialog = false,
-        notifMessage = "",
-        notifFirstLabel = "Cancel",
-        notifSecondLabel = "OK",
-        showSlideNotif = false,
-        slideMessage = "",
+        showNotification = false,
+        notificationMessage = "",
+        showSlideNotif = true,
+        slideMessage = "Standard notification message",
         currentSection = 0,
         selectedLanguage = Language("en", "English", "US"),
-        selectedQuickAction = "Disabled",
+        selectedQuickAction = 0,
         hapticsEnabled = true,
         soAEnabled = true,
         hashCacheSize = "256.5 KB",
@@ -1798,34 +1786,27 @@ fun SettingsScreenPreview1() {
         onNavigateReports = {},
         onNavigateSettings = {},
         onSectionChange = {},
-        onInfoDialogDismiss = {},
-        onNotifDialogFirstButton = {},
-        onNotifDialogSecondButton = {}
+        firstButtonClick = {},
+        syncStatus = 1,
+        syncDays = 3
     )
 }
 
 @Preview(
-    name = "Settings Screen - Storage Section",
-    showBackground = true,
-    widthDp = 412,
-    heightDp = 917
+    name = "Settings Screen - Storage Section", showBackground = true, widthDp = 412, heightDp = 917
 )
 @Composable
 fun SettingsScreenPreview2() {
     SettingsScreen(
         showLoading = false,
         loadingText = "",
-        showInfoDialog = false,
-        infoMessage = "",
-        showNotifDialog = false,
-        notifMessage = "",
-        notifFirstLabel = "Cancel",
-        notifSecondLabel = "OK",
+        showNotification = false,
+        notificationMessage = "",
         showSlideNotif = false,
         slideMessage = "",
         currentSection = 1,
         selectedLanguage = Language("en", "English", "US"),
-        selectedQuickAction = "Disabled",
+        selectedQuickAction = 0,
         hapticsEnabled = true,
         soAEnabled = true,
         hashCacheSize = "256.5 KB",
@@ -1850,34 +1831,27 @@ fun SettingsScreenPreview2() {
         onNavigateReports = {},
         onNavigateSettings = {},
         onSectionChange = {},
-        onInfoDialogDismiss = {},
-        onNotifDialogFirstButton = {},
-        onNotifDialogSecondButton = {}
+        firstButtonClick = {},
+        syncStatus = 1,
+        syncDays = 3
     )
 }
 
 @Preview(
-    name = "Settings Screen - Account Section",
-    showBackground = true,
-    widthDp = 412,
-    heightDp = 917
+    name = "Settings Screen - Account Section", showBackground = true, widthDp = 412, heightDp = 917
 )
 @Composable
 fun SettingsScreenPreview3() {
     SettingsScreen(
         showLoading = false,
         loadingText = "",
-        showInfoDialog = false,
-        infoMessage = "",
-        showNotifDialog = false,
-        notifMessage = "",
-        notifFirstLabel = "Cancel",
-        notifSecondLabel = "OK",
+        showNotification = false,
+        notificationMessage = "",
         showSlideNotif = false,
         slideMessage = "",
         currentSection = 2,
         selectedLanguage = Language("en", "English", "US"),
-        selectedQuickAction = "Disabled",
+        selectedQuickAction = 0,
         hapticsEnabled = true,
         soAEnabled = true,
         hashCacheSize = "256.5 KB",
@@ -1902,8 +1876,8 @@ fun SettingsScreenPreview3() {
         onNavigateReports = {},
         onNavigateSettings = {},
         onSectionChange = {},
-        onInfoDialogDismiss = {},
-        onNotifDialogFirstButton = {},
-        onNotifDialogSecondButton = {}
+        firstButtonClick = {},
+        syncStatus = 1,
+        syncDays = 3
     )
 }

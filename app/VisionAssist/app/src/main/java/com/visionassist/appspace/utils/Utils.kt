@@ -1158,7 +1158,7 @@ fun getLoggingOffText(context: Context): String {
 fun calculateHashCacheSize(): Long {
     val hashSize = 8L // 8 bytes for hash (hex)
     val tokenSize = 20L * 4L + 20L // 20 tokens * 4 bytes + 20 separators = 100 bytes
-    val recordSize = hashSize + tokenSize // ~108 bytes per record
+    val recordSize = hashSize + tokenSize + 1 // ~109 bytes per record
 
     val maxRecords = when (AppConfig.hash_caching) {
         "light" -> Constants.HC_MAX_RECORDS_LIGHT.toLong()
@@ -1170,13 +1170,13 @@ fun calculateHashCacheSize(): Long {
 }
 
 fun getCurrentHashCacheSize(context: Context): Long {
-    val file = File(FileUtils.getProfileDirectory(context), Constants.HASH_CACHE_FILE_NAME)
-    return if (file.exists()) file.length() else 0L
+    val file = FileUtils.getHashCacheFile(context)
+    return file.length()
 }
 
 fun getCurrentEnvReportsSize(context: Context): Long {
     val file = File(FileUtils.getProfileDirectory(context), Constants.ENV_REPORTS_FILE_NAME)
-    return if (file.exists()) file.length() else 0L
+    return file.length()
 }
 
 @SuppressLint("DefaultLocale")
@@ -1322,5 +1322,33 @@ fun getProfileExportErrorMessage(context: Context): String {
         context.getString(R.string.profile_export_error_en)
     } else {
         context.getString(R.string.profile_export_error_ro)
+    }
+}
+
+fun getQuickAccessType(context: Context, type: Int): String {
+    return when (type) {
+        0 -> if (AppConfig.mainLanguage.code == "en") {
+            context.getString(R.string.quick_action_disabled_en)
+        } else {
+            context.getString(R.string.quick_action_disabled_ro)
+        }
+
+        1 -> if (AppConfig.mainLanguage.code == "en") {
+            context.getString(R.string.quick_action_detection_static_en)
+        } else {
+            context.getString(R.string.quick_action_detection_static_ro)
+        }
+
+        2 -> if (AppConfig.mainLanguage.code == "en") {
+            context.getString(R.string.quick_action_detection_dynamic_en)
+        } else {
+            context.getString(R.string.quick_action_detection_dynamic_ro)
+        }
+
+        else -> if (AppConfig.mainLanguage.code == "en") {
+            context.getString(R.string.quick_action_caption_en)
+        } else {
+            context.getString(R.string.quick_action_caption_ro)
+        }
     }
 }
