@@ -1,6 +1,7 @@
 package com.visionassist.appspace.activities.newprofile;
 
 import static com.visionassist.appspace.utils.UtilsKt.load_permissionInfo;
+
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -13,6 +14,7 @@ import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.TextView;
+
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
@@ -20,6 +22,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.compose.ui.platform.ComposeView;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+
 import com.visionassist.appspace.PhoneStatusMonitor;
 import com.visionassist.appspace.R;
 import com.visionassist.appspace.jetpack.managers.InfoNotificationManager;
@@ -39,6 +42,7 @@ public class PermissionsActivity extends AppCompatActivity {
     private boolean cameraInfoShown = false;
     private boolean microphoneInfoShown = false;
     private boolean storageInfoShown = false;
+    private boolean notificationInfoShown = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -84,6 +88,9 @@ public class PermissionsActivity extends AppCompatActivity {
             case 3: // Storage permissions missing
                 handleStoragePermissions();
                 break;
+            case 4: // ✅ Notification permission missing
+                handleNotificationPermission();
+                break;
             default:
                 finish();
         }
@@ -116,7 +123,7 @@ public class PermissionsActivity extends AppCompatActivity {
             else
                 message = load_permissionInfo(PhoneStatusMonitor.getInstance().getCurrentContext(), "camera");
             infoNotificationManager.showNotification(message,
-                    ()->{
+                    () -> {
                         infoNotificationManager.hideNotification();
                         requestCameraPermission();
                     },
@@ -157,7 +164,7 @@ public class PermissionsActivity extends AppCompatActivity {
             else
                 message = load_permissionInfo(PhoneStatusMonitor.getInstance().getCurrentContext(), "microphone");
             infoNotificationManager.showNotification(message,
-                    ()->{
+                    () -> {
                         infoNotificationManager.hideNotification();
                         requestMicrophonePermission();
                     },
@@ -189,7 +196,11 @@ public class PermissionsActivity extends AppCompatActivity {
         }
 
         if (allGranted) {
-            finish();
+            if (permissionOption == 0) {
+                handleNotificationPermission();
+            } else {
+                finish();
+            }
             return;
         }
 
@@ -202,7 +213,7 @@ public class PermissionsActivity extends AppCompatActivity {
             else
                 message = load_permissionInfo(PhoneStatusMonitor.getInstance().getCurrentContext(), "storage");
             infoNotificationManager.showNotification(message,
-                    ()->{
+                    () -> {
                         infoNotificationManager.hideNotification();
                         requestStoragePermissions();
                     },
@@ -219,6 +230,51 @@ public class PermissionsActivity extends AppCompatActivity {
                 storagePerms,
                 Constants.STORAGE_PERMISSION_REQUEST
         );
+    }
+
+    private void handleNotificationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            // Not required for API < 33
+            finish();
+            return;
+        }
+
+        currentPermissionType = "notification";
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                == PackageManager.PERMISSION_GRANTED) {
+            finish();
+            return;
+        }
+
+        // Show info dialog before requesting permission (only once)
+        if (!notificationInfoShown) {
+            notificationInfoShown = true;
+            String message;
+            if (!PhoneStatusMonitor.getInstance().profileLoaded)
+                message = getString(R.string.notification_permission_info_en);
+            else
+                message = load_permissionInfo(PhoneStatusMonitor.getInstance().getCurrentContext(), "notification");
+
+            infoNotificationManager.showNotification(message,
+                    () -> {
+                        infoNotificationManager.hideNotification();
+                        requestNotificationPermission();
+                    },
+                    "OK");
+        } else {
+            requestNotificationPermission();
+        }
+    }
+
+    private void requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ActivityCompat.requestPermissions(
+                    this,
+                    new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                    Constants.NOTIFICATION_PERMISSION_REQUEST  // ✅ Add this constant
+            );
+        }
     }
 
     @Override
@@ -268,13 +324,31 @@ public class PermissionsActivity extends AppCompatActivity {
         } else if (requestCode == Constants.STORAGE_PERMISSION_REQUEST) {
             if (allGranted) {
                 Log.d(TAG, "Storage permissions granted");
-                finish();
+
+                if (permissionOption == 0) {
+                    handleNotificationPermission();
+                } else {
+                    finish();
+                }
             } else {
                 String[] storagePerms = getStoragePermissions();
                 if (shouldShowRequestPermissionRationale(storagePerms[0])) {
                     showPermissionDeniedDialog("storage");
                 } else {
                     showGoToSettingsDialog("storage");
+                }
+            }
+        } else if (requestCode == Constants.NOTIFICATION_PERMISSION_REQUEST) {  // ✅ ADD THIS
+            if (allGranted) {
+                Log.d(TAG, "Notification permission granted");
+                finish();
+            } else {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    if (shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)) {
+                        showPermissionDeniedDialog("notification");
+                    } else {
+                        showGoToSettingsDialog("notification");
+                    }
                 }
             }
         }
@@ -358,6 +432,16 @@ public class PermissionsActivity extends AppCompatActivity {
                     finish();
                 } else {
                     showGoToSettingsDialog("storage");
+                }
+                break;
+            case "notification":  // ✅ ADD THIS
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                            == PackageManager.PERMISSION_GRANTED) {
+                        finish();
+                    } else {
+                        showGoToSettingsDialog("notification");
+                    }
                 }
                 break;
         }

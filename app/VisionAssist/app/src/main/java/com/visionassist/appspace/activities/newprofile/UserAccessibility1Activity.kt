@@ -513,8 +513,10 @@ class UserAccessibility1Activity : ComponentActivity() {
     }
 
     private fun handleBackClick() {
-        if (whatItStarted)
+        if (whatItStarted) {
             finish()
+            return
+        }
 
         if (currentSection.intValue == 2) {
             // From Caption section, go back to BoundingBox section
@@ -577,9 +579,10 @@ class UserAccessibility1Activity : ComponentActivity() {
             AppConfig.isBold = isBold.value
             AppConfig.show_confidence = showConfidence.value
 
-            if (whatItStarted)
+            if (whatItStarted) {
                 finish()
-
+                return
+            }
             // Move to Caption section
             currentSection.intValue = 2
         } else {
@@ -609,9 +612,10 @@ class UserAccessibility1Activity : ComponentActivity() {
             AppConfig.caption_bck_color = captionBgColorHex
             AppConfig.haptics = hasHaptics.value
 
-            if (whatItStarted)
+            if (whatItStarted) {
                 finish()
-
+                return
+            }
             // Navigate to UserHashCachingActivity
             val intent = Intent(this, UserHashCachingActivity::class.java)
             intent.putExtra(Constants.EXTRA_HCACHING_OPTION, 1)

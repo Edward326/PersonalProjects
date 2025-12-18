@@ -197,6 +197,12 @@ fun load_permissionInfo(context: Context, case: String): String {
                 "ro" -> context.getString(R.string.microphone_permission_info_ro)
                 else -> context.getString(R.string.microphone_permission_info_en)
             }
+
+        "notification" -> if (AppConfig.mainLanguage.code == "en") {  // ✅ ADD THIS
+            context.getString(R.string.notification_permission_info_en)
+        } else {
+            context.getString(R.string.notification_permission_info_ro)
+        }
     }
     return "none"
 }
@@ -1253,14 +1259,6 @@ fun getDeleteAccountConfirmMessage(context: Context): String {
 }
 
 
-fun getLanguageChangedMessage(context: Context): String {
-    return if (AppConfig.mainLanguage.code == "en") {
-        context.getString(R.string.language_changed_en)
-    } else {
-        context.getString(R.string.language_changed_ro)
-    }
-}
-
 fun getQuickActionEnabledMessage(context: Context): String {
     return if (AppConfig.mainLanguage.code == "en") {
         context.getString(R.string.quick_action_enabled_en)
@@ -1306,6 +1304,30 @@ fun getProfileSyncErrorMessage(context: Context): String {
         context.getString(R.string.profile_sync_error_en)
     } else {
         context.getString(R.string.profile_sync_error_ro)
+    }
+}
+
+fun load_genericErrorLogout(context: Context): String {
+    return if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.logout_error_en)
+    } else {
+        context.getString(R.string.logout_error_ro)
+    }
+}
+
+fun load_genericErrorDelete(context: Context): String {
+    return if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.delete_account_error_en)
+    } else {
+        context.getString(R.string.delete_account_error_ro)
+    }
+}
+
+fun getProfileExportedMessageTutorial(context: Context): String {
+    return if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.profile_exported_tutorial_en)
+    } else {
+        context.getString(R.string.profile_exported_tutorial_ro)
     }
 }
 

@@ -3,6 +3,7 @@
 package com.visionassist.appspace.activities.tabs.home.caption
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -65,6 +66,7 @@ import androidx.core.net.toUri
 import com.visionassist.appspace.BaseActivity
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
+import com.visionassist.appspace.activities.main.HomeActivity
 import com.visionassist.appspace.activities.newprofile.LoadProfileActivity
 import com.visionassist.appspace.activities.tabs.home.caption.SemanticHash.computeFromDetections
 import com.visionassist.appspace.activities.tabs.home.detection.SceneClassifiedNotification
@@ -131,8 +133,13 @@ class CaptionActivity : BaseActivity() {
     private lateinit var takePictureLauncher: ActivityResultLauncher<Uri>
     private var currentPhotoUri: Uri? = null
 
+    private var quickActionIndex = 0
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val intent = getIntent()
+        quickActionIndex = intent.getIntExtra("QUICK_ACTION_INDEX", 0)
 
         classifier = if (AppConfig.env_reports)
             PhoneStatusMonitor.getInstance().modelManager.classifier
@@ -172,7 +179,7 @@ class CaptionActivity : BaseActivity() {
                 onSpeakClick = { handleSpeakClick() },
                 onErrorRetry = { handleRetry() },
                 onErrorOk = {
-                    showErrorDialog.value=false
+                    showErrorDialog.value = false
                     handleHomeClick()
                 }
             )
@@ -431,12 +438,18 @@ class CaptionActivity : BaseActivity() {
 
     // Navigation handlers
     private fun handleHomeClick() {
+        if (quickActionIndex == 3) {
+            val intent = Intent(this, HomeActivity::class.java)
+            startActivity(intent)
+            finish()
+        }
+
         if (AppConfig.haptics) vibrate(haptic_model0())
         finish()
     }
 
     private fun handleCameraClick() {
-        if(!PhoneStatusMonitor.getInstance().writingToHCFinished)return
+        if (!PhoneStatusMonitor.getInstance().writingToHCFinished) return
 
         if (AppConfig.haptics) vibrate(haptic_model0())
 
@@ -473,7 +486,7 @@ class CaptionActivity : BaseActivity() {
     }
 
     private fun handleRetry() {
-        if(!PhoneStatusMonitor.getInstance().writingToHCFinished)return
+        if (!PhoneStatusMonitor.getInstance().writingToHCFinished) return
         showErrorDialog.value = false
         handleCameraClick()
     }
@@ -696,7 +709,7 @@ fun MainCaptionScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text=String.format("%.1f sec", captionerLatency / 1000f),
+                                    text = String.format("%.1f sec", captionerLatency / 1000f),
                                     fontSize = Constants.STD_ERROR_FONT_SIZE.sp,
                                     color = colorResource(R.color.std_purple),
                                     fontFamily = robotoExtraBold

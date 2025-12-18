@@ -186,7 +186,7 @@ public class DBManager {
         }
     }
 
-    public void deleteAccount(Context context, Runnable onSuccess, java.util.function.Consumer<Exception> onError) {
+    public void deleteAccount(Context context) {
         Log.d(TAG, "Starting account deletion process");
 
         try {
@@ -195,7 +195,7 @@ public class DBManager {
 
             if (!profileFile.exists()) {
                 Log.e(TAG, "Profile file not found");
-                onError.accept(new Exception("Profile file not found"));
+                status=DBConstants.GENERIC_ERROR;
                 return;
             }
 
@@ -216,7 +216,7 @@ public class DBManager {
 
             if (currentUser == null) {
                 Log.e(TAG, "No user currently signed in");
-                onError.accept(new Exception("No user signed in"));
+                status=DBConstants.GENERIC_ERROR;
                 return;
             }
 
@@ -225,7 +225,6 @@ public class DBManager {
             // Step 3: Delete from Firebase Authentication
             CountDownLatch authLatch = new CountDownLatch(1);
             AtomicBoolean authDeleteSuccess = new AtomicBoolean(false);
-            Exception[] authException = {null};
 
             currentUser.delete()
                     .addOnSuccessListener(aVoid -> {
@@ -235,7 +234,6 @@ public class DBManager {
                     })
                     .addOnFailureListener(e -> {
                         Log.e(TAG, "Failed to delete user from Firebase Authentication", e);
-                        authException[0] = e;
                         authLatch.countDown();
                     });
 
@@ -244,14 +242,13 @@ public class DBManager {
             // Check if auth deletion failed
             if (!authDeleteSuccess.get()) {
                 Log.e(TAG, "Authentication deletion failed");
-                onError.accept(authException[0] != null ? authException[0] : new Exception("Auth deletion failed"));
+                status=DBConstants.GENERIC_ERROR;
                 return;
             }
 
             // Step 4: Delete from Firestore
             CountDownLatch firestoreLatch = new CountDownLatch(1);
             AtomicBoolean firestoreDeleteSuccess = new AtomicBoolean(false);
-            Exception[] firestoreException = {null};
 
             firebaseDb.collection(DBConstants.FIREBASE_USERS_COLLECTION)
                     .document(email)
@@ -263,7 +260,6 @@ public class DBManager {
                     })
                     .addOnFailureListener(e -> {
                         Log.e(TAG, "Failed to delete user document from Firestore", e);
-                        firestoreException[0] = e;
                         firestoreLatch.countDown();
                     });
 
@@ -272,23 +268,22 @@ public class DBManager {
             // Check if Firestore deletion failed
             if (!firestoreDeleteSuccess.get()) {
                 Log.e(TAG, "Firestore deletion failed");
-                onError.accept(firestoreException[0] != null ? firestoreException[0] : new Exception("Firestore deletion failed"));
+                status=DBConstants.GENERIC_ERROR;
                 return;
             }
 
             // Step 5: Both deletions successful
             Log.d(TAG, "Account deletion completed successfully");
-            onSuccess.run();
-
+            status=DBConstants.SYNC_OK;
         } catch (JSONException e) {
             Log.e(TAG, "Error parsing profile JSON", e);
-            onError.accept(e);
+            status=DBConstants.GENERIC_ERROR;
         } catch (InterruptedException e) {
             Log.e(TAG, "Interrupted while deleting account", e);
-            onError.accept(e);
+            status=DBConstants.GENERIC_ERROR;
         } catch (Exception e) {
             Log.e(TAG, "Error deleting account", e);
-            onError.accept(e);
+            status=DBConstants.GENERIC_ERROR;
         }
     }
 

@@ -77,12 +77,13 @@ import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
 import com.visionassist.appspace.activities.main.BottomNavigationBar
 import com.visionassist.appspace.activities.main.HomeActivity
+import com.visionassist.appspace.activities.main.MainActivity
 import com.visionassist.appspace.activities.main.SyncStatusSection
-import com.visionassist.appspace.activities.newprofile.ConfigurationActivity
 import com.visionassist.appspace.activities.newprofile.LoadProfileActivity
 import com.visionassist.appspace.activities.newprofile.UserAccessibility1Activity
 import com.visionassist.appspace.activities.tabs.home.detection.SceneClassifiedNotification
 import com.visionassist.appspace.activities.tabs.reports.EnvironmentReportsActivity
+import com.visionassist.appspace.database.DBConstants
 import com.visionassist.appspace.database.DBManager
 import com.visionassist.appspace.database.NetworkUtils
 import com.visionassist.appspace.jetpack.design.LanguageSelector
@@ -117,13 +118,13 @@ import com.visionassist.appspace.utils.getDeleteAccountConfirmMessage
 import com.visionassist.appspace.utils.getDeleteAccountText
 import com.visionassist.appspace.utils.getExportProfileText
 import com.visionassist.appspace.utils.getHapticsText
-import com.visionassist.appspace.utils.getLanguageChangedMessage
 import com.visionassist.appspace.utils.getLanguageText
 import com.visionassist.appspace.utils.getLogOutText
 import com.visionassist.appspace.utils.getLoggingOffText
 import com.visionassist.appspace.utils.getLogoutConfirmMessage
 import com.visionassist.appspace.utils.getProfileExportErrorMessage
 import com.visionassist.appspace.utils.getProfileExportedMessage
+import com.visionassist.appspace.utils.getProfileExportedMessageTutorial
 import com.visionassist.appspace.utils.getProfileSyncErrorMessage
 import com.visionassist.appspace.utils.getProfileSyncedMessage
 import com.visionassist.appspace.utils.getQuickAccessType
@@ -137,12 +138,16 @@ import com.visionassist.appspace.utils.getSoAText
 import com.visionassist.appspace.utils.getStorageSectionText
 import com.visionassist.appspace.utils.getSyncProfileText
 import com.visionassist.appspace.utils.haptic_model0
+import com.visionassist.appspace.utils.load_genericErrorDelete
+import com.visionassist.appspace.utils.load_genericErrorLogout
+import com.visionassist.appspace.utils.load_noInternet
 import com.visionassist.appspace.utils.robotoExtraBold
 import com.visionassist.appspace.utils.robotoLight
 import com.visionassist.appspace.utils.vibrate
 import kotlinx.coroutines.launch
 import org.json.JSONObject
-import java.io.File
+import java.io.FileNotFoundException
+import java.io.IOException
 
 class SettingsActivity : BaseActivity() {
     private val TAG = "SettingsActivity"
@@ -158,12 +163,8 @@ class SettingsActivity : BaseActivity() {
     // UI States
     private val showLoading = mutableStateOf(false)
     private val loadingText = mutableStateOf("")
-    private val showInfoDialog = mutableStateOf(false)
-    private val infoMessage = mutableStateOf("")
     private val showNotifDialog = mutableStateOf(false)
     private val notifMessage = mutableStateOf("")
-    private val notifFirstLabel = mutableStateOf("")
-    private val notifSecondLabel = mutableStateOf("")
     private val showSlideNotif = mutableStateOf(false)
     private val slideMessage = mutableStateOf("")
     private val currentSection = mutableStateOf(0)
@@ -175,7 +176,7 @@ class SettingsActivity : BaseActivity() {
 
     // Settings states
     private val selectedLanguage = mutableStateOf(AppConfig.mainLanguage)
-    private val selectedQuickAction = mutableStateOf(getCurrentQuickActionIndex(this))
+    private val selectedQuickAction = mutableStateOf(0)
     private val hapticsEnabled = mutableStateOf(AppConfig.haptics)
     private val soAEnabled = mutableStateOf(false)
 
@@ -191,9 +192,12 @@ class SettingsActivity : BaseActivity() {
     ) { uri ->
         uri?.let { handleExportProfileResult(it) }
     }
+    private var exportedFolderUri: Uri? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        selectedQuickAction.value = getCurrentQuickActionIndex(this)
 
         // Load profile data
         try {
@@ -229,7 +233,7 @@ class SettingsActivity : BaseActivity() {
                 hashCacheSize = hashCacheSize.value,
                 hashCachePercent = hashCachePercent.value,
                 envReportsSize = envReportsSize.value,
-                hasRemoteProfile = getStatusOverview() == 1 || getStatusOverview() == 2,
+                hasRemoteProfile = dbManager.statusOverview == 1 || dbManager.statusOverview == 2,
                 onLanguageChange = ::handleLanguageChange,
                 onQuickActionChange = ::handleQuickActionChange,
                 onQuickActionInfoClick = ::handleQuickActionInfo,
@@ -289,7 +293,7 @@ class SettingsActivity : BaseActivity() {
             selectedLanguage.value = language
             AppConfig.mainLanguage = language
             setTTSLanguage()
-        }, 500)
+        }, 1000)
     }
 
     private fun setTTSLanguage() {
@@ -305,17 +309,20 @@ class SettingsActivity : BaseActivity() {
                 if (ttsManager.isReady) {
                     Log.d(TAG, "TTS ready, reloading UI")
                     waitingForTTSLanguage = false
-                    slideMessage.value = getLanguageChangedMessage(this@SettingsActivity)
+                    //slideMessage.value = getLanguageChangedMessage(this@SettingsActivity)
 
                     showLoading.value = false
+                    val intent = Intent(this@SettingsActivity, SettingsActivity::class.java)
+                    startActivity(intent)
+                    finish()
 
                     // Show notification
-                    showSlideNotif.value = true
+                    //showSlideNotif.value = true
 
                     // Hide after delay
-                    mainHandler.postDelayed({
-                        showSlideNotif.value = false
-                    }, 4500)
+                    //mainHandler.postDelayed({
+                    //    showSlideNotif.value = false
+                    // }, 4500)
                 } else {
                     Log.w(TAG, "TTS not ready, retrying...")
                     ttsHandler.postDelayed(this, Constants.RETRY_TTS_DELAY_MS.toLong())
@@ -350,14 +357,14 @@ class SettingsActivity : BaseActivity() {
             mainHandler.postDelayed({
                 showSlideNotif.value = false
             }, 4500)
-        }, 500)
+        }, 1000)
     }
 
     private fun handleQuickActionInfo() {
         vibrateIfNeeded()
         infoNotificationManager.showNotification(
             getQuickActionInfoMessage(this),
-            { infoNotificationManager.hideNotification() },
+            { vibrateIfNeeded(); infoNotificationManager.hideNotification() },
             "OK"
         )
     }
@@ -380,7 +387,7 @@ class SettingsActivity : BaseActivity() {
         vibrateIfNeeded()
         infoNotificationManager.showNotification(
             getSoAInfoMessage(this),
-            { infoNotificationManager.hideNotification() },
+            { vibrateIfNeeded(); infoNotificationManager.hideNotification() },
             "OK"
         )
     }
@@ -405,23 +412,27 @@ class SettingsActivity : BaseActivity() {
 
     private fun handleClearCache() {
         vibrateIfNeeded()
-        notifMessage.value = getClearCacheConfirmMessage(this)
-        notifFirstLabel.value = if (AppConfig.mainLanguage.code == "en") {
-            getString(R.string.dont_button_en)
-        } else {
-            getString(R.string.dont_button_ro)
-        }
-        notifSecondLabel.value = if (AppConfig.mainLanguage.code == "en") {
-            getString(R.string.clear_button_en)
-        } else {
-            getString(R.string.clear_button_ro)
-        }
-        showNotifDialog.value = true
+
+        infoNotificationManager.showNotificationTwoButtons(
+            getClearCacheConfirmMessage(this),
+            if (AppConfig.mainLanguage.code == "en") {
+                getString(R.string.dont_button_en)
+            } else {
+                getString(R.string.dont_button_ro)
+            },
+            if (AppConfig.mainLanguage.code == "en") {
+                getString(R.string.clear_button_en)
+            } else {
+                getString(R.string.clear_button_ro)
+            },
+            { vibrateIfNeeded(); infoNotificationManager.hideNotification() },
+            { vibrateIfNeeded(); infoNotificationManager.hideNotification(); executeClearCache() }
+        )
     }
 
     private fun executeClearCache() {
-        showLoading.value = true
         loadingText.value = getApplyingSettingsText(this)
+        showLoading.value = true
 
         mainHandler.postDelayed({
             try {
@@ -430,7 +441,11 @@ class SettingsActivity : BaseActivity() {
                 slideMessage.value = getCacheClearedMessage(this)
             } catch (e: Exception) {
                 Log.e(TAG, "Error clearing cache", e)
-                slideMessage.value = "Error clearing cache"
+                slideMessage.value =
+                    if (AppConfig.mainLanguage.code == "en")
+                        "Error clearing cache"
+                    else
+                        "Eroare la ștergerea cache-ului"
             }
 
             showLoading.value = false
@@ -438,29 +453,33 @@ class SettingsActivity : BaseActivity() {
 
             mainHandler.postDelayed({
                 showSlideNotif.value = false
-            }, 3000)
-        }, 500)
+            }, 4500)
+        }, 1000)
     }
 
     private fun handleClearReports() {
         vibrateIfNeeded()
-        notifMessage.value = getClearReportsConfirmMessage(this)
-        notifFirstLabel.value = if (AppConfig.mainLanguage.code == "en") {
-            getString(R.string.dont_button_en)
-        } else {
-            getString(R.string.dont_button_ro)
-        }
-        notifSecondLabel.value = if (AppConfig.mainLanguage.code == "en") {
-            getString(R.string.clear_button_en)
-        } else {
-            getString(R.string.clear_button_ro)
-        }
-        showNotifDialog.value = true
+
+        infoNotificationManager.showNotificationTwoButtons(
+            getClearReportsConfirmMessage(this),
+            if (AppConfig.mainLanguage.code == "en") {
+                getString(R.string.dont_button_en)
+            } else {
+                getString(R.string.dont_button_ro)
+            },
+            if (AppConfig.mainLanguage.code == "en") {
+                getString(R.string.clear_button_en)
+            } else {
+                getString(R.string.clear_button_ro)
+            },
+            { vibrateIfNeeded(); infoNotificationManager.hideNotification() },
+            { vibrateIfNeeded(); infoNotificationManager.hideNotification(); executeClearReports() }
+        )
     }
 
     private fun executeClearReports() {
-        showLoading.value = true
         loadingText.value = getApplyingSettingsText(this)
+        showLoading.value = true
 
         mainHandler.postDelayed({
             try {
@@ -468,8 +487,12 @@ class SettingsActivity : BaseActivity() {
                 calculateSizes()
                 slideMessage.value = getReportsClearedMessage(this)
             } catch (e: Exception) {
-                Log.e(TAG, "Error clearing reports", e)
-                slideMessage.value = "Error clearing reports"
+                Log.e(TAG, "Error clearing cache", e)
+                slideMessage.value =
+                    if (AppConfig.mainLanguage.code == "en")
+                        "Error clearing cache"
+                    else
+                        "Eroare la ștergerea cache-ului"
             }
 
             showLoading.value = false
@@ -477,231 +500,323 @@ class SettingsActivity : BaseActivity() {
 
             mainHandler.postDelayed({
                 showSlideNotif.value = false
-            }, 3000)
-        }, 500)
+            }, 4500)
+        }, 1000)
     }
 
     private fun handleSyncProfile() {
         vibrateIfNeeded()
 
         if (!NetworkUtils.isNetworkConnected(this)) {
-            notifMessage.value = if (AppConfig.mainLanguage.code == "en") {
-                "Internet Connection Failed~Please check your internet connection and try again"
-            } else {
-                "Conexiunea la Internet a Eșuat~Vă rugăm să verificați conexiunea la internet și să încercați din nou"
-            }
-            notifFirstLabel.value = getString(R.string.ok_button_en)
-
+            notifMessage.value = load_noInternet(this)
             showNotifDialog.value = true
             return
         }
 
-        showLoading.value = true
         loadingText.value = getApplyingSettingsText(this)
+        showLoading.value = true
 
         mainHandler.postDelayed({
             BackgroundTaskExecutor.getInstance().executeAsync({
                 profileData?.let { dbManager.syncProfile(it) }
-                return@executeAsync 0
+                return@executeAsync dbManager.status
             }, object : BackgroundTaskExecutor.TaskCallback<Int> {
                 override fun onSuccess(result: Int?) {
-                    mainHandler.post {
-                        showLoading.value = false
-
-                        slideMessage.value = when (getStatusOverview()) {
-                            1 -> getProfileSyncedMessage(this@SettingsActivity)
-                            2 -> getProfileSyncErrorMessage(this@SettingsActivity)
-                            else -> getProfileSyncedMessage(this@SettingsActivity)
-                        }
-
-                        showSlideNotif.value = true
-
-                        mainHandler.postDelayed({
-                            showSlideNotif.value = false
-                        }, 3000)
+                    slideMessage.value = when (result) {
+                        DBConstants.SYNC_ERROR -> getProfileSyncedMessage(this@SettingsActivity)
+                        DBConstants.SYNC_OK -> getProfileSyncErrorMessage(this@SettingsActivity)
+                        else -> getProfileSyncedMessage(this@SettingsActivity)
                     }
+                    showLoading.value = false
+                    showSlideNotif.value = true
+
+                    mainHandler.postDelayed({
+                        showSlideNotif.value = false
+                    }, 4500)
                 }
 
                 override fun onError(e: Exception?) {
                     mainHandler.post {
-                        showLoading.value = false
                         slideMessage.value = getProfileSyncErrorMessage(this@SettingsActivity)
+                        showLoading.value = false
                         showSlideNotif.value = true
 
                         mainHandler.postDelayed({
                             showSlideNotif.value = false
-                        }, 3000)
+                        }, 4500)
                     }
                 }
             })
-        }, 500)
+        }, 1000)
     }
 
     private fun handleLogout() {
         vibrateIfNeeded()
-        notifMessage.value = getLogoutConfirmMessage(this)
-        notifFirstLabel.value = if (AppConfig.mainLanguage.code == "en") {
-            getString(R.string.dont_button_en)
-        } else {
-            getString(R.string.dont_button_ro)
-        }
-        notifSecondLabel.value = if (AppConfig.mainLanguage.code == "en") {
-            getString(R.string.logout_button_en)
-        } else {
-            getString(R.string.logout_button_ro)
-        }
-        showNotifDialog.value = true
+
+        infoNotificationManager.showNotificationTwoButtons(
+            getLogoutConfirmMessage(this),
+            if (AppConfig.mainLanguage.code == "en") {
+                getString(R.string.dont_button_en)
+            } else {
+                getString(R.string.dont_button_ro)
+            },
+            if (AppConfig.mainLanguage.code == "en") {
+                getString(R.string.logout_button_en)
+            } else {
+                getString(R.string.logout_button_ro)
+            },
+            { vibrateIfNeeded(); infoNotificationManager.hideNotification() },
+            { vibrateIfNeeded(); infoNotificationManager.hideNotification(); executeLogout() }
+        )
     }
 
     private fun executeLogout() {
-        showLoading.value = true
         loadingText.value = getLoggingOffText(this)
+        showLoading.value = true
 
         mainHandler.postDelayed({
             try {
                 // Delete all local files
-                FileUtils.deleteProfileDirFile(Constants.ENV_REPORTS_FILE_NAME)
-                FileUtils.deleteProfileDirFile(Constants.HASH_CACHE_FILE_NAME)
-                FileUtils.deleteProfileDirFile(Constants.PROFILE_FILE_NAME)
+                if (!FileUtils.deleteProfileDirFile(Constants.ENV_REPORTS_FILE_NAME))
+                    throw Exception()
+
+                if (!FileUtils.deleteProfileDirFile(Constants.HASH_CACHE_FILE_NAME))
+                    throw Exception()
+
+                if (!FileUtils.deleteProfileDirFile(Constants.PROFILE_FILE_NAME))
+                    throw Exception()
 
                 showLoading.value = false
 
                 // Navigate to configuration
-                val intent = Intent(this, ConfigurationActivity::class.java)
+                val intent = Intent(this, MainActivity::class.java)
                 startActivity(intent)
                 finish()
             } catch (e: Exception) {
                 Log.e(TAG, "Error during logout", e)
+                slideMessage.value = load_genericErrorLogout(this@SettingsActivity)
                 showLoading.value = false
+                showSlideNotif.value = true
+
+                mainHandler.postDelayed({
+                    showSlideNotif.value = false
+                    mainHandler.postDelayed({
+                        val intent = Intent(this, MainActivity::class.java)
+                        startActivity(intent)
+                        finish()
+                    }, 1000)
+                }, 4500)
             }
-        }, 500)
+        }, 1000)
     }
 
     private fun handleDeleteAccount() {
         vibrateIfNeeded()
-        notifMessage.value = getDeleteAccountConfirmMessage(this)
-        notifFirstLabel.value = if (AppConfig.mainLanguage.code == "en") {
-            getString(R.string.dont_button_en)
-        } else {
-            getString(R.string.dont_button_ro)
+
+        if (!NetworkUtils.isNetworkConnected(this)) {
+            notifMessage.value = load_noInternet(this)
+            showNotifDialog.value = true
+            return
         }
-        notifSecondLabel.value = if (AppConfig.mainLanguage.code == "en") {
-            getString(R.string.delete_button_en)
-        } else {
-            getString(R.string.delete_button_ro)
-        }
-        showNotifDialog.value = true
+
+        infoNotificationManager.showNotificationTwoButtons(
+            getDeleteAccountConfirmMessage(this),
+            if (AppConfig.mainLanguage.code == "en") {
+                getString(R.string.dont_button_en)
+            } else {
+                getString(R.string.dont_button_ro)
+            },
+            if (AppConfig.mainLanguage.code == "en") {
+                getString(R.string.delete_button_en)
+            } else {
+                getString(R.string.delete_button_ro)
+            },
+            { vibrateIfNeeded(); infoNotificationManager.hideNotification() },
+            { vibrateIfNeeded(); infoNotificationManager.hideNotification(); executeDeleteAccount() }
+        )
     }
 
     private fun executeDeleteAccount() {
-        showLoading.value = true
         loadingText.value = getLoggingOffText(this)
+        showLoading.value = true
 
         mainHandler.postDelayed({
-            try {
-                // Delete local files first
-                FileUtils.deleteProfileDirFile(Constants.ENV_REPORTS_FILE_NAME)
-                FileUtils.deleteProfileDirFile(Constants.HASH_CACHE_FILE_NAME)
-                FileUtils.deleteProfileDirFile(Constants.PROFILE_FILE_NAME)
+            BackgroundTaskExecutor.getInstance().executeAsync(
+                {
+                    // Delete local files first
+                    if (!FileUtils.deleteProfileDirFile(Constants.ENV_REPORTS_FILE_NAME))
+                        return@executeAsync -1
 
-                // Delete from Firebase
-                dbManager.deleteAccount(this, {
-                    mainHandler.post {
-                        showLoading.value = false
-                        val intent = Intent(this, ConfigurationActivity::class.java)
-                        startActivity(intent)
-                        finish()
+                    if (!FileUtils.deleteProfileDirFile(Constants.HASH_CACHE_FILE_NAME))
+                        return@executeAsync -1
+
+                    if (!FileUtils.deleteProfileDirFile(Constants.PROFILE_FILE_NAME))
+                        return@executeAsync -1
+
+                    // Delete from Firebase
+                    dbManager.deleteAccount(this)
+
+                    return@executeAsync dbManager.status
+                }, object : BackgroundTaskExecutor.TaskCallback<Int> {
+                    override fun onSuccess(result: Int) {
+                        if (result == -1) {
+                            Log.e(TAG, "Failed to delete local profile files")
+                            slideMessage.value = load_genericErrorDelete(this@SettingsActivity)
+                            showLoading.value = false
+                            showSlideNotif.value = true
+
+                            mainHandler.postDelayed({
+                                showSlideNotif.value = false
+                                mainHandler.postDelayed({
+                                    val intent =
+                                        Intent(this@SettingsActivity, MainActivity::class.java)
+                                    startActivity(intent)
+                                    finish()
+                                }, 1000)
+                            }, 4500)
+                        } else {
+                            showLoading.value = false
+                            val intent = Intent(this@SettingsActivity, MainActivity::class.java)
+                            startActivity(intent)
+                            finish()
+                        }
                     }
-                }, { e ->
-                    mainHandler.post {
-                        Log.e(TAG, "Error deleting account", e)
+
+                    override fun onError(e: Exception?) {
+                        slideMessage.value = load_genericErrorDelete(this@SettingsActivity)
                         showLoading.value = false
-                        // Still navigate even if Firebase delete fails
-                        val intent = Intent(this, ConfigurationActivity::class.java)
-                        startActivity(intent)
-                        finish()
+                        showSlideNotif.value = true
+
+                        mainHandler.postDelayed({
+                            showSlideNotif.value = false
+                            mainHandler.postDelayed({
+                                val intent = Intent(this@SettingsActivity, MainActivity::class.java)
+                                startActivity(intent)
+                                finish()
+                            }, 1000)
+                        }, 4500)
                     }
                 })
-            } catch (e: Exception) {
-                Log.e(TAG, "Error during delete account", e)
-                showLoading.value = false
-            }
-        }, 500)
+        }, 1000)
     }
 
     private fun handleExportProfile() {
         vibrateIfNeeded()
-        exportProfileLauncher.launch(null)
+
+        infoNotificationManager.showNotification(
+            getProfileExportedMessageTutorial(this),
+            { vibrateIfNeeded(); exportProfileLauncher.launch(null) },
+            "OK"
+        )
     }
 
     private fun handleExportProfileResult(uri: Uri) {
+        loadingText.value = if (AppConfig.mainLanguage.code == "en") {
+            "Exporting profile..."
+        } else {
+            "Se exportă profilul..."
+        }
         showLoading.value = true
-        loadingText.value = getApplyingSettingsText(this)
 
         mainHandler.postDelayed({
             exportErrorCode = 0
             exportFilesCompleted = 0
+            exportedFolderUri = null
 
-            // Copy profile.json
-            BackgroundTaskExecutor.getInstance().executeAsync({
-                copyFileToUri(uri, Constants.PROFILE_FILE_NAME)
-                return@executeAsync 0
-            }, object : BackgroundTaskExecutor.TaskCallback<Int> {
-                override fun onSuccess(result: Int?) {
-                    synchronized(this@SettingsActivity) {
+            try {
+                val profileFolderUri = createProfileFolder(uri)
+                exportedFolderUri = profileFolderUri
+
+                // Thread 1: Copy profile.json (ALWAYS exists)
+                BackgroundTaskExecutor.getInstance().executeAsync({
+                    copyFileToUri(uri, Constants.PROFILE_FILE_NAME)
+                    return@executeAsync 0
+                }, object : BackgroundTaskExecutor.TaskCallback<Int> {
+                    override fun onSuccess(result: Int?) {
+                        synchronized(this@SettingsActivity) {
+                            exportFilesCompleted++
+                        }
+                    }
+
+                    override fun onError(e: Exception?) {
+                        Log.e(TAG, "Error copying profile.json", e)
+                        synchronized(this@SettingsActivity) {
+                            exportErrorCode = 1
+                            exportFilesCompleted++
+                        }
+                    }
+                })
+
+                // Thread 2: Copy hash_cache (only if exists)
+                val hashCacheFile = FileUtils.getHashCacheFile(this)
+                if (hashCacheFile.exists()) {
+                    BackgroundTaskExecutor.getInstance().executeAsync({
+                        copyFileToUri(uri, Constants.HASH_CACHE_FILE_NAME)
+                        return@executeAsync 0
+                    }, object : BackgroundTaskExecutor.TaskCallback<Int> {
+                        override fun onSuccess(result: Int?) {
+                            synchronized(this@SettingsActivity) {
+                                exportFilesCompleted++
+                            }
+                        }
+
+                        override fun onError(e: Exception?) {
+                            Log.e(TAG, "Error copying hash_cache", e)
+                            synchronized(this@SettingsActivity) {
+                                exportErrorCode = 1
+                                exportFilesCompleted++
+                            }
+                        }
+                    })
+                } else {
+                    //  File doesn't exist, just increment counter
+                    synchronized(this) {
                         exportFilesCompleted++
                     }
                 }
 
-                override fun onError(e: Exception?) {
-                    synchronized(this@SettingsActivity) {
-                        exportErrorCode = 1
-                        exportFilesCompleted++
-                    }
-                }
-            })
+                // Thread 3: Copy env_reports (only if exists)
+                val envReportsFile = FileUtils.getEnvReportsFile(this)
+                if (envReportsFile.exists()) {
+                    BackgroundTaskExecutor.getInstance().executeAsync({
+                        copyFileToUri(uri, Constants.ENV_REPORTS_FILE_NAME)
+                        return@executeAsync 0
+                    }, object : BackgroundTaskExecutor.TaskCallback<Int> {
+                        override fun onSuccess(result: Int?) {
+                            synchronized(this@SettingsActivity) {
+                                exportFilesCompleted++
+                            }
+                        }
 
-            // Copy hash cache
-            BackgroundTaskExecutor.getInstance().executeAsync({
-                copyFileToUri(uri, Constants.HASH_CACHE_FILE_NAME)
-                return@executeAsync 0
-            }, object : BackgroundTaskExecutor.TaskCallback<Int> {
-                override fun onSuccess(result: Int?) {
-                    synchronized(this@SettingsActivity) {
-                        exportFilesCompleted++
-                    }
-                }
-
-                override fun onError(e: Exception?) {
-                    synchronized(this@SettingsActivity) {
-                        exportErrorCode = 1
-                        exportFilesCompleted++
-                    }
-                }
-            })
-
-            // Copy env reports
-            BackgroundTaskExecutor.getInstance().executeAsync({
-                copyFileToUri(uri, Constants.ENV_REPORTS_FILE_NAME)
-                return@executeAsync 0
-            }, object : BackgroundTaskExecutor.TaskCallback<Int> {
-                override fun onSuccess(result: Int?) {
-                    synchronized(this@SettingsActivity) {
+                        override fun onError(e: Exception?) {
+                            Log.e(TAG, "Error copying env_reports", e)
+                            synchronized(this@SettingsActivity) {
+                                exportErrorCode = 1
+                                exportFilesCompleted++
+                            }
+                        }
+                    })
+                } else {
+                    //  File doesn't exist, just increment counter
+                    synchronized(this) {
                         exportFilesCompleted++
                     }
                 }
 
-                override fun onError(e: Exception?) {
-                    synchronized(this@SettingsActivity) {
-                        exportErrorCode = 1
-                        exportFilesCompleted++
-                    }
-                }
-            })
+                // Wait for all copies to complete
+                waitForExportCompletion()
 
-            // Wait for all copies to complete
-            waitForExportCompletion()
-        }, 500)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error creating profile folder", e)
+                showLoading.value = false
+                slideMessage.value = getProfileExportErrorMessage(this)
+                showSlideNotif.value = true
+
+                mainHandler.postDelayed({
+                    showSlideNotif.value = false
+                }, 4500)
+            }
+        }, 1000)
     }
 
     private fun waitForExportCompletion() {
@@ -709,20 +824,29 @@ class SettingsActivity : BaseActivity() {
             override fun run() {
                 synchronized(this@SettingsActivity) {
                     if (exportFilesCompleted >= 3) {
-                        mainHandler.post {
+                        if (exportErrorCode == 0) {
+                            //  SUCCESS
+                            slideMessage.value = getProfileExportedMessage(this@SettingsActivity)
                             showLoading.value = false
-
-                            slideMessage.value = if (exportErrorCode == 0) {
-                                getProfileExportedMessage(this@SettingsActivity)
-                            } else {
-                                getProfileExportErrorMessage(this@SettingsActivity)
-                            }
 
                             showSlideNotif.value = true
 
                             mainHandler.postDelayed({
                                 showSlideNotif.value = false
-                            }, 3000)
+                            }, 4500)
+
+                        } else {
+                            //  ERROR - Delete created folder
+                            deleteExportedFolder()
+
+                            slideMessage.value = getProfileExportErrorMessage(this@SettingsActivity)
+                            showLoading.value = false
+
+                            showSlideNotif.value = true
+
+                            mainHandler.postDelayed({
+                                showSlideNotif.value = false
+                            }, 4500)
                         }
                     } else {
                         mainHandler.postDelayed(this, Constants.WAIT_CHECK)
@@ -733,17 +857,37 @@ class SettingsActivity : BaseActivity() {
         mainHandler.post(checkCompletion)
     }
 
+    private fun deleteExportedFolder() {
+        exportedFolderUri?.let { folderUri ->
+            try {
+                //  Delete folder (fast operation, can be done on main thread)
+                DocumentsContract.deleteDocument(contentResolver, folderUri)
+                Log.d(TAG, "Deleted exported folder after error")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error deleting exported folder", e)
+                // Continue anyway - error already reported to user
+            }
+        }
+    }
+
     private fun copyFileToUri(targetUri: Uri, fileName: String) {
-        val sourceFile = File(FileUtils.getProfileDirectory(this), fileName)
-        if (!sourceFile.exists()) return
+        val sourceFile = FileUtils.getProfileFile(this)
+
+        //  Throw exception instead of silent return
+        if (!sourceFile.exists()) {
+            throw FileNotFoundException("Source file not found: $fileName")
+        }
 
         val resolver = contentResolver
-        val folderUri = DocumentsContract.buildDocumentUriUsingTree(
-            targetUri, DocumentsContract.getTreeDocumentId(targetUri)
-        )
+
+        //  Create subfolder first
+        val profileFolderUri = createProfileFolder(targetUri)
 
         val newFileUri = DocumentsContract.createDocument(
-            resolver, folderUri, "application/octet-stream", fileName
+            resolver,
+            profileFolderUri,
+            "application/octet-stream",
+            fileName
         )
 
         newFileUri?.let { uri ->
@@ -752,7 +896,25 @@ class SettingsActivity : BaseActivity() {
                     inputStream.copyTo(outputStream)
                 }
             }
-        }
+        } ?: throw IOException("Failed to create document: $fileName")
+    }
+
+    private fun createProfileFolder(parentUri: Uri): Uri {
+        val resolver = contentResolver
+        val parentFolderUri = DocumentsContract.buildDocumentUriUsingTree(
+            parentUri,
+            DocumentsContract.getTreeDocumentId(parentUri)
+        )
+
+        // Create VisionAssistProfile folder
+        val folderUri = DocumentsContract.createDocument(
+            resolver,
+            parentFolderUri,
+            DocumentsContract.Document.MIME_TYPE_DIR,
+            Constants.PROFILE_FOLDER_NAME
+        )
+
+        return folderUri ?: throw IOException("Failed to create profile folder")
     }
 
     private fun handleNavigateHome() {
@@ -775,58 +937,13 @@ class SettingsActivity : BaseActivity() {
     }
 
     private fun handleNotifFirstButton() {
-        // First button is always "Don't" - just hide dialog
+        vibrateIfNeeded()
         showNotifDialog.value = false
-    }
-
-    private fun handleNotifSecondButton() {
-        // Second button executes the action
-        showNotifDialog.value = false
-
-        // Determine which action based on current dialog message
-        when {
-            notifMessage.value.contains("cache", ignoreCase = true) -> executeClearCache()
-            notifMessage.value.contains("reports", ignoreCase = true) -> executeClearReports()
-            notifMessage.value.contains(
-                "log out",
-                ignoreCase = true
-            ) || notifMessage.value.contains("deconectare", ignoreCase = true) -> executeLogout()
-
-            notifMessage.value.contains(
-                "delete account",
-                ignoreCase = true
-            ) || notifMessage.value.contains(
-                "șterge contul", ignoreCase = true
-            ) -> executeDeleteAccount()
-        }
     }
 
     private fun vibrateIfNeeded() {
         if (AppConfig.haptics) {
             vibrate(haptic_model0())
-        }
-    }
-
-    private fun getStatusOverview(): Int {
-        return try {
-            profileData?.let {
-                if (it.has("remoteProfile") && it.getBoolean("remoteProfile")) {
-                    // Check if synced
-                    if (it.has("syncStatus")) {
-                        when (it.getString("syncStatus")) {
-                            "synced" -> 1
-                            "error" -> 2
-                            else -> 0
-                        }
-                    } else {
-                        1
-                    }
-                } else {
-                    0
-                }
-            } ?: 0
-        } catch (_: Exception) {
-            0
         }
     }
 
@@ -909,14 +1026,14 @@ fun SettingsScreen(
                     .fillMaxWidth()
                     .fillMaxHeight(sectionMain)
             ) {
+
+                Spacer(modifier = Modifier.weight(0.08f))
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(0.3f),
-                    contentAlignment = Alignment.BottomCenter
+                        .weight(0.25f)
                 ) {
-                    //Spacer(modifier = Modifier.height(screenHeight * 0.07f))
-
                     TopSettingsSection(
                         selectedLanguage = selectedLanguage,
                         selectedQuickAction = selectedQuickAction,
@@ -931,10 +1048,11 @@ fun SettingsScreen(
                     )
                 }
 
-                Box(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(0.5f)
+                        .weight(0.5f),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     SlideableSections(
                         currentSection = currentSection,
@@ -950,6 +1068,12 @@ fun SettingsScreen(
                         onLogout = onLogout,
                         onDeleteAccount = onDeleteAccount,
                         onSectionChange = onSectionChange,
+                        screenWidth = screenWidth
+                    )
+
+                    SectionIndicators(
+                        currentSection = currentSection,
+                        hasRemoteProfile = hasRemoteProfile,
                         screenWidth = screenWidth
                     )
                 }
@@ -998,7 +1122,11 @@ fun SettingsScreen(
             ) {
                 // Bottom Navigation
                 BottomNavigationBar(
-                    onNavigateHome, onNavigateReports, onNavigateSettings, AppConfig.env_reports, 2
+                    onNavigateHome,
+                    onNavigateReports,
+                    onNavigateSettings,
+                    AppConfig.env_reports,
+                    2
                 )
             }
 
@@ -1053,80 +1181,82 @@ fun TopSettingsSection(
         )
     }
 
-    Row(
-        modifier = Modifier.padding(start = 24.dp), horizontalArrangement = Arrangement.SpaceBetween
+    // Left Column
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(start = 24.dp),
+        horizontalAlignment = Alignment.Start
     ) {
-        // Left Column
-        Column(
-            horizontalAlignment = Alignment.Start
+        // Language Label
+        Text(
+            text = getLanguageText(LocalContext.current),
+            fontSize = 12.sp,
+            color = colorResource(R.color.std_cyan_dark),
+            fontFamily = robotoExtraBold
+        )
+
+        Spacer(modifier = Modifier.height(3.dp))
+
+        // Language Selector
+        LanguageSelector(
+            selectedLanguage = selectedLanguage, availableLanguages = listOf(
+                Language("en", "English", "US"), Language("ro", "Română", "RO")
+            ), onLanguageSelected = onLanguageChange
+        )
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // Quick Action Label
+        Text(
+            text = getQuickActionText(LocalContext.current),
+            fontSize = 12.sp,
+            color = colorResource(R.color.std_cyan_dark),
+            fontFamily = robotoExtraBold
+        )
+
+        Spacer(modifier = Modifier.height(3.dp))
+
+        // Quick Action Row (Selector + Info Button)
+        Row(
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Language Label
-            Text(
-                text = getLanguageText(LocalContext.current),
-                fontSize = 12.sp,
-                color = colorResource(R.color.std_cyan_dark),
-                fontFamily = robotoExtraBold
+            // Quick Action Selector
+            QuickActionSelector(
+                selectedOption = getQuickAccessType(
+                    LocalContext.current,
+                    selectedQuickAction
+                ),
+                availableOptions = listOfQuickAction,
+                onOptionSelected = onQuickActionChange
             )
 
-            Spacer(modifier = Modifier.height(3.dp))
+            Spacer(modifier = Modifier.width(5.dp))
 
-            // Language Selector
-            LanguageSelector(
-                selectedLanguage = selectedLanguage, availableLanguages = listOf(
-                    Language("en", "English", "US"), Language("ro", "Română", "RO")
-                ), onLanguageSelected = onLanguageChange
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Quick Action Label
-            Text(
-                text = getQuickActionText(LocalContext.current),
-                fontSize = 12.sp,
-                color = colorResource(R.color.std_cyan_dark),
-                fontFamily = robotoExtraBold
-            )
-
-            Spacer(modifier = Modifier.height(3.dp))
-
-            // Quick Action Row (Selector + Info Button)
-            Row(
-                verticalAlignment = Alignment.CenterVertically
+            // Info Button
+            IconButton(
+                onClick = onQuickActionInfoClick,
+                modifier = Modifier.size(Constants.STD_INFO_BUTTON_SIZE.dp)
             ) {
-                // Quick Action Selector
-                QuickActionSelector(
-                    selectedOption = getQuickAccessType(LocalContext.current, selectedQuickAction),
-                    availableOptions = listOfQuickAction,
-                    onOptionSelected = onQuickActionChange
-                )
-
-                Spacer(modifier = Modifier.width(5.dp))
-
-                // Info Button
-                IconButton(
-                    onClick = onQuickActionInfoClick,
+                Icon(
+                    imageVector = Icons.Filled.Info,
+                    contentDescription = "Info",
+                    tint = colorResource(R.color.std_purple),
                     modifier = Modifier.size(Constants.STD_INFO_BUTTON_SIZE.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Info,
-                        contentDescription = "Info",
-                        tint = colorResource(R.color.std_purple),
-                        modifier = Modifier.size(Constants.STD_INFO_BUTTON_SIZE.dp)
-                    )
-                }
+                )
             }
         }
 
-        // Right Column
-        Column(
-            modifier = Modifier.padding(top = 23.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-            horizontalAlignment = Alignment.End
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
         ) {
+
             // Haptics Row
             Row(
-                modifier = Modifier.padding(end = 36.dp),
-                horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
@@ -1150,12 +1280,10 @@ fun TopSettingsSection(
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             // SoA Row
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
@@ -1200,6 +1328,49 @@ fun TopSettingsSection(
 }
 
 @Composable
+fun SectionIndicators(
+    currentSection: Int,
+    hasRemoteProfile: Boolean,
+    screenWidth: Dp
+) {
+    Row(
+        modifier = Modifier
+            .width(screenWidth * 0.17f)
+            .height(Constants.STD_BUTTON_HEIGHT.dp / 2)
+            .clip(RoundedCornerShape(32.dp))
+            .background(Color(0x66808080)),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Appearance indicator
+        Box(
+            modifier = Modifier
+                .size(7.dp)
+                .clip(CircleShape)
+                .background(if (currentSection == 0) Color.White else Color(0xB3808080))
+        )
+
+        // Storage indicator
+        Box(
+            modifier = Modifier
+                .size(7.dp)
+                .clip(CircleShape)
+                .background(if (currentSection == 1) Color.White else Color(0xB3808080))
+        )
+
+        // Account indicator (if has profile)
+        if (hasRemoteProfile) {
+            Box(
+                modifier = Modifier
+                    .size(7.dp)
+                    .clip(CircleShape)
+                    .background(if (currentSection == 2) Color.White else Color(0xB3808080))
+            )
+        }
+    }
+}
+
+@Composable
 fun SlideableSections(
     currentSection: Int,
     hashCacheSize: String,
@@ -1228,7 +1399,8 @@ fun SlideableSections(
 
     Box(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
+            .fillMaxHeight(0.85f)
             .pointerInput(currentSection, maxSections) {
                 detectDragGestures(
                     onDragStart = {
@@ -1330,8 +1502,7 @@ fun SlideableSections(
                 0 -> AppearanceSection(
                     onChangeDetectionColors = onChangeDetectionColors,
                     onChangeCaptionColors = onChangeCaptionColors,
-                    screenWidth = screenWidth,
-                    hasRemoteProfile = hasRemoteProfile
+                    screenWidth = screenWidth
                 )
 
                 1 -> StorageSection(
@@ -1340,8 +1511,7 @@ fun SlideableSections(
                     envReportsSize = envReportsSize,
                     onClearCache = onClearCache,
                     onClearReports = onClearReports,
-                    screenWidth = screenWidth,
-                    hasRemoteProfile = hasRemoteProfile
+                    screenWidth = screenWidth
                 )
 
                 2 -> if (hasRemoteProfile) {
@@ -1361,8 +1531,7 @@ fun SlideableSections(
 fun AppearanceSection(
     onChangeDetectionColors: () -> Unit,
     onChangeCaptionColors: () -> Unit,
-    screenWidth: Dp,
-    hasRemoteProfile: Boolean
+    screenWidth: Dp
 ) {
     Column(
         modifier = Modifier
@@ -1391,7 +1560,7 @@ fun AppearanceSection(
                     .height(Constants.STD_BUTTON_HEIGHT.dp),
                 shape = RoundedCornerShape(32.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = colorResource(R.color.std_purple_dark)
+                    containerColor = colorResource(R.color.std_cyan)
                 )
             ) {
                 Text(
@@ -1410,7 +1579,7 @@ fun AppearanceSection(
                     .height(Constants.STD_BUTTON_HEIGHT.dp),
                 shape = RoundedCornerShape(32.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = colorResource(R.color.std_purple_dark)
+                    containerColor = colorResource(R.color.std_cyan)
                 )
             ) {
                 Text(
@@ -1422,38 +1591,6 @@ fun AppearanceSection(
                 )
             }
         }
-
-        Row(
-            modifier = Modifier
-                .width(screenWidth * 0.17f)
-                .height(Constants.STD_BUTTON_HEIGHT.dp / 2)
-                .clip(RoundedCornerShape(32.dp))
-                .background(Color(0x66808080)),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(7.dp)
-                    .clip(CircleShape)
-                    .background(Color.White)
-            )
-
-            Box(
-                modifier = Modifier
-                    .size(7.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xB3808080))  // Semi-transparent gray
-            )
-
-            if (hasRemoteProfile)
-                Box(
-                    modifier = Modifier
-                        .size(7.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xB3808080))  // Semi-transparent gray
-                )
-        }
     }
 }
 
@@ -1464,8 +1601,7 @@ fun StorageSection(
     envReportsSize: String,
     onClearCache: () -> Unit,
     onClearReports: () -> Unit,
-    screenWidth: Dp,
-    hasRemoteProfile: Boolean
+    screenWidth: Dp
 ) {
     Column(
         modifier = Modifier
@@ -1501,7 +1637,7 @@ fun StorageSection(
                         .height(Constants.STD_BUTTON_HEIGHT.dp),
                     shape = RoundedCornerShape(32.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = colorResource(R.color.std_purple_dark)
+                        containerColor = colorResource(R.color.std_cyan)
                     )
                 ) {
                     Text(
@@ -1558,7 +1694,7 @@ fun StorageSection(
                         .height(Constants.STD_BUTTON_HEIGHT.dp),
                     shape = RoundedCornerShape(32.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = colorResource(R.color.std_purple_dark)
+                        containerColor = colorResource(R.color.std_cyan)
                     )
                 ) {
                     Text(
@@ -1590,38 +1726,6 @@ fun StorageSection(
                     )
                 }
             }
-        }
-
-        Row(
-            modifier = Modifier
-                .width(screenWidth * 0.17f)
-                .height(Constants.STD_BUTTON_HEIGHT.dp / 2)
-                .clip(RoundedCornerShape(32.dp))
-                .background(Color(0x66808080)),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(7.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xB3808080))  // Semi-transparent gray
-            )
-
-            Box(
-                modifier = Modifier
-                    .size(7.dp)
-                    .clip(CircleShape)
-                    .background(Color.White)
-            )
-
-            if (hasRemoteProfile)
-                Box(
-                    modifier = Modifier
-                        .size(7.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xB3808080))  // Semi-transparent gray
-                )
         }
     }
 }
@@ -1660,7 +1764,7 @@ fun AccountSection(
                     .height(Constants.STD_BUTTON_HEIGHT.dp),
                 shape = RoundedCornerShape(32.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = colorResource(R.color.std_purple_dark)
+                    containerColor = colorResource(R.color.std_cyan)
                 )
             ) {
                 Text(
@@ -1679,7 +1783,7 @@ fun AccountSection(
                     .height(Constants.STD_BUTTON_HEIGHT.dp),
                 shape = RoundedCornerShape(32.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = colorResource(R.color.std_purple_dark)
+                    containerColor = colorResource(R.color.std_cyan)
                 )
             ) {
                 Text(
@@ -1710,37 +1814,6 @@ fun AccountSection(
                 )
             }
         }
-
-        Row(
-            modifier = Modifier
-                .width(screenWidth * 0.17f)
-                .height(Constants.STD_BUTTON_HEIGHT.dp / 2)
-                .clip(RoundedCornerShape(32.dp))
-                .background(Color(0x66808080)),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(7.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xB3808080))  // Semi-transparent gray
-            )
-
-            Box(
-                modifier = Modifier
-                    .size(7.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xB3808080))  // Semi-transparent gray
-            )
-
-            Box(
-                modifier = Modifier
-                    .size(7.dp)
-                    .clip(CircleShape)
-                    .background(Color.White)  // Semi-transparent gray
-            )
-        }
     }
 }
 
@@ -1757,7 +1830,7 @@ fun SettingsScreenPreview1() {
         loadingText = "",
         showNotification = false,
         notificationMessage = "",
-        showSlideNotif = true,
+        showSlideNotif = false,
         slideMessage = "Standard notification message",
         currentSection = 0,
         selectedLanguage = Language("en", "English", "US"),
@@ -1793,7 +1866,10 @@ fun SettingsScreenPreview1() {
 }
 
 @Preview(
-    name = "Settings Screen - Storage Section", showBackground = true, widthDp = 412, heightDp = 917
+    name = "Settings Screen - Storage Section",
+    showBackground = true,
+    widthDp = 412,
+    heightDp = 917
 )
 @Composable
 fun SettingsScreenPreview2() {
@@ -1838,7 +1914,10 @@ fun SettingsScreenPreview2() {
 }
 
 @Preview(
-    name = "Settings Screen - Account Section", showBackground = true, widthDp = 412, heightDp = 917
+    name = "Settings Screen - Account Section",
+    showBackground = true,
+    widthDp = 412,
+    heightDp = 917
 )
 @Composable
 fun SettingsScreenPreview3() {

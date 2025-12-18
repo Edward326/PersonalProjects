@@ -25,10 +25,11 @@ public class PermissionChecker {
         boolean cameraGranted = checkCameraPermission(activity);
         boolean microphoneGranted = checkMicrophonePermission(activity);
         boolean storageGranted = checkStoragePermissions(activity);
+        boolean notificationGranted = checkNotificationPermission(activity);
 
         // Determine permission status option
         int permissionOption;
-        if (!cameraGranted && !microphoneGranted && !storageGranted) {
+        if (!cameraGranted && !microphoneGranted && !storageGranted && !notificationGranted) {
             permissionOption = 0; // All permissions not granted
         } else if (!cameraGranted) {
             permissionOption = 1; // Camera permission not granted
@@ -36,6 +37,8 @@ public class PermissionChecker {
             permissionOption = 2; // Microphone permission not granted
         } else if (!storageGranted) {
             permissionOption = 3; // File permissions not granted
+        } else if (!notificationGranted) {
+            permissionOption = 4; // ✅ Notification permission not granted
         } else {
             // All permissions granted
             if (onPermissionsGranted != null) {
@@ -105,7 +108,7 @@ public class PermissionChecker {
     }
 
     private static boolean checkStoragePermissions(Activity activity) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        if (Constants.API_LEVEL >= Build.VERSION_CODES.TIRAMISU) {
             // API 33+ (Android 13+): Granular media permissions
             // For reading images
 
@@ -113,12 +116,12 @@ public class PermissionChecker {
             return ContextCompat.checkSelfPermission(activity,
                     Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED;
 
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        } else if (Constants.API_LEVEL >= Build.VERSION_CODES.R) {
             // API 30-32 (Android 11-12): Scoped storage, but still uses READ_EXTERNAL_STORAGE
             return ContextCompat.checkSelfPermission(activity,
                     Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
 
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        } else if (Constants.API_LEVEL >= Build.VERSION_CODES.Q) {
             // API 29 (Android 10): Scoped storage introduced
             // READ_EXTERNAL_STORAGE still works, WRITE is limited
             return ContextCompat.checkSelfPermission(activity,
@@ -135,14 +138,22 @@ public class PermissionChecker {
         }
     }
 
+    private static boolean checkNotificationPermission(Activity activity) {
+        if (Constants.API_LEVEL >= Build.VERSION_CODES.TIRAMISU) { // API 33+
+            return ContextCompat.checkSelfPermission(activity,
+                    Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED;
+        }
+        return true; // Not required for API < 33
+    }
+
     public static String[] getStoragePermissionsArray() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        if (Constants.API_LEVEL >= Build.VERSION_CODES.TIRAMISU) {
             // API 33+ (Android 13+)
             return new String[]{
                     Manifest.permission.READ_MEDIA_IMAGES,
             };
 
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        } else if (Constants.API_LEVEL >= Build.VERSION_CODES.Q) {
             // API 29-32 (Android 10-12)
             return new String[]{
                     Manifest.permission.READ_EXTERNAL_STORAGE

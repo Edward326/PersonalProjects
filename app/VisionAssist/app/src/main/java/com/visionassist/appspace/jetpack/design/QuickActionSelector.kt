@@ -54,7 +54,10 @@ import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.visionassist.appspace.R
+import com.visionassist.appspace.utils.AppConfig
 import com.visionassist.appspace.utils.Constants
+import com.visionassist.appspace.utils.haptic_model0
+import com.visionassist.appspace.utils.vibrate
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -123,6 +126,9 @@ fun QuickActionSelector(
                     SplitButtonDefaults.TrailingButton(
                         onClick = {
                             expanded = !expanded
+                            if (AppConfig.haptics) {
+                                vibrate(haptic_model0())
+                            }
                         },
                         modifier = Modifier.semantics {
                             stateDescription = if (expanded) "Expanded" else "Collapsed"

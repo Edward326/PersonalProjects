@@ -83,6 +83,7 @@ public class Constants {
     public static final int CAMERA_PERMISSION_REQUEST = 101;
     public static final int STORAGE_PERMISSION_REQUEST = 102;
     public static final int MICROPHONE_PERMISSION_REQUEST = 101;
+    public static final int NOTIFICATION_PERMISSION_REQUEST = 104;
 
     // Time to wait before popping the permission intent
     public static final int PERMISSION_SLEEP = 1000;

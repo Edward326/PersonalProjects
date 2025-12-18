@@ -56,8 +56,11 @@ import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.visionassist.appspace.R
+import com.visionassist.appspace.utils.AppConfig
 import com.visionassist.appspace.utils.Constants
 import com.visionassist.appspace.utils.Language
+import com.visionassist.appspace.utils.haptic_model0
+import com.visionassist.appspace.utils.vibrate
 
 val robotoMedium = FontFamily(
     Font(R.font.roboto_medium, weight = FontWeight.Medium)
@@ -66,10 +69,10 @@ val robotoMedium = FontFamily(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun LanguageSelector(
-    selectedLanguage: Language = Language("en", "English","US"),
+    selectedLanguage: Language = Language("en", "English", "US"),
     availableLanguages: List<Language> = listOf(
-        Language("en", "English","US"),
-        Language("ro", "Română","RO"),
+        Language("en", "English", "US"),
+        Language("ro", "Română", "RO"),
     ),
     onLanguageSelected: (Language) -> Unit
 ) {
@@ -79,15 +82,17 @@ fun LanguageSelector(
 
     val density = LocalDensity.current
 
-    Box{
+    Box {
         SplitButtonLayout(
-            spacing=2.dp,
-            modifier = Modifier.shadow(
-                elevation = 3.dp,
-                shape = MaterialTheme.shapes.extraLargeIncreased
-            ).onGloballyPositioned { coordinates ->
-                buttonWidth = coordinates.size.width
-            },
+            spacing = 2.dp,
+            modifier = Modifier
+                .shadow(
+                    elevation = 3.dp,
+                    shape = MaterialTheme.shapes.extraLargeIncreased
+                )
+                .onGloballyPositioned { coordinates ->
+                    buttonWidth = coordinates.size.width
+                },
             leadingButton = {
                 SplitButtonDefaults.LeadingButton(
                     enabled = false, // Leading button is not clickable
@@ -106,7 +111,8 @@ fun LanguageSelector(
                         tint = colorResource(R.color.std_cyan)
                     )
                     Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                    Text(currentLanguage.name,
+                    Text(
+                        currentLanguage.name,
                         fontSize = Constants.STD_FONT_SIZE.sp,
                         fontFamily = robotoMedium,
                         fontWeight = FontWeight.Medium,
@@ -127,6 +133,9 @@ fun LanguageSelector(
                     SplitButtonDefaults.TrailingButton(
                         onClick = {
                             expanded = !expanded // Toggle dropdown when trailing button is clicked
+                            if (AppConfig.haptics) {
+                                vibrate(haptic_model0())
+                            }
                         },
                         modifier = Modifier.semantics {
                             stateDescription = if (expanded) "Expanded" else "Collapsed"
@@ -160,7 +169,8 @@ fun LanguageSelector(
         )
 
         // Calculate offset to align dropdown with trailing button
-        val trailingButtonWidth = with(density) { 48.dp.toPx() } // Approximate trailing button width
+        val trailingButtonWidth =
+            with(density) { 48.dp.toPx() } // Approximate trailing button width
         val offsetX = with(density) {
             (buttonWidth - trailingButtonWidth).toDp()
         }

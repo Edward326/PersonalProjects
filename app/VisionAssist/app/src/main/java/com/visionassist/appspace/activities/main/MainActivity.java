@@ -3,6 +3,7 @@ package com.visionassist.appspace.activities.main;
 import android.content.Context;
 import android.content.Intent;
 import android.media.AudioManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -12,13 +13,17 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.accessibility.AccessibilityManager;
 import android.widget.ImageView;
-
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.compose.ui.platform.ComposeView;
-
+import androidx.core.content.FileProvider;
 import com.visionassist.appspace.ExceptionVisionAssist;
 import com.visionassist.appspace.PhoneStatusMonitor;
 import com.visionassist.appspace.R;
+import com.visionassist.appspace.activities.tabs.home.caption.CaptionActivity;
+import com.visionassist.appspace.activities.tabs.home.detection.LiveDetectionActivity;
+import com.visionassist.appspace.activities.tabs.home.detection.StaticDetectionActivity;
 import com.visionassist.appspace.database.DBManager;
 import com.visionassist.appspace.jetpack.managers.ErrorDialogManager;
 import com.visionassist.appspace.jetpack.managers.LoadingManager;
@@ -28,9 +33,10 @@ import com.visionassist.appspace.utils.BackgroundTaskExecutor;
 import com.visionassist.appspace.utils.Constants;
 import com.visionassist.appspace.utils.PermissionChecker;
 import com.visionassist.appspace.utils.Utils;
-
 import org.json.JSONException;
 import org.json.JSONObject;
+import java.io.File;
+import java.io.IOException;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
@@ -46,10 +52,14 @@ public class MainActivity extends AppCompatActivity {
     private boolean profileAlreadyChecked = false;
     private boolean isNavigateToHome = false;
     private boolean ready = false;
+    private int quickActionIndex;
+    private ActivityResultLauncher<Uri> takePictureLauncher;
+    private Uri currentPhotoUri;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        registerCameraLauncher();
 
         setContentView(R.layout.activity_main);
         disableTalkBackForActivity();
@@ -69,8 +79,80 @@ public class MainActivity extends AppCompatActivity {
         loadingManager = new LoadingManager(loadingBox, true, this);
         loadingManager.setupLoadingBox();
 
+        Intent intent = getIntent();
+        quickActionIndex = intent.getIntExtra("QUICK_ACTION_INDEX", 0);
+
         loadingManager.showLoading("Verifying permissions, please wait");
         handler.postDelayed(() -> PermissionChecker.checkAndRequestPermissions(this, true, this::checkProfileTask), Constants.ANIMATION_DELAY);
+    }
+
+    private void registerCameraLauncher() {
+        takePictureLauncher = registerForActivityResult(
+                new ActivityResultContracts.TakePicture(),
+                isSuccess -> {
+                    if (isSuccess) {
+                        navigateToTargetActivityWithBitmap();
+                    } else {
+                        Log.e(TAG, "Image capture failed or cancelled");
+                        showCameraError();
+                    }
+                }
+        );
+        Log.d(TAG, "Camera launcher registered");
+    }
+
+    private void navigateToTargetActivityWithBitmap() {
+        try {
+            // Determine target activity class based on quick action
+            Class<?> targetActivityClass = switch (quickActionIndex) {
+                case 1 -> // StaticDetection
+                        StaticDetectionActivity.class;
+                case 3 -> // Caption
+                        CaptionActivity.class;
+                default -> StaticDetectionActivity.class;
+            };
+
+            // Create intent with image URI
+            Intent intent = new Intent(this, targetActivityClass);
+            intent.putExtra(Constants.EXTRA_IMAGE_URI, currentPhotoUri.toString());
+            intent.putExtra("QUICK_ACTION_INDEX", quickActionIndex);
+
+            loadingManager.hideLoading();
+            startActivity(intent);
+            finish();
+        } catch (Exception e) {
+            Log.e(TAG, "Error navigating to target activity", e);
+            showCameraError();
+        }
+    }
+
+    private void launchCamera() {
+        try {
+            File photoFile = File.createTempFile(
+                    "temp_visionassist",
+                    ".jpg",
+                    getCacheDir()
+            );
+
+            currentPhotoUri = FileProvider.getUriForFile(
+                    this,
+                    getPackageName() + ".fileprovider",
+                    photoFile
+            );
+
+            Log.d(TAG, "Launching camera with URI: " + currentPhotoUri);
+            takePictureLauncher.launch(currentPhotoUri);
+        } catch (IOException e) {
+            Log.e(TAG, "Error creating temp file", e);
+            showCameraError();
+        }
+    }
+
+    private void showCameraError() {
+        PhoneStatusMonitor monitor = PhoneStatusMonitor.getInstance();
+        ErrorDialogManager errorDialog = new ErrorDialogManager(monitor.getCurrentActivity());
+        errorDialog.setupDialog(Constants.CAMERA_MAKE_PHOTO);
+        monitor.shutdownApp(errorDialog, monitor.getCurrentContext());
     }
 
     @Override
@@ -121,7 +203,7 @@ public class MainActivity extends AppCompatActivity {
         loadingManager.changeText("Uploading profile, please wait");
         handler.postDelayed(() ->
                         Utils.uploadProfile(profileData,
-                                ()->PhoneStatusMonitor.getInstance().getModelManager().loadAssets(this::setTTSLanguage)),
+                                () -> PhoneStatusMonitor.getInstance().getModelManager().loadAssets(this::setTTSLanguage)),
                 1500);
     }
 
@@ -205,13 +287,27 @@ public class MainActivity extends AppCompatActivity {
 
     private void navigateToHomeEnd() {
         monitor.isProfileLoaded(true);
-        Class<?> nextActivityClass = AppConfig.blindness
-                ? BlindHomeActivity.class
-                : HomeActivity.class;
-        Intent intent = new Intent(this, nextActivityClass);
-        loadingManager.hideLoading();
-        startActivity(intent);
-        finish();
+
+        if (quickActionIndex == 0) {
+            Class<?> nextActivityClass = AppConfig.blindness
+                    ? BlindHomeActivity.class
+                    : HomeActivity.class;
+            Intent intent = new Intent(this, nextActivityClass);
+            loadingManager.hideLoading();
+            startActivity(intent);
+            finish();
+        } else {
+            loadingManager.hideLoading();
+            switch (quickActionIndex) {
+                case 1, 3:
+                    launchCamera();
+                    break;
+                case 2:
+                    Intent intent = new Intent(this, LiveDetectionActivity.class);
+                    startActivity(intent);
+                    finish();
+            }
+        }
     }
 
     private void handleProfileError(Exception e) {
