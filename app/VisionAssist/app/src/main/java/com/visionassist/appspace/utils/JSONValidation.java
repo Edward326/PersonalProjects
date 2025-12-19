@@ -137,6 +137,9 @@ public class JSONValidation {
                             return new Pair<>(1, jsonObject);   // ConfigurationActivity
                     }
 
+                if(!jsonObject.has("soa"))
+                    return new Pair<>(1, jsonObject);   // ConfigurationActivity
+
                 inputStream.close();
                 // All validations passed
                 return new Pair<>(0, jsonObject);
@@ -159,6 +162,9 @@ public class JSONValidation {
                         if (!FileUtils.createProfileDirFile(Constants.HASH_CACHE_FILE_NAME))
                             return new Pair<>(1, jsonObject);   // ConfigurationActivity
                     }
+
+                if(!jsonObject.has("soa"))
+                    return new Pair<>(1, jsonObject);   // ConfigurationActivity
 
                 inputStream.close();
                 // All validations passed
@@ -209,6 +215,9 @@ public class JSONValidation {
                 if (!FileUtils.createProfileDirFile(Constants.ENV_REPORTS_FILE_NAME))
                     return new Pair<>(1, jsonObject);   // ConfigurationActivity
             }
+
+        if(!jsonObject.has("soa"))
+            return new Pair<>(1, jsonObject);   // ConfigurationActivity
 
         inputStream.close();
         // All validations passed

@@ -217,6 +217,7 @@ class UserHashCachingActivity : ComponentActivity() {
 
                     // Write hash_caching to profile
                     ProfileFileCollection.writeUserHashCachingActivity(option, false)
+                    ProfileFileCollection.writeSoA(true)
 
                     // Start loading assets immediately
                     startLoadingAssets()
@@ -230,7 +231,6 @@ class UserHashCachingActivity : ComponentActivity() {
 
                     // Write to profile
                     ProfileFileCollection.writeUserHashCachingActivity(option, false)
-
 
                     // Navigate to section 2
                     currentSection.intValue = 2
@@ -247,6 +247,7 @@ class UserHashCachingActivity : ComponentActivity() {
                 }
 
                 ProfileFileCollection.writeUserHashCachingActivity(enabled.toString(), true)
+                ProfileFileCollection.writeSoA(true)
 
                 // Start loading assets
                 startLoadingAssets()
@@ -270,7 +271,7 @@ class UserHashCachingActivity : ComponentActivity() {
                 val profileFile = FileUtils.getProfileFile(this@UserHashCachingActivity)
                 val profileContent = profileFile.readText()
                 val jsonObject = JSONObject(profileContent)
-                jsonObject.put("init",1)
+                jsonObject.put("init", 1)
                 ProfileFileCollection.writeProfile(jsonObject)
                 Utils.uploadProfile(jsonObject, null)
 
@@ -291,7 +292,9 @@ class UserHashCachingActivity : ComponentActivity() {
                         || loadStatus == DBConstants.SYNC_ERROR
                         || loadStatus == 0
                     )
-                        PhoneStatusMonitor.getInstance().modelManager.loadAssets { isFinished = true }
+                        PhoneStatusMonitor.getInstance().modelManager.loadAssets {
+                            isFinished = true
+                        }
                     else
                         isFinished = true
                 }

@@ -499,6 +499,30 @@ public class ProfileFileCollection {
         }
     }
 
+    public static boolean writeSoA(boolean SoA) {
+        try {
+            Context context = PhoneStatusMonitor.getInstance().getCurrentContext();
+            File profileFile = FileUtils.getProfileFile(context);
+
+            JSONObject jsonObject;
+            if (profileFile.exists() && profileFile.length() > 0) {
+                String content = FileUtils.loadFileAsString(FileUtils.getProfileInputStream(context));
+                jsonObject = new JSONObject(content);
+            } else {
+                jsonObject = new JSONObject();
+            }
+
+            jsonObject.put("soa", SoA);
+            boolean success = FileUtils.writeProfileFile(jsonObject.toString(), Constants.PROFILE_FILE_NAME);
+            if (success)
+                Log.d(TAG, "SoA: Fields written successfully");
+            return success;
+        } catch (Exception e) {
+            Log.e(TAG, "SoA: Error writing fields", e);
+            return false;
+        }
+    }
+
     public static boolean writeProfile(JSONObject jsonObject) {
         try {
             if (jsonObject == null) {

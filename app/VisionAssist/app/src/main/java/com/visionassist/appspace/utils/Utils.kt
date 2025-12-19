@@ -1161,6 +1161,14 @@ fun getLoggingOffText(context: Context): String {
     }
 }
 
+fun getDeletingAccountText(context: Context): String {
+    return if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.deleting_account_en)
+    } else {
+        context.getString(R.string.deleting_account_ro)
+    }
+}
+
 fun calculateHashCacheSize(): Long {
     val hashSize = 8L // 8 bytes for hash (hex)
     val tokenSize = 20L * 4L + 20L // 20 tokens * 4 bytes + 20 separators = 100 bytes
@@ -1344,6 +1352,14 @@ fun getProfileExportErrorMessage(context: Context): String {
         context.getString(R.string.profile_export_error_en)
     } else {
         context.getString(R.string.profile_export_error_ro)
+    }
+}
+
+fun getPasswordTitle(context: Context): String {
+    return if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.password_title_en)
+    } else {
+        context.getString(R.string.password_title_ro)
     }
 }
 

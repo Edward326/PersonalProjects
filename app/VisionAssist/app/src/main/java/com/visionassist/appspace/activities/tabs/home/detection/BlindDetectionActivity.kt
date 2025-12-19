@@ -124,6 +124,16 @@ class BlindDetectionActivity : ComponentActivity() {
 
         currentDetectorModel = PhoneStatusMonitor.getInstance().modelManager.detector
 
+        val tempAccModel = currentDetectorModel.acquireAccModel(5000)
+        val tempNanoModel = currentDetectorModel.acquireNanoModel(5000)
+
+        canSwitchModels= tempAccModel != null && tempNanoModel != null
+
+        if(tempAccModel != null)
+            currentDetectorModel.releaseAccModel(tempAccModel)
+        if(tempNanoModel != null)
+            currentDetectorModel.releaseNanoModel(tempNanoModel)
+
         motionMonitor = MotionManager(
             this,
             mainHandler

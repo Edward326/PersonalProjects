@@ -3,6 +3,7 @@ package com.visionassist.appspace.database;
 import android.content.Context;
 import android.util.Log;
 import android.util.Pair;
+
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -10,12 +11,13 @@ import com.visionassist.appspace.ExceptionVisionAssist;
 import com.visionassist.appspace.jetpack.managers.LoadingManager;
 import com.visionassist.appspace.utils.Constants;
 import com.visionassist.appspace.utils.FileUtils;
+
 import org.json.JSONException;
 import org.json.JSONObject;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
@@ -100,7 +102,7 @@ public class DBManager {
         }
     }
 
-    private boolean verifyPassword(String email, String password) {
+    public boolean verifyPassword(String email, String password) {
         try {
             CountDownLatch latch = new CountDownLatch(1);
             AtomicBoolean success = new AtomicBoolean(false);
@@ -186,30 +188,35 @@ public class DBManager {
         }
     }
 
-    public void deleteAccount(Context context) {
+    public void deleteAccount(String email) {
         Log.d(TAG, "Starting account deletion process");
 
         try {
-            // Step 1: Read profile.json to get email
-            File profileFile = new File(FileUtils.getProfileDirectory(context), Constants.PROFILE_FILE_NAME);
+            // Step 4: Delete from Firestore
+            CountDownLatch firestoreLatch = new CountDownLatch(1);
+            AtomicBoolean firestoreDeleteSuccess = new AtomicBoolean(false);
 
-            if (!profileFile.exists()) {
-                Log.e(TAG, "Profile file not found");
+            firebaseDb.collection(DBConstants.FIREBASE_USERS_COLLECTION)
+                    .document(email)
+                    .delete()
+                    .addOnSuccessListener(aVoid -> {
+                        Log.d(TAG, "User document deleted from Firestore successfully");
+                        firestoreDeleteSuccess.set(true);
+                        firestoreLatch.countDown();
+                    })
+                    .addOnFailureListener(e -> {
+                        Log.e(TAG, "Failed to delete user document from Firestore", e);
+                        firestoreLatch.countDown();
+                    });
+
+            firestoreLatch.await();
+
+            // Check if Firestore deletion failed
+            if (!firestoreDeleteSuccess.get()) {
+                Log.e(TAG, "Firestore deletion failed");
                 status=DBConstants.GENERIC_ERROR;
                 return;
             }
-
-            // Read profile data
-            FileInputStream fis = new FileInputStream(profileFile);
-            byte[] data = new byte[(int) profileFile.length()];
-            fis.read(data);
-            fis.close();
-
-            String profileContent = new String(data, StandardCharsets.UTF_8);
-            JSONObject profileData = new JSONObject(profileContent);
-
-            String email = profileData.getString("email");
-            Log.d(TAG, "Email extracted from profile: " + email);
 
             // Step 2: Get current Firebase user
             FirebaseUser currentUser = auth.getCurrentUser();
@@ -246,38 +253,9 @@ public class DBManager {
                 return;
             }
 
-            // Step 4: Delete from Firestore
-            CountDownLatch firestoreLatch = new CountDownLatch(1);
-            AtomicBoolean firestoreDeleteSuccess = new AtomicBoolean(false);
-
-            firebaseDb.collection(DBConstants.FIREBASE_USERS_COLLECTION)
-                    .document(email)
-                    .delete()
-                    .addOnSuccessListener(aVoid -> {
-                        Log.d(TAG, "User document deleted from Firestore successfully");
-                        firestoreDeleteSuccess.set(true);
-                        firestoreLatch.countDown();
-                    })
-                    .addOnFailureListener(e -> {
-                        Log.e(TAG, "Failed to delete user document from Firestore", e);
-                        firestoreLatch.countDown();
-                    });
-
-            firestoreLatch.await();
-
-            // Check if Firestore deletion failed
-            if (!firestoreDeleteSuccess.get()) {
-                Log.e(TAG, "Firestore deletion failed");
-                status=DBConstants.GENERIC_ERROR;
-                return;
-            }
-
             // Step 5: Both deletions successful
             Log.d(TAG, "Account deletion completed successfully");
             status=DBConstants.SYNC_OK;
-        } catch (JSONException e) {
-            Log.e(TAG, "Error parsing profile JSON", e);
-            status=DBConstants.GENERIC_ERROR;
         } catch (InterruptedException e) {
             Log.e(TAG, "Interrupted while deleting account", e);
             status=DBConstants.GENERIC_ERROR;
@@ -406,10 +384,10 @@ public class DBManager {
                     return new Pair<>(status, null);
                 }
                 Log.d(TAG, "Profile successfully copied to profile.json");
-                if (profileCopyFile.delete())
-                    Log.d(TAG, "Deletion failed of profile.json");
+                if (!profileCopyFile.delete())
+                    Log.d(TAG, "Deletion failed of profile_copy.json");
                 else
-                    Log.d(TAG, "Deletion successfully of profile.json");
+                    Log.d(TAG, "Deletion successfully of profile_copy.json");
                 status = DBConstants.SYNC_OK;
                 return new Pair<>(status, profileData);
             } else {

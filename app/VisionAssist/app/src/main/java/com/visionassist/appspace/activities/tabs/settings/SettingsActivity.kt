@@ -2,6 +2,7 @@
 
 package com.visionassist.appspace.activities.tabs.settings
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -40,6 +41,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Button
@@ -48,6 +50,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -67,6 +71,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -81,6 +88,9 @@ import com.visionassist.appspace.activities.main.MainActivity
 import com.visionassist.appspace.activities.main.SyncStatusSection
 import com.visionassist.appspace.activities.newprofile.LoadProfileActivity
 import com.visionassist.appspace.activities.newprofile.UserAccessibility1Activity
+import com.visionassist.appspace.activities.newprofile.jsonCollection.ProfileFileCollection.writeSoA
+import com.visionassist.appspace.activities.newprofile.jsonCollection.ProfileFileCollection.writeUserAccessibility1Caption
+import com.visionassist.appspace.activities.newprofile.jsonCollection.ProfileFileCollection.writeWelcomeActivity
 import com.visionassist.appspace.activities.tabs.home.detection.SceneClassifiedNotification
 import com.visionassist.appspace.activities.tabs.reports.EnvironmentReportsActivity
 import com.visionassist.appspace.database.DBConstants
@@ -116,12 +126,14 @@ import com.visionassist.appspace.utils.getCurrentEnvReportsSize
 import com.visionassist.appspace.utils.getCurrentHashCacheSize
 import com.visionassist.appspace.utils.getDeleteAccountConfirmMessage
 import com.visionassist.appspace.utils.getDeleteAccountText
+import com.visionassist.appspace.utils.getDeletingAccountText
 import com.visionassist.appspace.utils.getExportProfileText
 import com.visionassist.appspace.utils.getHapticsText
 import com.visionassist.appspace.utils.getLanguageText
 import com.visionassist.appspace.utils.getLogOutText
 import com.visionassist.appspace.utils.getLoggingOffText
 import com.visionassist.appspace.utils.getLogoutConfirmMessage
+import com.visionassist.appspace.utils.getPasswordTitle
 import com.visionassist.appspace.utils.getProfileExportErrorMessage
 import com.visionassist.appspace.utils.getProfileExportedMessage
 import com.visionassist.appspace.utils.getProfileExportedMessageTutorial
@@ -146,6 +158,7 @@ import com.visionassist.appspace.utils.robotoLight
 import com.visionassist.appspace.utils.vibrate
 import kotlinx.coroutines.launch
 import org.json.JSONObject
+import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
 
@@ -161,6 +174,9 @@ class SettingsActivity : BaseActivity() {
     private lateinit var infoNotificationManager: InfoNotificationManager
 
     // UI States
+    private val showErrorPassword = mutableStateOf(false)
+    private val showPasswordDialog = mutableStateOf(false)
+    private val passwordValue = mutableStateOf("")
     private val showLoading = mutableStateOf(false)
     private val loadingText = mutableStateOf("")
     private val showNotifDialog = mutableStateOf(false)
@@ -178,7 +194,7 @@ class SettingsActivity : BaseActivity() {
     private val selectedLanguage = mutableStateOf(AppConfig.mainLanguage)
     private val selectedQuickAction = mutableStateOf(0)
     private val hapticsEnabled = mutableStateOf(AppConfig.haptics)
-    private val soAEnabled = mutableStateOf(false)
+    private val soAEnabled = mutableStateOf(AppConfig.SoA)
 
     // Flags
     private var waitingForTTSLanguage = false
@@ -199,16 +215,6 @@ class SettingsActivity : BaseActivity() {
 
         selectedQuickAction.value = getCurrentQuickActionIndex(this)
 
-        // Load profile data
-        try {
-            val profileFile = FileUtils.getProfileFile(this)
-            if (profileFile.exists()) {
-                profileData = JSONObject(profileFile.readText())
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error loading profile", e)
-        }
-
         // Calculate initial sizes
         calculateSizes()
 
@@ -219,6 +225,7 @@ class SettingsActivity : BaseActivity() {
 
         setContent {
             SettingsScreen(
+                showPasswordDialog = showPasswordDialog.value,
                 showLoading = showLoading.value,
                 loadingText = loadingText.value,
                 showNotification = showNotifDialog.value,
@@ -254,7 +261,15 @@ class SettingsActivity : BaseActivity() {
                 onSectionChange = { section -> currentSection.value = section },
                 firstButtonClick = ::handleNotifFirstButton,
                 syncStatus = dbManager.statusOverview,
-                syncDays = dbManager.diffDays
+                syncDays = dbManager.diffDays,
+                onPasswordChange = { password ->
+                    showErrorPassword.value = false
+                    passwordValue.value = password
+                },
+                firstButtonClickPassword = ::handleBackPassword,
+                secondButtonClickPassword = ::handleNextPassword,
+                showErrorPassword = showErrorPassword.value,
+                passwordValue = passwordValue.value
             )
         }
     }
@@ -281,6 +296,45 @@ class SettingsActivity : BaseActivity() {
         envReportsSize.value = formatSizeKB(currentReportsSize)
     }
 
+    private fun handleBackPassword() {
+        showPasswordDialog.value = false
+    }
+
+    private fun handleNextPassword() {
+        if (!NetworkUtils.isNetworkConnected(this)) {
+            showPasswordDialog.value = false
+            notifMessage.value = load_noInternet(this)
+            showNotifDialog.value = true
+            return
+        }
+
+        val profileFile = FileUtils.getProfileFile(this)
+        profileData = JSONObject(profileFile.readText())
+        val email = profileData?.getString("email") ?: ""
+
+        BackgroundTaskExecutor.getInstance().executeAsync({
+            return@executeAsync dbManager.verifyPassword(email, passwordValue.value)
+        }, object : BackgroundTaskExecutor.TaskCallback<Boolean> {
+            override fun onSuccess(result: Boolean) {
+                if (!result) showErrorPassword.value = true
+                else {
+                    showPasswordDialog.value = false
+                    executeDeleteAccount(email)
+                }
+            }
+
+            override fun onError(e: Exception) {
+                slideMessage.value = load_genericErrorDelete(this@SettingsActivity)
+                showPasswordDialog.value = false
+                showSlideNotif.value = true
+
+                mainHandler.postDelayed({
+                    showSlideNotif.value = false
+                }, 4500)
+            }
+        })
+    }
+
     private fun handleLanguageChange(language: Language) {
         vibrateIfNeeded()
 
@@ -292,6 +346,7 @@ class SettingsActivity : BaseActivity() {
         mainHandler.postDelayed({
             selectedLanguage.value = language
             AppConfig.mainLanguage = language
+            writeWelcomeActivity(false, AppConfig.mainLanguage, false)
             setTTSLanguage()
         }, 1000)
     }
@@ -375,12 +430,17 @@ class SettingsActivity : BaseActivity() {
         }
         hapticsEnabled.value = enabled
         AppConfig.haptics = enabled
+        writeUserAccessibility1Caption(
+            AppConfig.caption_color, AppConfig.caption_bck_color, AppConfig.haptics
+        )
     }
 
     private fun handleSoAToggle(enabled: Boolean) {
+        Log.d(TAG, "SoA toggle: $enabled")
         vibrateIfNeeded()
         soAEnabled.value = enabled
         AppConfig.SoA = enabled
+        writeSoA(AppConfig.SoA)
     }
 
     private fun handleSoAInfo() {
@@ -426,8 +486,7 @@ class SettingsActivity : BaseActivity() {
                 getString(R.string.clear_button_ro)
             },
             { vibrateIfNeeded(); infoNotificationManager.hideNotification() },
-            { vibrateIfNeeded(); infoNotificationManager.hideNotification(); executeClearCache() }
-        )
+            { vibrateIfNeeded(); infoNotificationManager.hideNotification(); executeClearCache() })
     }
 
     private fun executeClearCache() {
@@ -441,11 +500,8 @@ class SettingsActivity : BaseActivity() {
                 slideMessage.value = getCacheClearedMessage(this)
             } catch (e: Exception) {
                 Log.e(TAG, "Error clearing cache", e)
-                slideMessage.value =
-                    if (AppConfig.mainLanguage.code == "en")
-                        "Error clearing cache"
-                    else
-                        "Eroare la ștergerea cache-ului"
+                slideMessage.value = if (AppConfig.mainLanguage.code == "en") "Error clearing cache"
+                else "Eroare la ștergerea cache-ului"
             }
 
             showLoading.value = false
@@ -473,8 +529,7 @@ class SettingsActivity : BaseActivity() {
                 getString(R.string.clear_button_ro)
             },
             { vibrateIfNeeded(); infoNotificationManager.hideNotification() },
-            { vibrateIfNeeded(); infoNotificationManager.hideNotification(); executeClearReports() }
-        )
+            { vibrateIfNeeded(); infoNotificationManager.hideNotification(); executeClearReports() })
     }
 
     private fun executeClearReports() {
@@ -488,11 +543,8 @@ class SettingsActivity : BaseActivity() {
                 slideMessage.value = getReportsClearedMessage(this)
             } catch (e: Exception) {
                 Log.e(TAG, "Error clearing cache", e)
-                slideMessage.value =
-                    if (AppConfig.mainLanguage.code == "en")
-                        "Error clearing cache"
-                    else
-                        "Eroare la ștergerea cache-ului"
+                slideMessage.value = if (AppConfig.mainLanguage.code == "en") "Error clearing cache"
+                else "Eroare la ștergerea cache-ului"
             }
 
             showLoading.value = false
@@ -518,13 +570,22 @@ class SettingsActivity : BaseActivity() {
 
         mainHandler.postDelayed({
             BackgroundTaskExecutor.getInstance().executeAsync({
+                // Load profile data
+                try {
+                    val profileFile = FileUtils.getProfileFile(this)
+                    if (profileFile.exists()) {
+                        profileData = JSONObject(profileFile.readText())
+                    }
+                } catch (_: Exception) {
+                    return@executeAsync DBConstants.SYNC_ERROR
+                }
                 profileData?.let { dbManager.syncProfile(it) }
                 return@executeAsync dbManager.status
             }, object : BackgroundTaskExecutor.TaskCallback<Int> {
                 override fun onSuccess(result: Int?) {
                     slideMessage.value = when (result) {
-                        DBConstants.SYNC_ERROR -> getProfileSyncedMessage(this@SettingsActivity)
-                        DBConstants.SYNC_OK -> getProfileSyncErrorMessage(this@SettingsActivity)
+                        DBConstants.SYNC_ERROR -> getProfileSyncErrorMessage(this@SettingsActivity)
+                        DBConstants.SYNC_OK -> getProfileSyncedMessage(this@SettingsActivity)
                         else -> getProfileSyncedMessage(this@SettingsActivity)
                     }
                     showLoading.value = false
@@ -566,8 +627,7 @@ class SettingsActivity : BaseActivity() {
                 getString(R.string.logout_button_ro)
             },
             { vibrateIfNeeded(); infoNotificationManager.hideNotification() },
-            { vibrateIfNeeded(); infoNotificationManager.hideNotification(); executeLogout() }
-        )
+            { vibrateIfNeeded(); infoNotificationManager.hideNotification(); executeLogout() })
     }
 
     private fun executeLogout() {
@@ -577,14 +637,11 @@ class SettingsActivity : BaseActivity() {
         mainHandler.postDelayed({
             try {
                 // Delete all local files
-                if (!FileUtils.deleteProfileDirFile(Constants.ENV_REPORTS_FILE_NAME))
-                    throw Exception()
+                if (!FileUtils.deleteProfileDirFile(Constants.ENV_REPORTS_FILE_NAME)) throw Exception()
 
-                if (!FileUtils.deleteProfileDirFile(Constants.HASH_CACHE_FILE_NAME))
-                    throw Exception()
+                if (!FileUtils.deleteProfileDirFile(Constants.HASH_CACHE_FILE_NAME)) throw Exception()
 
-                if (!FileUtils.deleteProfileDirFile(Constants.PROFILE_FILE_NAME))
-                    throw Exception()
+                if (!FileUtils.deleteProfileDirFile(Constants.PROFILE_FILE_NAME)) throw Exception()
 
                 showLoading.value = false
 
@@ -632,57 +689,34 @@ class SettingsActivity : BaseActivity() {
                 getString(R.string.delete_button_ro)
             },
             { vibrateIfNeeded(); infoNotificationManager.hideNotification() },
-            { vibrateIfNeeded(); infoNotificationManager.hideNotification(); executeDeleteAccount() }
-        )
+            {
+                vibrateIfNeeded()
+                infoNotificationManager.hideNotification()
+                showPasswordDialog.value = true
+            })
     }
 
-    private fun executeDeleteAccount() {
-        loadingText.value = getLoggingOffText(this)
+    private fun executeDeleteAccount(email: String) {
+        loadingText.value = getDeletingAccountText(this)
         showLoading.value = true
 
         mainHandler.postDelayed({
-            BackgroundTaskExecutor.getInstance().executeAsync(
-                {
-                    // Delete local files first
-                    if (!FileUtils.deleteProfileDirFile(Constants.ENV_REPORTS_FILE_NAME))
-                        return@executeAsync -1
+            BackgroundTaskExecutor.getInstance().executeAsync({
+                // Delete from Firebase
+                dbManager.deleteAccount(email)
 
-                    if (!FileUtils.deleteProfileDirFile(Constants.HASH_CACHE_FILE_NAME))
-                        return@executeAsync -1
+                // Delete local files first
+                if (!FileUtils.deleteProfileDirFile(Constants.ENV_REPORTS_FILE_NAME)) return@executeAsync -1
 
-                    if (!FileUtils.deleteProfileDirFile(Constants.PROFILE_FILE_NAME))
-                        return@executeAsync -1
+                if (!FileUtils.deleteProfileDirFile(Constants.HASH_CACHE_FILE_NAME)) return@executeAsync -1
 
-                    // Delete from Firebase
-                    dbManager.deleteAccount(this)
+                if (!FileUtils.deleteProfileDirFile(Constants.PROFILE_FILE_NAME)) return@executeAsync -1
 
-                    return@executeAsync dbManager.status
-                }, object : BackgroundTaskExecutor.TaskCallback<Int> {
-                    override fun onSuccess(result: Int) {
-                        if (result == -1) {
-                            Log.e(TAG, "Failed to delete local profile files")
-                            slideMessage.value = load_genericErrorDelete(this@SettingsActivity)
-                            showLoading.value = false
-                            showSlideNotif.value = true
-
-                            mainHandler.postDelayed({
-                                showSlideNotif.value = false
-                                mainHandler.postDelayed({
-                                    val intent =
-                                        Intent(this@SettingsActivity, MainActivity::class.java)
-                                    startActivity(intent)
-                                    finish()
-                                }, 1000)
-                            }, 4500)
-                        } else {
-                            showLoading.value = false
-                            val intent = Intent(this@SettingsActivity, MainActivity::class.java)
-                            startActivity(intent)
-                            finish()
-                        }
-                    }
-
-                    override fun onError(e: Exception?) {
+                return@executeAsync dbManager.status
+            }, object : BackgroundTaskExecutor.TaskCallback<Int> {
+                override fun onSuccess(result: Int) {
+                    if (result == -1) {
+                        Log.e(TAG, "Failed to delete local profile files")
                         slideMessage.value = load_genericErrorDelete(this@SettingsActivity)
                         showLoading.value = false
                         showSlideNotif.value = true
@@ -695,8 +729,29 @@ class SettingsActivity : BaseActivity() {
                                 finish()
                             }, 1000)
                         }, 4500)
+                    } else {
+                        showLoading.value = false
+                        val intent = Intent(this@SettingsActivity, MainActivity::class.java)
+                        startActivity(intent)
+                        finish()
                     }
-                })
+                }
+
+                override fun onError(e: Exception?) {
+                    slideMessage.value = load_genericErrorDelete(this@SettingsActivity)
+                    showLoading.value = false
+                    showSlideNotif.value = true
+
+                    mainHandler.postDelayed({
+                        showSlideNotif.value = false
+                        mainHandler.postDelayed({
+                            val intent = Intent(this@SettingsActivity, MainActivity::class.java)
+                            startActivity(intent)
+                            finish()
+                        }, 1000)
+                    }, 4500)
+                }
+            })
         }, 1000)
     }
 
@@ -705,8 +760,9 @@ class SettingsActivity : BaseActivity() {
 
         infoNotificationManager.showNotification(
             getProfileExportedMessageTutorial(this),
-            { vibrateIfNeeded(); exportProfileLauncher.launch(null) },
-            "OK"
+            { vibrateIfNeeded(); infoNotificationManager.hideNotification(); exportProfileLauncher.launch(null) },
+            if (AppConfig.mainLanguage.code == "en") "Files"
+            else "Fișiere"
         )
     }
 
@@ -729,7 +785,7 @@ class SettingsActivity : BaseActivity() {
 
                 // Thread 1: Copy profile.json (ALWAYS exists)
                 BackgroundTaskExecutor.getInstance().executeAsync({
-                    copyFileToUri(uri, Constants.PROFILE_FILE_NAME)
+                    copyFileToUri(profileFolderUri, Constants.PROFILE_FILE_NAME)
                     return@executeAsync 0
                 }, object : BackgroundTaskExecutor.TaskCallback<Int> {
                     override fun onSuccess(result: Int?) {
@@ -751,7 +807,7 @@ class SettingsActivity : BaseActivity() {
                 val hashCacheFile = FileUtils.getHashCacheFile(this)
                 if (hashCacheFile.exists()) {
                     BackgroundTaskExecutor.getInstance().executeAsync({
-                        copyFileToUri(uri, Constants.HASH_CACHE_FILE_NAME)
+                        copyFileToUri(profileFolderUri, Constants.HASH_CACHE_FILE_NAME)
                         return@executeAsync 0
                     }, object : BackgroundTaskExecutor.TaskCallback<Int> {
                         override fun onSuccess(result: Int?) {
@@ -779,7 +835,7 @@ class SettingsActivity : BaseActivity() {
                 val envReportsFile = FileUtils.getEnvReportsFile(this)
                 if (envReportsFile.exists()) {
                     BackgroundTaskExecutor.getInstance().executeAsync({
-                        copyFileToUri(uri, Constants.ENV_REPORTS_FILE_NAME)
+                        copyFileToUri(profileFolderUri, Constants.ENV_REPORTS_FILE_NAME)
                         return@executeAsync 0
                     }, object : BackgroundTaskExecutor.TaskCallback<Int> {
                         override fun onSuccess(result: Int?) {
@@ -871,7 +927,7 @@ class SettingsActivity : BaseActivity() {
     }
 
     private fun copyFileToUri(targetUri: Uri, fileName: String) {
-        val sourceFile = FileUtils.getProfileFile(this)
+        val sourceFile = File(FileUtils.getProfileDirectory(this), fileName)
 
         //  Throw exception instead of silent return
         if (!sourceFile.exists()) {
@@ -880,14 +936,8 @@ class SettingsActivity : BaseActivity() {
 
         val resolver = contentResolver
 
-        //  Create subfolder first
-        val profileFolderUri = createProfileFolder(targetUri)
-
         val newFileUri = DocumentsContract.createDocument(
-            resolver,
-            profileFolderUri,
-            "application/octet-stream",
-            fileName
+            resolver, targetUri, "application/octet-stream", fileName
         )
 
         newFileUri?.let { uri ->
@@ -902,8 +952,7 @@ class SettingsActivity : BaseActivity() {
     private fun createProfileFolder(parentUri: Uri): Uri {
         val resolver = contentResolver
         val parentFolderUri = DocumentsContract.buildDocumentUriUsingTree(
-            parentUri,
-            DocumentsContract.getTreeDocumentId(parentUri)
+            parentUri, DocumentsContract.getTreeDocumentId(parentUri)
         )
 
         // Create VisionAssistProfile folder
@@ -965,6 +1014,7 @@ class SettingsActivity : BaseActivity() {
 
 @Composable
 fun SettingsScreen(
+    showPasswordDialog: Boolean,
     showLoading: Boolean,
     loadingText: String,
     showNotification: Boolean,
@@ -999,8 +1049,13 @@ fun SettingsScreen(
     onNavigateSettings: () -> Unit = {},
     onSectionChange: (Int) -> Unit = {},
     firstButtonClick: () -> Unit = {},
+    onPasswordChange: (String) -> Unit,
+    firstButtonClickPassword: () -> Unit,
+    secondButtonClickPassword: () -> Unit,
     syncStatus: Int,
-    syncDays: Long
+    syncDays: Long,
+    showErrorPassword: Boolean,
+    passwordValue: String
 ) {
     BoxWithConstraints(
         modifier = Modifier.fillMaxSize()
@@ -1008,6 +1063,7 @@ fun SettingsScreen(
         val screenWidth = maxWidth
         val navbarHeight = 90.dp / maxHeight
         val sectionMain = 1.0f - navbarHeight
+        val context = LocalContext.current
 
         // Background image
         Image(
@@ -1026,13 +1082,12 @@ fun SettingsScreen(
                     .fillMaxWidth()
                     .fillMaxHeight(sectionMain)
             ) {
-
-                Spacer(modifier = Modifier.weight(0.08f))
+                Spacer(modifier = Modifier.weight(0.12f))
 
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(0.25f)
+                        .weight(0.29f)
                 ) {
                     TopSettingsSection(
                         selectedLanguage = selectedLanguage,
@@ -1044,7 +1099,8 @@ fun SettingsScreen(
                         onQuickActionInfoClick = onQuickActionInfoClick,
                         onHapticsToggle = onHapticsToggle,
                         onSoAToggle = onSoAToggle,
-                        onSoAInfoClick = onSoAInfoClick
+                        onSoAInfoClick = onSoAInfoClick,
+                        context = context
                     )
                 }
 
@@ -1097,7 +1153,7 @@ fun SettingsScreen(
                         )
                     ) {
                         Text(
-                            text = getExportProfileText(LocalContext.current),
+                            text = getExportProfileText(context),
                             fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
                             color = Color.White,
                             fontFamily = robotoExtraBold
@@ -1122,11 +1178,7 @@ fun SettingsScreen(
             ) {
                 // Bottom Navigation
                 BottomNavigationBar(
-                    onNavigateHome,
-                    onNavigateReports,
-                    onNavigateSettings,
-                    AppConfig.env_reports,
-                    2
+                    onNavigateHome, onNavigateReports, onNavigateSettings, AppConfig.env_reports, 2
                 )
             }
 
@@ -1154,6 +1206,147 @@ fun SettingsScreen(
             ) {
                 SceneClassifiedNotification(slideMessage)
             }
+
+            PasswordConfirmationDialog(
+                showDialog = showPasswordDialog,
+                title = getPasswordTitle(context),
+                passwordValue = passwordValue,
+                onPasswordChange = onPasswordChange,
+                firstButtonLabel = if (AppConfig.mainLanguage.code == "en") "Cancel"
+                else context.getString(R.string.dont_button_ro),
+                secondButtonLabel = if (AppConfig.mainLanguage.code == "en") context.getString(R.string.delete_button_en)
+                else context.getString(R.string.delete_button_ro),
+                onFirstButtonClick = firstButtonClickPassword,
+                onSecondButtonClick = secondButtonClickPassword,
+                showErrorPassword = showErrorPassword
+            )
+        }
+    }
+}
+
+@Composable
+fun PasswordConfirmationDialog(
+    showDialog: Boolean,
+    title: String,
+    passwordValue: String,
+    onPasswordChange: (String) -> Unit,
+    firstButtonLabel: String,
+    secondButtonLabel: String,
+    onFirstButtonClick: () -> Unit,
+    onSecondButtonClick: () -> Unit,
+    showErrorPassword: Boolean
+) {
+    AnimatedVisibility(
+        visible = showDialog, enter = fadeIn(
+            initialAlpha = 0f, animationSpec = tween(durationMillis = 0)
+        ), exit = fadeOut(
+            targetAlpha = 0f, animationSpec = tween(durationMillis = 0)
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Gray.copy(alpha = Constants.BACKGROUND_OPACITY)),
+            contentAlignment = Alignment.Center
+        ) {
+            Card(
+                modifier = Modifier.fillMaxWidth(0.8f),
+                shape = RoundedCornerShape(28.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = colorResource(R.color.notification_white)
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Icon
+                    Icon(
+                        imageVector = Icons.Filled.Info,
+                        contentDescription = "Password",
+                        modifier = Modifier.size(24.dp),
+                        tint = colorResource(R.color.std_purple_dark)
+                    )
+
+                    // Title
+                    Text(
+                        text = title,
+                        fontSize = Constants.STD_ERROR_FONT_SIZE.sp,
+                        fontFamily = robotoExtraBold,
+                        color = Color.Black,
+                        textAlign = TextAlign.Center
+                    )
+
+                    // Password Input Field
+                    OutlinedTextField(
+                        value = passwordValue,
+                        onValueChange = onPasswordChange,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Password, imeAction = ImeAction.Done
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedBorderColor = if (showErrorPassword) colorResource(R.color.error_red)
+                            else Color.Gray,
+                            focusedBorderColor = if (showErrorPassword) colorResource(R.color.error_red)
+                            else Color.Gray
+                        )
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Buttons Row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // First Button (Cancel)
+                        Button(
+                            onClick = onFirstButtonClick,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(Constants.STD_BUTTON_HEIGHT.dp),
+                            shape = RoundedCornerShape(28.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = colorResource(R.color.notification_button_white),
+                                contentColor = colorResource(R.color.std_purple)
+                            )
+                        ) {
+                            Text(
+                                text = firstButtonLabel,
+                                fontSize = Constants.STD_BUTTON_FONT_SIZE.sp
+                            )
+                        }
+
+                        // Second Button (Right)
+                        Button(
+                            onClick = onSecondButtonClick,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(Constants.STD_BUTTON_HEIGHT.dp),
+                            shape = RoundedCornerShape(28.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = colorResource(R.color.std_purple),
+                                contentColor = Color.White
+                            )
+                        ) {
+                            Text(
+                                text = secondButtonLabel,
+                                fontSize = Constants.STD_BUTTON_FONT_SIZE.sp
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -1169,9 +1362,9 @@ fun TopSettingsSection(
     onQuickActionInfoClick: () -> Unit,
     onHapticsToggle: (Boolean) -> Unit,
     onSoAToggle: (Boolean) -> Unit,
-    onSoAInfoClick: () -> Unit
+    onSoAInfoClick: () -> Unit,
+    context: Context
 ) {
-    val context = LocalContext.current
     val listOfQuickAction = remember(selectedLanguage) {
         listOf(
             getQuickAccessType(context, 0),
@@ -1224,11 +1417,8 @@ fun TopSettingsSection(
             // Quick Action Selector
             QuickActionSelector(
                 selectedOption = getQuickAccessType(
-                    LocalContext.current,
-                    selectedQuickAction
-                ),
-                availableOptions = listOfQuickAction,
-                onOptionSelected = onQuickActionChange
+                    LocalContext.current, selectedQuickAction
+                ), availableOptions = listOfQuickAction, onOptionSelected = onQuickActionChange
             )
 
             Spacer(modifier = Modifier.width(5.dp))
@@ -1251,7 +1441,7 @@ fun TopSettingsSection(
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
+            horizontalArrangement = Arrangement.spacedBy(30.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
 
@@ -1284,7 +1474,9 @@ fun TopSettingsSection(
 
             // SoA Row
             Row(
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Start
             ) {
                 Text(
                     text = getSoAText(LocalContext.current),
@@ -1329,9 +1521,7 @@ fun TopSettingsSection(
 
 @Composable
 fun SectionIndicators(
-    currentSection: Int,
-    hasRemoteProfile: Boolean,
-    screenWidth: Dp
+    currentSection: Int, hasRemoteProfile: Boolean, screenWidth: Dp
 ) {
     Row(
         modifier = Modifier
@@ -1402,93 +1592,84 @@ fun SlideableSections(
             .fillMaxWidth()
             .fillMaxHeight(0.85f)
             .pointerInput(currentSection, maxSections) {
-                detectDragGestures(
-                    onDragStart = {
-                        // Reset animated offset when starting new drag
-                        coroutineScope.launch {
-                            animatedOffset.snapTo(0f)
-                        }
-                    },
-                    onDragEnd = {
-                        val threshold = size.width * Constants.MIN_HDISTANCE_THRESHOLD
+                detectDragGestures(onDragStart = {
+                    // Reset animated offset when starting new drag
+                    coroutineScope.launch {
+                        animatedOffset.snapTo(0f)
+                    }
+                }, onDragEnd = {
+                    val threshold = size.width * Constants.MIN_HDISTANCE_THRESHOLD
 
-                        when {
-                            // Swipe left (next section)
-                            dragOffset <= -threshold && currentSection < maxSections - 1 -> {
-                                coroutineScope.launch {
-                                    // Animate rest of the way
-                                    animatedOffset.animateTo(
-                                        targetValue = -size.width.toFloat(),
-                                        animationSpec = tween(
-                                            durationMillis = 250,
-                                            easing = FastOutSlowInEasing
-                                        )
+                    when {
+                        // Swipe left (next section)
+                        dragOffset <= -threshold && currentSection < maxSections - 1 -> {
+                            coroutineScope.launch {
+                                // Animate rest of the way
+                                animatedOffset.animateTo(
+                                    targetValue = -size.width.toFloat(), animationSpec = tween(
+                                        durationMillis = 250, easing = FastOutSlowInEasing
                                     )
-                                    // Change section
-                                    onSectionChange(currentSection + 1)
-                                    // Reset offset
-                                    animatedOffset.snapTo(0f)
-                                }
-                            }
-
-                            // Swipe right (previous section)
-                            dragOffset >= threshold && currentSection > 0 -> {
-                                coroutineScope.launch {
-                                    // Animate rest of the way
-                                    animatedOffset.animateTo(
-                                        targetValue = size.width.toFloat(),
-                                        animationSpec = tween(
-                                            durationMillis = 250,
-                                            easing = FastOutSlowInEasing
-                                        )
-                                    )
-                                    // Change section
-                                    onSectionChange(currentSection - 1)
-                                    // Reset offset
-                                    animatedOffset.snapTo(0f)
-                                }
-                            }
-
-                            // Didn't pass threshold - spring back
-                            else -> {
-                                coroutineScope.launch {
-                                    animatedOffset.animateTo(
-                                        targetValue = -dragOffset,  // Animate back to 0
-                                        animationSpec = spring(
-                                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                                            stiffness = Spring.StiffnessMedium
-                                        )
-                                    )
-                                }
+                                )
+                                // Change section
+                                onSectionChange(currentSection + 1)
+                                // Reset offset
+                                animatedOffset.snapTo(0f)
                             }
                         }
 
-                        // Reset drag offset
-                        dragOffset = 0f
-                    },
-                    onDrag = { change, dragAmount ->
-                        change.consume()
-
-                        // Update drag offset (live dragging!)
-                        val newOffset = dragOffset + dragAmount.x
-
-                        // Constrain dragging at edges
-                        dragOffset = when (// At first section - prevent drag right
-                            currentSection) {
-                            0 if newOffset > 0 -> {
-                                newOffset * 0.3f  // Rubber band effect
+                        // Swipe right (previous section)
+                        dragOffset >= threshold && currentSection > 0 -> {
+                            coroutineScope.launch {
+                                // Animate rest of the way
+                                animatedOffset.animateTo(
+                                    targetValue = size.width.toFloat(), animationSpec = tween(
+                                        durationMillis = 250, easing = FastOutSlowInEasing
+                                    )
+                                )
+                                // Change section
+                                onSectionChange(currentSection - 1)
+                                // Reset offset
+                                animatedOffset.snapTo(0f)
                             }
-                            // At last section - prevent drag left
-                            maxSections - 1 if newOffset < 0 -> {
-                                newOffset * 0.3f  // Rubber band effect
-                            }
+                        }
 
-                            else -> newOffset
+                        // Didn't pass threshold - spring back
+                        else -> {
+                            coroutineScope.launch {
+                                animatedOffset.animateTo(
+                                    targetValue = -dragOffset,  // Animate back to 0
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                        stiffness = Spring.StiffnessMedium
+                                    )
+                                )
+                            }
                         }
                     }
-                )
-            }
-    ) {
+
+                    // Reset drag offset
+                    dragOffset = 0f
+                }, onDrag = { change, dragAmount ->
+                    change.consume()
+
+                    // Update drag offset (live dragging!)
+                    val newOffset = dragOffset + dragAmount.x
+
+                    // Constrain dragging at edges
+                    dragOffset = when (// At first section - prevent drag right
+                        currentSection) {
+                        0 if newOffset > 0 -> {
+                            newOffset * 0.3f  // Rubber band effect
+                        }
+                        // At last section - prevent drag left
+                        maxSections - 1 if newOffset < 0 -> {
+                            newOffset * 0.3f  // Rubber band effect
+                        }
+
+                        else -> newOffset
+                    }
+                })
+            }) {
         // Render sections with offset
         Box(
             modifier = Modifier
@@ -1496,8 +1677,7 @@ fun SlideableSections(
                 .graphicsLayer {
                     // Apply horizontal translation based on drag
                     translationX = sectionOffset
-                }
-        ) {
+                }) {
             when (currentSection) {
                 0 -> AppearanceSection(
                     onChangeDetectionColors = onChangeDetectionColors,
@@ -1529,9 +1709,7 @@ fun SlideableSections(
 
 @Composable
 fun AppearanceSection(
-    onChangeDetectionColors: () -> Unit,
-    onChangeCaptionColors: () -> Unit,
-    screenWidth: Dp
+    onChangeDetectionColors: () -> Unit, onChangeCaptionColors: () -> Unit, screenWidth: Dp
 ) {
     Column(
         modifier = Modifier
@@ -1732,10 +1910,7 @@ fun StorageSection(
 
 @Composable
 fun AccountSection(
-    onSyncProfile: () -> Unit,
-    onLogout: () -> Unit,
-    onDeleteAccount: () -> Unit,
-    screenWidth: Dp
+    onSyncProfile: () -> Unit, onLogout: () -> Unit, onDeleteAccount: () -> Unit, screenWidth: Dp
 ) {
     Column(
         modifier = Modifier
@@ -1861,15 +2036,18 @@ fun SettingsScreenPreview1() {
         onSectionChange = {},
         firstButtonClick = {},
         syncStatus = 1,
-        syncDays = 3
+        syncDays = 3,
+        firstButtonClickPassword = {},
+        secondButtonClickPassword = {},
+        onPasswordChange = {},
+        showPasswordDialog = false,
+        showErrorPassword = false,
+        passwordValue = ""
     )
 }
 
 @Preview(
-    name = "Settings Screen - Storage Section",
-    showBackground = true,
-    widthDp = 412,
-    heightDp = 917
+    name = "Settings Screen - Storage Section", showBackground = true, widthDp = 412, heightDp = 917
 )
 @Composable
 fun SettingsScreenPreview2() {
@@ -1909,15 +2087,18 @@ fun SettingsScreenPreview2() {
         onSectionChange = {},
         firstButtonClick = {},
         syncStatus = 1,
-        syncDays = 3
+        syncDays = 3,
+        firstButtonClickPassword = {},
+        secondButtonClickPassword = {},
+        onPasswordChange = {},
+        showPasswordDialog = false,
+        showErrorPassword = false,
+        passwordValue = ""
     )
 }
 
 @Preview(
-    name = "Settings Screen - Account Section",
-    showBackground = true,
-    widthDp = 412,
-    heightDp = 917
+    name = "Settings Screen - Account Section", showBackground = true, widthDp = 412, heightDp = 917
 )
 @Composable
 fun SettingsScreenPreview3() {
@@ -1957,6 +2138,12 @@ fun SettingsScreenPreview3() {
         onSectionChange = {},
         firstButtonClick = {},
         syncStatus = 1,
-        syncDays = 3
+        syncDays = 3,
+        firstButtonClickPassword = {},
+        secondButtonClickPassword = {},
+        onPasswordChange = {},
+        showPasswordDialog = false,
+        showErrorPassword = false,
+        passwordValue = ""
     )
 }

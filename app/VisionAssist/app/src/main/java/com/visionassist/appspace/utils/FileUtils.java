@@ -163,6 +163,7 @@ public class FileUtils {
                 Log.e(TAG, "Failed to delete profile file: " + file.getAbsolutePath());
                 return false;
             }
+            Log.d(TAG, "Deleted profile file: ~" + fileName);
             return true;
         }
         catch (Exception e) {

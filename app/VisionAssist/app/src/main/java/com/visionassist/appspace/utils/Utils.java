@@ -398,6 +398,7 @@ public class Utils {
                 AppConfig.caption_color = profileSource.getString("caption_color");
                 AppConfig.caption_bck_color = profileSource.getString("caption_bck_color");
                 AppConfig.haptics = profileSource.getBoolean("haptics");
+                AppConfig.SoA=profileSource.getBoolean("soa");
             } else {
                 AppConfig.tts_speech_rate = (float) profileSource.getDouble("tts_speech_rate");
                 AppConfig.tts_pitch = (float) profileSource.getDouble("tts_pitch");

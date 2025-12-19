@@ -272,6 +272,8 @@
     <string name="applying_settings_ro">Se aplică setările, vă rugăm așteptați</string>
     <string name="logging_off_en">Logging off, please wait</string>
     <string name="logging_off_ro">Deconectare, vă rugăm așteptați</string>
+    <string name="deleting_account_en">Deleting account, please wait</string>
+    <string name="deleting_account_ro">Se șterge contul, vă rugăm așteptați</string>
     <string name="quick_action_info_en">Quick Action~This option will allow you to access the app quickly from the lock screen. Once configured, a notification will appear on your lock screen with a button to launch the selected activity (e.g., detection-static, detection-dynamic, caption) directly without opening the app first.</string>
     <string name="quick_action_info_ro">Quick Action~Această opțiune vă va permite să accesați aplicația rapid din ecranul de blocare. Odată configurată, va apărea o notificare pe ecranul de blocare cu un buton pentru a lansa activitatea selectată (de ex., detecție-statică, detecție-dinamică, legendă) direct, fără a deschide mai întâi aplicația.</string>
     <string name="soa_info_en">Speed Over Accuracy~This option will let you customize the continuous streaming based actions (live detection/ find my object feature), such that if being a high active movement person, the models could respond faster, at an impact of slightly lower accuracy. If higher accuracy is preferred over speed, you can turn this feature off.</string>
@@ -308,6 +310,8 @@
     <string name="logout_error_ro">Deconectarea a eșuat. Aplicația va fi restartată pentru a asigura integritatea datelor dumneavoastră</string>
     <string name="delete_account_error_en">Account deletion failed. Application will restart to protect integrity of your data</string>
     <string name="delete_account_error_ro">Ștergerea profilului a eșuat. Aplicația va fi restartată pentru a asigura integritatea datelor dumneavoastră</string>
+    <string name="password_title_en">Insert your password for confirmation</string>
+    <string name="password_title_ro">Introduceți parola pentru confirmare</string>
     <string name="profile_exported_tutorial_en">Press the button below to select the location of where to save the profile data. When you want to import the profile, you will use this location when selecting the folder to import from</string>
     <string name="profile_exported_tutorial_ro">Apăsați butonul de mai jos pentru a selecta locația unde să salvați datele profilului. Când doriți să importați profilul, veți utiliza această locație atunci când selectați folderul din care să importați</string>
     <string name="profile_exported_en">Profile exported successfully</string>
