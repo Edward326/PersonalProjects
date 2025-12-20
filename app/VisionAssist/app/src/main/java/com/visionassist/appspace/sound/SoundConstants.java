@@ -22,6 +22,9 @@ public class SoundConstants {
     public static final int CAPTION_DONE_ID = R.raw.caption;
     public static final int CAPTION_DONE_WITH_HC_ID = R.raw.caption_hc;
 
+    // BlindSettingsActivity sounds
+    public static final int SETTINGS_APPLIED_ID = R.raw.settings_applied;
+
     // ==================== SOUND DURATIONS (ms) ====================
     // Navigation durations
     public static final int DEFAULT_MS = 2000;
@@ -33,6 +36,7 @@ public class SoundConstants {
     public static final int FIND_MY_OBJECT_STARTED_MS = 1000;
     public static final int FIND_MY_OBJECT_DONE_MS = 1000;
     public static final int CAPTION_DONE_MS = 1000;
+    public static final int SETTINGS_APPLIED_MS = 1000;
 
     // ==================== SOUND TO DURATION MAPPING ====================
     public static int getDuration(int soundResId) {
@@ -59,6 +63,9 @@ public class SoundConstants {
         }
         if (soundResId == CAPTION_DONE_ID || soundResId==CAPTION_DONE_WITH_HC_ID) {
             return CAPTION_DONE_MS;
+        }
+        if (soundResId == SETTINGS_APPLIED_ID) {
+            return SETTINGS_APPLIED_MS;
         }
 
         // Default duration if sound not found

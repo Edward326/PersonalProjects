@@ -1065,6 +1065,14 @@ fun getAppearanceSectionText(context: Context): String {
     }
 }
 
+fun getGeneralSectionText(context: Context): String {
+    return if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.general_section_en)
+    } else {
+        context.getString(R.string.general_section_ro)
+    }
+}
+
 fun getStorageSectionText(context: Context): String {
     return if (AppConfig.mainLanguage.code == "en") {
         context.getString(R.string.storage_section_en)
@@ -1086,6 +1094,14 @@ fun getChangeDetectionColorsText(context: Context): String {
         context.getString(R.string.change_detection_colors_en)
     } else {
         context.getString(R.string.change_detection_colors_ro)
+    }
+}
+
+fun getChangeTTSParametersText(context: Context): String {
+    return if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.change_tts_parameters_en)
+    } else {
+        context.getString(R.string.change_tts_parameters_ro)
     }
 }
 
@@ -1153,6 +1169,14 @@ fun getApplyingSettingsText(context: Context): String {
     }
 }
 
+fun getApplyingSettingsTextTTS(context: Context): String {
+    return if (PhoneStatusMonitor.getInstance().ttsManager.currentLocale.language=="en") {
+        context.getString(R.string.applying_settings_en)
+    } else {
+        context.getString(R.string.applying_settings_ro)
+    }
+}
+
 fun getLoggingOffText(context: Context): String {
     return if (AppConfig.mainLanguage.code == "en") {
         context.getString(R.string.logging_off_en)
@@ -1163,6 +1187,14 @@ fun getLoggingOffText(context: Context): String {
 
 fun getDeletingAccountText(context: Context): String {
     return if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.deleting_account_en)
+    } else {
+        context.getString(R.string.deleting_account_ro)
+    }
+}
+
+fun getDeletingAccountTextTTS(context: Context): String {
+    return if (PhoneStatusMonitor.getInstance().ttsManager.currentLanguage == "en") {
         context.getString(R.string.deleting_account_en)
     } else {
         context.getString(R.string.deleting_account_ro)
@@ -1266,7 +1298,6 @@ fun getDeleteAccountConfirmMessage(context: Context): String {
     return body
 }
 
-
 fun getQuickActionEnabledMessage(context: Context): String {
     return if (AppConfig.mainLanguage.code == "en") {
         context.getString(R.string.quick_action_enabled_en)
@@ -1275,8 +1306,24 @@ fun getQuickActionEnabledMessage(context: Context): String {
     }
 }
 
+fun getQuickActionEnabledMessageTTS(context: Context): String {
+    return if (PhoneStatusMonitor.getInstance().ttsManager.currentLocale.language == "en") {
+        context.getString(R.string.quick_action_enabled_en)
+    } else {
+        context.getString(R.string.quick_action_enabled_ro)
+    }
+}
+
 fun getQuickActionDisabledMessage(context: Context): String {
     return if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.quick_action_disabled_en)
+    } else {
+        context.getString(R.string.quick_action_disabled_ro)
+    }
+}
+
+fun getQuickActionDisabledMessageTTS(context: Context): String {
+    return if (PhoneStatusMonitor.getInstance().ttsManager.currentLocale.language == "en") {
         context.getString(R.string.quick_action_disabled_en)
     } else {
         context.getString(R.string.quick_action_disabled_ro)

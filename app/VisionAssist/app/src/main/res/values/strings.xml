@@ -248,12 +248,16 @@
     <string name="soa_option_en">SoA</string>
     <string name="appearance_section_en">Appearance</string>
     <string name="appearance_section_ro">Aspect</string>
+    <string name="general_section_en">General Settings</string>
+    <string name="general_section_ro">Setări Generale</string>
     <string name="storage_section_en">Storage Management</string>
     <string name="storage_section_ro">Gestionare Stocare</string>
     <string name="account_section_en">Account Management</string>
     <string name="account_section_ro">Gestionare Cont</string>
     <string name="change_detection_colors_en">Change detection colors</string>
     <string name="change_detection_colors_ro">Schimbă culorile detecției</string>
+    <string name="change_tts_parameters_en">Change Text To Speech parameters</string>
+    <string name="change_tts_parameters_ro">Schimbă parametrii modelului TTS</string>
     <string name="change_caption_colors_en">Change caption colors</string>
     <string name="change_caption_colors_ro">Schimbă culorile legendei</string>
     <string name="clear_cache_en">Clear Cache</string>
@@ -319,8 +323,8 @@
     <string name="profile_export_error_en">An error occurred during export. Please try again</string>
     <string name="profile_export_error_ro">A apărut o eroare în timpul exportului. Vă rugăm încercați din nou</string>
     <string name="ok_button_en">OK</string>
-    <string name="quick_action_disabled_en">Disabled</string>
-    <string name="quick_action_disabled_ro">Dezactivat</string>
+    <string name="quick_action_disabled_en">Quick Action disabled</string>
+    <string name="quick_action_disabled_ro">Feature Quick Action dezactivat</string>
     <string name="quick_action_detection_static_en">Detection-static</string>
     <string name="quick_action_detection_static_ro">Detecție-static</string>
     <string name="quick_action_detection_dynamic_en">Detection-dynamic</string>

@@ -54,7 +54,10 @@ import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.visionassist.appspace.R
+import com.visionassist.appspace.utils.AppConfig
 import com.visionassist.appspace.utils.Constants
+import com.visionassist.appspace.utils.haptic_model0
+import com.visionassist.appspace.utils.vibrate
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -88,7 +91,10 @@ fun HashCacheSelector(
                 SplitButtonDefaults.LeadingButton(
                     enabled = false, // Leading button is not clickable
                     onClick = {
-                        // Leading button does nothing
+                        expanded = !expanded // Toggle dropdown when trailing button is clicked
+                        if (AppConfig.haptics) {
+                            vibrate(haptic_model0())
+                        }
                     },
                     colors = ButtonDefaults.buttonColors(
                         disabledContainerColor = Color(0xFFF7F2FA),

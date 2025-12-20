@@ -6,7 +6,6 @@ import android.media.SoundPool;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -69,6 +68,7 @@ public class SoundManager {
         loadSound(SoundConstants.FIND_MY_OBJECT_DONE_ID);
         loadSound(SoundConstants.CAPTION_DONE_ID);
         loadSound(SoundConstants.CAPTION_DONE_WITH_HC_ID);
+        loadSound(SoundConstants.SETTINGS_APPLIED_ID);
 
         Log.d(TAG, "All sounds loaded successfully (" + soundMap.size() + " sounds)");
     }

@@ -31,6 +31,7 @@ import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -74,7 +75,9 @@ fun LanguageSelector(
         Language("en", "English", "US"),
         Language("ro", "Română", "RO"),
     ),
-    onLanguageSelected: (Language) -> Unit
+    onLanguageSelected: (Language) -> Unit,
+    manualClickExpanded: Boolean = false,
+    manualExpanded: MutableState<Boolean> = mutableStateOf(false)
 ) {
     var expanded by remember { mutableStateOf(false) }
     var currentLanguage by remember { mutableStateOf(selectedLanguage) }
@@ -97,7 +100,12 @@ fun LanguageSelector(
                 SplitButtonDefaults.LeadingButton(
                     enabled = false, // Leading button is not clickable
                     onClick = {
-                        // Leading button does nothing - as you specified
+                        if (!manualClickExpanded) {
+                            expanded = !expanded // Toggle dropdown when trailing button is clicked
+                            if (AppConfig.haptics) {
+                                vibrate(haptic_model0())
+                            }
+                        }
                     },
                     colors = ButtonDefaults.buttonColors(
                         disabledContainerColor = Color(0xFFF7F2FA),
@@ -132,9 +140,12 @@ fun LanguageSelector(
                 ) {
                     SplitButtonDefaults.TrailingButton(
                         onClick = {
-                            expanded = !expanded // Toggle dropdown when trailing button is clicked
-                            if (AppConfig.haptics) {
-                                vibrate(haptic_model0())
+                            if (!manualClickExpanded) {
+                                expanded =
+                                    !expanded // Toggle dropdown when trailing button is clicked
+                                if (AppConfig.haptics) {
+                                    vibrate(haptic_model0())
+                                }
                             }
                         },
                         modifier = Modifier.semantics {
@@ -176,8 +187,10 @@ fun LanguageSelector(
         }
 
         DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
+            expanded = if (manualClickExpanded) manualExpanded.value else expanded,
+            onDismissRequest = {
+                if (manualClickExpanded) manualExpanded.value = false else expanded = false
+            },
             modifier = Modifier.wrapContentSize(),
             offset = DpOffset(x = offsetX, y = 0.dp) // Align with trailing button + small gap
         ) {

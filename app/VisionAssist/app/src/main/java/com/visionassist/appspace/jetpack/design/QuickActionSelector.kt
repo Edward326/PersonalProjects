@@ -31,6 +31,7 @@ import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -69,7 +70,9 @@ fun QuickActionSelector(
         "Detection-dynamic",
         "Caption"
     ),
-    onOptionSelected: (Int) -> Unit
+    onOptionSelected: (Int) -> Unit,
+    manualClickExpanded: Boolean = false,
+    manualExpanded: MutableState<Boolean> = mutableStateOf(false)
 ) {
     var expanded by remember { mutableStateOf(false) }
     var currentOption by remember { mutableStateOf(selectedOption) }
@@ -91,7 +94,14 @@ fun QuickActionSelector(
             leadingButton = {
                 SplitButtonDefaults.LeadingButton(
                     enabled = false,
-                    onClick = { },
+                    onClick = {
+                        if (!manualClickExpanded) {
+                            expanded = !expanded // Toggle dropdown when trailing button is clicked
+                            if (AppConfig.haptics) {
+                                vibrate(haptic_model0())
+                            }
+                        }
+                    },
                     colors = ButtonDefaults.buttonColors(
                         disabledContainerColor = Color(0xFFF7F2FA),
                         disabledContentColor = Color(0xFF6750A4)
@@ -125,9 +135,11 @@ fun QuickActionSelector(
                 ) {
                     SplitButtonDefaults.TrailingButton(
                         onClick = {
-                            expanded = !expanded
-                            if (AppConfig.haptics) {
-                                vibrate(haptic_model0())
+                            if (!manualClickExpanded) {
+                                expanded = !expanded // Toggle dropdown when trailing button is clicked
+                                if (AppConfig.haptics) {
+                                    vibrate(haptic_model0())
+                                }
                             }
                         },
                         modifier = Modifier.semantics {
@@ -167,8 +179,10 @@ fun QuickActionSelector(
         }
 
         DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
+            expanded = if (manualClickExpanded) manualExpanded.value else expanded,
+            onDismissRequest = {
+                if (manualClickExpanded) manualExpanded.value = false else expanded = false
+            },
             modifier = Modifier.wrapContentSize(),
             offset = DpOffset(x = offsetX, y = 0.dp)
         ) {

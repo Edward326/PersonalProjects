@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -54,11 +55,15 @@ class UserInfoE3Activity : ComponentActivity() {
     private val ttsManager: TTSManager = PhoneStatusMonitor.getInstance().ttsManager
 
     // State for pitch and speed
-    private val pitchValue = mutableFloatStateOf(if(AppConfig.tts_pitch!=0.0f)AppConfig.tts_pitch else Constants.TTS_PITCH)
-    private val speedValue = mutableFloatStateOf(if(AppConfig.tts_speech_rate!=0.0f)AppConfig.tts_speech_rate else Constants.TTS_SPEECH_RATE)
+    private val pitchValue =
+        mutableFloatStateOf(if (AppConfig.tts_pitch != 0.0f) AppConfig.tts_pitch else Constants.TTS_PITCH)
+    private val speedValue = mutableFloatStateOf(if (AppConfig.tts_speech_rate != 0.0f) AppConfig.tts_speech_rate else Constants.TTS_SPEECH_RATE)
+    private var whatItStarted = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        whatItStarted = intent.getBooleanExtra(Constants.EXTRA_USERACC_OPTION2, false)
 
         setContent {
             UserInfoE3Screen(
@@ -77,7 +82,7 @@ class UserInfoE3Activity : ComponentActivity() {
         pitchValue.floatValue = newPitch
         ttsManager.stopSpeaking()
         // Speak the current pitch with current settings
-        val text = if(AppConfig.mainLanguage.code=="en")
+        val text = if (AppConfig.mainLanguage.code == "en")
             "The current pitch is $newPitch"
         else
             "Tonalitatea vocii este $newPitch"
@@ -90,7 +95,7 @@ class UserInfoE3Activity : ComponentActivity() {
 
         ttsManager.stopSpeaking()
         // Speak the current pitch with current settings
-        val text = if(AppConfig.mainLanguage.code=="en")
+        val text = if (AppConfig.mainLanguage.code == "en")
             "The speed of assistant is $newSpeed"
         else
             "Viteza vocii este $newSpeed"
@@ -98,6 +103,11 @@ class UserInfoE3Activity : ComponentActivity() {
     }
 
     private fun handleBackClick() {
+        if(whatItStarted){
+            finish()
+            return
+        }
+
         // Check if contributor
         if (AppConfig.isContributor) {
             ProfileFileCollection.deleteUserInfoActivity(1)
@@ -105,8 +115,7 @@ class UserInfoE3Activity : ComponentActivity() {
             intent.putExtra(Constants.EXTRA_USERINFO_OPTION, 2)
             startActivity(intent)
             finish()
-        }
-        else {
+        } else {
             ProfileFileCollection.deleteUserInfoActivity(0)
             val intent = Intent(this, UserInfoActivity::class.java)
             intent.putExtra(Constants.EXTRA_USERINFO_OPTION, 1)
@@ -121,6 +130,12 @@ class UserInfoE3Activity : ComponentActivity() {
 
         AppConfig.tts_pitch = pitchValue.floatValue
         AppConfig.tts_speech_rate = speedValue.floatValue
+
+        if(whatItStarted){
+            finish()
+            return
+        }
+
         // Navigate to UserHashCachingActivity
         val intent = Intent(this, UserHashCachingActivity::class.java)
         intent.putExtra(Constants.EXTRA_HCACHING_OPTION, 1)
@@ -196,7 +211,7 @@ fun UserInfoE3Screen(
 
             // Pitch Slider
             CustomSlider(
-                value =  pitchValue,
+                value = pitchValue,
                 onValueChange = onPitchChange,
                 valueRange = 0f..2f,
                 steps = 8,  // 8 stops
@@ -219,7 +234,7 @@ fun UserInfoE3Screen(
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = String.format("%.2f",pitchValue),
+                text = String.format("%.2f", pitchValue),
                 fontSize = Constants.STD_SLIDER_INFO_SIZE.sp,
                 color = colorResource(R.color.std_purple),
                 fontFamily = robotoSemibold
@@ -261,7 +276,7 @@ fun UserInfoE3Screen(
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = String.format("%.2f",speedValue),
+                text = String.format("%.2f", speedValue),
                 fontSize = Constants.STD_SLIDER_INFO_SIZE.sp,
                 color = colorResource(R.color.std_purple),
                 fontFamily = robotoSemibold
