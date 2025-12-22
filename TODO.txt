@@ -7,9 +7,11 @@
 
 -de rezolvat incardrare activiatet in ecranul util al telefonului(fara status bar si nav bar)
 
--schimbat design meniu
-
 -slider sa se poate misca prin pan
+
+-cand UI nu e vizibil, dezact Talkback la UI
+
+-schimbat design meniu
 
 -testarea aplicatiei + debugging
 
