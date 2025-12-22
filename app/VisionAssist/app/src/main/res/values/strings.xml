@@ -274,6 +274,8 @@
     <string name="export_profile_ro">Exportă profilul</string>
     <string name="applying_settings_en">Applying settings, please wait</string>
     <string name="applying_settings_ro">Se aplică setările, vă rugăm așteptați</string>
+    <string name="syncing_en">Syncing profile, please wait</string>
+    <string name="syncing_ro">Se sincronizează profilul, vă rugăm așteptați</string>
     <string name="logging_off_en">Logging off, please wait</string>
     <string name="logging_off_ro">Deconectare, vă rugăm așteptați</string>
     <string name="deleting_account_en">Deleting account, please wait</string>
@@ -316,6 +318,8 @@
     <string name="delete_account_error_ro">Ștergerea profilului a eșuat. Aplicația va fi restartată pentru a asigura integritatea datelor dumneavoastră</string>
     <string name="password_title_en">Insert your password for confirmation</string>
     <string name="password_title_ro">Introduceți parola pentru confirmare</string>
+    <string name="password_title_tts_en">Insert your password in the field below for confirmation</string>
+    <string name="password_title_tts_ro">Introduceți parola in câmpul de mai jos pentru confirmare</string>
     <string name="profile_exported_tutorial_en">Press the button below to select the location of where to save the profile data. When you want to import the profile, you will use this location when selecting the folder to import from</string>
     <string name="profile_exported_tutorial_ro">Apăsați butonul de mai jos pentru a selecta locația unde să salvați datele profilului. Când doriți să importați profilul, veți utiliza această locație atunci când selectați folderul din care să importați</string>
     <string name="profile_exported_en">Profile exported successfully</string>
@@ -324,7 +328,7 @@
     <string name="profile_export_error_ro">A apărut o eroare în timpul exportului. Vă rugăm încercați din nou</string>
     <string name="ok_button_en">OK</string>
     <string name="quick_action_disabled_en">Quick Action disabled</string>
-    <string name="quick_action_disabled_ro">Feature Quick Action dezactivat</string>
+    <string name="quick_action_disabled_ro">Quick Action dezactivat</string>
     <string name="quick_action_detection_static_en">Detection-static</string>
     <string name="quick_action_detection_static_ro">Detecție-static</string>
     <string name="quick_action_detection_dynamic_en">Detection-dynamic</string>

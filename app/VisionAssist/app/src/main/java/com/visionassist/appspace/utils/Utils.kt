@@ -1073,6 +1073,14 @@ fun getGeneralSectionText(context: Context): String {
     }
 }
 
+fun getGeneralSectionTextTTS(context: Context): String {
+    return if (PhoneStatusMonitor.getInstance().ttsManager.currentLanguage == "en") {
+        "Navigate to " + context.getString(R.string.general_section_en) + " section"
+    } else {
+        "Navighează spre secțiunea " + context.getString(R.string.general_section_ro)
+    }
+}
+
 fun getStorageSectionText(context: Context): String {
     return if (AppConfig.mainLanguage.code == "en") {
         context.getString(R.string.storage_section_en)
@@ -1086,6 +1094,14 @@ fun getAccountSectionText(context: Context): String {
         context.getString(R.string.account_section_en)
     } else {
         context.getString(R.string.account_section_ro)
+    }
+}
+
+fun getAccountSectionTextTTS(context: Context): String {
+    return if (PhoneStatusMonitor.getInstance().ttsManager.currentLanguage == "en") {
+        "Navigate to " + context.getString(R.string.account_section_en) + " section"
+    } else {
+        "Navighează spre secțiunea " + context.getString(R.string.account_section_ro)
     }
 }
 
@@ -1169,8 +1185,24 @@ fun getApplyingSettingsText(context: Context): String {
     }
 }
 
+fun getSyncProfile(context: Context): String {
+    return if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.syncing_en)
+    } else {
+        context.getString(R.string.syncing_ro)
+    }
+}
+
+fun getSyncProfileTTS(context: Context): String {
+    return if (PhoneStatusMonitor.getInstance().ttsManager.currentLocale.language == "en") {
+        context.getString(R.string.syncing_en)
+    } else {
+        context.getString(R.string.syncing_ro)
+    }
+}
+
 fun getApplyingSettingsTextTTS(context: Context): String {
-    return if (PhoneStatusMonitor.getInstance().ttsManager.currentLocale.language=="en") {
+    return if (PhoneStatusMonitor.getInstance().ttsManager.currentLocale.language == "en") {
         context.getString(R.string.applying_settings_en)
     } else {
         context.getString(R.string.applying_settings_ro)
@@ -1179,6 +1211,14 @@ fun getApplyingSettingsTextTTS(context: Context): String {
 
 fun getLoggingOffText(context: Context): String {
     return if (AppConfig.mainLanguage.code == "en") {
+        context.getString(R.string.logging_off_en)
+    } else {
+        context.getString(R.string.logging_off_ro)
+    }
+}
+
+fun getLoggingOffTextTTS(context: Context): String {
+    return if (PhoneStatusMonitor.getInstance().ttsManager.currentLocale.language == "en") {
         context.getString(R.string.logging_off_en)
     } else {
         context.getString(R.string.logging_off_ro)
@@ -1256,6 +1296,19 @@ fun getSoAInfoMessage(context: Context): String {
     }
 
     return body
+}
+
+fun getSoAToggle(enabled: Boolean): String {
+    return if (enabled)
+        if (AppConfig.mainLanguage.code == "en")
+            "Speed over Accuracy enabled"
+        else
+            "Speed over Accuracy activat"
+    else
+        if (AppConfig.mainLanguage.code == "en")
+            "Speed over Accuracy disabled"
+        else
+            "Speed over Accuracy dezactivat"
 }
 
 fun getClearCacheConfirmMessage(context: Context): String {
@@ -1407,6 +1460,14 @@ fun getPasswordTitle(context: Context): String {
         context.getString(R.string.password_title_en)
     } else {
         context.getString(R.string.password_title_ro)
+    }
+}
+
+fun getPasswordTitleTTS(context: Context): String {
+    return if (PhoneStatusMonitor.getInstance().ttsManager.currentLocale.language == "en") {
+        context.getString(R.string.password_title_tts_en)
+    } else {
+        context.getString(R.string.password_title_tts_ro)
     }
 }
 

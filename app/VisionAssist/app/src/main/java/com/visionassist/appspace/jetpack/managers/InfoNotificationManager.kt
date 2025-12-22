@@ -12,7 +12,7 @@ import com.visionassist.appspace.jetpack.design.InfoNotificationDialog
 class InfoNotificationManager(
     private val activity: Activity
 ) {
-    private var isVisibleState = mutableStateOf(false)
+    var isVisibleState = mutableStateOf(false)
     private var messageState = mutableStateOf("")
     private var twoButtonsState = mutableStateOf(false)
     private var firstButtonLabelState = mutableStateOf("OK")

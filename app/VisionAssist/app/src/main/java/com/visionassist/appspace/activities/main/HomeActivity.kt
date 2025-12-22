@@ -88,6 +88,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.hideFromAccessibility
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
@@ -1560,12 +1562,20 @@ fun SyncStatusSection(
             } else
                 if (showVersion) {
                     Text(
+                        modifier = Modifier
+                            .semantics {
+                                hideFromAccessibility()
+                            },
                         text = "version: ",
                         fontSize = Constants.STD_FONT_SIZE.sp,
                         fontFamily = robotoLight,
                         color = colorResource(R.color.std_cyan)
                     )
                     Text(
+                        modifier = Modifier
+                            .semantics {
+                                hideFromAccessibility()
+                            },
                         text = Constants.APP_VERSION,
                         fontSize = Constants.STD_FONT_SIZE.sp,
                         fontFamily = robotoExtraBold,

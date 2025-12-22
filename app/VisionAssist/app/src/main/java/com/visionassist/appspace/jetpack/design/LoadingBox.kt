@@ -30,6 +30,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.hideFromAccessibility
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -77,6 +79,10 @@ fun LoadingComponent(
             ) {
                 // Loading Text
                 Text(
+                    modifier = Modifier
+                        .semantics {
+                            hideFromAccessibility()
+                        },
                     text = loadingText,
                     fontSize = Constants.STD_FONT_SIZE.sp,
                     fontFamily = robotoSemibold,
@@ -91,7 +97,10 @@ fun LoadingComponent(
                 LinearProgressIndicator(
                     modifier = Modifier
                         .width(230.dp)
-                        .height(8.dp),
+                        .height(8.dp)
+                        .semantics {
+                            hideFromAccessibility()
+                        },
                     color = colorResource(R.color.std_purple),
                     trackColor = Color(0xFFE8DEF8),
                     gapSize = 10.dp

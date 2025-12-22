@@ -148,6 +148,7 @@ import com.visionassist.appspace.utils.getReportsClearedMessage
 import com.visionassist.appspace.utils.getSoAInfoMessage
 import com.visionassist.appspace.utils.getSoAText
 import com.visionassist.appspace.utils.getStorageSectionText
+import com.visionassist.appspace.utils.getSyncProfile
 import com.visionassist.appspace.utils.getSyncProfileText
 import com.visionassist.appspace.utils.haptic_model0
 import com.visionassist.appspace.utils.load_genericErrorDelete
@@ -565,7 +566,7 @@ class SettingsActivity : BaseActivity() {
             return
         }
 
-        loadingText.value = getApplyingSettingsText(this)
+        loadingText.value = getSyncProfile(this)
         showLoading.value = true
 
         mainHandler.postDelayed({
@@ -1087,7 +1088,7 @@ fun SettingsScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(0.29f)
+                        .weight(0.34f)
                 ) {
                     TopSettingsSection(
                         selectedLanguage = selectedLanguage,
@@ -1107,7 +1108,7 @@ fun SettingsScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(0.5f),
+                        .weight(0.45f),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     SlideableSections(
