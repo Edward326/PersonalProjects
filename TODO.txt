@@ -1,17 +1,4 @@
--implementat core-ul aplicatiei:
-	-HomeActivity+findmyobject,BlindHomeActivity+findmyobject
-	-activitati pentru detection(low eyesight:live/static | blind), caption(low eysight | blind)
-	-EnvirotmentsReports, Settings(low eysight | blind)
-
--adaugat zoom and pan la findmyobject,blindfindmyobjetct si staticdetecion + adaugarea optinuea de salvare a foto
-
--de rezolvat incardrare activiatet in ecranul util al telefonului(fara status bar si nav bar)
-
--slider sa se poate misca prin pan
-
--cand UI nu e vizibil, dezact Talkback la UI
-
--schimbat design meniu
+-cand UI nu e vizibil, dezact Talkback la UI + interactiune
 
 -testarea aplicatiei + debugging
 
