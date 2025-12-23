@@ -2,11 +2,13 @@
 
 package com.visionassist.appspace.activities.tabs.home.findmyobjects
 
+import android.content.ContentValues
 import android.graphics.Bitmap
 import android.graphics.RectF
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.MediaStore
 import android.util.Log
 import android.util.Size
 import android.view.KeyEvent
@@ -33,6 +35,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.activities.tabs.LightManager
 import com.visionassist.appspace.activities.tabs.MotionManager
@@ -49,6 +52,10 @@ import com.visionassist.appspace.utils.PermissionChecker
 import com.visionassist.appspace.utils.haptic_model0
 import com.visionassist.appspace.utils.startBatteryLevelCheck
 import com.visionassist.appspace.utils.vibrate
+import java.io.OutputStream
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -109,6 +116,10 @@ class BlindFindMyObjectActivity : ComponentActivity() {
     private var currentSentenceIndex = 0
     private var locked = false
 
+    // Photo save feature parameters
+    private var handleVolumeDownControl = false
+    private var lockVolumeDown = false
+
     data class ThreadResult(
         val detectionResult: DetectionResult?,
         val bitmap: Bitmap?,
@@ -117,6 +128,8 @@ class BlindFindMyObjectActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         extractIntentData()
         cameraExecutor = Executors.newSingleThreadExecutor()
@@ -813,6 +826,58 @@ class BlindFindMyObjectActivity : ComponentActivity() {
         return this.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
     }
 
+    private fun saveImageToGallery(bitmap: Bitmap) {
+        lockVolumeDown = true
+
+        mainHandler.post {
+            val timestamp = SimpleDateFormat("yyyyMMddHHmmss", Locale.getDefault())
+                .format(Date())
+            val filename = "vassist_${timestamp}.jpg"
+
+            val contentValues = ContentValues().apply {
+                put(MediaStore.Images.Media.DISPLAY_NAME, filename)
+                put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+            }
+
+            val uri = contentResolver.insert(
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                contentValues
+            )
+
+            uri?.let { imageUri ->
+                var outputStream: OutputStream? = null
+                try {
+                    outputStream = contentResolver.openOutputStream(imageUri)
+                    outputStream?.let { stream ->
+                        bitmap.compress(Bitmap.CompressFormat.JPEG, 95, stream)
+                        Log.d(TAG, "Image saved to gallery: $filename")
+                    }
+                    soundManager.play(
+                        SoundConstants.PHOTO_SAVED_ID,
+                        0.7f, 0.7f,
+                    ) {
+                        lockVolumeDown = false
+                        handleVolumeDownControl = false
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error writing image to gallery", e)
+                    // Delete the incomplete file
+                    contentResolver.delete(imageUri, null, null)
+
+                    soundManager.play(
+                        SoundConstants.STT_ERROR_ID,
+                        0.7f, 0.7f,
+                    ) {
+                        lockVolumeDown = false
+                        handleVolumeDownControl = false
+                    }
+                } finally {
+                    outputStream?.close()
+                }
+            }
+        }
+    }
+
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         return when (keyCode) {
             KeyEvent.KEYCODE_VOLUME_UP -> {
@@ -824,8 +889,19 @@ class BlindFindMyObjectActivity : ComponentActivity() {
                 if (isSpeakingPhase)
                     ttsManager.onVolumeDownPressed()
                 else
-                    if (remainingClassIndices.isNotEmpty() && showResult.value)
-                        handleNextClick()
+                    if (showResult.value && !lockVolumeDown) {
+                        if (!handleVolumeDownControl) {
+                            handleVolumeDownControl = true
+                            if (remainingClassIndices.isNotEmpty())
+                                mainHandler.postDelayed(
+                                    { handleVolumeDownControl = false; handleNextClick() },
+                                    Constants.VOLUME_DOWN_DELAY_MS.toLong()
+                                )
+                        } else {
+                            mainHandler.removeCallbacksAndMessages(null)
+                            saveImageToGallery(resultBitmap.value!!)
+                        }
+                    }
                 true
             }
 

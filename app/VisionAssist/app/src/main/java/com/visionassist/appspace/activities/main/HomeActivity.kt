@@ -40,13 +40,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -99,6 +103,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
+import androidx.core.view.WindowCompat
 import com.visionassist.appspace.BaseActivity
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
@@ -196,6 +201,8 @@ class HomeActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         registerCameraLauncher()
 
@@ -381,6 +388,7 @@ class HomeActivity : BaseActivity() {
                 if (!PhoneStatusMonitor.getInstance().writingToHCFinished)
                     return
 
+            returnFromFindMyObject = true
             intent.putExtra(Constants.EXTRA_IMAGE_URI, currentPhotoUri.toString())
             startActivity(intent)
         } catch (e: Exception) {
@@ -827,18 +835,31 @@ fun HomeScreen(
     onSpeechDialogTap: () -> Unit,
     navigateFun: () -> Unit,
 ) {
+    val navBarHeight = WindowInsets.navigationBars.getBottom(LocalDensity.current)
+    val navBarHeightDp = with(LocalDensity.current) { navBarHeight.toDp() }
+
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
     ) {
         val screenHeight = maxHeight
         val screenWidth = maxWidth
-        val navbarHeight = 90.dp / maxHeight
+        val navbarHeight = 80.dp / maxHeight
         val sectionMain = 1.0f - navbarHeight
+
+        // Background image
+        Image(
+            painter = painterResource(R.drawable.app_background),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
 
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
                 .pointerInput(Unit) {
                     var swipeStartX = 0f
                     detectHorizontalDragGestures(
@@ -863,14 +884,6 @@ fun HomeScreen(
                     )
                 }
         ) {
-            // Background image
-            Image(
-                painter = painterResource(R.drawable.app_background),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-
             // Main content
             Column(
                 modifier = Modifier
@@ -960,16 +973,23 @@ fun HomeScreen(
                     showReports = AppConfig.env_reports
                 )
             }
-
-            // Speech Recognition Dialog
-            SpeechRecognitionDialog(
-                isVisible = showSpeechDialog,
-                speechText = speechText,
-                processText = speechProcessText,
-                isSpeaking = isSpeaking,
-                onTap = onSpeechDialogTap
-            )
         }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(navBarHeightDp)  // Takes the height of status bar
+                .background(colorResource(R.color.std_light_purple))  // Your color!
+                .align(Alignment.BottomCenter)
+        )
+
+        // Speech Recognition Dialog
+        SpeechRecognitionDialog(
+            isVisible = showSpeechDialog,
+            speechText = speechText,
+            processText = speechProcessText,
+            isSpeaking = isSpeaking,
+            onTap = onSpeechDialogTap
+        )
     }
 }
 

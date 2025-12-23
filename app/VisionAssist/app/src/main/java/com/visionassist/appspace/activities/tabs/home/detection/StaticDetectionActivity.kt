@@ -2,6 +2,7 @@
 
 package com.visionassist.appspace.activities.tabs.home.detection
 
+import android.content.ContentValues
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -10,6 +11,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.MediaStore
 import android.util.Log
 import android.view.KeyEvent
 import androidx.activity.ComponentActivity
@@ -18,8 +20,11 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -31,19 +36,26 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -60,14 +72,19 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
@@ -81,7 +98,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.core.graphics.createBitmap
+import androidx.core.graphics.scale
 import androidx.core.net.toUri
+import androidx.core.view.WindowCompat
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
 import com.visionassist.appspace.activities.main.HomeActivity
@@ -95,6 +114,7 @@ import com.visionassist.appspace.models.classifier.YOLOClassifier
 import com.visionassist.appspace.models.detector.DetectionResult
 import com.visionassist.appspace.models.detector.YOLODetector
 import com.visionassist.appspace.models.detector.YOLODetectorPool
+import com.visionassist.appspace.sound.SoundConstants
 import com.visionassist.appspace.utils.AppConfig
 import com.visionassist.appspace.utils.BackgroundTaskExecutor
 import com.visionassist.appspace.utils.Constants
@@ -105,12 +125,16 @@ import com.visionassist.appspace.utils.load_noObjectsFound
 import com.visionassist.appspace.utils.load_scanningScene
 import com.visionassist.appspace.utils.robotoExtraBold
 import com.visionassist.appspace.utils.vibrate
+import kotlinx.coroutines.launch
 import java.io.File
 import java.io.IOException
+import java.io.OutputStream
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
-import androidx.core.graphics.scale
 
 class StaticDetectionActivity : ComponentActivity() {
     private val TAG = "StaticDetectionActivity"
@@ -151,6 +175,11 @@ class StaticDetectionActivity : ComponentActivity() {
     private var currentBBoxOffset = 0f
     private var currentTextRatio = Constants.TEXT_SIZE_WIDTH_SCREEN
 
+    // Photo save feature parameters
+    private var handleVolumeDownControl = false
+    private val soundManager = PhoneStatusMonitor.getInstance().soundManager
+    private var lockVolumeDown = false
+
     // Thread result
     data class ThreadResult(
         val detectionResult: DetectionResult?,
@@ -163,6 +192,8 @@ class StaticDetectionActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         classifier = if (AppConfig.env_reports)
             PhoneStatusMonitor.getInstance().modelManager.classifier
@@ -184,6 +215,7 @@ class StaticDetectionActivity : ComponentActivity() {
                 showResult = showResult.value,
                 showClassificationDialog = showClassificationDialog.value,
                 classificationText = classificationText.value,
+                originalBitmap = originalBitmap,
                 resultBitmap = resultBitmap.value,
                 onHomeClick = ::handleHomeClick,
                 onPhotoClick = ::handlePhotoClick,
@@ -544,9 +576,6 @@ class StaticDetectionActivity : ComponentActivity() {
         if (AppConfig.haptics) {
             vibrate(haptic_model0())
         }
-
-        val intent = Intent(this, HomeActivity::class.java)
-        startActivity(intent)
         finish()
     }
 
@@ -654,6 +683,58 @@ class StaticDetectionActivity : ComponentActivity() {
         )
     }
 
+    private fun saveImageToGallery(bitmap: Bitmap) {
+        lockVolumeDown = true
+
+        mainHandler.post {
+            val timestamp = SimpleDateFormat("yyyyMMddHHmmss", Locale.getDefault())
+                .format(Date())
+            val filename = "vassist_${timestamp}.jpg"
+
+            val contentValues = ContentValues().apply {
+                put(MediaStore.Images.Media.DISPLAY_NAME, filename)
+                put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+            }
+
+            val uri = contentResolver.insert(
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                contentValues
+            )
+
+            uri?.let { imageUri ->
+                var outputStream: OutputStream? = null
+                try {
+                    outputStream = contentResolver.openOutputStream(imageUri)
+                    outputStream?.let { stream ->
+                        bitmap.compress(Bitmap.CompressFormat.JPEG, 95, stream)
+                        Log.d(TAG, "Image saved to gallery: $filename")
+                    }
+                    soundManager.play(
+                        SoundConstants.PHOTO_SAVED_ID,
+                        0.7f, 0.7f,
+                    ) {
+                        lockVolumeDown = false
+                        handleVolumeDownControl = false
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error writing image to gallery", e)
+                    // Delete the incomplete file
+                    contentResolver.delete(imageUri, null, null)
+
+                    soundManager.play(
+                        SoundConstants.STT_ERROR_ID,
+                        0.7f, 0.7f,
+                    ) {
+                        lockVolumeDown = false
+                        handleVolumeDownControl = false
+                    }
+                } finally {
+                    outputStream?.close()
+                }
+            }
+        }
+    }
+
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         return when (keyCode) {
             KeyEvent.KEYCODE_VOLUME_UP -> {
@@ -662,8 +743,17 @@ class StaticDetectionActivity : ComponentActivity() {
             }
 
             KeyEvent.KEYCODE_VOLUME_DOWN -> {
-                if (showResult.value) {
-                    handlePhotoClick()
+                if (showResult.value && !lockVolumeDown) {
+                    if (!handleVolumeDownControl) {
+                        handleVolumeDownControl = true
+                        mainHandler.postDelayed(
+                            { handleVolumeDownControl = false; handlePhotoClick() },
+                            Constants.VOLUME_DOWN_DELAY_MS.toLong()
+                        )
+                    } else {
+                        mainHandler.removeCallbacksAndMessages(null)
+                        saveImageToGallery(resultBitmap.value!!)
+                    }
                 }
                 true
             }
@@ -688,6 +778,7 @@ fun StaticDetectionScreen(
     showResult: Boolean,
     showClassificationDialog: Boolean,
     classificationText: String,
+    originalBitmap: Bitmap?,
     resultBitmap: Bitmap?,
     onHomeClick: () -> Unit,
     onPhotoClick: () -> Unit,
@@ -708,15 +799,18 @@ fun StaticDetectionScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
-            if (showResult) {
-                if (resultBitmap != null)
-                    Image(
-                        bitmap = resultBitmap.asImageBitmap(),
-                        contentDescription = "Detection Result",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Fit
-                    )
-            }
+
+            if (showResult)
+                ResultPhaseWithSettings2(
+                    screenHeight = screenHeight,
+                    originalBitmap = originalBitmap,
+                    resultBitmap = resultBitmap,
+                    onHomeClick = onHomeClick,
+                    onPhotoClick = onPhotoClick,
+                    onBBoxResize = onBBoxResize,
+                    onTextResize = onTextResize
+                )
+
             // Loading overlay
             LoadingComponent(
                 isVisible = showLoading,
@@ -737,14 +831,195 @@ fun StaticDetectionScreen(
                 visible = showClassificationDialog,
                 enter = slideInVertically(initialOffsetY = { -it }),
                 exit = slideOutVertically(targetOffsetY = { -it }),
-                modifier = Modifier.align(Alignment.TopCenter)
+                modifier = Modifier
+                    .statusBarsPadding()
+                    .align(Alignment.TopCenter)
             ) {
                 SceneClassifiedNotification(classificationText)
             }
         }
+    }
+}
 
-        // Bottom panel (navigation + settings)
-        if (showResult) {
+@Composable
+fun ResultPhaseWithSettings2(
+    screenHeight: Dp,
+    originalBitmap: Bitmap?,
+    resultBitmap: Bitmap?,
+    onHomeClick: () -> Unit,
+    onPhotoClick: () -> Unit,
+    onBBoxResize: (Float) -> Unit,
+    onTextResize: (Float) -> Unit
+) {
+    // Zoom/Pan state
+    var isZoomMode by remember { mutableStateOf(false) }
+    var scale by remember { mutableFloatStateOf(1f) }
+    var offsetX by remember { mutableFloatStateOf(0f) }
+    var offsetY by remember { mutableFloatStateOf(0f) }
+
+    // Animations
+    val animatedScale = remember { Animatable(1f) }
+    val animatedOffsetX = remember { Animatable(0f) }
+    val animatedOffsetY = remember { Animatable(0f) }
+    val coroutineScope = rememberCoroutineScope()
+
+    // Cross-fade alpha for image transition
+    val resultAlpha = remember { Animatable(1f) }
+    val originalAlpha = remember { Animatable(0f) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(isZoomMode) {
+                //  DOUBLE TAP DETECTION
+                detectTapGestures(
+                    onDoubleTap = { _ ->
+                        coroutineScope.launch {
+                            if (!isZoomMode) {
+                                // Fade out result, fade in original
+                                launch { resultAlpha.animateTo(0f, tween(250)) }
+                                launch { originalAlpha.animateTo(1f, tween(250)) }
+
+                                isZoomMode = true
+                            } else {
+                                // Exit zoom mode - zoom out and show result
+                                Log.d("ZoomPan", "Exiting zoom mode")
+
+                                // Animate back to default state
+                                launch {
+                                    animatedScale.animateTo(
+                                        1f, animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                                            stiffness = Spring.StiffnessMedium
+                                        )
+                                    )
+                                }
+                                launch {
+                                    animatedOffsetX.animateTo(
+                                        0f, animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                                            stiffness = Spring.StiffnessMedium
+                                        )
+                                    )
+                                }
+                                launch {
+                                    animatedOffsetY.animateTo(
+                                        0f, animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                                            stiffness = Spring.StiffnessMedium
+                                        )
+                                    )
+                                }
+
+                                // Fade out original, fade in result
+                                launch { originalAlpha.animateTo(0f, tween(300)) }
+                                launch { resultAlpha.animateTo(1f, tween(300)) }
+
+                                // Reset state after animation
+                                launch {
+                                    kotlinx.coroutines.delay(300)
+                                    scale = 1f
+                                    offsetX = 0f
+                                    offsetY = 0f
+                                    isZoomMode = false
+                                }
+                            }
+                        }
+                    })
+            }
+            .pointerInput(isZoomMode) {
+                if (isZoomMode) {
+                    //  ZOOM GESTURE (Pinch to zoom)
+                    detectTransformGestures { _, pan, zoom, _ ->
+                        // Update scale
+                        val newScale = (scale * zoom).coerceIn(1f, 5f)
+                        scale = newScale
+
+                        coroutineScope.launch {
+                            animatedScale.snapTo(newScale)
+                        }
+
+                        // Update pan offset
+                        if (newScale > 1f) {
+                            val maxOffsetX = (size.width * (newScale - 1)) / 2
+                            val maxOffsetY = (size.height * (newScale - 1)) / 2
+
+                            offsetX = (offsetX + pan.x).coerceIn(-maxOffsetX, maxOffsetX)
+                            offsetY = (offsetY + pan.y).coerceIn(-maxOffsetY, maxOffsetY)
+
+                            coroutineScope.launch {
+                                animatedOffsetX.snapTo(offsetX)
+                                animatedOffsetY.snapTo(offsetY)
+                            }
+                        }
+                    }
+                }
+            }
+            .pointerInput(isZoomMode, scale) {
+                if (isZoomMode && scale > 1f) {
+                    //  PAN GESTURE (Drag to move)
+                    detectDragGestures { change, dragAmount ->
+                        change.consume()
+
+                        val maxOffsetX = (size.width * (scale - 1)) / 2
+                        val maxOffsetY = (size.height * (scale - 1)) / 2
+
+                        offsetX = (offsetX + dragAmount.x).coerceIn(-maxOffsetX, maxOffsetX)
+                        offsetY = (offsetY + dragAmount.y).coerceIn(-maxOffsetY, maxOffsetY)
+
+                        coroutineScope.launch {
+                            animatedOffsetX.snapTo(offsetX)
+                            animatedOffsetY.snapTo(offsetY)
+                        }
+                    }
+                }
+            }) {
+        //  ORIGINAL IMAGE (for zoom mode)
+        if (originalBitmap != null) {
+            Image(
+                bitmap = originalBitmap.asImageBitmap(),
+                contentDescription = "Original Image",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        scaleX = animatedScale.value
+                        scaleY = animatedScale.value
+                        translationX = animatedOffsetX.value
+                        translationY = animatedOffsetY.value
+                        alpha = originalAlpha.value
+                        transformOrigin = TransformOrigin.Center
+                    },
+                contentScale = ContentScale.Fit
+            )
+        }
+
+        //  RESULT IMAGE (with bounding boxes)
+        if (resultBitmap != null) {
+            Image(
+                bitmap = resultBitmap.asImageBitmap(),
+                contentDescription = "Detection Result",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        alpha = resultAlpha.value
+                    },
+                contentScale = ContentScale.Fit
+            )
+        }
+
+        AnimatedVisibility(
+            visible = !isZoomMode,
+            enter = slideInVertically(
+                animationSpec = tween(durationMillis = 250),
+                initialOffsetY = { it }
+            ),
+            exit = slideOutVertically(
+                animationSpec = tween(durationMillis = 250),
+                targetOffsetY = { it }
+            ),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+        ) {
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -823,6 +1098,9 @@ fun SettingsPanel(
     onBBoxResize: (Float) -> Unit,
     onTextResize: (Float) -> Unit
 ) {
+    val navBarHeight = WindowInsets.navigationBars.getBottom(LocalDensity.current)
+    val navBarHeightDp = with(LocalDensity.current) { navBarHeight.toDp() }
+
     var isExpanded by remember { mutableStateOf(false) }
     var currentSliderSection by remember { mutableIntStateOf(1) } // 1 = BBox, 2 = Text
 
@@ -858,6 +1136,7 @@ fun SettingsPanel(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .navigationBarsPadding()
                 .align(Alignment.BottomCenter)
                 .offset(y = navigationOffsetY)
                 .padding(bottom = 43.dp),
@@ -899,7 +1178,7 @@ fun SettingsPanel(
                     color = colorResource(R.color.notification_button_white),
                     shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
                 )
-                .padding(bottom = 43.dp),
+                .padding(bottom = navBarHeightDp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Close button at top
@@ -1019,9 +1298,6 @@ fun SettingsPanel(
                             bboxOffset = bboxOffset,
                             onBBoxChange = { newOffset ->
                                 bboxOffset = newOffset
-                                if (AppConfig.haptics) {
-                                    vibrate(haptic_model0())
-                                }
                                 onBBoxResize(newOffset)
                             }
                         )
@@ -1033,9 +1309,6 @@ fun SettingsPanel(
                             textSizeRatio = textSizeRatio,
                             onTextChange = { newRatio ->
                                 textSizeRatio = newRatio
-                                if (AppConfig.haptics) {
-                                    vibrate(haptic_model0())
-                                }
                                 onTextResize(newRatio)
                             }
                         )
@@ -1115,6 +1388,7 @@ fun StaticDetectionScreenPreview() {
         loadingText = "Scanning the scene...",
         showResult = true,
         resultBitmap = mutableBitmap,
+        originalBitmap = mutableBitmap,
         onHomeClick = {},
         onPhotoClick = {},
         onBBoxResize = {},

@@ -33,6 +33,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.activities.main.BlindHomeActivity
 import com.visionassist.appspace.activities.tabs.LightManager
@@ -118,6 +119,8 @@ class BlindDetectionActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         extractIntentData()
         cameraExecutor = Executors.newSingleThreadExecutor()
@@ -615,7 +618,6 @@ class BlindDetectionActivity : ComponentActivity() {
             haptic_model0()
         )
         waitForTTSSpeech {
-            startActivity(Intent(this, BlindHomeActivity::class.java))
             finish()
         }
     }

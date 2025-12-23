@@ -39,9 +39,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -89,6 +91,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
 import androidx.documentfile.provider.DocumentFile
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
@@ -176,6 +179,8 @@ class LoadProfileActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         // Register folder picker
         folderPickerLauncher = registerForActivityResult(
@@ -416,7 +421,7 @@ class LoadProfileActivity : ComponentActivity() {
 
                     if (result == DBConstants.SYNC_OK) {
                         // Setup TTS on main thread
-                        PhoneStatusMonitor.getInstance().modelManager.loadAssets {setTTSLanguage()}
+                        PhoneStatusMonitor.getInstance().modelManager.loadAssets { setTTSLanguage() }
                     } else {
                         // Error case
                         finishedLoading = true
@@ -465,7 +470,7 @@ class LoadProfileActivity : ComponentActivity() {
                 return Constants.LOAD_PROFILE_FILE_UPLOAD
             }
 
-            profileJson.put("init",2)
+            profileJson.put("init", 2)
             if (!ProfileFileCollection.writeProfile(profileJson)) {
                 return Constants.LOAD_PROFILE_FILE_UPLOAD
             }
@@ -581,9 +586,8 @@ class LoadProfileActivity : ComponentActivity() {
                         || result == Constants.LOAD_PROFILE_FILE_HC_UPLOAD_ERROR
                         || result == Constants.LOAD_PROFILE_FILE_ENVR_UPLOAD_ERROR
                     ) {
-                        PhoneStatusMonitor.getInstance().modelManager.loadAssets {setTTSLanguage()}
-                    }
-                    else
+                        PhoneStatusMonitor.getInstance().modelManager.loadAssets { setTTSLanguage() }
+                    } else
                         finishedLoading = true
                 }
 
@@ -639,7 +643,7 @@ class LoadProfileActivity : ComponentActivity() {
                 return Constants.LOAD_PROFILE_FILE_UPLOAD
             }
 
-            profileJson.put("init",2)
+            profileJson.put("init", 2)
 
             if (!ProfileFileCollection.writeProfile(profileJson)) {
                 return Constants.LOAD_PROFILE_FILE_UPLOAD
@@ -668,7 +672,6 @@ class LoadProfileActivity : ComponentActivity() {
                     }
                 }
             }
-
 
 
             // Step 6: Upload phase
@@ -934,47 +937,54 @@ fun LoadProfileScreen(
             contentScale = ContentScale.Crop
         )
 
-        // Profile Selection Section
-        AnimatedVisibility(
-            visible = showProfileSelection,
-            enter = slideInHorizontally(
-                initialOffsetX = { -it },
-                animationSpec = tween(durationMillis = Constants.ANIMATION_DELAY)
-            ),
-            exit = slideOutHorizontally(
-                targetOffsetX = { -it },
-                animationSpec = tween(durationMillis = Constants.ANIMATION_DELAY)
-            )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
         ) {
-            ProfileSelectionSection(
-                onLocallyClick = onLocallyClick,
-                onHaveAccountClick = onHaveAccountClick
-            )
-        }
+            // Profile Selection Section
+            AnimatedVisibility(
+                visible = showProfileSelection,
+                enter = slideInHorizontally(
+                    initialOffsetX = { -it },
+                    animationSpec = tween(durationMillis = Constants.ANIMATION_DELAY)
+                ),
+                exit = slideOutHorizontally(
+                    targetOffsetX = { -it },
+                    animationSpec = tween(durationMillis = Constants.ANIMATION_DELAY)
+                )
+            ) {
+                ProfileSelectionSection(
+                    onLocallyClick = onLocallyClick,
+                    onHaveAccountClick = onHaveAccountClick
+                )
+            }
 
-        // Login Section
-        AnimatedVisibility(
-            visible = !showProfileSelection,
-            enter = slideInHorizontally(
-                initialOffsetX = { it },
-                animationSpec = tween(durationMillis = Constants.ANIMATION_DELAY)
-            ),
-            exit = slideOutHorizontally(
-                targetOffsetX = { it },
-                animationSpec = tween(durationMillis = Constants.ANIMATION_DELAY)
-            )
-        ) {
-            LoginSection(
-                emailInput = emailInput,
-                passwordInput = passwordInput,
-                showEmailError = showEmailError,
-                showPasswordError = showPasswordError,
-                onEmailChange = onEmailChange,
-                onPasswordChange = onPasswordChange,
-                onForgotPasswordClick = onForgotPasswordClick,
-                onBackClick = onBackClickLoginSection,
-                onDoneClick = onLoginDoneClick
-            )
+            // Login Section
+            AnimatedVisibility(
+                visible = !showProfileSelection,
+                enter = slideInHorizontally(
+                    initialOffsetX = { it },
+                    animationSpec = tween(durationMillis = Constants.ANIMATION_DELAY)
+                ),
+                exit = slideOutHorizontally(
+                    targetOffsetX = { it },
+                    animationSpec = tween(durationMillis = Constants.ANIMATION_DELAY)
+                )
+            ) {
+                LoginSection(
+                    emailInput = emailInput,
+                    passwordInput = passwordInput,
+                    showEmailError = showEmailError,
+                    showPasswordError = showPasswordError,
+                    onEmailChange = onEmailChange,
+                    onPasswordChange = onPasswordChange,
+                    onForgotPasswordClick = onForgotPasswordClick,
+                    onBackClick = onBackClickLoginSection,
+                    onDoneClick = onLoginDoneClick
+                )
+            }
         }
 
         // Loading Component Overlay
@@ -1004,6 +1014,7 @@ fun LoadProfileScreen(
         if (showProfileSelection) {
             Box(
                 modifier = Modifier
+                    .navigationBarsPadding()
                     .align(Alignment.BottomCenter)
                     .padding(bottom = bottomSpace)
             ) {

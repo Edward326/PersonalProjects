@@ -25,6 +25,9 @@ public class SoundConstants {
     // BlindSettingsActivity sounds
     public static final int SETTINGS_APPLIED_ID = R.raw.settings_applied;
 
+    // Photo saved sound
+    public static final int PHOTO_SAVED_ID = R.raw.photo_saved;
+
     // ==================== SOUND DURATIONS (ms) ====================
     // Navigation durations
     public static final int DEFAULT_MS = 2000;
@@ -37,6 +40,7 @@ public class SoundConstants {
     public static final int FIND_MY_OBJECT_DONE_MS = 1000;
     public static final int CAPTION_DONE_MS = 1000;
     public static final int SETTINGS_APPLIED_MS = 1000;
+    public static final int PHOTO_SAVED_MS = 1000;
 
     // ==================== SOUND TO DURATION MAPPING ====================
     public static int getDuration(int soundResId) {
@@ -66,6 +70,9 @@ public class SoundConstants {
         }
         if (soundResId == SETTINGS_APPLIED_ID) {
             return SETTINGS_APPLIED_MS;
+        }
+        if (soundResId == PHOTO_SAVED_ID) {
+            return PHOTO_SAVED_MS;
         }
 
         // Default duration if sound not found

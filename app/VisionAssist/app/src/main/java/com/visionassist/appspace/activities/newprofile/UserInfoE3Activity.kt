@@ -19,11 +19,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -34,6 +35,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
 import com.visionassist.appspace.activities.newprofile.jsonCollection.ProfileFileCollection
@@ -57,11 +59,14 @@ class UserInfoE3Activity : ComponentActivity() {
     // State for pitch and speed
     private val pitchValue =
         mutableFloatStateOf(if (AppConfig.tts_pitch != 0.0f) AppConfig.tts_pitch else Constants.TTS_PITCH)
-    private val speedValue = mutableFloatStateOf(if (AppConfig.tts_speech_rate != 0.0f) AppConfig.tts_speech_rate else Constants.TTS_SPEECH_RATE)
+    private val speedValue =
+        mutableFloatStateOf(if (AppConfig.tts_speech_rate != 0.0f) AppConfig.tts_speech_rate else Constants.TTS_SPEECH_RATE)
     private var whatItStarted = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         whatItStarted = intent.getBooleanExtra(Constants.EXTRA_USERACC_OPTION2, false)
 
@@ -69,8 +74,14 @@ class UserInfoE3Activity : ComponentActivity() {
             UserInfoE3Screen(
                 pitchValue = pitchValue.floatValue,
                 speedValue = speedValue.floatValue,
-                onPitchChange = ::handlePitchChange,
-                onSpeedChange = ::handleSpeedChange,
+                onPitchChange = { newPitch ->
+                    pitchValue.floatValue = newPitch
+                },
+                onPitchChangeSecondary = ::handlePitchChangeSecondary,
+                onSpeedChange = { newSpeed ->
+                    speedValue.floatValue = newSpeed
+                },
+                onSpeedChangeSecondary = ::handleSpeedChangeSecondary,
                 onBackClick = ::handleBackClick,
                 onNextClick = ::handleNextClick
             )
@@ -78,7 +89,7 @@ class UserInfoE3Activity : ComponentActivity() {
     }
 
     @SuppressLint("DefaultLocale")
-    private fun handlePitchChange(newPitch: Float) {
+    private fun handlePitchChangeSecondary(newPitch: Float) {
         pitchValue.floatValue = newPitch
         ttsManager.stopSpeaking()
         // Speak the current pitch with current settings
@@ -90,7 +101,7 @@ class UserInfoE3Activity : ComponentActivity() {
     }
 
     @SuppressLint("DefaultLocale")
-    private fun handleSpeedChange(newSpeed: Float) {
+    private fun handleSpeedChangeSecondary(newSpeed: Float) {
         speedValue.floatValue = newSpeed
 
         ttsManager.stopSpeaking()
@@ -103,7 +114,7 @@ class UserInfoE3Activity : ComponentActivity() {
     }
 
     private fun handleBackClick() {
-        if(whatItStarted){
+        if (whatItStarted) {
             finish()
             return
         }
@@ -131,7 +142,7 @@ class UserInfoE3Activity : ComponentActivity() {
         AppConfig.tts_pitch = pitchValue.floatValue
         AppConfig.tts_speech_rate = speedValue.floatValue
 
-        if(whatItStarted){
+        if (whatItStarted) {
             finish()
             return
         }
@@ -172,7 +183,9 @@ fun UserInfoE3Screen(
     pitchValue: Float,
     speedValue: Float,
     onPitchChange: (Float) -> Unit,
+    onPitchChangeSecondary: (Float) -> Unit,
     onSpeedChange: (Float) -> Unit,
+    onSpeedChangeSecondary: (Float) -> Unit,
     onBackClick: () -> Unit,
     onNextClick: () -> Unit
 ) {
@@ -192,7 +205,10 @@ fun UserInfoE3Screen(
 
         // Content
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // First slider - Pitch
@@ -215,9 +231,6 @@ fun UserInfoE3Screen(
                 onValueChange = onPitchChange,
                 valueRange = 0f..2f,
                 steps = 8,  // 8 stops
-                onSliderMove = { newValue ->
-                    onPitchChange(newValue)
-                },
                 thumbStyle = ThumbStyle.DOUBLE_BAR,
                 thumbColor = colorResource(R.color.std_purple),
                 thumbWidth = 8.dp,
@@ -228,7 +241,8 @@ fun UserInfoE3Screen(
                 inactiveTrackColor = Color.White,
                 trackShadow = 5.dp,
                 modifier = Modifier.fillMaxWidth(0.8f),
-                stepsColor = colorResource(R.color.purple_light)
+                stepsColor = colorResource(R.color.purple_light),
+                onSecondary = onPitchChangeSecondary
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -270,7 +284,8 @@ fun UserInfoE3Screen(
                 inactiveTrackColor = Color.White,
                 trackShadow = 5.dp,
                 modifier = Modifier.fillMaxWidth(0.8f),
-                stepsColor = colorResource(R.color.purple_light)
+                stepsColor = colorResource(R.color.purple_light),
+                onSecondary = onSpeedChangeSecondary
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -287,6 +302,7 @@ fun UserInfoE3Screen(
         val bottomSpace = screenHeight * Constants.STD_NAV_MARGIN_BOTTOM
         Row(
             modifier = Modifier
+                .navigationBarsPadding()
                 .align(Alignment.BottomCenter)
                 .padding(bottom = bottomSpace),
             horizontalArrangement = Arrangement.spacedBy(screenWidth * 0.08f),
@@ -311,6 +327,8 @@ fun UserInfoE3ActivityPreview() {
         onPitchChange = {},
         onSpeedChange = {},
         onBackClick = {},
-        onNextClick = {}
+        onNextClick = {},
+        onPitchChangeSecondary = {},
+        onSpeedChangeSecondary = {}
     )
 }

@@ -69,6 +69,7 @@ public class SoundManager {
         loadSound(SoundConstants.CAPTION_DONE_ID);
         loadSound(SoundConstants.CAPTION_DONE_WITH_HC_ID);
         loadSound(SoundConstants.SETTINGS_APPLIED_ID);
+        loadSound(SoundConstants.PHOTO_SAVED_ID);
 
         Log.d(TAG, "All sounds loaded successfully (" + soundMap.size() + " sounds)");
     }

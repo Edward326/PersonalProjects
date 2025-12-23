@@ -24,8 +24,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -47,6 +49,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
 import com.visionassist.appspace.activities.newprofile.LoadProfileActivity.NotificationType
@@ -125,6 +128,8 @@ class UserInfoActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         // Initialize info notification manager
         infoNotificationManager = InfoNotificationManager(this)
@@ -430,61 +435,68 @@ fun UserInfoScreen(
             contentScale = ContentScale.Crop
         )
 
-        // Animated sections
-        AnimatedVisibility(
-            visible = currentSection == 1,
-            enter = slideInHorizontally(
-                initialOffsetX = { if (currentSection < 1) it else -it },
-                animationSpec = tween(Constants.ANIMATION_DELAY)
-            ),
-            exit = slideOutHorizontally(
-                targetOffsetX = { if (currentSection > 1) -it else it },
-                animationSpec = tween(Constants.ANIMATION_DELAY)
-            )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
         ) {
-            NameSection(
-                screenHeight = screenHeight,
-                nameInput = nameInput,
-                showNameError = showNameError,
-                onNameChange = onNameChange
-            )
-        }
+            // Animated sections
+            AnimatedVisibility(
+                visible = currentSection == 1,
+                enter = slideInHorizontally(
+                    initialOffsetX = { if (currentSection < 1) it else -it },
+                    animationSpec = tween(Constants.ANIMATION_DELAY)
+                ),
+                exit = slideOutHorizontally(
+                    targetOffsetX = { if (currentSection > 1) -it else it },
+                    animationSpec = tween(Constants.ANIMATION_DELAY)
+                )
+            ) {
+                NameSection(
+                    screenHeight = screenHeight,
+                    nameInput = nameInput,
+                    showNameError = showNameError,
+                    onNameChange = onNameChange
+                )
+            }
 
-        AnimatedVisibility(
-            visible = currentSection == 2,
-            enter = slideInHorizontally(
-                initialOffsetX = { if(lastSection==1) it else -it },
-                animationSpec = tween(Constants.ANIMATION_DELAY)
-            ),
-            exit = slideOutHorizontally(
-                targetOffsetX = { if (currentSection > 2) -it else it },
-                animationSpec = tween(Constants.ANIMATION_DELAY)
-            )
-        ) {
-            AgeSection(
-                screenHeight = screenHeight,
-                ageValue = ageValue,
-                onAgeChange = onAgeChange
-            )
-        }
+            AnimatedVisibility(
+                visible = currentSection == 2,
+                enter = slideInHorizontally(
+                    initialOffsetX = { if (lastSection == 1) it else -it },
+                    animationSpec = tween(Constants.ANIMATION_DELAY)
+                ),
+                exit = slideOutHorizontally(
+                    targetOffsetX = { if (currentSection > 2) -it else it },
+                    animationSpec = tween(Constants.ANIMATION_DELAY)
+                )
+            ) {
+                AgeSection(
+                    screenHeight = screenHeight,
+                    ageValue = ageValue,
+                    onAgeChange = onAgeChange
+                )
+            }
 
-        AnimatedVisibility(
-            visible = currentSection == 3,
-            enter = slideInHorizontally(
-                initialOffsetX = { it },
-                animationSpec = tween(Constants.ANIMATION_DELAY)
-            ),
-            exit = slideOutHorizontally(
-                targetOffsetX = { it },
-                animationSpec = tween(Constants.ANIMATION_DELAY)
-            )
-        ) {
-            VisionSection(
-                screenHeight = screenHeight,
-                visionInput = visionInput,
-                showVisionError = showVisionError,
-                onVisionChange = onVisionChange
-            )
+            AnimatedVisibility(
+                visible = currentSection == 3,
+                enter = slideInHorizontally(
+                    initialOffsetX = { it },
+                    animationSpec = tween(Constants.ANIMATION_DELAY)
+                ),
+                exit = slideOutHorizontally(
+                    targetOffsetX = { it },
+                    animationSpec = tween(Constants.ANIMATION_DELAY)
+                )
+            ) {
+                VisionSection(
+                    screenHeight = screenHeight,
+                    visionInput = visionInput,
+                    showVisionError = showVisionError,
+                    onVisionChange = onVisionChange
+                )
+            }
         }
 
         // Notification Dialog
@@ -507,6 +519,7 @@ fun UserInfoScreen(
         // Navigation Buttons
         Row(
             modifier = Modifier
+                .navigationBarsPadding()
                 .align(Alignment.BottomCenter)
                 .padding(bottom = bottomSpace),
             horizontalArrangement = Arrangement.spacedBy(30.dp)

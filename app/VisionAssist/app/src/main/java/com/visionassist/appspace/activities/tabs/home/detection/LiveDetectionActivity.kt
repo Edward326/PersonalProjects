@@ -41,13 +41,17 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
@@ -70,6 +74,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -77,6 +82,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
 import com.visionassist.appspace.activities.main.HomeActivity
@@ -164,6 +170,8 @@ class LiveDetectionActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         classifier = if (AppConfig.env_reports)
             PhoneStatusMonitor.getInstance().modelManager.classifier
@@ -706,7 +714,9 @@ fun LiveDetectionScreen(
             visible = showBatteryWarning,
             enter = slideInVertically(initialOffsetY = { -it }),
             exit = slideOutVertically(targetOffsetY = { -it }),
-            modifier = Modifier.align(Alignment.TopCenter)
+            modifier = Modifier
+                .statusBarsPadding()
+                .align(Alignment.TopCenter)
         ) {
             BatteryWarningNotification()
         }
@@ -863,6 +873,9 @@ fun SettingsPanel(
     onBBoxResize: (Float) -> Unit,
     onTextResize: (Float) -> Unit
 ) {
+    val navBarHeight = WindowInsets.navigationBars.getBottom(LocalDensity.current)
+    val navBarHeightDp = with(LocalDensity.current) { navBarHeight.toDp() }
+
     var isExpanded by remember { mutableStateOf(false) }
     var currentSliderSection by remember { mutableIntStateOf(1) } // 1 = BBox, 2 = Text
 
@@ -908,6 +921,7 @@ fun SettingsPanel(
             ),
             modifier = Modifier
                 .fillMaxWidth()
+                .navigationBarsPadding()
                 .align(Alignment.BottomEnd)  // ✅ Keep right alignment
         ) {
             Column(
@@ -948,7 +962,7 @@ fun SettingsPanel(
                     color = colorResource(R.color.notification_button_white),
                     shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
                 )
-                .padding(bottom = 43.dp),
+                .padding(bottom = navBarHeightDp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Close button at top
@@ -1068,9 +1082,6 @@ fun SettingsPanel(
                             bboxOffset = bboxOffset,
                             onBBoxChange = { newOffset ->
                                 bboxOffset = newOffset
-                                if (AppConfig.haptics) {
-                                    vibrate(haptic_model0())
-                                }
                                 onBBoxResize(newOffset)
                             }
                         )
@@ -1082,9 +1093,6 @@ fun SettingsPanel(
                             textSizeRatio = textSizeRatio,
                             onTextChange = { newRatio ->
                                 textSizeRatio = newRatio
-                                if (AppConfig.haptics) {
-                                    vibrate(haptic_model0())
-                                }
                                 onTextResize(newRatio)
                             }
                         )

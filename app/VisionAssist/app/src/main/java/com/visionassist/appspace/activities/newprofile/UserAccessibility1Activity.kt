@@ -33,8 +33,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -71,6 +73,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
+import androidx.core.view.WindowCompat
 import com.visionassist.appspace.R
 import com.visionassist.appspace.activities.newprofile.jsonCollection.ProfileFileCollection
 import com.visionassist.appspace.jetpack.design.BackArrowLargeFab
@@ -135,6 +138,8 @@ class UserAccessibility1Activity : ComponentActivity() {
     @SuppressLint("ServiceCast")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         // Initialize info notification manager
         infoNotificationManager = InfoNotificationManager(this)
@@ -707,68 +712,75 @@ fun UserAccessibility1Screen(
             contentScale = ContentScale.Crop
         )
 
-        // Animated content for sections
-        AnimatedContent(
-            targetState = currentSection,
-            transitionSpec = {
-                slideInHorizontally(
-                    initialOffsetX = { if (targetState > initialState) it else -it },
-                    animationSpec = tween(Constants.ANIMATION_DELAY)
-                ) togetherWith slideOutHorizontally(
-                    targetOffsetX = { if (targetState > initialState) -it else it },
-                    animationSpec = tween(Constants.ANIMATION_DELAY)
-                )
-            },
-            label = "section_transition"
-        ) { section ->
-            when (section) {
-                1 -> BoundingBoxSection(
-                    screenHeight = screenHeight,
-                    bboxRedValue = bboxRedValue,
-                    bboxGreenValue = bboxGreenValue,
-                    bboxBlueValue = bboxBlueValue,
-                    textRedValue = textRedValue,
-                    textGreenValue = textGreenValue,
-                    textBlueValue = textBlueValue,
-                    bgRedValue = bgRedValue,
-                    bgGreenValue = bgGreenValue,
-                    bgBlueValue = bgBlueValue,
-                    isBold = isBold,
-                    showConfidence = showConfidence,
-                    previewBitmap = previewBitmap,
-                    onBboxRedChange = onBboxRedChange,
-                    onBboxGreenChange = onBboxGreenChange,
-                    onBboxBlueChange = onBboxBlueChange,
-                    onTextRedChange = onTextRedChange,
-                    onTextGreenChange = onTextGreenChange,
-                    onTextBlueChange = onTextBlueChange,
-                    onBgRedChange = onBgRedChange,
-                    onBgGreenChange = onBgGreenChange,
-                    onBgBlueChange = onBgBlueChange,
-                    onBoldChange = onBoldChange,
-                    onShowConfidenceChange = onShowConfidenceChange,
-                    onInfoClick = onInfoClick
-                )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+        ) {
+            // Animated content for sections
+            AnimatedContent(
+                targetState = currentSection,
+                transitionSpec = {
+                    slideInHorizontally(
+                        initialOffsetX = { if (targetState > initialState) it else -it },
+                        animationSpec = tween(Constants.ANIMATION_DELAY)
+                    ) togetherWith slideOutHorizontally(
+                        targetOffsetX = { if (targetState > initialState) -it else it },
+                        animationSpec = tween(Constants.ANIMATION_DELAY)
+                    )
+                },
+                label = "section_transition"
+            ) { section ->
+                when (section) {
+                    1 -> BoundingBoxSection(
+                        screenHeight = screenHeight,
+                        bboxRedValue = bboxRedValue,
+                        bboxGreenValue = bboxGreenValue,
+                        bboxBlueValue = bboxBlueValue,
+                        textRedValue = textRedValue,
+                        textGreenValue = textGreenValue,
+                        textBlueValue = textBlueValue,
+                        bgRedValue = bgRedValue,
+                        bgGreenValue = bgGreenValue,
+                        bgBlueValue = bgBlueValue,
+                        isBold = isBold,
+                        showConfidence = showConfidence,
+                        previewBitmap = previewBitmap,
+                        onBboxRedChange = onBboxRedChange,
+                        onBboxGreenChange = onBboxGreenChange,
+                        onBboxBlueChange = onBboxBlueChange,
+                        onTextRedChange = onTextRedChange,
+                        onTextGreenChange = onTextGreenChange,
+                        onTextBlueChange = onTextBlueChange,
+                        onBgRedChange = onBgRedChange,
+                        onBgGreenChange = onBgGreenChange,
+                        onBgBlueChange = onBgBlueChange,
+                        onBoldChange = onBoldChange,
+                        onShowConfidenceChange = onShowConfidenceChange,
+                        onInfoClick = onInfoClick
+                    )
 
-                2 -> CaptionSection(
-                    screenHeight = screenHeight,
-                    captionTextRedValue = captionTextRedValue,
-                    captionTextGreenValue = captionTextGreenValue,
-                    captionTextBlueValue = captionTextBlueValue,
-                    captionBgRedValue = captionBgRedValue,
-                    captionBgGreenValue = captionBgGreenValue,
-                    captionBgBlueValue = captionBgBlueValue,
-                    hasHaptics = hasHaptics,
-                    onCaptionTextRedChange = onCaptionTextRedChange,
-                    onCaptionTextGreenChange = onCaptionTextGreenChange,
-                    onCaptionTextBlueChange = onCaptionTextBlueChange,
-                    onCaptionBgRedChange = onCaptionBgRedChange,
-                    onCaptionBgGreenChange = onCaptionBgGreenChange,
-                    onCaptionBgBlueChange = onCaptionBgBlueChange,
-                    onHapticsChange = onHapticsChange,
-                    onInfoClick = onInfoClick,
-                    whatItStarted = whatItStarted
-                )
+                    2 -> CaptionSection(
+                        screenHeight = screenHeight,
+                        captionTextRedValue = captionTextRedValue,
+                        captionTextGreenValue = captionTextGreenValue,
+                        captionTextBlueValue = captionTextBlueValue,
+                        captionBgRedValue = captionBgRedValue,
+                        captionBgGreenValue = captionBgGreenValue,
+                        captionBgBlueValue = captionBgBlueValue,
+                        hasHaptics = hasHaptics,
+                        onCaptionTextRedChange = onCaptionTextRedChange,
+                        onCaptionTextGreenChange = onCaptionTextGreenChange,
+                        onCaptionTextBlueChange = onCaptionTextBlueChange,
+                        onCaptionBgRedChange = onCaptionBgRedChange,
+                        onCaptionBgGreenChange = onCaptionBgGreenChange,
+                        onCaptionBgBlueChange = onCaptionBgBlueChange,
+                        onHapticsChange = onHapticsChange,
+                        onInfoClick = onInfoClick,
+                        whatItStarted = whatItStarted
+                    )
+                }
             }
         }
 
@@ -776,6 +788,7 @@ fun UserAccessibility1Screen(
         val bottomSpace = screenHeight * Constants.STD_NAV_MARGIN_BOTTOM
         Row(
             modifier = Modifier
+                .navigationBarsPadding()
                 .align(Alignment.BottomCenter)
                 .padding(bottom = bottomSpace),
             horizontalArrangement = Arrangement.spacedBy(30.dp)

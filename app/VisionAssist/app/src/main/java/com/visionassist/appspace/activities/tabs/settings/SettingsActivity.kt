@@ -32,12 +32,16 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -69,6 +73,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
@@ -79,6 +84,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
 import com.visionassist.appspace.BaseActivity
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
@@ -213,6 +219,8 @@ class SettingsActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         selectedQuickAction.value = getCurrentQuickActionIndex(this)
 
@@ -638,9 +646,11 @@ class SettingsActivity : BaseActivity() {
         mainHandler.postDelayed({
             try {
                 // Delete all local files
-                if (!FileUtils.deleteProfileDirFile(Constants.ENV_REPORTS_FILE_NAME)) throw Exception()
+                if (AppConfig.env_reports)
+                    if (!FileUtils.deleteProfileDirFile(Constants.ENV_REPORTS_FILE_NAME)) throw Exception()
 
-                if (!FileUtils.deleteProfileDirFile(Constants.HASH_CACHE_FILE_NAME)) throw Exception()
+                if (AppConfig.hash_caching.equals("light") || AppConfig.hash_caching.equals("heavy"))
+                    if (!FileUtils.deleteProfileDirFile(Constants.HASH_CACHE_FILE_NAME)) throw Exception()
 
                 if (!FileUtils.deleteProfileDirFile(Constants.PROFILE_FILE_NAME)) throw Exception()
 
@@ -761,7 +771,11 @@ class SettingsActivity : BaseActivity() {
 
         infoNotificationManager.showNotification(
             getProfileExportedMessageTutorial(this),
-            { vibrateIfNeeded(); infoNotificationManager.hideNotification(); exportProfileLauncher.launch(null) },
+            {
+                vibrateIfNeeded(); infoNotificationManager.hideNotification(); exportProfileLauncher.launch(
+                null
+            )
+            },
             if (AppConfig.mainLanguage.code == "en") "Files"
             else "Fișiere"
         )
@@ -1058,11 +1072,14 @@ fun SettingsScreen(
     showErrorPassword: Boolean,
     passwordValue: String
 ) {
+    val navBarHeight = WindowInsets.navigationBars.getBottom(LocalDensity.current)
+    val navBarHeightDp = with(LocalDensity.current) { navBarHeight.toDp() }
+
     BoxWithConstraints(
         modifier = Modifier.fillMaxSize()
     ) {
         val screenWidth = maxWidth
-        val navbarHeight = 90.dp / maxHeight
+        val navbarHeight = 80.dp / maxHeight
         val sectionMain = 1.0f - navbarHeight
         val context = LocalContext.current
 
@@ -1075,7 +1092,10 @@ fun SettingsScreen(
         )
 
         Box(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
         ) {
             // Main content
             Column(
@@ -1183,21 +1203,6 @@ fun SettingsScreen(
                 )
             }
 
-            // Loading overlay
-            LoadingComponent(
-                isVisible = showLoading, loadingText = loadingText, animSpec = Pair(
-                    fadeIn(initialAlpha = 0f, animationSpec = tween(durationMillis = 0)),
-                    fadeOut(targetAlpha = 0f, animationSpec = tween(durationMillis = 0))
-                )
-            )
-
-            NotificationDialog(
-                isVisible = showNotification,
-                type = LoadProfileActivity.NotificationType.NO_INTERNET,
-                message = notificationMessage,
-                firstButtonClick = firstButtonClick,
-            )
-
             // Slide Down Notification
             AnimatedVisibility(
                 visible = showSlideNotif,
@@ -1207,21 +1212,44 @@ fun SettingsScreen(
             ) {
                 SceneClassifiedNotification(slideMessage)
             }
-
-            PasswordConfirmationDialog(
-                showDialog = showPasswordDialog,
-                title = getPasswordTitle(context),
-                passwordValue = passwordValue,
-                onPasswordChange = onPasswordChange,
-                firstButtonLabel = if (AppConfig.mainLanguage.code == "en") "Cancel"
-                else context.getString(R.string.dont_button_ro),
-                secondButtonLabel = if (AppConfig.mainLanguage.code == "en") context.getString(R.string.delete_button_en)
-                else context.getString(R.string.delete_button_ro),
-                onFirstButtonClick = firstButtonClickPassword,
-                onSecondButtonClick = secondButtonClickPassword,
-                showErrorPassword = showErrorPassword
-            )
         }
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(navBarHeightDp)  // Takes the height of status bar
+                .background(colorResource(R.color.std_light_purple))  // Your color!
+                .align(Alignment.BottomCenter)
+        )
+
+        // Loading overlay
+        LoadingComponent(
+            isVisible = showLoading, loadingText = loadingText, animSpec = Pair(
+                fadeIn(initialAlpha = 0f, animationSpec = tween(durationMillis = 0)),
+                fadeOut(targetAlpha = 0f, animationSpec = tween(durationMillis = 0))
+            )
+        )
+
+        NotificationDialog(
+            isVisible = showNotification,
+            type = LoadProfileActivity.NotificationType.NO_INTERNET,
+            message = notificationMessage,
+            firstButtonClick = firstButtonClick,
+        )
+
+        PasswordConfirmationDialog(
+            showDialog = showPasswordDialog,
+            title = getPasswordTitle(context),
+            passwordValue = passwordValue,
+            onPasswordChange = onPasswordChange,
+            firstButtonLabel = if (AppConfig.mainLanguage.code == "en") "Cancel"
+            else context.getString(R.string.dont_button_ro),
+            secondButtonLabel = if (AppConfig.mainLanguage.code == "en") context.getString(R.string.delete_button_en)
+            else context.getString(R.string.delete_button_ro),
+            onFirstButtonClick = firstButtonClickPassword,
+            onSecondButtonClick = secondButtonClickPassword,
+            showErrorPassword = showErrorPassword
+        )
     }
 }
 

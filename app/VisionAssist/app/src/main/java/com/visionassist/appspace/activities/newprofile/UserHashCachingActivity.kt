@@ -20,8 +20,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -45,6 +47,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
 import com.visionassist.appspace.ExceptionVisionAssist
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
@@ -102,6 +105,8 @@ class UserHashCachingActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         val option = intent.getIntExtra(Constants.EXTRA_HCACHING_OPTION, 1)
         currentSection.intValue = option
@@ -265,51 +270,42 @@ class UserHashCachingActivity : ComponentActivity() {
         loadStatus = -1
 
         // Start background task
-        backgroundExecutor.executeAsync(
-            BackgroundTaskExecutor.BackgroundTask {
-                // Load profile JSON and update AppConfig
-                val profileFile = FileUtils.getProfileFile(this@UserHashCachingActivity)
-                val profileContent = profileFile.readText()
-                val jsonObject = JSONObject(profileContent)
-                jsonObject.put("init", 1)
-                ProfileFileCollection.writeProfile(jsonObject)
-                Utils.uploadProfile(jsonObject, null)
+        backgroundExecutor.executeAsync(BackgroundTaskExecutor.BackgroundTask {
+            // Load profile JSON and update AppConfig
+            val profileFile = FileUtils.getProfileFile(this@UserHashCachingActivity)
+            val profileContent = profileFile.readText()
+            val jsonObject = JSONObject(profileContent)
+            jsonObject.put("init", 1)
+            ProfileFileCollection.writeProfile(jsonObject)
+            Utils.uploadProfile(jsonObject, null)
 
-                // Sync profile to remote if needed
-                if (jsonObject.getBoolean("remote")) {
-                    val dbManager = monitor.dbManager
-                    dbManager.syncProfile(jsonObject)
-                    return@BackgroundTask dbManager.status
+            // Sync profile to remote if needed
+            if (jsonObject.getBoolean("remote")) {
+                val dbManager = monitor.dbManager
+                dbManager.syncProfile(jsonObject)
+                return@BackgroundTask dbManager.status
+            }
+
+            return@BackgroundTask DBConstants.SYNC_OK
+        }, object : BackgroundTaskExecutor.TaskCallback<Int> {
+            override fun onSuccess(result: Int) {
+                loadStatus = result
+                if (loadStatus == DBConstants.INTERNET_CONNECTION_FAILED || loadStatus == DBConstants.SYNC_OK || loadStatus == DBConstants.SYNC_ERROR || loadStatus == 0) PhoneStatusMonitor.getInstance().modelManager.loadAssets {
+                    isFinished = true
                 }
+                else isFinished = true
+            }
 
-                return@BackgroundTask DBConstants.SYNC_OK
-            },
-            object : BackgroundTaskExecutor.TaskCallback<Int> {
-                override fun onSuccess(result: Int) {
-                    loadStatus = result
-                    if (loadStatus == DBConstants.INTERNET_CONNECTION_FAILED
-                        || loadStatus == DBConstants.SYNC_OK
-                        || loadStatus == DBConstants.SYNC_ERROR
-                        || loadStatus == 0
+            override fun onError(e: Exception) {
+                if (e is JSONException) {
+                    handleProfileError(
+                        ExceptionVisionAssist(Constants.JSON_PARSE_ERROR, null)
                     )
-                        PhoneStatusMonitor.getInstance().modelManager.loadAssets {
-                            isFinished = true
-                        }
-                    else
-                        isFinished = true
-                }
-
-                override fun onError(e: Exception) {
-                    if (e is JSONException) {
-                        handleProfileError(
-                            ExceptionVisionAssist(Constants.JSON_PARSE_ERROR, null)
-                        )
-                    } else {
-                        handleProfileError(e)
-                    }
+                } else {
+                    handleProfileError(e)
                 }
             }
-        )
+        })
 
         // Wait for background task to finish
         waitForAssetLoading()
@@ -420,33 +416,40 @@ fun UserHashCachingScreen(
             contentScale = ContentScale.Crop
         )
 
-        // Content based on section
-        when (currentSection) {
-            1 -> Section1Content(
-                screenHeight = screenHeight,
-                hashCacheOption = hashCacheOption,
-                onHashCacheOptionSelected = onHashCacheOptionSelected,
-                onHashCacheInfoClick = onHashCacheInfoClick,
-            )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+        ) {
+            // Content based on section
+            when (currentSection) {
+                1 -> Section1Content(
+                    screenHeight = screenHeight,
+                    hashCacheOption = hashCacheOption,
+                    onHashCacheOptionSelected = onHashCacheOptionSelected,
+                    onHashCacheInfoClick = onHashCacheInfoClick,
+                )
 
-            2 -> Section2Content(
-                screenHeight = screenHeight,
-                envReportsEnabled = envReportsEnabled,
-                onEnvReportsToggle = onEnvReportsToggle,
-                onEnvReportsInfoClick = onEnvReportsInfoClick,
-            )
+                2 -> Section2Content(
+                    screenHeight = screenHeight,
+                    envReportsEnabled = envReportsEnabled,
+                    onEnvReportsToggle = onEnvReportsToggle,
+                    onEnvReportsInfoClick = onEnvReportsInfoClick,
+                )
+            }
         }
 
         // Loading overlay
         LoadingComponent(
-            isVisible = isLoading,
-            loadingText = loadingText
+            isVisible = isLoading, loadingText = loadingText
         )
 
         val bottomSpace = screenHeight * Constants.STD_NAV_MARGIN_BOTTOM
         // Navigation Buttons
         Row(
             modifier = Modifier
+                .navigationBarsPadding()
                 .align(Alignment.BottomCenter)
                 .padding(bottom = bottomSpace),
             horizontalArrangement = Arrangement.spacedBy(30.dp)
@@ -470,8 +473,7 @@ fun Section1Content(
     onHashCacheInfoClick: () -> Unit,
 ) {
     Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally
+        modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(modifier = Modifier.height(screenHeight * Constants.STD_SUBTITLE_MARGIN_TOP))
 
@@ -528,8 +530,7 @@ fun Section2Content(
     onEnvReportsInfoClick: () -> Unit,
 ) {
     Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally
+        modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(modifier = Modifier.height(screenHeight * 0.68f))
 
@@ -545,8 +546,7 @@ fun Section2Content(
                 color = colorResource(R.color.std_cyan),
                 fontFamily = robotoSemibold,
                 textAlign = TextAlign.Start,
-                modifier = Modifier
-                    .padding(start = 22.dp)
+                modifier = Modifier.padding(start = 22.dp)
             )
             Column(
                 horizontalAlignment = Alignment.End

@@ -30,11 +30,16 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -54,6 +59,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
@@ -63,6 +69,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
+import androidx.core.view.WindowCompat
 import com.visionassist.appspace.BaseActivity
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
@@ -138,6 +145,8 @@ class CaptionActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
         val intent = getIntent()
         quickActionIndex = intent.getIntExtra("QUICK_ACTION_INDEX", 0)
 
@@ -172,7 +181,6 @@ class CaptionActivity : BaseActivity() {
                 textSizes = textSizes,
                 onTextSizeChange = { size ->
                     currentTextSize.floatValue = size
-                    if (AppConfig.haptics) vibrate(haptic_model0())
                 },
                 onHomeClick = { handleHomeClick() },
                 onCameraClick = { handleCameraClick() },
@@ -593,7 +601,9 @@ fun CaptionScreen(
                 visible = showClassificationDialog,
                 enter = slideInVertically(initialOffsetY = { -it }),
                 exit = slideOutVertically(targetOffsetY = { -it }),
-                modifier = Modifier.align(Alignment.TopCenter)
+                modifier = Modifier
+                    .statusBarsPadding()
+                    .align(Alignment.TopCenter)
             ) {
                 SceneClassifiedNotification(classificationText)
             }
@@ -627,6 +637,9 @@ fun MainCaptionScreen(
     onCameraClick: () -> Unit,
     onSpeakClick: () -> Unit
 ) {
+    val statusBarHeight = WindowInsets.statusBars.getTop(LocalDensity.current)
+    val statusBarHeightDp = with(LocalDensity.current) { statusBarHeight.toDp() }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -659,7 +672,12 @@ fun MainCaptionScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(30.dp),
+                            .padding(
+                                start = 30.dp,
+                                end = 30.dp,
+                                bottom = 30.dp,
+                                top = statusBarHeightDp
+                            ),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Spacer(modifier = Modifier.height(screenHeight * 0.075f))
@@ -750,8 +768,12 @@ fun NavigationSection(
     onCameraClick: () -> Unit,
     onSpeakClick: () -> Unit
 ) {
+    val navBarHeight = WindowInsets.navigationBars.getBottom(LocalDensity.current)
+    val navBarHeightDp = with(LocalDensity.current) { navBarHeight.toDp() }
+
     Row(
         modifier = Modifier
+            .navigationBarsPadding()
             .fillMaxWidth()
             .padding(bottom = 43.dp),
         horizontalArrangement = Arrangement.Center,

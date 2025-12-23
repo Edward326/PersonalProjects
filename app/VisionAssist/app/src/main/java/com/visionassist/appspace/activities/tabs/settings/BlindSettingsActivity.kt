@@ -28,12 +28,16 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -57,6 +61,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -68,12 +73,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
 import com.visionassist.appspace.BaseActivity
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
 import com.visionassist.appspace.activities.main.BlindHomeActivity
 import com.visionassist.appspace.activities.main.BottomNavigationBar
-import com.visionassist.appspace.activities.main.HomeActivity
 import com.visionassist.appspace.activities.main.MainActivity
 import com.visionassist.appspace.activities.main.SyncStatusSection
 import com.visionassist.appspace.activities.newprofile.LoadProfileActivity
@@ -136,7 +141,6 @@ import com.visionassist.appspace.utils.getQuickActionText
 import com.visionassist.appspace.utils.getSoAInfoMessage
 import com.visionassist.appspace.utils.getSoAText
 import com.visionassist.appspace.utils.getSoAToggle
-import com.visionassist.appspace.utils.getSyncProfile
 import com.visionassist.appspace.utils.getSyncProfileTTS
 import com.visionassist.appspace.utils.getSyncProfileText
 import com.visionassist.appspace.utils.haptic_model0
@@ -201,6 +205,8 @@ class BlindSettingsActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         selectedQuickAction.value = getCurrentQuickActionIndex(this)
 
@@ -1288,11 +1294,14 @@ fun BlindSettingsScreen(
     showErrorPassword: Boolean,
     passwordValue: String
 ) {
+    val navBarHeight = WindowInsets.navigationBars.getBottom(LocalDensity.current)
+    val navBarHeightDp = with(LocalDensity.current) { navBarHeight.toDp() }
+
     BoxWithConstraints(
         modifier = Modifier.fillMaxSize()
     ) {
         val screenWidth = maxWidth
-        val navbarHeight = 90.dp / maxHeight
+        val navbarHeight = 80.dp / maxHeight
         val sectionMain = 1.0f - navbarHeight
         val context = LocalContext.current
 
@@ -1305,7 +1314,10 @@ fun BlindSettingsScreen(
         )
 
         Box(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
         ) {
             // Main content
             Column(
@@ -1314,7 +1326,7 @@ fun BlindSettingsScreen(
                     .fillMaxHeight(sectionMain)
                     .then(
                         if (showLoading || infoNotificationManagerValue || showNotification || showPasswordDialog || isSpeakingApplyingSettings) {
-                            Modifier.clearAndSetSemantics { }  // ✅ COMPLETELY REMOVE from tree!
+                            Modifier.clearAndSetSemantics { }  //  COMPLETELY REMOVE from tree!
                         } else {
                             Modifier
                         }
@@ -1485,7 +1497,7 @@ fun BlindSettingsScreen(
                     .fillMaxHeight(navbarHeight)
                     .then(
                         if (showLoading || infoNotificationManagerValue || showNotification || showPasswordDialog) {
-                            Modifier.clearAndSetSemantics { }  // ✅ COMPLETELY REMOVE from tree!
+                            Modifier.clearAndSetSemantics { }  //  COMPLETELY REMOVE from tree!
                         } else {
                             Modifier
                         }
@@ -1496,6 +1508,13 @@ fun BlindSettingsScreen(
                     onNavigateHome, {}, onNavigateSettings, AppConfig.env_reports, 2
                 )
             }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(navBarHeightDp)  // Takes the height of status bar
+                    .background(colorResource(R.color.std_light_purple))  // Your color!
+                    .align(Alignment.BottomCenter)
+            )
 
             // Loading overlay
             LoadingComponent(
@@ -1579,7 +1598,7 @@ fun BlindTopSettingsSection(
                 Text(
                     modifier = Modifier
                         .semantics {
-                            // ✅ Hide from TalkBack
+                            //  Hide from TalkBack
                             hideFromAccessibility()
                         },
                     text = getLanguageText(LocalContext.current),
@@ -1627,7 +1646,7 @@ fun BlindTopSettingsSection(
                 Text(
                     modifier = Modifier
                         .semantics {
-                            // ✅ Hide from TalkBack
+                            //  Hide from TalkBack
                             hideFromAccessibility()
                         },
                     text = getQuickActionText(LocalContext.current),
@@ -1678,7 +1697,7 @@ fun BlindTopSettingsSection(
                             modifier = Modifier
                                 .size(Constants.STD_INFO_BUTTON_SIZE.dp)
                                 .semantics {
-                                    // ✅ Hide from TalkBack
+                                    //  Hide from TalkBack
                                     hideFromAccessibility()
                                 }
                         )
@@ -1712,7 +1731,7 @@ fun BlindTopSettingsSection(
                 Text(
                     modifier = Modifier
                         .semantics {
-                            // ✅ Hide from TalkBack
+                            //  Hide from TalkBack
                             hideFromAccessibility()
                         },
                     text = getSoAText(LocalContext.current),
@@ -1757,7 +1776,7 @@ fun BlindTopSettingsSection(
                             modifier = Modifier
                                 .size(Constants.STD_INFO_BUTTON_SIZE.dp)
                                 .semantics {
-                                    // ✅ Hide from TalkBack
+                                    //  Hide from TalkBack
                                     hideFromAccessibility()
                                 }
                         )

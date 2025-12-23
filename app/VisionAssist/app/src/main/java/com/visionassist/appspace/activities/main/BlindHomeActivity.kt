@@ -28,12 +28,16 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
@@ -42,6 +46,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -50,6 +56,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
+import androidx.core.view.WindowCompat
 import com.visionassist.appspace.BaseActivity
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
@@ -138,6 +145,8 @@ class BlindHomeActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
         registerCameraLauncher()
 
         // Get sync status
@@ -178,6 +187,7 @@ class BlindHomeActivity : BaseActivity() {
             if (isSuccess) {
                 try {
                     val intent = Intent(this, BlindCaptionActivity::class.java)
+                    returnFromFindMyObject=true
                     intent.putExtra(Constants.EXTRA_IMAGE_URI, currentPhotoUri.toString())
                     startActivity(intent)
                 } catch (e: IOException) {
@@ -432,7 +442,9 @@ class BlindHomeActivity : BaseActivity() {
 
         onPermissionGranted = {
             checkPhoneStatusAndNavigate {
-                launchCamera()
+                val intent= Intent(this, BlindDetectionActivity::class.java)
+                returnFromFindMyObject=true
+                startActivity(intent)
             }
         }
         PermissionChecker.checkAndRequestPermissions(this, AppConfig.blindness, onPermissionGranted)
@@ -827,13 +839,16 @@ fun BlindHomeScreen(
     onTutorialSwipeUp: () -> Unit,
     onSpeechDialogTap: () -> Unit,
 ) {
+    val navBarHeight = WindowInsets.navigationBars.getBottom(LocalDensity.current)
+    val navBarHeightDp = with(LocalDensity.current) { navBarHeight.toDp() }
+
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
     ) {
         val screenHeight = maxHeight
         val screenWidth = maxWidth
-        val navbarHeight = 90.dp / maxHeight
+        val navbarHeight = 80.dp / maxHeight
         val sectionMain = 1.0f - navbarHeight
 
         Box(
@@ -860,7 +875,6 @@ fun BlindHomeScreen(
                     )
                 }
         ) {
-
             // Background
             Image(
                 painter = painterResource(R.drawable.app_background),
@@ -869,65 +883,88 @@ fun BlindHomeScreen(
                 contentScale = ContentScale.Crop
             )
 
-            // Main content
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(sectionMain)
-            ) {
-                Box(modifier = Modifier.height(screenHeight * 0.09f))
-
-                // Logo at top (250dp instead of 200dp)
-                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Image(
-                        painter = painterResource(R.drawable.vision_assist_logo),
-                        contentDescription = "app logo",
-                        modifier = Modifier.size(Constants.BLIND_LOGO_SIZE.dp)
-                    )
-                }
-
-                // Buttons column
-                Column(
-                    modifier = Modifier.weight(1f),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    // Detection row (full width clickable)
-                    DetectionRow(
-                        onClick = onDetectionClick,
-                        screenWidth = screenWidth,
-                        screenHeight = screenHeight
-                    )
-
-                    //Box(modifier = Modifier.height(screenHeight * 0.04f))
-
-                    // Caption row (full width clickable)
-                    CaptionRow(
-                        onClick = onCaptionClick,
-                        screenWidth = screenWidth,
-                        screenHeight = screenHeight
-                    )
-
-                    // Navigation areas (two clickable columns)
-                    NavigationAreas(
-                        onHomeClick = onNavigationHomeClick,
-                        onSettingsClick = onNavigationSettingsClick
-                    )
-                }
-            }
-
             Box(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .fillMaxHeight(navbarHeight),
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
             ) {
-                BottomNavigationBar(
-                    onNavigateHome = onNavigationHomeClick,
-                    onNavigateReports = {},
-                    onNavigateSettings = onNavigationSettingsClick,
-                    showReports = AppConfig.env_reports
-                )
+                // Main content
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(sectionMain)
+                ) {
+                    Box(modifier = Modifier.height(screenHeight * 0.09f))
+
+                    // Logo at top (250dp instead of 200dp)
+                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Image(
+                            painter = painterResource(R.drawable.vision_assist_logo),
+                            contentDescription = "app logo",
+                            modifier = Modifier.size(Constants.BLIND_LOGO_SIZE.dp)
+                        )
+                    }
+
+                    // Buttons column
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // Detection row (full width clickable)
+                        DetectionRow(
+                            onClick = onDetectionClick,
+                            screenWidth = screenWidth,
+                            screenHeight = screenHeight
+                        )
+
+                        //Box(modifier = Modifier.height(screenHeight * 0.04f))
+
+                        // Caption row (full width clickable)
+                        CaptionRow(
+                            onClick = onCaptionClick,
+                            screenWidth = screenWidth,
+                            screenHeight = screenHeight
+                        )
+
+                        // Navigation areas (two clickable columns)
+                        NavigationAreas(
+                            onHomeClick = onNavigationHomeClick,
+                            onSettingsClick = onNavigationSettingsClick
+                        )
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .fillMaxHeight(navbarHeight),
+                ) {
+                    BottomNavigationBar(
+                        onNavigateHome = onNavigationHomeClick,
+                        onNavigateReports = {},
+                        onNavigateSettings = onNavigationSettingsClick,
+                        showReports = AppConfig.env_reports
+                    )
+                }
             }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(navBarHeightDp)  // Takes the height of status bar
+                    .background(colorResource(R.color.std_light_purple))  // Your color!
+                    .align(Alignment.BottomCenter)
+            )
+
+            // Speech Recognition Dialog
+            SpeechRecognitionDialog(
+                isVisible = showSpeechDialog,
+                speechText = speechText,
+                processText = speechProcessText,
+                isSpeaking = isSpeaking,
+                onTap = onSpeechDialogTap
+            )
 
             // Tutorial overlay
             TutorialOverlay(
@@ -941,15 +978,6 @@ fun BlindHomeScreen(
                 onClick = onTutorialClick,
                 onSwipeUp = onTutorialSwipeUp,
                 enabled = enableTutorial
-            )
-
-            // Speech Recognition Dialog
-            SpeechRecognitionDialog(
-                isVisible = showSpeechDialog,
-                speechText = speechText,
-                processText = speechProcessText,
-                isSpeaking = isSpeaking,
-                onTap = onSpeechDialogTap
             )
         }
     }

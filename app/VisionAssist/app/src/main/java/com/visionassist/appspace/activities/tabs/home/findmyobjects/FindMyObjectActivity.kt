@@ -3,11 +3,13 @@
 package com.visionassist.appspace.activities.tabs.home.findmyobjects
 
 import android.annotation.SuppressLint
+import android.content.ContentValues
 import android.graphics.Bitmap
 import android.graphics.RectF
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.MediaStore
 import android.util.Log
 import android.util.Size
 import android.view.KeyEvent
@@ -23,8 +25,11 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
@@ -34,19 +39,26 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -62,13 +74,18 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -76,6 +93,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
 import com.visionassist.appspace.activities.tabs.LightManager
@@ -90,6 +108,7 @@ import com.visionassist.appspace.models.classifier.YOLOClassifier
 import com.visionassist.appspace.models.detector.DetectionResult
 import com.visionassist.appspace.models.detector.YOLODetector
 import com.visionassist.appspace.models.detector.YOLODetectorPool
+import com.visionassist.appspace.sound.SoundConstants
 import com.visionassist.appspace.utils.AppConfig
 import com.visionassist.appspace.utils.BackgroundTaskExecutor
 import com.visionassist.appspace.utils.Constants
@@ -99,6 +118,11 @@ import com.visionassist.appspace.utils.haptic_model0
 import com.visionassist.appspace.utils.robotoExtraBold
 import com.visionassist.appspace.utils.startBatteryLevelCheck
 import com.visionassist.appspace.utils.vibrate
+import kotlinx.coroutines.launch
+import java.io.OutputStream
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutorService
@@ -160,6 +184,11 @@ class FindMyObjectActivity : ComponentActivity() {
     private var currentBBoxOffset = 0f
     private var currentTextRatio = Constants.TEXT_SIZE_WIDTH_SCREEN
 
+    // Photo save feature parameters
+    private var handleVolumeDownControl = false
+    private val soundManager = PhoneStatusMonitor.getInstance().soundManager
+    private var lockVolumeDown = false
+
     data class ThreadResult(
         val detectionResult: DetectionResult?,
         val bitmap: Bitmap?,
@@ -171,10 +200,11 @@ class FindMyObjectActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        classifier = if (AppConfig.env_reports)
-            PhoneStatusMonitor.getInstance().modelManager.classifier
-        else
-            YOLOClassifier(this)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
+        classifier =
+            if (AppConfig.env_reports) PhoneStatusMonitor.getInstance().modelManager.classifier
+            else YOLOClassifier(this)
 
         extractIntentData()
         cameraExecutor = Executors.newSingleThreadExecutor()
@@ -184,25 +214,21 @@ class FindMyObjectActivity : ComponentActivity() {
         val tempAccModel = currentDetectorModel.acquireAccModel(5000)
         val tempNanoModel = currentDetectorModel.acquireNanoModel(5000)
 
-        canSwitchModels= tempAccModel != null && tempNanoModel != null
+        canSwitchModels = tempAccModel != null && tempNanoModel != null
 
-        if(tempAccModel != null)
-            currentDetectorModel.releaseAccModel(tempAccModel)
-        if(tempNanoModel != null)
-            currentDetectorModel.releaseNanoModel(tempNanoModel)
+        if (tempAccModel != null) currentDetectorModel.releaseAccModel(tempAccModel)
+        if (tempNanoModel != null) currentDetectorModel.releaseNanoModel(tempNanoModel)
 
 
         motionMonitor = MotionManager(
-            this,
-            mainHandler
+            this, mainHandler
         ) {
             preferNanoModel =
                 motionMonitor.linearSpeed > Constants.LINEAR_SPEED_THRESHOLD || motionMonitor.rotationSpeed > Constants.ROTATION_SPEED_THRESHOLD
         }
 
         lightMonitor = LightManager(
-            this,
-            mainHandler
+            this, mainHandler
         ) {
             if (lightMonitor.isDark) {
                 turnFlashlightOn()
@@ -214,6 +240,7 @@ class FindMyObjectActivity : ComponentActivity() {
         setContent {
             FindMyObjectScreen(
                 showResult = showResult.value,
+                originalBitmap = originalBitmap,
                 resultBitmap = resultBitmap.value,
                 hasMoreObjects = remainingClassIndices.isNotEmpty(),
                 showBatteryWarning = showBatteryWarning.value,
@@ -315,31 +342,26 @@ class FindMyObjectActivity : ComponentActivity() {
     }
 
     private fun redrawDetections() {
-        BackgroundTaskExecutor.getInstance().executeAsync(
-            {
-                // Use the smart drawing method that handles everything
-                YOLODetector.drawDetectionsWithSmartResize(
-                    originalBitmap,
-                    detectionResult,
-                    currentBBoxOffset,  // Current bbox offset
-                    currentTextRatio,   // Current text ratio (can be null for default)
-                    resources.displayMetrics
-                )
-            },
-            object : BackgroundTaskExecutor.TaskCallback<Bitmap?> {
-                override fun onSuccess(result: Bitmap?) {
-                    if (result != null) {
-                        resultBitmap.value = result
-                        // Trigger recomposition
-                        showResult.value = true
-                    }
-                }
-
-                override fun onError(e: Exception) {
-                    Log.e(TAG, "Error redrawing detections", e)
+        BackgroundTaskExecutor.getInstance().executeAsync({
+            // Use the smart drawing method that handles everything
+            YOLODetector.drawDetectionsWithSmartResize(
+                originalBitmap, detectionResult, currentBBoxOffset,  // Current bbox offset
+                currentTextRatio,   // Current text ratio (can be null for default)
+                resources.displayMetrics
+            )
+        }, object : BackgroundTaskExecutor.TaskCallback<Bitmap?> {
+            override fun onSuccess(result: Bitmap?) {
+                if (result != null) {
+                    resultBitmap.value = result
+                    // Trigger recomposition
+                    showResult.value = true
                 }
             }
-        )
+
+            override fun onError(e: Exception) {
+                Log.e(TAG, "Error redrawing detections", e)
+            }
+        })
     }
 
     private fun startCameraX(previewView: PreviewView) {
@@ -363,11 +385,10 @@ class FindMyObjectActivity : ComponentActivity() {
         val screenWidth = resources.displayMetrics.widthPixels
         val screenHeight = resources.displayMetrics.heightPixels
 
-        imageCapture = ImageCapture.Builder()
-            .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
-            .setTargetResolution(Size(screenWidth, screenHeight))
-            .setFlashMode(ImageCapture.FLASH_MODE_OFF)
-            .build()
+        imageCapture =
+            ImageCapture.Builder().setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                .setTargetResolution(Size(screenWidth, screenHeight))
+                .setFlashMode(ImageCapture.FLASH_MODE_OFF).build()
 
         val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
@@ -388,8 +409,7 @@ class FindMyObjectActivity : ComponentActivity() {
             resultsReady.set(true); batteryCheckRunning.value =
             false; motionMonitor.stopMonitoring(); lightMonitor.stopMonitoring(); turnFlashlightOff()
         }
-        if (canSwitchModels && AppConfig.SoA)
-            motionMonitor.startMonitoring()
+        if (canSwitchModels && AppConfig.SoA) motionMonitor.startMonitoring()
         lightMonitor.startMonitoring()
         // Start battery level check
         batteryCheckRunning.value = true
@@ -426,113 +446,107 @@ class FindMyObjectActivity : ComponentActivity() {
         val toRun = {
             threadCount.incrementAndGet()
             if (!resultsReady.get()) {
-                BackgroundTaskExecutor.getInstance().executeAsync(
-                    {
-                        // Capture image
-                        val currentThreadNo = "Thread_" + threadCount.get()
-                        val detectorWrapper = currentDetectorModel.acquireDetector(
-                            preferNanoModel,  // Prefer nano if moving fast
-                            5  // 5 second timeout
-                        )
-                        if (detectorWrapper == null)
-                            return@executeAsync ThreadResult(null, null, -1, 0, 0)
+                BackgroundTaskExecutor.getInstance().executeAsync({
+                    // Capture image
+                    val currentThreadNo = "Thread_" + threadCount.get()
+                    val detectorWrapper = currentDetectorModel.acquireDetector(
+                        preferNanoModel,  // Prefer nano if moving fast
+                        5  // 5 second timeout
+                    )
+                    if (detectorWrapper == null) return@executeAsync ThreadResult(
+                        null,
+                        null,
+                        -1,
+                        0,
+                        0
+                    )
 
-                        val detector = detectorWrapper.detector
+                    val detector = detectorWrapper.detector
 
-                        val bitmap = captureImageSync() ?: return@executeAsync null
+                    val bitmap = captureImageSync() ?: return@executeAsync null
 
-                        var sceneClassId = -1
-                        var classifierLatency = 0L
+                    var sceneClassId = -1
+                    var classifierLatency = 0L
 
-                        val classifierLatch = CountDownLatch(1)
+                    val classifierLatch = CountDownLatch(1)
 
-                        if (AppConfig.env_reports) {
-                            BackgroundTaskExecutor.getInstance().executeAsync(
-                                {
-                                    val classifierStart = System.currentTimeMillis()
-                                    sceneClassId = classifier.detectScene(bitmap, currentThreadNo)
-                                    classifierLatency = System.currentTimeMillis() - classifierStart
-                                    null
-                                },
-                                object : BackgroundTaskExecutor.TaskCallback<Any?> {
-                                    override fun onSuccess(result: Any?) {
-                                        classifierLatch.countDown()
-                                    }
+                    if (AppConfig.env_reports) {
+                        BackgroundTaskExecutor.getInstance().executeAsync({
+                            val classifierStart = System.currentTimeMillis()
+                            sceneClassId = classifier.detectScene(bitmap, currentThreadNo)
+                            classifierLatency = System.currentTimeMillis() - classifierStart
+                            null
+                        }, object : BackgroundTaskExecutor.TaskCallback<Any?> {
+                            override fun onSuccess(result: Any?) {
+                                classifierLatch.countDown()
+                            }
 
-                                    override fun onError(e: Exception) {
-                                        Log.e(TAG, currentThreadNo + "Classifier error", e)
-                                        classifierLatch.countDown()
-                                    }
-                                }
-                            )
-                        } else {
-                            classifierLatch.countDown() // Skip waiting if disabled
-                        }
+                            override fun onError(e: Exception) {
+                                Log.e(TAG, currentThreadNo + "Classifier error", e)
+                                classifierLatch.countDown()
+                            }
+                        })
+                    } else {
+                        classifierLatch.countDown() // Skip waiting if disabled
+                    }
 
-                        // Run detector
-                        val detectorStart = System.currentTimeMillis()
-                        val detectionResult = detector.detectObjects(bitmap, currentThreadNo)
-                        val detectorLatency = System.currentTimeMillis() - detectorStart
+                    // Run detector
+                    val detectorStart = System.currentTimeMillis()
+                    val detectionResult = detector.detectObjects(bitmap, currentThreadNo)
+                    val detectorLatency = System.currentTimeMillis() - detectorStart
 
-                        // Check if found target objects
-                        val detectedClasses = detectionResult.classIndices
-                        val foundClasses = remainingClassIndices.filter { it in detectedClasses }
+                    // Check if found target objects
+                    val detectedClasses = detectionResult.classIndices
+                    val foundClasses = remainingClassIndices.filter { it in detectedClasses }
 
-                        if (foundClasses.isEmpty()) {
-                            currentDetectorModel.releaseDetector(detectorWrapper)
-                            bitmap.recycle()
-                            return@executeAsync ThreadResult(null, null, -1, detectorLatency, 0)
-                        }
-
-                        // Filter detection result
-                        val filteredResult =
-                            filterDetectionResult(detectionResult, foundClasses, detector)
+                    if (foundClasses.isEmpty()) {
                         currentDetectorModel.releaseDetector(detectorWrapper)
+                        bitmap.recycle()
+                        return@executeAsync ThreadResult(null, null, -1, detectorLatency, 0)
+                    }
 
-                        try {
-                            val finished = classifierLatch.await(1, TimeUnit.SECONDS)
-                            if (!finished) {
-                                Log.w(TAG, currentThreadNo + "Classifier timeout after 3 seconds")
-                            }
-                        } catch (e: InterruptedException) {
-                            Log.e(TAG, currentThreadNo + "Wait interrupted", e)
+                    // Filter detection result
+                    val filteredResult =
+                        filterDetectionResult(detectionResult, foundClasses, detector)
+                    currentDetectorModel.releaseDetector(detectorWrapper)
+
+                    try {
+                        val finished = classifierLatch.await(1, TimeUnit.SECONDS)
+                        if (!finished) {
+                            Log.w(TAG, currentThreadNo + "Classifier timeout after 3 seconds")
                         }
+                    } catch (e: InterruptedException) {
+                        Log.e(TAG, currentThreadNo + "Wait interrupted", e)
+                    }
 
-                        // Now classifier is done, return result
-                        ThreadResult(
-                            filteredResult,
-                            bitmap,
-                            sceneClassId,
-                            detectorLatency,
-                            classifierLatency
-                        )
-                    },
-                    object : BackgroundTaskExecutor.TaskCallback<ThreadResult?> {
-                        override fun onSuccess(result: ThreadResult?) {
-                            if (result == null || result.detectionResult == null) {
-                                updateLatencyStats(
-                                    result?.detectorLatency ?: 0,
-                                    result?.classifierLatency ?: 0
-                                )
-                                //threadCount.decrementAndGet()
-                                return
-                            }
-
-                            // Update latency statistics
-                            updateLatencyStats(result.detectorLatency, result.classifierLatency)
-
-                            // Check if another thread already finished
-                            if (resultsReady.compareAndSet(false, true)) {
-                                processFoundObjects(result)
-                            }
-                        }
-
-                        override fun onError(e: Exception) {
-                            Log.e(TAG, "Detection thread error", e)
+                    // Now classifier is done, return result
+                    ThreadResult(
+                        filteredResult, bitmap, sceneClassId, detectorLatency, classifierLatency
+                    )
+                }, object : BackgroundTaskExecutor.TaskCallback<ThreadResult?> {
+                    override fun onSuccess(result: ThreadResult?) {
+                        if (result == null || result.detectionResult == null) {
+                            updateLatencyStats(
+                                result?.detectorLatency ?: 0, result?.classifierLatency ?: 0
+                            )
                             //threadCount.decrementAndGet()
+                            return
+                        }
+
+                        // Update latency statistics
+                        updateLatencyStats(result.detectorLatency, result.classifierLatency)
+
+                        // Check if another thread already finished
+                        if (resultsReady.compareAndSet(false, true)) {
+                            processFoundObjects(result)
                         }
                     }
-                )
+
+                    override fun onError(e: Exception) {
+                        Log.e(TAG, "Detection thread error", e)
+                        //threadCount.decrementAndGet()
+                    }
+                })
             }
         }
 
@@ -573,8 +587,7 @@ class FindMyObjectActivity : ComponentActivity() {
                                 mainHandler.postDelayed(
                                     {
                                         launchDetectionThread()
-                                    },
-                                    Constants.CAMERA_RECOVERY_MS.toLong()
+                                    }, Constants.CAMERA_RECOVERY_MS.toLong()
                                 )  // 200ms camera recovery time
                             }
 
@@ -600,8 +613,7 @@ class FindMyObjectActivity : ComponentActivity() {
                         Log.e(TAG, "Image capture failed: ${exception.message}", exception)
                         captureResult.complete(null)
                     }
-                }
-            )
+                })
 
             // Block and wait for result with timeout (5 seconds)
             // This makes the async callback synchronous
@@ -618,9 +630,7 @@ class FindMyObjectActivity : ComponentActivity() {
     }
 
     private fun filterDetectionResult(
-        original: DetectionResult,
-        foundClasses: List<Int>,
-        detector: YOLODetector
+        original: DetectionResult, foundClasses: List<Int>, detector: YOLODetector
     ): DetectionResult {
         // Get original detection data
         val originalBoxes = original.boundingBoxes
@@ -663,22 +673,17 @@ class FindMyObjectActivity : ComponentActivity() {
 
         // Return new DetectionResult with only matched objects
         return DetectionResult(
-            filteredBoxes,
-            filteredConfidences,
-            filteredLabels,
-            filteredClassIndices
+            filteredBoxes, filteredConfidences, filteredLabels, filteredClassIndices
         )
     }
 
     private fun updateLatencyStats(detectorLatency: Long, classifierLatency: Long) {
         synchronized(this) {
             if (detectorLatency > 0) {
-                avgDetectorLatency = (avgDetectorLatency + detectorLatency) /
-                        (2)
+                avgDetectorLatency = (avgDetectorLatency + detectorLatency) / (2)
             }
             if (classifierLatency > 0) {
-                avgClassifierLatency = (avgClassifierLatency + classifierLatency) /
-                        (2)
+                avgClassifierLatency = (avgClassifierLatency + classifierLatency) / (2)
             }
         }
     }
@@ -709,14 +714,14 @@ class FindMyObjectActivity : ComponentActivity() {
             }
             EnvironmentReportsManagerKt.writeDetectionReport(
                 this,
-                result.sceneClassId, listIndices,
+                result.sceneClassId,
+                listIndices,
                 threadCount.get(),
                 avgDetectorLatency,
                 avgClassifierLatency,
                 batteryUsageIncrease
             )
         }
-
 
         originalBitmap = result.bitmap
         detectionResult = result.detectionResult
@@ -765,6 +770,58 @@ class FindMyObjectActivity : ComponentActivity() {
         monitor.shutdownApp(errorDialog, monitor.currentContext)
     }
 
+    private fun saveImageToGallery(bitmap: Bitmap) {
+        lockVolumeDown = true
+
+        mainHandler.post {
+            val timestamp = SimpleDateFormat("yyyyMMddHHmmss", Locale.getDefault())
+                .format(Date())
+            val filename = "vassist_${timestamp}.jpg"
+
+            val contentValues = ContentValues().apply {
+                put(MediaStore.Images.Media.DISPLAY_NAME, filename)
+                put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+            }
+
+            val uri = contentResolver.insert(
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                contentValues
+            )
+
+            uri?.let { imageUri ->
+                var outputStream: OutputStream? = null
+                try {
+                    outputStream = contentResolver.openOutputStream(imageUri)
+                    outputStream?.let { stream ->
+                        bitmap.compress(Bitmap.CompressFormat.JPEG, 95, stream)
+                        Log.d(TAG, "Image saved to gallery: $filename")
+                    }
+                    soundManager.play(
+                        SoundConstants.PHOTO_SAVED_ID,
+                        0.7f, 0.7f,
+                    ) {
+                        lockVolumeDown = false
+                        handleVolumeDownControl = false
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error writing image to gallery", e)
+                    // Delete the incomplete file
+                    contentResolver.delete(imageUri, null, null)
+
+                    soundManager.play(
+                        SoundConstants.STT_ERROR_ID,
+                        0.7f, 0.7f,
+                    ) {
+                        lockVolumeDown = false
+                        handleVolumeDownControl = false
+                    }
+                } finally {
+                    outputStream?.close()
+                }
+            }
+        }
+    }
+
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         return when (keyCode) {
             KeyEvent.KEYCODE_VOLUME_UP -> {
@@ -773,8 +830,19 @@ class FindMyObjectActivity : ComponentActivity() {
             }
 
             KeyEvent.KEYCODE_VOLUME_DOWN -> {
-                if (remainingClassIndices.isNotEmpty() && showResult.value) {
-                    handleNextClick()
+                if (showResult.value && !lockVolumeDown) {
+                    if (!handleVolumeDownControl) {
+                        handleVolumeDownControl = true
+                        if (remainingClassIndices.isNotEmpty()) {
+                            mainHandler.postDelayed(
+                                { handleVolumeDownControl = false; handleNextClick() },
+                                Constants.VOLUME_DOWN_DELAY_MS.toLong()
+                            )
+                        }
+                    } else {
+                        mainHandler.removeCallbacksAndMessages(null)
+                        saveImageToGallery(resultBitmap.value!!)
+                    }
                 }
                 true
             }
@@ -803,6 +871,7 @@ class FindMyObjectActivity : ComponentActivity() {
 @Composable
 fun FindMyObjectScreen(
     showResult: Boolean,
+    originalBitmap: Bitmap?,
     resultBitmap: Bitmap?,
     hasMoreObjects: Boolean,
     showBatteryWarning: Boolean,
@@ -824,7 +893,9 @@ fun FindMyObjectScreen(
         } else {
             // Result phase - Result image + Navigation
             ResultPhaseWithSettings(
-                screenHeight = screenHeight, screenWidth = screenWidth,
+                screenHeight = screenHeight,
+                screenWidth = screenWidth,
+                originalBitmap = originalBitmap,
                 resultBitmap = resultBitmap,
                 hasMoreObjects = hasMoreObjects,
                 onBackClick = onBackClick,
@@ -839,7 +910,9 @@ fun FindMyObjectScreen(
             visible = showBatteryWarning,
             enter = slideInVertically(initialOffsetY = { -it }),
             exit = slideOutVertically(targetOffsetY = { -it }),
-            modifier = Modifier.align(Alignment.TopCenter)
+            modifier = Modifier
+                .statusBarsPadding()
+                .align(Alignment.TopCenter)
         ) {
             BatteryWarningNotification()
         }
@@ -858,8 +931,7 @@ fun DetectionPhase(
                 PreviewView(context).also { previewView ->
                     onCameraReady(previewView)
                 }
-            },
-            modifier = Modifier.fillMaxSize()
+            }, modifier = Modifier.fillMaxSize()
         )
 
     }
@@ -901,6 +973,7 @@ fun BatteryWarningNotification() {
 fun ResultPhaseWithSettings(
     screenHeight: Dp,
     screenWidth: Dp,
+    originalBitmap: Bitmap?,
     resultBitmap: Bitmap?,
     hasMoreObjects: Boolean,
     onBackClick: () -> Unit,
@@ -908,32 +981,191 @@ fun ResultPhaseWithSettings(
     onBBoxResize: (Float) -> Unit,
     onTextResize: (Float) -> Unit
 ) {
-    Box(modifier = Modifier.fillMaxSize()) {
-        // Result image
-        if (resultBitmap != null) {
+    // Zoom/Pan state
+    var isZoomMode by remember { mutableStateOf(false) }
+    var scale by remember { mutableFloatStateOf(1f) }
+    var offsetX by remember { mutableFloatStateOf(0f) }
+    var offsetY by remember { mutableFloatStateOf(0f) }
+
+    // Animations
+    val animatedScale = remember { Animatable(1f) }
+    val animatedOffsetX = remember { Animatable(0f) }
+    val animatedOffsetY = remember { Animatable(0f) }
+    val coroutineScope = rememberCoroutineScope()
+
+    // Cross-fade alpha for image transition
+    val resultAlpha = remember { Animatable(1f) }
+    val originalAlpha = remember { Animatable(0f) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(isZoomMode) {
+                //  DOUBLE TAP DETECTION
+                detectTapGestures(
+                    onDoubleTap = { _ ->
+                        coroutineScope.launch {
+                            if (!isZoomMode) {
+                                // Fade out result, fade in original
+                                launch { resultAlpha.animateTo(0f, tween(250)) }
+                                launch { originalAlpha.animateTo(1f, tween(250)) }
+
+                                isZoomMode = true
+                            } else {
+                                // Exit zoom mode - zoom out and show result
+                                Log.d("ZoomPan", "Exiting zoom mode")
+
+                                // Animate back to default state
+                                launch {
+                                    animatedScale.animateTo(
+                                        1f, animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                                            stiffness = Spring.StiffnessMedium
+                                        )
+                                    )
+                                }
+                                launch {
+                                    animatedOffsetX.animateTo(
+                                        0f, animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                                            stiffness = Spring.StiffnessMedium
+                                        )
+                                    )
+                                }
+                                launch {
+                                    animatedOffsetY.animateTo(
+                                        0f, animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                                            stiffness = Spring.StiffnessMedium
+                                        )
+                                    )
+                                }
+
+                                // Fade out original, fade in result
+                                launch { originalAlpha.animateTo(0f, tween(300)) }
+                                launch { resultAlpha.animateTo(1f, tween(300)) }
+
+                                // Reset state after animation
+                                launch {
+                                    kotlinx.coroutines.delay(300)
+                                    scale = 1f
+                                    offsetX = 0f
+                                    offsetY = 0f
+                                    isZoomMode = false
+                                }
+                            }
+                        }
+                    })
+            }
+            .pointerInput(isZoomMode) {
+                if (isZoomMode) {
+                    //  ZOOM GESTURE (Pinch to zoom)
+                    detectTransformGestures { _, pan, zoom, _ ->
+                        // Update scale
+                        val newScale = (scale * zoom).coerceIn(1f, 5f)
+                        scale = newScale
+
+                        coroutineScope.launch {
+                            animatedScale.snapTo(newScale)
+                        }
+
+                        // Update pan offset
+                        if (newScale > 1f) {
+                            val maxOffsetX = (size.width * (newScale - 1)) / 2
+                            val maxOffsetY = (size.height * (newScale - 1)) / 2
+
+                            offsetX = (offsetX + pan.x).coerceIn(-maxOffsetX, maxOffsetX)
+                            offsetY = (offsetY + pan.y).coerceIn(-maxOffsetY, maxOffsetY)
+
+                            coroutineScope.launch {
+                                animatedOffsetX.snapTo(offsetX)
+                                animatedOffsetY.snapTo(offsetY)
+                            }
+                        }
+                    }
+                }
+            }
+            .pointerInput(isZoomMode, scale) {
+                if (isZoomMode && scale > 1f) {
+                    //  PAN GESTURE (Drag to move)
+                    detectDragGestures { change, dragAmount ->
+                        change.consume()
+
+                        val maxOffsetX = (size.width * (scale - 1)) / 2
+                        val maxOffsetY = (size.height * (scale - 1)) / 2
+
+                        offsetX = (offsetX + dragAmount.x).coerceIn(-maxOffsetX, maxOffsetX)
+                        offsetY = (offsetY + dragAmount.y).coerceIn(-maxOffsetY, maxOffsetY)
+
+                        coroutineScope.launch {
+                            animatedOffsetX.snapTo(offsetX)
+                            animatedOffsetY.snapTo(offsetY)
+                        }
+                    }
+                }
+            }) {
+        //  ORIGINAL IMAGE (for zoom mode)
+        if (originalBitmap != null) {
             Image(
-                bitmap = resultBitmap.asImageBitmap(),
-                contentDescription = "Detection Result",
-                modifier = Modifier.fillMaxSize(),
+                bitmap = originalBitmap.asImageBitmap(),
+                contentDescription = "Original Image",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        scaleX = animatedScale.value
+                        scaleY = animatedScale.value
+                        translationX = animatedOffsetX.value
+                        translationY = animatedOffsetY.value
+                        alpha = originalAlpha.value
+                        transformOrigin = TransformOrigin.Center
+                    },
                 contentScale = ContentScale.Fit
             )
         }
 
-        // Settings Panel at bottom
-        Box(
+        //  RESULT IMAGE (with bounding boxes)
+        if (resultBitmap != null) {
+            Image(
+                bitmap = resultBitmap.asImageBitmap(),
+                contentDescription = "Detection Result",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        alpha = resultAlpha.value
+                    },
+                contentScale = ContentScale.Fit
+            )
+        }
+
+        AnimatedVisibility(
+            visible = !isZoomMode,
+            enter = slideInVertically(
+                animationSpec = tween(durationMillis = 250),
+                initialOffsetY = { it }
+            ),
+            exit = slideOutVertically(
+                animationSpec = tween(durationMillis = 250),
+                targetOffsetY = { it }
+            ),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .fillMaxWidth()
         ) {
-            SettingsPanel(
-                screenHeight = screenHeight,
-                screenWidth = screenWidth,
-                hasMoreObjects = hasMoreObjects,
-                onBackClick = onBackClick,
-                onNextClick = onNextClick,
-                onBBoxResize = onBBoxResize,
-                onTextResize = onTextResize
-            )
+            // Settings Panel (always visible)
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+            ) {
+                SettingsPanel(
+                    screenHeight = screenHeight,
+                    screenWidth = screenWidth,
+                    hasMoreObjects = hasMoreObjects,
+                    onBackClick = onBackClick,
+                    onNextClick = onNextClick,
+                    onBBoxResize = onBBoxResize,
+                    onTextResize = onTextResize
+                )
+            }
         }
     }
 }
@@ -948,6 +1180,9 @@ fun SettingsPanel(
     onBBoxResize: (Float) -> Unit,
     onTextResize: (Float) -> Unit
 ) {
+    val navBarHeight = WindowInsets.navigationBars.getBottom(LocalDensity.current)
+    val navBarHeightDp = with(LocalDensity.current) { navBarHeight.toDp() }
+
     var isExpanded by remember { mutableStateOf(false) }
     var currentSliderSection by remember { mutableIntStateOf(1) } // 1 = BBox, 2 = Text
 
@@ -956,23 +1191,19 @@ fun SettingsPanel(
 
     // Animated offsets for slide animations
     val navigationOffsetY by animateDpAsState(
-        targetValue = if (isExpanded) screenHeight * 0.246f else 0.dp,
-        animationSpec = tween(
+        targetValue = if (isExpanded) screenHeight * 0.246f else 0.dp, animationSpec = tween(
             durationMillis = 250,
             delayMillis = if (isExpanded) 0 else 250,
             easing = FastOutSlowInEasing
-        ),
-        label = "navigation_offset"
+        ), label = "navigation_offset"
     )
 
     val sliderOffsetY by animateDpAsState(
-        targetValue = if (isExpanded) 0.dp else screenHeight * 0.246f,
-        animationSpec = tween(
+        targetValue = if (isExpanded) 0.dp else screenHeight * 0.246f, animationSpec = tween(
             durationMillis = 250,
             delayMillis = if (!isExpanded) 0 else 250,
             easing = FastOutSlowInEasing
-        ),
-        label = "slider_offset"
+        ), label = "slider_offset"
     )
 
     Box(
@@ -987,6 +1218,7 @@ fun SettingsPanel(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .navigationBarsPadding()
                 .align(Alignment.BottomCenter)
                 .offset(y = navigationOffsetY)
                 .padding(bottom = 43.dp),
@@ -1007,8 +1239,7 @@ fun SettingsPanel(
                 }
             } else {
                 Box(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.Center
+                    modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center
                 ) {
                     BackArrowLargeFab(onClick = onBackClick)
                 }
@@ -1025,10 +1256,7 @@ fun SettingsPanel(
                 containerColor = colorResource(R.color.std_purple),
                 contentColor = Color.White,
                 shape = RoundedCornerShape(
-                    topStart = 0.dp,
-                    topEnd = 0.dp,
-                    bottomEnd = 16.dp,
-                    bottomStart = 16.dp
+                    topStart = 0.dp, topEnd = 0.dp, bottomEnd = 16.dp, bottomStart = 16.dp
                 ),
                 modifier = Modifier
                     .width(Constants.NAV_BUTTONS_WIDTH.dp * 2 + screenWidth * 0.08f)
@@ -1066,7 +1294,7 @@ fun SettingsPanel(
                     color = colorResource(R.color.notification_button_white),
                     shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
                 )
-                .padding(bottom = 43.dp),
+                .padding(bottom = navBarHeightDp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Close button at top
@@ -1079,8 +1307,7 @@ fun SettingsPanel(
                     .clickable {
                         isExpanded = false
                         if (AppConfig.haptics) vibrate(haptic_model0())
-                    },
-                contentAlignment = Alignment.Center
+                    }, contentAlignment = Alignment.Center
             ) {
                 Row(
                     horizontalArrangement = Arrangement.Center,
@@ -1111,23 +1338,18 @@ fun SettingsPanel(
                         .fillMaxHeight()
                         .clip(RoundedCornerShape(16.dp))
                         .background(
-                            if (currentSliderSection == 1)
-                                colorResource(R.color.std_cyan)
-                            else
-                                Color(0xFFDCD8E0)
+                            if (currentSliderSection == 1) colorResource(R.color.std_cyan)
+                            else Color(0xFFDCD8E0)
                         )
                         .clickable {
                             currentSliderSection = 1
                             if (AppConfig.haptics) vibrate(haptic_model0())
-                        },
-                    contentAlignment = Alignment.Center
+                        }, contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "Box Size",
-                        color = if (currentSliderSection == 1)
-                            Color.White
-                        else
-                            colorResource(R.color.std_purple),
+                        color = if (currentSliderSection == 1) Color.White
+                        else colorResource(R.color.std_purple),
                         fontSize = Constants.STD_FONT_SIZE.sp,
                         fontFamily = robotoExtraBold
                     )
@@ -1140,23 +1362,18 @@ fun SettingsPanel(
                         .fillMaxHeight()
                         .clip(RoundedCornerShape(16.dp))
                         .background(
-                            if (currentSliderSection == 2)
-                                colorResource(R.color.std_cyan)
-                            else
-                                Color(0xFFDCD8E0)
+                            if (currentSliderSection == 2) colorResource(R.color.std_cyan)
+                            else Color(0xFFDCD8E0)
                         )
                         .clickable {
                             currentSliderSection = 2
                             if (AppConfig.haptics) vibrate(haptic_model0())
-                        },
-                    contentAlignment = Alignment.Center
+                        }, contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "Text Size",
-                        color = if (currentSliderSection == 2)
-                            Color.White
-                        else
-                            colorResource(R.color.std_purple),
+                        color = if (currentSliderSection == 2) Color.White
+                        else colorResource(R.color.std_purple),
                         fontSize = Constants.STD_FONT_SIZE.sp,
                         fontFamily = robotoExtraBold
                     )
@@ -1167,8 +1384,7 @@ fun SettingsPanel(
 
             // Animated slider content
             AnimatedContent(
-                targetState = currentSliderSection,
-                transitionSpec = {
+                targetState = currentSliderSection, transitionSpec = {
                     slideInHorizontally(
                         initialOffsetX = { if (targetState > initialState) it else -it },
                         animationSpec = tween(durationMillis = Constants.ANIMATION_DELAY)
@@ -1176,36 +1392,25 @@ fun SettingsPanel(
                         targetOffsetX = { if (targetState > initialState) -it else it },
                         animationSpec = tween(durationMillis = Constants.ANIMATION_DELAY)
                     )
-                },
-                label = "slider_section"
+                }, label = "slider_section"
             ) { section ->
                 when (section) {
                     1 -> {
                         // BBox size slider
                         BBoxSizeSlider(
-                            bboxOffset = bboxOffset,
-                            onBBoxChange = { newOffset ->
+                            bboxOffset = bboxOffset, onBBoxChange = { newOffset ->
                                 bboxOffset = newOffset
-                                if (AppConfig.haptics) {
-                                    vibrate(haptic_model0())
-                                }
                                 onBBoxResize(newOffset)
-                            }
-                        )
+                            })
                     }
 
                     2 -> {
                         // Text size slider
                         TextSizeSlider(
-                            textSizeRatio = textSizeRatio,
-                            onTextChange = { newRatio ->
+                            textSizeRatio = textSizeRatio, onTextChange = { newRatio ->
                                 textSizeRatio = newRatio
-                                if (AppConfig.haptics) {
-                                    vibrate(haptic_model0())
-                                }
                                 onTextResize(newRatio)
-                            }
-                        )
+                            })
                     }
                 }
             }
@@ -1215,8 +1420,7 @@ fun SettingsPanel(
 
 @Composable
 fun BBoxSizeSlider(
-    bboxOffset: Float,
-    onBBoxChange: (Float) -> Unit
+    bboxOffset: Float, onBBoxChange: (Float) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -1259,8 +1463,7 @@ fun BBoxSizeSlider(
 @SuppressLint("DefaultLocale")
 @Composable
 fun TextSizeSlider(
-    textSizeRatio: Float,
-    onTextChange: (Float) -> Unit
+    textSizeRatio: Float, onTextChange: (Float) -> Unit
 ) {
     Column(
         modifier = Modifier

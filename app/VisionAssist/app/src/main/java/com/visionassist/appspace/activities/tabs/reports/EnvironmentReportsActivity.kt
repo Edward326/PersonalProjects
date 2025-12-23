@@ -27,12 +27,16 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -59,12 +63,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
 import com.visionassist.appspace.BaseActivity
 import com.visionassist.appspace.R
 import com.visionassist.appspace.activities.main.BottomNavigationBar
@@ -108,6 +114,8 @@ class EnvironmentReportsActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         loadingText.value = load_loadingReports(this)
 
@@ -252,13 +260,16 @@ fun EnvironmentReportsScreen(
     onErrorRetry: () -> Unit,
     onErrorOk: () -> Unit
 ) {
+    val navBarHeight = WindowInsets.navigationBars.getBottom(LocalDensity.current)
+    val navBarHeightDp = with(LocalDensity.current) { navBarHeight.toDp() }
+
     var showStatsPanel by remember { mutableStateOf(false) }
 
     BoxWithConstraints(
         modifier = Modifier.fillMaxSize()
     ) {
         val screenHeight = maxHeight
-        val navbarHeight = 90.dp / maxHeight
+        val navbarHeight = 80.dp / maxHeight
         val sectionMain = 1.0f - navbarHeight
 
         // Background image
@@ -301,7 +312,10 @@ fun EnvironmentReportsScreen(
                 contentScale = ContentScale.Crop
             )
 
-            Column {
+            Column(
+                modifier = Modifier
+                    .statusBarsPadding()
+            ) {
                 Box(modifier = Modifier.height(screenHeight * 0.045f))
 
                 // Logo
@@ -315,6 +329,8 @@ fun EnvironmentReportsScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
             ) {
                 // Main content
                 Column(
@@ -325,7 +341,7 @@ fun EnvironmentReportsScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(top = screenHeight * 0.17f),
+                            .padding(top = screenHeight * 0.11f),
                         verticalArrangement = Arrangement.SpaceBetween,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
@@ -402,33 +418,40 @@ fun EnvironmentReportsScreen(
                         onNavigateReports = onNavigateReports,
                         onNavigateSettings = onNavigateSettings,
                         showReports = AppConfig.env_reports,
-                        selected=1
+                        selected = 1
                     )
                 }
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(navBarHeightDp)
+                    .background(colorResource(R.color.std_light_purple))  // Your color!
+                    .align(Alignment.BottomCenter)
+            )
 
-                AnimatedVisibility(
-                    visible = showStatsPanel,
+            AnimatedVisibility(
+                visible = showStatsPanel,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth(),
+                enter = slideInVertically(
+                    initialOffsetY = { it }  // Start from bottom (off screen)
+                ),
+                exit = slideOutVertically(
+                    targetOffsetY = { it } // Slide to bottom (off screen)
+                )
+            ) {
+                Box(
                     modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth(),
-                    enter = slideInVertically(
-                        initialOffsetY = { it }  // Start from bottom (off screen)
-                    ),
-                    exit = slideOutVertically(
-                        targetOffsetY = { it } // Slide to bottom (off screen)
-                    )
+                        .fillMaxWidth()
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                    ) {
-                        StatsPanel(
-                            avgThreads = statistics.avgNoThreads,
-                            avgDetectorLatency = statistics.avgDetectorLatency,
-                            avgClassifierLatency = statistics.avgClassifierLatency,
-                            avgBatteryUsage = statistics.avgPercMoreBatteryUsed,
-                            onClose = { showStatsPanel = false })
-                    }
+                    StatsPanel(
+                        avgThreads = statistics.avgNoThreads,
+                        avgDetectorLatency = statistics.avgDetectorLatency,
+                        avgClassifierLatency = statistics.avgClassifierLatency,
+                        avgBatteryUsage = statistics.avgPercMoreBatteryUsed,
+                        onClose = { showStatsPanel = false })
                 }
             }
         }
@@ -675,12 +698,20 @@ fun StatsPanel(
     avgBatteryUsage: Float,
     onClose: () -> Unit
 ) {
+    val navBarHeight = WindowInsets.navigationBars.getBottom(LocalDensity.current)
+    val navBarHeightDp = with(LocalDensity.current) { navBarHeight.toDp() }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
             .background(Color.White)  // Pink background
-            .padding(20.dp),
+            .padding(
+                start = 20.dp,
+                end = 20.dp,
+                bottom = navBarHeightDp,
+                top = 20.dp
+            ),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Text(

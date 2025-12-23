@@ -2,6 +2,8 @@ package com.visionassist.appspace.jetpack.design
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -25,6 +27,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -32,6 +35,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.visionassist.appspace.R
+import com.visionassist.appspace.utils.AppConfig
+import com.visionassist.appspace.utils.haptic_model0
+import com.visionassist.appspace.utils.vibrate
 import kotlin.math.roundToInt
 
 /**
@@ -96,7 +102,8 @@ fun CustomSlider(
     showSteps: Boolean = steps > 0,
     enabled: Boolean = true,
     stepsColor: Color = colorResource(R.color.std_cyan),
-    activeTrackSpacingMultiplier: Float = 20f
+    activeTrackSpacingMultiplier: Float = 20f,
+    onSecondary: ((Float) -> Unit)? = null
 ) {
     when (orientation) {
         SliderOrientation.HORIZONTAL -> HorizontalCustomSlider(
@@ -118,7 +125,8 @@ fun CustomSlider(
             showSteps = showSteps,
             stepsColor = stepsColor,
             enabled = enabled,
-            activeTrackSpacingMultiplier = activeTrackSpacingMultiplier
+            activeTrackSpacingMultiplier = activeTrackSpacingMultiplier,
+            onSecondary = onSecondary
         )
 
         SliderOrientation.VERTICAL -> VerticalCustomSlider(
@@ -185,7 +193,8 @@ private fun HorizontalCustomSlider(
     showSteps: Boolean,
     stepsColor: Color,
     enabled: Boolean,
-    activeTrackSpacingMultiplier: Float
+    activeTrackSpacingMultiplier: Float,
+    onSecondary: ((Float) -> Unit)?
 ) {
     var sliderWidth by remember { mutableFloatStateOf(0f) }
 
@@ -209,32 +218,64 @@ private fun HorizontalCustomSlider(
                 .pointerInput(enabled) {
                     if (!enabled) return@pointerInput
 
-                    detectTapGestures { offset ->
-                        if (sliderWidth > 0f) {
-                            val newValue = calculateNewValue(
-                                offset.x,
-                                sliderWidth,
-                                valueRange,
-                                steps,
-                                trackPadding  // Pass padding
-                            )
-                            onValueChange(newValue)
-                            onSliderMove?.invoke(newValue)
-                        }
-                    }
+                    //  Handle both tap and drag in one gesture scope
+                    awaitEachGesture {
+                        val down = awaitFirstDown()
 
-                    detectDragGestures { change, _ ->
-                        change.consume()
+                        var lastValue = value
+                        var already=false
+
+                        // Handle initial tap
                         if (sliderWidth > 0f) {
-                            val newValue = calculateNewValue(
-                                change.position.x,
+                            already=true
+
+                            lastValue = calculateNewValue(
+                                down.position.x,
                                 sliderWidth,
                                 valueRange,
                                 steps,
-                                trackPadding  // Pass padding
+                                trackPadding
                             )
-                            onValueChange(newValue)
-                            onSliderMove?.invoke(newValue)
+
+                            if (onSecondary != null)
+                                onSecondary(lastValue)
+                            else {
+                                if(AppConfig.haptics)
+                                    vibrate(haptic_model0())
+                                onValueChange(lastValue)
+                            }
+                            onSliderMove?.invoke(lastValue)
+                        }
+
+                        // Handle drag
+                        var drag: PointerInputChange?
+                        do {
+                            drag = awaitPointerEvent().changes.firstOrNull()
+
+                            drag?.let { change ->
+                                already=true
+                                if (change.pressed && sliderWidth > 0f) {
+                                    lastValue = calculateNewValue(
+                                        change.position.x,
+                                        sliderWidth,
+                                        valueRange,
+                                        steps,
+                                        trackPadding
+                                    )
+                                    onValueChange(lastValue)
+                                    onSliderMove?.invoke(lastValue)
+                                    change.consume()
+                                }
+                            }
+                        } while (drag != null && drag.pressed)
+                        if(!already) {
+                            if (onSecondary != null)
+                                onSecondary(lastValue)
+                            else {
+                                if (AppConfig.haptics)
+                                    vibrate(haptic_model0())
+                                onValueChange(lastValue)
+                            }
                         }
                     }
                 }

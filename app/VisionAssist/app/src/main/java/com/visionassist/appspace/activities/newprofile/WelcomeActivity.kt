@@ -26,8 +26,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -57,6 +59,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
 import com.visionassist.appspace.activities.newprofile.WelcomeActivity.Section
@@ -99,6 +102,8 @@ class WelcomeActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         // Check if we should start with profile selection
         startWithProfileSelection = intent.getBooleanExtra(Constants.EXTRA_WELCOME_OPTION, false)
@@ -295,6 +300,11 @@ fun WelcomeScreen(
 
         // Animated content with slide transitions
         AnimatedContent(
+            modifier= Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+            ,
             targetState = currentSection, transitionSpec = {
                 if (targetState == Section.PROFILE_SELECTION) {
                     // Sliding to profile selection (right to left)
@@ -342,6 +352,7 @@ fun WelcomeScreen(
             // Navigation Buttons (not animated, always visible at bottom)
             Row(
                 modifier = Modifier
+                    .navigationBarsPadding()
                     .align(Alignment.BottomCenter)
                     .padding(bottom = bottomSpace),
                 horizontalArrangement = Arrangement.spacedBy(screenWidth * 0.08f),

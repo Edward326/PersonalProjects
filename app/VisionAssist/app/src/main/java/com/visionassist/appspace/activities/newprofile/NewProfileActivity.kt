@@ -34,9 +34,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -83,6 +85,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.view.WindowCompat
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
 import com.visionassist.appspace.activities.newprofile.LoadProfileActivity.NotificationType
@@ -142,6 +145,8 @@ class NewProfileActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         setContent {
             NewProfileScreen(
@@ -479,45 +484,52 @@ fun NewProfileScreen(
             contentScale = ContentScale.Crop
         )
 
-        // Animated sections
-        AnimatedVisibility(
-            visible = !showRegisterSection,
-            enter = slideInHorizontally(
-                initialOffsetX = { -it },
-                animationSpec = tween(Constants.ANIMATION_DELAY)
-            ),
-            exit = slideOutHorizontally(
-                targetOffsetX = { -it },
-                animationSpec = tween(Constants.ANIMATION_DELAY)
-            )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
         ) {
-            ProfileSelectionSection(
-                switchChecked = switchChecked,
-                onSwitchChanged = onSwitchChanged
-            )
-        }
+            // Animated sections
+            AnimatedVisibility(
+                visible = !showRegisterSection,
+                enter = slideInHorizontally(
+                    initialOffsetX = { -it },
+                    animationSpec = tween(Constants.ANIMATION_DELAY)
+                ),
+                exit = slideOutHorizontally(
+                    targetOffsetX = { -it },
+                    animationSpec = tween(Constants.ANIMATION_DELAY)
+                )
+            ) {
+                ProfileSelectionSection(
+                    switchChecked = switchChecked,
+                    onSwitchChanged = onSwitchChanged
+                )
+            }
 
-        AnimatedVisibility(
-            visible = showRegisterSection,
-            enter = slideInHorizontally(
-                initialOffsetX = { it },
-                animationSpec = tween(Constants.ANIMATION_DELAY)
-            ),
-            exit = slideOutHorizontally(
-                targetOffsetX = { it },
-                animationSpec = tween(Constants.ANIMATION_DELAY)
-            )
-        ) {
-            RegisterSection(
-                emailInput = emailInput,
-                passwordInput = passwordInput,
-                showEmailError = showEmailError,
-                showPasswordError = showPasswordError,
-                onEmailChange = onEmailChange,
-                onPasswordChange = onPasswordChange,
-                onBackClick = onBackFromRegister,
-                onDoneClick = onDoneFromRegister
-            )
+            AnimatedVisibility(
+                visible = showRegisterSection,
+                enter = slideInHorizontally(
+                    initialOffsetX = { it },
+                    animationSpec = tween(Constants.ANIMATION_DELAY)
+                ),
+                exit = slideOutHorizontally(
+                    targetOffsetX = { it },
+                    animationSpec = tween(Constants.ANIMATION_DELAY)
+                )
+            ) {
+                RegisterSection(
+                    emailInput = emailInput,
+                    passwordInput = passwordInput,
+                    showEmailError = showEmailError,
+                    showPasswordError = showPasswordError,
+                    onEmailChange = onEmailChange,
+                    onPasswordChange = onPasswordChange,
+                    onBackClick = onBackFromRegister,
+                    onDoneClick = onDoneFromRegister
+                )
+            }
         }
 
         // Loading Component
@@ -547,6 +559,7 @@ fun NewProfileScreen(
         if (!showRegisterSection) {
             Row(
                 modifier = Modifier
+                    .navigationBarsPadding()
                     .align(Alignment.BottomCenter)
                     .padding(bottom = bottomSpace),
                 horizontalArrangement = Arrangement.spacedBy(screenWidth * 0.08f)
