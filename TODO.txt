@@ -1,7 +1,3 @@
--cand UI nu e vizibil, dezact Talkback la UI + interactiune
-
--testarea aplicatiei + debugging
-
 -fine tuning(detector, classifier(indoorcvpr), captioner)
 
 -testarea pe telefoane + debugging
