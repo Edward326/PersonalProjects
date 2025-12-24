@@ -92,6 +92,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
@@ -112,6 +113,7 @@ import com.visionassist.appspace.activities.tabs.home.detection.StaticDetectionA
 import com.visionassist.appspace.activities.tabs.home.caption.CaptionActivity
 import com.visionassist.appspace.activities.tabs.home.findmyobjects.FindMyObjectActivity
 import com.visionassist.appspace.activities.tabs.reports.EnvironmentReportsActivity
+import com.visionassist.appspace.activities.tabs.settings.BlockingOverlay
 import com.visionassist.appspace.activities.tabs.settings.SettingsActivity
 import com.visionassist.appspace.jetpack.managers.ErrorDialogManager
 import com.visionassist.appspace.models.sttengine.SpeechRecognizer
@@ -203,6 +205,7 @@ class HomeActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        val intentExtra = intent.getBooleanExtra(Constants.EXTRA_HOME_OPTION, false)
 
         registerCameraLauncher()
 
@@ -214,11 +217,13 @@ class HomeActivity : BaseActivity() {
         syncStatus = dbManager.statusOverview
         syncDays = if (syncStatus > 0) dbManager.diffDays.toInt() else 0
 
-        uiLocked = true
-        locked = true
-        PhoneStatusMonitor.getInstance().soundManager.play(SoundConstants.OPEN_UP_ID, 1f, 1f) {
-            uiLocked = false
-            locked = false
+        if (!intentExtra) {
+            uiLocked = true
+            locked = true
+            PhoneStatusMonitor.getInstance().soundManager.play(SoundConstants.OPEN_UP_ID, 1f, 1f) {
+                uiLocked = false
+                locked = false
+            }
         }
 
         //Log.d(TAG, FileUtils.readProfileFileAsString(this, Constants.ENV_REPORTS_FILE_NAME))
@@ -482,7 +487,7 @@ class HomeActivity : BaseActivity() {
 
             val intent = Intent(this, EnvironmentReportsActivity::class.java)
             startActivity(intent)
-            finish()
+            //finish()
         }
     }
 
@@ -860,6 +865,13 @@ fun HomeScreen(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
+                .then(
+                    if (showSpeechDialog) {
+                        Modifier.clearAndSetSemantics { }  //  COMPLETELY REMOVE from tree!
+                    } else {
+                        Modifier
+                    }
+                )
                 .pointerInput(Unit) {
                     var swipeStartX = 0f
                     detectHorizontalDragGestures(
@@ -981,6 +993,8 @@ fun HomeScreen(
                 .background(colorResource(R.color.std_light_purple))  // Your color!
                 .align(Alignment.BottomCenter)
         )
+
+        BlockingOverlay(showSpeechDialog)
 
         // Speech Recognition Dialog
         SpeechRecognitionDialog(

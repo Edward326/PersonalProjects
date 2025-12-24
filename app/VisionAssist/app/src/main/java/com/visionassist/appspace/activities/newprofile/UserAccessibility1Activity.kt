@@ -68,6 +68,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -76,6 +77,7 @@ import androidx.core.graphics.toColorInt
 import androidx.core.view.WindowCompat
 import com.visionassist.appspace.R
 import com.visionassist.appspace.activities.newprofile.jsonCollection.ProfileFileCollection
+import com.visionassist.appspace.activities.tabs.settings.BlockingOverlay
 import com.visionassist.appspace.jetpack.design.BackArrowLargeFab
 import com.visionassist.appspace.jetpack.design.CustomSlider
 import com.visionassist.appspace.jetpack.design.NextArrowLargeFab
@@ -154,6 +156,7 @@ class UserAccessibility1Activity : ComponentActivity() {
 
         setContent {
             UserAccessibility1Screen(
+                infoNotificationManagerValue= infoNotificationManager.isVisibleState.value,
                 currentSection = currentSection.intValue,
                 // BoundingBox states
                 bboxRedValue = bboxRedValue.floatValue,
@@ -653,6 +656,7 @@ class UserAccessibility1Activity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UserAccessibility1Screen(
+    infoNotificationManagerValue: Boolean,
     currentSection: Int,
     // BoundingBox states
     bboxRedValue: Float,
@@ -717,6 +721,13 @@ fun UserAccessibility1Screen(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
+                .then(
+                    if (infoNotificationManagerValue) {
+                        Modifier.clearAndSetSemantics { }  //  COMPLETELY REMOVE from tree!
+                    } else {
+                        Modifier
+                    }
+                )
         ) {
             // Animated content for sections
             AnimatedContent(
@@ -796,6 +807,8 @@ fun UserAccessibility1Screen(
             BackArrowLargeFab(onClick = onBackClick)
             NextArrowLargeFab(onClick = onNextClick)
         }
+
+        BlockingOverlay(infoNotificationManagerValue)
     }
 }
 
@@ -1393,7 +1406,8 @@ fun UserAccessibility1BoundingBoxPreview() {
         onInfoClick = {},
         onBackClick = {},
         onNextClick = {},
-        whatItStarted = false
+        whatItStarted = false,
+        infoNotificationManagerValue = false
     )
 }
 
@@ -1448,6 +1462,7 @@ fun UserAccessibility1CaptionPreview() {
         onInfoClick = {},
         onBackClick = {},
         onNextClick = {},
-        whatItStarted = false
+        whatItStarted = false,
+        infoNotificationManagerValue = false
     )
 }

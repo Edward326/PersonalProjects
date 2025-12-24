@@ -84,6 +84,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -99,6 +100,7 @@ import com.visionassist.appspace.activities.main.BlindHomeActivity
 import com.visionassist.appspace.activities.main.HomeActivity
 import com.visionassist.appspace.activities.newprofile.LoadProfileActivity.NotificationType
 import com.visionassist.appspace.activities.newprofile.jsonCollection.ProfileFileCollection
+import com.visionassist.appspace.activities.tabs.settings.BlockingOverlay
 import com.visionassist.appspace.database.DBConstants
 import com.visionassist.appspace.database.NetworkUtils
 import com.visionassist.appspace.jetpack.design.BackArrowLargeFab
@@ -193,6 +195,7 @@ class LoadProfileActivity : ComponentActivity() {
 
         setContent {
             LoadProfileScreen(
+                infoNotificationManagerValue=infoNotificationManager.isVisibleState.value,
                 showProfileSelection = showProfileSelection.value,
                 showNotification = showNotification.value,
                 notificationType = notificationType.value,
@@ -258,7 +261,7 @@ class LoadProfileActivity : ComponentActivity() {
 
     private fun handleLocallyClick() {
         val message = load_infoLoadProfileActivity()
-        val butOpt = if (AppConfig.mainLanguage.code == "en") "Files" else "Fișiere"
+        val butOpt = if (AppConfig.mainLanguage.code == "en") "Browse" else "Răsfoire"
         infoNotificationManager.showNotification(message, {
             infoNotificationManager.hideNotification()
             folderPickerLauncher.launch(null)
@@ -899,6 +902,7 @@ class LoadProfileActivity : ComponentActivity() {
 @SuppressLint("InflateParams")
 @Composable
 fun LoadProfileScreen(
+    infoNotificationManagerValue: Boolean,
     showProfileSelection: Boolean,
     showNotification: Boolean,
     notificationType: NotificationType,
@@ -927,6 +931,8 @@ fun LoadProfileScreen(
     onBackClickLoginSection: () -> Unit,
     onLoginDoneClick: () -> Unit
 ) {
+    val blockMainUI=showNotification || showLoading || infoNotificationManagerValue
+
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val screenHeight = maxHeight
         // Background image
@@ -942,6 +948,13 @@ fun LoadProfileScreen(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
+                .then(
+                    if (blockMainUI) {
+                        Modifier.clearAndSetSemantics { }  //  COMPLETELY REMOVE from tree!
+                    } else {
+                        Modifier
+                    }
+                )
         ) {
             // Profile Selection Section
             AnimatedVisibility(
@@ -987,6 +1000,21 @@ fun LoadProfileScreen(
             }
         }
 
+        val bottomSpace = screenHeight * Constants.STD_NAV_MARGIN_BOTTOM
+        // Back button for Profile Selection (only visible in that section)
+        if (showProfileSelection) {
+            Box(
+                modifier = Modifier
+                    .navigationBarsPadding()
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = bottomSpace)
+            ) {
+                BackArrowLargeFab(onClick = onBackClickProfileSelection)
+            }
+        }
+
+        BlockingOverlay(blockMainUI)
+
         // Loading Component Overlay
         LoadingComponent(
             isVisible = showLoading,
@@ -1008,19 +1036,6 @@ fun LoadProfileScreen(
             secondButtonClick = secondButtonClick,
             thirdButtonClick = thirdButtonClick
         )
-
-        val bottomSpace = screenHeight * Constants.STD_NAV_MARGIN_BOTTOM
-        // Back button for Profile Selection (only visible in that section)
-        if (showProfileSelection) {
-            Box(
-                modifier = Modifier
-                    .navigationBarsPadding()
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = bottomSpace)
-            ) {
-                BackArrowLargeFab(onClick = onBackClickProfileSelection)
-            }
-        }
     }
 }
 
@@ -1550,6 +1565,7 @@ fun LoadProfileActivityPreview() {
         onForgotPasswordClick = {},
         onBackClickLoginSection = {},
         onLoginDoneClick = {},
+        infoNotificationManagerValue = false
     )
 }
 /*

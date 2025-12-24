@@ -201,8 +201,8 @@ class EnvironmentReportsActivity : BaseActivity() {
     private fun handleNavigateHome() {
         vibrateIfEnabled()
 
-        val intent = Intent(this, HomeActivity::class.java)
-        startActivity(intent)
+        //val intent = Intent(this, HomeActivity::class.java)
+        //startActivity(intent)
         finish()
     }
 

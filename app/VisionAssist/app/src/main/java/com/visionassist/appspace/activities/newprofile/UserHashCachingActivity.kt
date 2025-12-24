@@ -42,6 +42,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -54,6 +55,7 @@ import com.visionassist.appspace.R
 import com.visionassist.appspace.activities.main.BlindHomeActivity
 import com.visionassist.appspace.activities.main.HomeActivity
 import com.visionassist.appspace.activities.newprofile.jsonCollection.ProfileFileCollection
+import com.visionassist.appspace.activities.tabs.settings.BlockingOverlay
 import com.visionassist.appspace.database.DBConstants
 import com.visionassist.appspace.jetpack.design.BackArrowLargeFab
 import com.visionassist.appspace.jetpack.design.HashCacheSelector
@@ -113,6 +115,7 @@ class UserHashCachingActivity : ComponentActivity() {
 
         setContent {
             UserHashCachingScreen(
+                infoNotificationManagerValue=infoNotificationManager.isVisibleState.value,
                 currentSection = currentSection.intValue,
                 // Section 1
                 hashCacheOption = hashCacheOption.value,
@@ -391,6 +394,7 @@ class UserHashCachingActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun UserHashCachingScreen(
+    infoNotificationManagerValue: Boolean,
     currentSection: Int,
     hashCacheOption: String,
     onHashCacheOptionSelected: (String) -> Unit,
@@ -403,6 +407,8 @@ fun UserHashCachingScreen(
     isLoading: Boolean,
     loadingText: String
 ) {
+val blockMainUI= isLoading || infoNotificationManagerValue
+
     BoxWithConstraints(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -421,6 +427,13 @@ fun UserHashCachingScreen(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
+                .then(
+                    if (blockMainUI) {
+                        Modifier.clearAndSetSemantics { }  //  COMPLETELY REMOVE from tree!
+                    } else {
+                        Modifier
+                    }
+                )
         ) {
             // Content based on section
             when (currentSection) {
@@ -440,11 +453,6 @@ fun UserHashCachingScreen(
             }
         }
 
-        // Loading overlay
-        LoadingComponent(
-            isVisible = isLoading, loadingText = loadingText
-        )
-
         val bottomSpace = screenHeight * Constants.STD_NAV_MARGIN_BOTTOM
         // Navigation Buttons
         Row(
@@ -461,6 +469,13 @@ fun UserHashCachingScreen(
                 onClick = onNextClick
             )
         }
+
+        BlockingOverlay(blockMainUI)
+
+        // Loading overlay
+        LoadingComponent(
+            isVisible = isLoading, loadingText = loadingText
+        )
     }
 }
 
@@ -591,7 +606,8 @@ fun UserHashCachingSection1Preview() {
         onBackClick = {},
         onNextClick = {},
         isLoading = false,
-        loadingText = "Please wait"
+        loadingText = "Please wait",
+        infoNotificationManagerValue = false
     )
 }
 
@@ -609,6 +625,7 @@ fun UserHashCachingSection2Preview() {
         onBackClick = {},
         onNextClick = {},
         isLoading = false,
-        loadingText = "Please wait"
+        loadingText = "Please wait",
+        infoNotificationManagerValue = false
     )
 }

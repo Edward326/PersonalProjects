@@ -76,6 +76,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -234,6 +235,7 @@ class SettingsActivity : BaseActivity() {
 
         setContent {
             SettingsScreen(
+                infoNotificationManagerValue = infoNotificationManager.isVisibleState.value,
                 showPasswordDialog = showPasswordDialog.value,
                 showLoading = showLoading.value,
                 loadingText = loadingText.value,
@@ -776,8 +778,7 @@ class SettingsActivity : BaseActivity() {
                 null
             )
             },
-            if (AppConfig.mainLanguage.code == "en") "Files"
-            else "Fișiere"
+            if (AppConfig.mainLanguage.code == "en") "Browse" else "Răsfoire"
         )
     }
 
@@ -984,6 +985,7 @@ class SettingsActivity : BaseActivity() {
     private fun handleNavigateHome() {
         vibrateIfNeeded()
         val intent = Intent(this, HomeActivity::class.java)
+        intent.putExtra(Constants.EXTRA_HOME_OPTION,true)
         startActivity(intent)
         finish()
     }
@@ -1029,6 +1031,7 @@ class SettingsActivity : BaseActivity() {
 
 @Composable
 fun SettingsScreen(
+    infoNotificationManagerValue: Boolean,
     showPasswordDialog: Boolean,
     showLoading: Boolean,
     loadingText: String,
@@ -1072,6 +1075,9 @@ fun SettingsScreen(
     showErrorPassword: Boolean,
     passwordValue: String
 ) {
+    val blockMainUI =
+        showLoading || showNotification || infoNotificationManagerValue || showPasswordDialog
+
     val navBarHeight = WindowInsets.navigationBars.getBottom(LocalDensity.current)
     val navBarHeightDp = with(LocalDensity.current) { navBarHeight.toDp() }
 
@@ -1096,6 +1102,13 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
+                .then(
+                    if (blockMainUI) {
+                        Modifier.clearAndSetSemantics { }  //  COMPLETELY REMOVE from tree!
+                    } else {
+                        Modifier
+                    }
+                )
         ) {
             // Main content
             Column(
@@ -1221,6 +1234,8 @@ fun SettingsScreen(
                 .background(colorResource(R.color.std_light_purple))  // Your color!
                 .align(Alignment.BottomCenter)
         )
+
+        BlockingOverlay(blockMainUI)
 
         // Loading overlay
         LoadingComponent(
@@ -1763,7 +1778,7 @@ fun AppearanceSection(
             Button(
                 onClick = onChangeDetectionColors,
                 modifier = Modifier
-                    .width(screenWidth * 0.5f)
+                    .width(screenWidth * 0.6f)
                     .height(Constants.STD_BUTTON_HEIGHT.dp),
                 shape = RoundedCornerShape(32.dp),
                 colors = ButtonDefaults.buttonColors(
@@ -1782,7 +1797,7 @@ fun AppearanceSection(
             Button(
                 onClick = onChangeCaptionColors,
                 modifier = Modifier
-                    .width(screenWidth * 0.5f)
+                    .width(screenWidth * 0.6f)
                     .height(Constants.STD_BUTTON_HEIGHT.dp),
                 shape = RoundedCornerShape(32.dp),
                 colors = ButtonDefaults.buttonColors(
@@ -1888,49 +1903,53 @@ fun StorageSection(
                 }
             }
 
-            // Clear Reports Row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Button(
-                    onClick = onClearReports,
-                    modifier = Modifier
-                        .width(screenWidth * 0.5f)
-                        .height(Constants.STD_BUTTON_HEIGHT.dp),
-                    shape = RoundedCornerShape(32.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = colorResource(R.color.std_cyan)
-                    )
-                ) {
-                    Text(
-                        text = getClearReportsText(LocalContext.current),
-                        fontSize = Constants.STD_ERROR_FONT_SIZE.sp,
-                        color = Color.White,
-                        fontFamily = robotoExtraBold,
-                        textAlign = TextAlign.Center
-                    )
-                }
 
-                Spacer(modifier = Modifier.width(8.dp))
-
-                // Size Display
-                Card(
-                    modifier = Modifier.width(screenWidth * 0.15f),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = colorResource(R.color.std_light_purple)
-                    )
+            if (AppConfig.env_reports) {
+                // Clear Reports Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = envReportsSize,
-                        fontSize = Constants.STD_FONT_SIZE.sp,
-                        color = colorResource(R.color.std_purple),
-                        fontFamily = robotoExtraBold,
-                        modifier = Modifier.padding(8.dp),
-                        textAlign = TextAlign.Center
-                    )
+                    Button(
+                        onClick = onClearReports,
+                        modifier = Modifier
+                            .width(screenWidth * 0.5f)
+                            .height(Constants.STD_BUTTON_HEIGHT.dp),
+                        shape = RoundedCornerShape(32.dp),
+                        colors =
+                            ButtonDefaults.buttonColors(
+                                containerColor = colorResource(R.color.std_cyan)
+                            )
+                    ) {
+                        Text(
+                            text = getClearReportsText(LocalContext.current),
+                            fontSize = Constants.STD_ERROR_FONT_SIZE.sp,
+                            color = Color.White,
+                            fontFamily = robotoExtraBold,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    // Size Display
+                    Card(
+                        modifier = Modifier.width(screenWidth * 0.15f),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = colorResource(R.color.std_light_purple)
+                        )
+                    ) {
+                        Text(
+                            text = envReportsSize,
+                            fontSize = Constants.STD_FONT_SIZE.sp,
+                            color = colorResource(R.color.std_purple),
+                            fontFamily = robotoExtraBold,
+                            modifier = Modifier.padding(8.dp),
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
             }
         }
@@ -2071,7 +2090,8 @@ fun SettingsScreenPreview1() {
         onPasswordChange = {},
         showPasswordDialog = false,
         showErrorPassword = false,
-        passwordValue = ""
+        passwordValue = "",
+        infoNotificationManagerValue = false
     )
 }
 
@@ -2122,7 +2142,8 @@ fun SettingsScreenPreview2() {
         onPasswordChange = {},
         showPasswordDialog = false,
         showErrorPassword = false,
-        passwordValue = ""
+        passwordValue = "",
+        infoNotificationManagerValue = false
     )
 }
 
@@ -2173,6 +2194,7 @@ fun SettingsScreenPreview3() {
         onPasswordChange = {},
         showPasswordDialog = false,
         showErrorPassword = false,
-        passwordValue = ""
+        passwordValue = "",
+        infoNotificationManagerValue = false
     )
 }

@@ -78,6 +78,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -90,6 +91,7 @@ import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
 import com.visionassist.appspace.activities.newprofile.LoadProfileActivity.NotificationType
 import com.visionassist.appspace.activities.newprofile.jsonCollection.ProfileFileCollection
+import com.visionassist.appspace.activities.tabs.settings.BlockingOverlay
 import com.visionassist.appspace.database.DBConstants
 import com.visionassist.appspace.database.NetworkUtils
 import com.visionassist.appspace.jetpack.design.BackArrowLargeFab
@@ -171,7 +173,10 @@ class NewProfileActivity : ComponentActivity() {
                 secondButtonClick = secondButtonClick.value,
                 thirdButtonClick = thirdButtonClick.value,
                 onSwitchChanged = ::handleSwitchChanged,
-                onEmailChange = { emailInput.value = it; showEmailError.value = false; fieldTextInteraction.value=true },
+                onEmailChange = {
+                    emailInput.value = it; showEmailError.value =
+                    false; fieldTextInteraction.value = true
+                },
                 onPasswordChange = { passwordInput.value = it; showPasswordError.value = false },
                 onBackFromProfileSelection = ::handleBackFromProfileSelection,
                 onNextFromProfileSelection = ::handleNextFromProfileSelection,
@@ -189,7 +194,7 @@ class NewProfileActivity : ComponentActivity() {
             } else {
                 showRegisterSection.value = true
                 switchChecked.value = true
-                emailInput.value="";passwordInput.value=""
+                emailInput.value = ""; passwordInput.value = ""
             }
         }
     }
@@ -210,7 +215,7 @@ class NewProfileActivity : ComponentActivity() {
     }
 
     private fun handleBackFromRegister() {
-        fieldTextInteraction.value=false
+        fieldTextInteraction.value = false
         switchChecked.value = false
         showRegisterSection.value = false
     }
@@ -273,8 +278,8 @@ class NewProfileActivity : ComponentActivity() {
                 val emailValidation = dbManager.validateEmail(email)
                 if (emailValidation == DBConstants.EMAIL_VALID) {
                     // Create account
-                    val ret=dbManager.createAccount(email, password)
-                    userID=ret.first
+                    val ret = dbManager.createAccount(email, password)
+                    userID = ret.first
                     return ret.second
                 } else
                     return emailValidation
@@ -290,11 +295,11 @@ class NewProfileActivity : ComponentActivity() {
         val checkRunnable = object : Runnable {
             override fun run() {
                 if (finishedRegistering) {
-                    Log.i(TAG,"Registration task finished")
+                    Log.i(TAG, "Registration task finished")
                     showLoading.value = false
                     handleRegistrationResult()
                 } else {
-                    Log.i(TAG,"Registration task isn't finished")
+                    Log.i(TAG, "Registration task isn't finished")
                     mainHandler.postDelayed(this, Constants.LOAD_CHECK_DELAY_MS.toLong())
                 }
             }
@@ -370,10 +375,11 @@ class NewProfileActivity : ComponentActivity() {
         showTwoButtons.value = true
         showThreeButtons.value = false
         firstButtonLabel.value = if (AppConfig.mainLanguage.code == "en") "Retry" else "Reîncearcă"
-        firstButtonClick.value = { hideNotification(); emailInput.value = ""; passwordInput.value="" }
+        firstButtonClick.value =
+            { hideNotification(); emailInput.value = ""; passwordInput.value = "" }
         secondButtonLabel.value =
             if (AppConfig.mainLanguage.code == "en") "Login" else "Autentificare"
-        secondButtonClick.value = { handleNotificationLogin()}
+        secondButtonClick.value = { handleNotificationLogin() }
         showNotification.value = true
     }
 
@@ -472,6 +478,8 @@ fun NewProfileScreen(
     onBackFromRegister: () -> Unit,
     onDoneFromRegister: () -> Unit,
 ) {
+    val blockMainUI = showLoading || showNotification
+
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val screenHeight = maxHeight
         val screenWidth = maxWidth
@@ -489,6 +497,13 @@ fun NewProfileScreen(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
+                .then(
+                    if (blockMainUI) {
+                        Modifier.clearAndSetSemantics { }  //  COMPLETELY REMOVE from tree!
+                    } else {
+                        Modifier
+                    }
+                )
         ) {
             // Animated sections
             AnimatedVisibility(
@@ -532,6 +547,28 @@ fun NewProfileScreen(
             }
         }
 
+        val bottomSpace = screenHeight * Constants.STD_NAV_MARGIN_BOTTOM
+        // Navigation Buttons (only for ProfileSelectionSection)
+        if (!showRegisterSection) {
+            Row(
+                modifier = Modifier
+                    .navigationBarsPadding()
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = bottomSpace),
+                horizontalArrangement = Arrangement.spacedBy(screenWidth * 0.08f)
+            ) {
+                BackArrowLargeFab(
+                    onClick = onBackFromProfileSelection
+                )
+
+                NextArrowLargeFab(
+                    onClick = onNextFromProfileSelection
+                )
+            }
+        }
+
+        BlockingOverlay(blockMainUI)
+
         // Loading Component
         LoadingComponent(
             isVisible = showLoading,
@@ -553,26 +590,6 @@ fun NewProfileScreen(
             secondButtonClick = secondButtonClick,
             thirdButtonClick = thirdButtonClick
         )
-
-        val bottomSpace=screenHeight * Constants.STD_NAV_MARGIN_BOTTOM
-        // Navigation Buttons (only for ProfileSelectionSection)
-        if (!showRegisterSection) {
-            Row(
-                modifier = Modifier
-                    .navigationBarsPadding()
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = bottomSpace),
-                horizontalArrangement = Arrangement.spacedBy(screenWidth * 0.08f)
-            ) {
-                BackArrowLargeFab(
-                    onClick = onBackFromProfileSelection
-                )
-
-                NextArrowLargeFab(
-                    onClick = onNextFromProfileSelection
-                )
-            }
-        }
     }
 }
 

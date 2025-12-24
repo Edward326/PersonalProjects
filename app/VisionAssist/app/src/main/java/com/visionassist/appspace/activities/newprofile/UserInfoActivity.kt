@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -54,6 +55,7 @@ import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
 import com.visionassist.appspace.activities.newprofile.LoadProfileActivity.NotificationType
 import com.visionassist.appspace.activities.newprofile.jsonCollection.ProfileFileCollection
+import com.visionassist.appspace.activities.tabs.settings.BlockingOverlay
 import com.visionassist.appspace.jetpack.design.BackArrowLargeFab
 import com.visionassist.appspace.jetpack.design.CustomSlider
 import com.visionassist.appspace.jetpack.design.NextArrowLargeFab
@@ -142,6 +144,7 @@ class UserInfoActivity : ComponentActivity() {
 
         setContent {
             UserInfoScreen(
+                infoNotificationManagerValue = infoNotificationManager.isVisibleState.value,
                 lastSection = lastSection.intValue,
                 currentSection = currentSection.intValue,
                 nameInput = nameInput.value,
@@ -208,7 +211,7 @@ class UserInfoActivity : ComponentActivity() {
             3 -> {
                 // Delete section 2 data and go to section 2
                 ProfileFileCollection.deleteUserInfoActivity(1)
-                lastSection.intValue=3
+                lastSection.intValue = 3
                 currentSection.intValue = 2
                 fieldTextInteraction.value = false
             }
@@ -366,7 +369,7 @@ class UserInfoActivity : ComponentActivity() {
     }
 
     private fun navigateToSection2() {
-        lastSection.intValue=1
+        lastSection.intValue = 1
         currentSection.intValue = 2
     }
 
@@ -399,6 +402,7 @@ class UserInfoActivity : ComponentActivity() {
 
 @Composable
 fun UserInfoScreen(
+    infoNotificationManagerValue: Boolean,
     lastSection: Int,
     currentSection: Int,
     nameInput: String,
@@ -424,6 +428,8 @@ fun UserInfoScreen(
     onBackClick: () -> Unit,
     onNextClick: () -> Unit
 ) {
+    val blockMainUI = infoNotificationManagerValue || showNotification
+
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val screenHeight = maxHeight
 
@@ -440,6 +446,13 @@ fun UserInfoScreen(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
+                .then(
+                    if (blockMainUI) {
+                        Modifier.clearAndSetSemantics { }  //  COMPLETELY REMOVE from tree!
+                    } else {
+                        Modifier
+                    }
+                )
         ) {
             // Animated sections
             AnimatedVisibility(
@@ -499,22 +512,6 @@ fun UserInfoScreen(
             }
         }
 
-        // Notification Dialog
-        NotificationDialog(
-            isVisible = showNotification,
-            type = notificationType,
-            message = notificationMessage,
-            showOneButton = showOneButton,
-            showTwoButtons = showTwoButtons,
-            showThreeButtons = showThreeButtons,
-            firstButtonLabel = firstButtonLabel,
-            secondButtonLabel = secondButtonLabel,
-            thirdButtonLabel = thirdButtonLabel,
-            firstButtonClick = firstButtonClick,
-            secondButtonClick = secondButtonClick,
-            thirdButtonClick = thirdButtonClick
-        )
-
         val bottomSpace = screenHeight * Constants.STD_NAV_MARGIN_BOTTOM
         // Navigation Buttons
         Row(
@@ -534,6 +531,24 @@ fun UserInfoScreen(
                 onClick = onNextClick
             )
         }
+
+        BlockingOverlay(blockMainUI)
+
+        // Notification Dialog
+        NotificationDialog(
+            isVisible = showNotification,
+            type = notificationType,
+            message = notificationMessage,
+            showOneButton = showOneButton,
+            showTwoButtons = showTwoButtons,
+            showThreeButtons = showThreeButtons,
+            firstButtonLabel = firstButtonLabel,
+            secondButtonLabel = secondButtonLabel,
+            thirdButtonLabel = thirdButtonLabel,
+            firstButtonClick = firstButtonClick,
+            secondButtonClick = secondButtonClick,
+            thirdButtonClick = thirdButtonClick
+        )
     }
 }
 
@@ -804,7 +819,8 @@ fun UserInfoNameSectionPreview() {
         onAgeChange = {},
         onVisionChange = {},
         onBackClick = {},
-        onNextClick = {}
+        onNextClick = {},
+        infoNotificationManagerValue = false
     )
 }
 
@@ -835,7 +851,8 @@ fun UserInfoAgeSectionPreview() {
         onAgeChange = {},
         onVisionChange = {},
         onBackClick = {},
-        onNextClick = {}
+        onNextClick = {},
+        infoNotificationManagerValue = false
     )
 }
 
@@ -866,6 +883,7 @@ fun UserInfoVisionSectionPreview() {
         onAgeChange = {},
         onVisionChange = {},
         onBackClick = {},
-        onNextClick = {}
+        onNextClick = {},
+        infoNotificationManagerValue = false
     )
 }

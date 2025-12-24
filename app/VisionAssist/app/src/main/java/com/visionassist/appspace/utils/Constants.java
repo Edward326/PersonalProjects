@@ -57,6 +57,7 @@ public class Constants {
     public static final String EXTRA_IMAGE_URI = "image_uri";
     public static final String EXTRA_MATCHED_INDICES = "class_indices";
     public static final String EXTRA_SYNONYMS_WORDS = "synonyms_words";
+    public static final String EXTRA_HOME_OPTION = "home_option";
 
     // Battery and Temperature Checks
     public static final boolean APPLY_BATTERY_CHECK = true;
@@ -148,7 +149,7 @@ public class Constants {
     public static final float STD_SUBTITLE2_MARGIN_TOP=0.48f;
     public static final float STD_TITLE_SUBTITLE_MARGIN_TOP=0.045f;
     public static final float STD_SUBTITLE_BODY_MARGIN_TOP=0.04f;
-    public static final float STD_NAV_MARGIN_BOTTOM=0.10f;
+    public static final float STD_NAV_MARGIN_BOTTOM=0.025f;
 
     // CameraX activities parameters
     public static final long WAIT_CHECK = 5000;

@@ -76,6 +76,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -91,6 +92,7 @@ import com.visionassist.appspace.activities.tabs.MotionManager
 import com.visionassist.appspace.activities.tabs.home.findmyobjects.BBoxSizeSlider
 import com.visionassist.appspace.activities.tabs.home.findmyobjects.TextSizeSlider
 import com.visionassist.appspace.activities.tabs.reports.EnvironmentReportsManagerKt
+import com.visionassist.appspace.activities.tabs.settings.BlockingOverlay
 import com.visionassist.appspace.jetpack.managers.ErrorDialogManager
 import com.visionassist.appspace.models.classifier.YOLOClassifier
 import com.visionassist.appspace.models.detector.DetectionResult
@@ -691,35 +693,49 @@ fun LiveDetectionScreen(
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val screenHeight = maxHeight
 
-        MemoryWarningNotification(showMemoryWarning)
-
-        if (resultBitmap == null) {
-            // Detection phase - Camera + FPS Slider
-            DetectionPhase(
-                onCameraReady = onCameraReady
-            )
-        } else {
-            // Result phase - Result image + Navigation
-            ResultPhaseWithSettings(
-                screenHeight = screenHeight,
-                resultBitmap = resultBitmap,
-                onHomeClick = onHomeClick,
-                onBBoxResize = onBBoxResize,
-                onTextResize = onTextResize
-            )
-        }
-
-        // Battery warning notification
-        AnimatedVisibility(
-            visible = showBatteryWarning,
-            enter = slideInVertically(initialOffsetY = { -it }),
-            exit = slideOutVertically(targetOffsetY = { -it }),
+        Box(
             modifier = Modifier
-                .statusBarsPadding()
-                .align(Alignment.TopCenter)
+                .fillMaxSize()
+                .then(
+                    if (showMemoryWarning) {
+                        Modifier.clearAndSetSemantics { }  //  COMPLETELY REMOVE from tree!
+                    } else {
+                        Modifier
+                    }
+                )
         ) {
-            BatteryWarningNotification()
+            if (resultBitmap == null) {
+                // Detection phase - Camera + FPS Slider
+                DetectionPhase(
+                    onCameraReady = onCameraReady
+                )
+            } else {
+                // Result phase - Result image + Navigation
+                ResultPhaseWithSettings(
+                    screenHeight = screenHeight,
+                    resultBitmap = resultBitmap,
+                    onHomeClick = onHomeClick,
+                    onBBoxResize = onBBoxResize,
+                    onTextResize = onTextResize
+                )
+            }
+
+            // Battery warning notification
+            AnimatedVisibility(
+                visible = showBatteryWarning,
+                enter = slideInVertically(initialOffsetY = { -it }),
+                exit = slideOutVertically(targetOffsetY = { -it }),
+                modifier = Modifier
+                    .statusBarsPadding()
+                    .align(Alignment.TopCenter)
+            ) {
+                BatteryWarningNotification()
+            }
         }
+
+        BlockingOverlay(showMemoryWarning)
+
+        MemoryWarningNotification(showMemoryWarning)
     }
 }
 

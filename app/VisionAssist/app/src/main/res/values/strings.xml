@@ -259,7 +259,7 @@
     <string name="change_tts_parameters_en">Change Text To Speech parameters</string>
     <string name="change_tts_parameters_ro">Schimbă parametrii modelului TTS</string>
     <string name="change_caption_colors_en">Change caption colors</string>
-    <string name="change_caption_colors_ro">Schimbă culorile legendei</string>
+    <string name="change_caption_colors_ro">Schimbă culorile textului</string>
     <string name="clear_cache_en">Clear Cache</string>
     <string name="clear_cache_ro">Șterge Cache-ul</string>
     <string name="clear_reports_en">Clear Reports</string>

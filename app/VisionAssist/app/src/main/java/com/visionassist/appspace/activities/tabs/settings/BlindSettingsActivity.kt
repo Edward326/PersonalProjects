@@ -59,6 +59,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -975,8 +976,7 @@ class BlindSettingsActivity : BaseActivity() {
             getProfileExportedMessageTutorial(this), {
                 cancelAllHandlers(); infoNotificationManager.hideNotification()
                 exportProfileLauncher.launch(null)
-            }, if (AppConfig.mainLanguage.code == "en") "Files"
-            else "Fișiere"
+            }, if (AppConfig.mainLanguage.code == "en") "Browse" else "Răsfoire"
         )
     }
 
@@ -1222,6 +1222,7 @@ class BlindSettingsActivity : BaseActivity() {
 
         waitForTTSSpeech {
             val intent = Intent(this, BlindHomeActivity::class.java)
+            intent.putExtra(Constants.EXTRA_HOME_OPTION,true)
             startActivity(intent)
             finish()
         }
@@ -1294,6 +1295,8 @@ fun BlindSettingsScreen(
     showErrorPassword: Boolean,
     passwordValue: String
 ) {
+    val blockMainUI =
+        showLoading || infoNotificationManagerValue || showNotification || showPasswordDialog || isSpeakingApplyingSettings
     val navBarHeight = WindowInsets.navigationBars.getBottom(LocalDensity.current)
     val navBarHeightDp = with(LocalDensity.current) { navBarHeight.toDp() }
 
@@ -1318,19 +1321,19 @@ fun BlindSettingsScreen(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
+                .then(
+                    if (blockMainUI) {
+                        Modifier.clearAndSetSemantics { }  //  COMPLETELY REMOVE from tree!
+                    } else {
+                        Modifier
+                    }
+                )
         ) {
             // Main content
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .fillMaxHeight(sectionMain)
-                    .then(
-                        if (showLoading || infoNotificationManagerValue || showNotification || showPasswordDialog || isSpeakingApplyingSettings) {
-                            Modifier.clearAndSetSemantics { }  //  COMPLETELY REMOVE from tree!
-                        } else {
-                            Modifier
-                        }
-                    )
             ) {
                 Spacer(modifier = Modifier.weight(0.12f))
 
@@ -1495,56 +1498,52 @@ fun BlindSettingsScreen(
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .fillMaxHeight(navbarHeight)
-                    .then(
-                        if (showLoading || infoNotificationManagerValue || showNotification || showPasswordDialog) {
-                            Modifier.clearAndSetSemantics { }  //  COMPLETELY REMOVE from tree!
-                        } else {
-                            Modifier
-                        }
-                    )
             ) {
                 // Bottom Navigation
                 BottomNavigationBar(
                     onNavigateHome, {}, onNavigateSettings, AppConfig.env_reports, 2
                 )
             }
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(navBarHeightDp)  // Takes the height of status bar
-                    .background(colorResource(R.color.std_light_purple))  // Your color!
-                    .align(Alignment.BottomCenter)
-            )
-
-            // Loading overlay
-            LoadingComponent(
-                isVisible = showLoading, loadingText = loadingText, animSpec = Pair(
-                    fadeIn(initialAlpha = 0f, animationSpec = tween(durationMillis = 0)),
-                    fadeOut(targetAlpha = 0f, animationSpec = tween(durationMillis = 0))
-                )
-            )
-
-            NotificationDialog(
-                isVisible = showNotification,
-                type = LoadProfileActivity.NotificationType.NO_INTERNET,
-                message = notificationMessage,
-                firstButtonClick = firstButtonClick,
-            )
-
-            PasswordConfirmationDialog(
-                showDialog = showPasswordDialog,
-                title = getPasswordTitle(context),
-                passwordValue = passwordValue,
-                onPasswordChange = onPasswordChange,
-                firstButtonLabel = if (AppConfig.mainLanguage.code == "en") "Cancel"
-                else context.getString(R.string.dont_button_ro),
-                secondButtonLabel = if (AppConfig.mainLanguage.code == "en") context.getString(R.string.delete_button_en)
-                else context.getString(R.string.delete_button_ro),
-                onFirstButtonClick = firstButtonClickPassword,
-                onSecondButtonClick = secondButtonClickPassword,
-                showErrorPassword = showErrorPassword
-            )
         }
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(navBarHeightDp)  // Takes the height of status bar
+                .background(colorResource(R.color.std_light_purple))  // Your color!
+                .align(Alignment.BottomCenter)
+        )
+
+        BlockingOverlay(blockMainUI)
+
+        // Loading overlay
+        LoadingComponent(
+            isVisible = showLoading, loadingText = loadingText, animSpec = Pair(
+                fadeIn(initialAlpha = 0f, animationSpec = tween(durationMillis = 0)),
+                fadeOut(targetAlpha = 0f, animationSpec = tween(durationMillis = 0))
+            )
+        )
+
+        NotificationDialog(
+            isVisible = showNotification,
+            type = LoadProfileActivity.NotificationType.NO_INTERNET,
+            message = notificationMessage,
+            firstButtonClick = firstButtonClick,
+        )
+
+        PasswordConfirmationDialog(
+            showDialog = showPasswordDialog,
+            title = getPasswordTitle(context),
+            passwordValue = passwordValue,
+            onPasswordChange = onPasswordChange,
+            firstButtonLabel = if (AppConfig.mainLanguage.code == "en") "Cancel"
+            else context.getString(R.string.dont_button_ro),
+            secondButtonLabel = if (AppConfig.mainLanguage.code == "en") context.getString(R.string.delete_button_en)
+            else context.getString(R.string.delete_button_ro),
+            onFirstButtonClick = firstButtonClickPassword,
+            onSecondButtonClick = secondButtonClickPassword,
+            showErrorPassword = showErrorPassword
+        )
     }
 }
 
@@ -2092,6 +2091,24 @@ fun BlindAccountSection(
                 }
             }
         }
+    }
+}
+
+@Composable
+fun BlockingOverlay(isVisible: Boolean) {
+    if (isVisible) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            event.changes.forEach { it.consume() }
+                        }
+                    }
+                }
+        )
     }
 }
 

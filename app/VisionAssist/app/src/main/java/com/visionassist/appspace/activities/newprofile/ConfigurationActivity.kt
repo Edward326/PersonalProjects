@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale.Companion.Crop
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -49,6 +50,7 @@ import androidx.core.view.WindowCompat
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
 import com.visionassist.appspace.activities.newprofile.jsonCollection.ProfileFileCollection
+import com.visionassist.appspace.activities.tabs.settings.BlockingOverlay
 import com.visionassist.appspace.jetpack.design.BlindnessNotificationDialog
 import com.visionassist.appspace.jetpack.managers.ErrorDialogManager
 import com.visionassist.appspace.models.ttsengine.TTSManager
@@ -245,6 +247,13 @@ fun ConfigurationScreen(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
+                .then(
+                    if (showNotification) {
+                        Modifier.clearAndSetSemantics { }  //  COMPLETELY REMOVE from tree!
+                    } else {
+                        Modifier
+                    }
+                )
             ,
             verticalArrangement = Arrangement.SpaceAround
         ) {
@@ -311,6 +320,8 @@ fun ConfigurationScreen(
             }
             Box(modifier = Modifier.height(screenHeight * 0.21f))
         }
+
+        BlockingOverlay(showNotification)
 
         // Notification Dialog - Only shows when showNotification is true
         // This doesn't block touches when hidden because AnimatedVisibility handles it

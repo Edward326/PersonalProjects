@@ -55,6 +55,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -64,6 +65,7 @@ import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
 import com.visionassist.appspace.activities.newprofile.WelcomeActivity.Section
 import com.visionassist.appspace.activities.newprofile.jsonCollection.ProfileFileCollection
+import com.visionassist.appspace.activities.tabs.settings.BlockingOverlay
 import com.visionassist.appspace.jetpack.design.BackArrowLargeFab
 import com.visionassist.appspace.jetpack.design.LanguageSelector
 import com.visionassist.appspace.jetpack.design.LoadingComponent
@@ -119,6 +121,8 @@ class WelcomeActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 WelcomeScreen(
+                    loadProfileInfoManagerValue= loadProfileInfoManager.isVisibleState.value,
+                    newProfileInfoManagerValue = newProfileInfoManager.isVisibleState.value,
                     showLoading = showLoading.value,
                     loadingText = loadingText.value,
                     selectedLanguage = selectedLanguage,
@@ -161,12 +165,10 @@ class WelcomeActivity : ComponentActivity() {
                 "Modelul TTS se configurează, vă rugăm așteptați"
         showLoading.value = true
         val handler = Handler(Looper.getMainLooper())
-        val checkTTS: Runnable = object : Runnable {
-            override fun run() {
-                waitingForTTSLanguage = true
-                ttsManager.changeLanguage(selectedLanguage, this@WelcomeActivity)
-                waitForTTSAndNavigate(true)
-            }
+        val checkTTS: Runnable = Runnable {
+            waitingForTTSLanguage = true
+            ttsManager.changeLanguage(selectedLanguage, this@WelcomeActivity)
+            waitForTTSAndNavigate(true)
         }
         handler.postDelayed(checkTTS, Constants.ANIMATION_DELAY.toLong() + 1000)
     }
@@ -272,6 +274,8 @@ class WelcomeActivity : ComponentActivity() {
 
 @Composable
 fun WelcomeScreen(
+    loadProfileInfoManagerValue: Boolean,
+    newProfileInfoManagerValue: Boolean,
     showLoading: Boolean,
     loadingText: String,
     selectedLanguage: Language,
@@ -285,6 +289,8 @@ fun WelcomeScreen(
     onShowLoadProfileInfo: () -> Unit,
     onShowNewProfileInfo: () -> Unit
 ) {
+    val blockMainUI= loadProfileInfoManagerValue || newProfileInfoManagerValue || showLoading
+
     BoxWithConstraints(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -304,6 +310,13 @@ fun WelcomeScreen(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
+                .then(
+                    if (blockMainUI) {
+                        Modifier.clearAndSetSemantics { }  //  COMPLETELY REMOVE from tree!
+                    } else {
+                        Modifier
+                    }
+                )
             ,
             targetState = currentSection, transitionSpec = {
                 if (targetState == Section.PROFILE_SELECTION) {
@@ -342,11 +355,6 @@ fun WelcomeScreen(
             }
         }
 
-        LoadingComponent(
-            isVisible = showLoading,
-            loadingText = loadingText
-        )
-
         val bottomSpace = screenHeight * Constants.STD_NAV_MARGIN_BOTTOM
         if (currentSection == Section.LANGUAGE) {
             // Navigation Buttons (not animated, always visible at bottom)
@@ -377,6 +385,13 @@ fun WelcomeScreen(
                 )
             }
         }
+
+        BlockingOverlay(blockMainUI)
+
+        LoadingComponent(
+            isVisible = showLoading,
+            loadingText = loadingText
+        )
     }
 }
 
@@ -602,6 +617,9 @@ fun WelcomeActivityPreview() {
             onLoadProfileClicked = {},
             onNewProfileClicked = {},
             onShowLoadProfileInfo = {},
-            onShowNewProfileInfo = {})
+            onShowNewProfileInfo = {},
+            loadProfileInfoManagerValue = false,
+            newProfileInfoManagerValue = false
+        )
     }
 }

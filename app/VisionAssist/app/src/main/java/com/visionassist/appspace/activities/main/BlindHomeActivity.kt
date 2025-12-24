@@ -49,6 +49,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
@@ -64,6 +65,7 @@ import com.visionassist.appspace.activities.tabs.home.caption.BlindCaptionActivi
 import com.visionassist.appspace.activities.tabs.home.detection.BlindDetectionActivity
 import com.visionassist.appspace.activities.tabs.home.findmyobjects.BlindFindMyObjectActivity
 import com.visionassist.appspace.activities.tabs.settings.BlindSettingsActivity
+import com.visionassist.appspace.activities.tabs.settings.BlockingOverlay
 import com.visionassist.appspace.jetpack.managers.ErrorDialogManager
 import com.visionassist.appspace.models.sttengine.SpeechRecognizer
 import com.visionassist.appspace.sound.SoundConstants
@@ -146,6 +148,7 @@ class BlindHomeActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        val intentExtra = intent.getBooleanExtra(Constants.EXTRA_HOME_OPTION, false)
 
         registerCameraLauncher()
 
@@ -154,10 +157,12 @@ class BlindHomeActivity : BaseActivity() {
         syncStatus = dbManager.statusOverview
         syncDays = if (syncStatus > 0) dbManager.diffDays.toInt() else 0
 
-        uiLocked = true
-        locked = true
-        PhoneStatusMonitor.getInstance().soundManager.play(SoundConstants.OPEN_UP_ID, 1f, 1f) {
-            checkTalkBackAndProceed()
+        if(!intentExtra) {
+            uiLocked = true
+            locked = true
+            PhoneStatusMonitor.getInstance().soundManager.play(SoundConstants.OPEN_UP_ID, 1f, 1f) {
+                checkTalkBackAndProceed()
+            }
         }
 
         setContent {
@@ -187,7 +192,7 @@ class BlindHomeActivity : BaseActivity() {
             if (isSuccess) {
                 try {
                     val intent = Intent(this, BlindCaptionActivity::class.java)
-                    returnFromFindMyObject=true
+                    returnFromFindMyObject = true
                     intent.putExtra(Constants.EXTRA_IMAGE_URI, currentPhotoUri.toString())
                     startActivity(intent)
                 } catch (e: IOException) {
@@ -442,8 +447,8 @@ class BlindHomeActivity : BaseActivity() {
 
         onPermissionGranted = {
             checkPhoneStatusAndNavigate {
-                val intent= Intent(this, BlindDetectionActivity::class.java)
-                returnFromFindMyObject=true
+                val intent = Intent(this, BlindDetectionActivity::class.java)
+                returnFromFindMyObject = true
                 startActivity(intent)
             }
         }
@@ -477,7 +482,7 @@ class BlindHomeActivity : BaseActivity() {
         ttsManager.speak(navText, AppConfig.tts_pitch, AppConfig.tts_speech_rate, false, null)
         val intent = Intent(this, BlindSettingsActivity::class.java)
         startActivity(intent)
-
+        finish()
     }
 
     private fun isTalkBackEnabled(): Boolean {
@@ -839,6 +844,8 @@ fun BlindHomeScreen(
     onTutorialSwipeUp: () -> Unit,
     onSpeechDialogTap: () -> Unit,
 ) {
+    val blockMainUI = enableTutorial || showSpeechDialog
+
     val navBarHeight = WindowInsets.navigationBars.getBottom(LocalDensity.current)
     val navBarHeightDp = with(LocalDensity.current) { navBarHeight.toDp() }
 
@@ -888,6 +895,13 @@ fun BlindHomeScreen(
                     .fillMaxSize()
                     .statusBarsPadding()
                     .navigationBarsPadding()
+                    .then(
+                        if (blockMainUI) {
+                            Modifier.clearAndSetSemantics { }  //  COMPLETELY REMOVE from tree!
+                        } else {
+                            Modifier
+                        }
+                    )
             ) {
                 // Main content
                 Column(
@@ -956,6 +970,8 @@ fun BlindHomeScreen(
                     .background(colorResource(R.color.std_light_purple))  // Your color!
                     .align(Alignment.BottomCenter)
             )
+
+            BlockingOverlay(blockMainUI)
 
             // Speech Recognition Dialog
             SpeechRecognitionDialog(
