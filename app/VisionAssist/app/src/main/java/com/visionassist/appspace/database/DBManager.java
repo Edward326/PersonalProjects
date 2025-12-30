@@ -352,7 +352,7 @@ public class DBManager {
             }
 
             // Step 2: Create empty files for hash_cache and env_reports if enabled
-            boolean hashCacheEnabled = profileData.optString("hash_caching", "none").equals("heavy")
+            boolean hashCacheEnabled = profileData.optString("hash_caching", "disabled").equals("heavy")
                     || profileData.optString("hash_caching", "none").equals("light");
             boolean envReportsEnabled = profileData.optBoolean("env_reports", false);
 

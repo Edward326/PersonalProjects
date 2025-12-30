@@ -959,7 +959,7 @@ fun BlindHomeScreen(
                         onNavigateHome = onNavigationHomeClick,
                         onNavigateReports = {},
                         onNavigateSettings = onNavigationSettingsClick,
-                        showReports = AppConfig.env_reports
+                        showReports = false
                     )
                 }
             }

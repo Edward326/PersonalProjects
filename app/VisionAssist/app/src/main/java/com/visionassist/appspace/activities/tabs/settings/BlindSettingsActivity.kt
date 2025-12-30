@@ -1501,7 +1501,7 @@ fun BlindSettingsScreen(
             ) {
                 // Bottom Navigation
                 BottomNavigationBar(
-                    onNavigateHome, {}, onNavigateSettings, AppConfig.env_reports, 2
+                    onNavigateHome, {}, onNavigateSettings, false, 2
                 )
             }
         }
