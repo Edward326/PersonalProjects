@@ -719,8 +719,10 @@ class SettingsActivity : BaseActivity() {
                 dbManager.deleteAccount(email)
 
                 // Delete local files first
+                if(AppConfig.env_reports)
                 if (!FileUtils.deleteProfileDirFile(Constants.ENV_REPORTS_FILE_NAME)) return@executeAsync -1
 
+                if (AppConfig.hash_caching.equals("light") || AppConfig.hash_caching.equals("heavy"))
                 if (!FileUtils.deleteProfileDirFile(Constants.HASH_CACHE_FILE_NAME)) return@executeAsync -1
 
                 if (!FileUtils.deleteProfileDirFile(Constants.PROFILE_FILE_NAME)) return@executeAsync -1

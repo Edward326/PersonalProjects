@@ -68,6 +68,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
+import androidx.core.graphics.toColorInt
 import androidx.core.net.toUri
 import androidx.core.view.WindowCompat
 import com.visionassist.appspace.BaseActivity
@@ -665,7 +666,7 @@ fun MainCaptionScreen(
                                 bottomEnd = 16.dp
                             )
                         )
-                        .background(colorResource(R.color.std_purple)),
+                        .background(Color(AppConfig.caption_bck_color.toColorInt())),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
@@ -686,7 +687,7 @@ fun MainCaptionScreen(
                         Text(
                             text = captionText,
                             fontSize = currentTextSize.sp,
-                            color = Color.White,
+                            color = Color(AppConfig.caption_color.toColorInt()),
                             textAlign = TextAlign.Center,
                             fontFamily = robotoExtraBold,
                             lineHeight = (currentTextSize * 1.5f).sp
