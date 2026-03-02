@@ -4,7 +4,7 @@ import android.os.Build;
 
 public class Constants {
     // Version Number
-    public static final String APP_VERSION = "1.0.0";
+    public static final String APP_VERSION = "1.1.0";
 
     // Model Configuration
     public static final String YOLO_MODEL_DETECTOR_ACC_FILE = "yolov8s_mobile.onnx";

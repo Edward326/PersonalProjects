@@ -201,7 +201,7 @@ public class YOLOClassifier {
             OrtSession.Result results = ortSession.run(inputs);
 
             // Get output tensor
-            // ONNX classifier output shape: [1, 1000] (batch_size, num_classes)
+            // ONNX classifier output shape: [1, 32] (batch_size, num_classes)
             OnnxTensor outputTensor = (OnnxTensor) results.get(0);
             float[][] outputArray = (float[][]) outputTensor.getValue();
 
