@@ -24,7 +24,7 @@ public class Constants {
     public static final int CLASSIFIER_INPUT_SIZE = 224;
 
     // Detection Thresholds
-    public static final float CONFIDENCE_THRESHOLD = 0.6f;
+    public static final float CONFIDENCE_THRESHOLD = 0.5f;
     public static final float NMS_THRESHOLD = 0.45f;
     public static final float MAX_WAIT_SIMILARITY = 5000;
 
