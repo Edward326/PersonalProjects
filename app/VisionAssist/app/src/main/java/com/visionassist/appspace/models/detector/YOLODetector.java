@@ -31,7 +31,7 @@ public class YOLODetector {
 
     // Model parameters
     private static final int NUM_DETECTIONS = 8400;
-    private static final int NUM_FEATURES = 111; // 4 bbox + 107 classes
+    private static final int NUM_FEATURES = 84; // 4 bbox + 80 classes
 
     // Preprocessing parameters (same as PyTorch version)
     private float scaleX = 1.0f;
@@ -221,11 +221,11 @@ public class YOLODetector {
             OrtSession.Result results = ortSession.run(inputs);
 
             // Get output tensor
-            // ONNX output shape: [1, 111, 8400] (same as PyTorch Mobile)
+            // ONNX output shape: [1, 84, 8400] (same as PyTorch Mobile)
             OnnxTensor outputTensor = (OnnxTensor) results.get(0);
             float[][][] outputArray = (float[][][]) outputTensor.getValue();
 
-            // Flatten to 1D array: [111 * 8400]
+            // Flatten to 1D array: [84 * 8400]
             float[] flatOutput = new float[NUM_FEATURES * NUM_DETECTIONS];
             int idx = 0;
             for (int i = 0; i < NUM_FEATURES; i++) {
@@ -248,7 +248,7 @@ public class YOLODetector {
 
     private DetectionResult postprocessOutput(float[] output, int originalWidth, int originalHeight,String threadInfo) {
         // THIS IS EXACTLY THE SAME AS YOUR PYTORCH VERSION
-        // The output format is identical: [134, 8400]
+        // The output format is identical: [84, 8400]
 
         List<RectF> boundingBoxes = new ArrayList<>();
         List<Float> confidences = new ArrayList<>();
