@@ -51,6 +51,7 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -476,13 +477,16 @@ class BlindHomeActivity : BaseActivity() {
     private fun handleNavigationSettingsClick() {
         if (uiLocked) return
 
-        if (AppConfig.haptics) vibrate(haptic_model0())
+        cancelAllHandlers()
 
         val navText = load_navigateToSettings(this)
         ttsManager.speak(navText, AppConfig.tts_pitch, AppConfig.tts_speech_rate, false, null)
-        val intent = Intent(this, BlindSettingsActivity::class.java)
-        startActivity(intent)
-        finish()
+
+        waitForTTSSpeech {
+            val intent = Intent(this, BlindSettingsActivity::class.java)
+            startActivity(intent)
+            finish()
+        }
     }
 
     private fun isTalkBackEnabled(): Boolean {
@@ -915,8 +919,8 @@ fun BlindHomeScreen(
                     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                         Image(
                             painter = painterResource(R.drawable.vision_assist_logo),
-                            contentDescription = "app logo",
-                            modifier = Modifier.size(Constants.BLIND_LOGO_SIZE.dp)
+                            contentDescription = "VisionAssist logo",
+                            modifier = Modifier.size(Constants.BLIND_LOGO_SIZE.dp).semantics{hideFromAccessibility()}
                         )
                     }
 

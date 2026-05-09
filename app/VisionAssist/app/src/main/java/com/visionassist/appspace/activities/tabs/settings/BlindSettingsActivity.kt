@@ -22,6 +22,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -1222,7 +1223,7 @@ class BlindSettingsActivity : BaseActivity() {
 
         waitForTTSSpeech {
             val intent = Intent(this, BlindHomeActivity::class.java)
-            intent.putExtra(Constants.EXTRA_HOME_OPTION,true)
+            intent.putExtra(Constants.EXTRA_HOME_OPTION, true)
             startActivity(intent)
             finish()
         }
@@ -1308,242 +1309,267 @@ fun BlindSettingsScreen(
         val sectionMain = 1.0f - navbarHeight
         val context = LocalContext.current
 
-        // Background image
-        Image(
-            painter = painterResource(R.drawable.app_background),
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
-        )
-
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
-                .navigationBarsPadding()
-                .then(
-                    if (blockMainUI) {
-                        Modifier.clearAndSetSemantics { }  //  COMPLETELY REMOVE from tree!
-                    } else {
-                        Modifier
-                    }
-                )
+                .pointerInput(Unit) {
+                    var swipeStartX = 0f
+                    detectHorizontalDragGestures(
+                        onDragStart = {
+                            swipeStartX = 0f
+                        },
+                        onDragEnd = {
+                            val threshold = (screenWidth * Constants.MIN_HDISTANCE_THRESHOLD).toPx()
+                            when {
+                                swipeStartX >= threshold -> {
+                                    onNavigateHome()
+                                }
+                            }
+                            swipeStartX = 0f
+                        },
+                        onHorizontalDrag = { _, dragAmount ->
+                            swipeStartX += dragAmount
+                        }
+                    )
+                }
         ) {
-            // Main content
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(sectionMain)
-            ) {
-                Spacer(modifier = Modifier.weight(0.12f))
+            // Background image
+            Image(
+                painter = painterResource(R.drawable.app_background),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(0.34f)
-                ) {
-                    BlindTopSettingsSection(
-                        selectedLanguage = selectedLanguage,
-                        selectedQuickAction = selectedQuickAction,
-                        soAEnabled = soAEnabled,
-                        onLanguageChange = onLanguageChange,
-                        onQuickActionChange = onQuickActionChange,
-                        onQuickActionInfoClick = onQuickActionInfoClick,
-                        onSoAToggle = onSoAToggle,
-                        onSoAInfoClick = onSoAInfoClick,
-                        context = context
-                    )
-                }
-
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(0.50f),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    BlindSlideableSections(
-                        currentSection = currentSection,
-                        onChangeDetectionColors = onChangeTTSParameters,
-                        onChangeCaptionColors = onClearCache,
-                        onSyncProfile = onSyncProfile,
-                        onLogout = onLogout,
-                        onDeleteAccount = onDeleteAccount,
-                        screenWidth = screenWidth
-                    )
-
-                    if (hasRemoteProfile) {
-                        Row(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .weight(0.3f)
-                                    .padding(start = 24.dp)
-                                    .semantics {
-                                        if (currentSection > 0) contentDescription =
-                                            getGeneralSectionTextTTS(context)
-                                        else hideFromAccessibility()
-                                    }
-                                    .clickable {
-                                        if (currentSection > 0)
-                                            onSectionChange(currentSection - 1)
-                                    },
-                                contentAlignment = Alignment.CenterStart,
-                            ) {
-                                if (currentSection > 0) {
-                                    IconButton(
-                                        onClick = {},
-                                        modifier = Modifier
-                                            .size(Constants.STD_BUTTON_HEIGHT.dp / 2)
-                                            .background(
-                                                colorResource(R.color.std_purple), CircleShape
-                                            )
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                            contentDescription = "",
-                                            tint = Color.White,
-                                            modifier = Modifier.size(Constants.STD_INFO_BUTTON_SIZE.dp)
-                                        )
-                                    }
-                                }
-                            }
-
-                            BlindSectionIndicators(
-                                currentSection = currentSection, screenWidth = screenWidth
-                            )
-
-                            Box(
-                                modifier = Modifier
-                                    .weight(0.3f)
-                                    .padding(end = 24.dp)
-                                    .semantics {
-                                        if (currentSection < 1) contentDescription =
-                                            getAccountSectionTextTTS(context)
-                                        else hideFromAccessibility()
-                                    }
-                                    .clickable {
-                                        if (currentSection < 1)
-                                            onSectionChange(currentSection + 1)
-                                    },
-                                contentAlignment = Alignment.CenterEnd
-                            ) {
-                                if (currentSection < 1) {
-                                    IconButton(
-                                        onClick = {},
-                                        modifier = Modifier
-                                            .size(Constants.STD_BUTTON_HEIGHT.dp / 2)
-                                            .background(
-                                                colorResource(R.color.std_purple), CircleShape
-                                            )
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                            contentDescription = "",
-                                            tint = Color.White,
-                                            modifier = Modifier.size(Constants.STD_INFO_BUTTON_SIZE.dp)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            onExportProfile()
-                        }
-                        .semantics {
-                            contentDescription =
-                                if (AppConfig.mainLanguage.code == "en") "Export profile button"
-                                else "Buton de exportare a profilului"
-                        }
-                        .weight(0.2f), verticalArrangement = Arrangement.Bottom) {
-                    // Export Profile Button
-                    Button(
-                        onClick = onExportProfile,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(Constants.STD_BUTTON_HEIGHT.dp)
-                            .padding(horizontal = 24.dp),
-                        shape = RoundedCornerShape(32.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = colorResource(R.color.std_purple)
-                        )
-                    ) {
-                        Text(
-                            text = getExportProfileText(context),
-                            fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
-                            color = Color.White,
-                            fontFamily = robotoExtraBold
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Sync Status Section
-                    SyncStatusSection(
-                        0, syncDays.toInt(), false, {}, true
-                    )
-                }
-            }
-
-            // Bottom Navigation Bar
             Box(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .fillMaxHeight(navbarHeight)
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
+                    .then(
+                        if (blockMainUI) {
+                            Modifier.clearAndSetSemantics { }  //  COMPLETELY REMOVE from tree!
+                        } else {
+                            Modifier
+                        }
+                    )
             ) {
-                // Bottom Navigation
-                BottomNavigationBar(
-                    onNavigateHome, {}, onNavigateSettings, false, 2
-                )
+                // Main content
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(sectionMain)
+                ) {
+                    Spacer(modifier = Modifier.weight(0.12f))
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(0.34f)
+                    ) {
+                        BlindTopSettingsSection(
+                            selectedLanguage = selectedLanguage,
+                            selectedQuickAction = selectedQuickAction,
+                            soAEnabled = soAEnabled,
+                            onLanguageChange = onLanguageChange,
+                            onQuickActionChange = onQuickActionChange,
+                            onQuickActionInfoClick = onQuickActionInfoClick,
+                            onSoAToggle = onSoAToggle,
+                            onSoAInfoClick = onSoAInfoClick,
+                            context = context
+                        )
+                    }
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(0.50f),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        BlindSlideableSections(
+                            currentSection = currentSection,
+                            onChangeDetectionColors = onChangeTTSParameters,
+                            onChangeCaptionColors = onClearCache,
+                            onSyncProfile = onSyncProfile,
+                            onLogout = onLogout,
+                            onDeleteAccount = onDeleteAccount,
+                            screenWidth = screenWidth
+                        )
+
+                        if (hasRemoteProfile) {
+                            Row(
+                                modifier = Modifier.fillMaxSize(),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .weight(0.3f)
+                                        .padding(start = 24.dp)
+                                        .semantics {
+                                            if (currentSection > 0) contentDescription =
+                                                getGeneralSectionTextTTS(context)
+                                            else hideFromAccessibility()
+                                        }
+                                        .clickable {
+                                            if (currentSection > 0)
+                                                onSectionChange(currentSection - 1)
+                                        },
+                                    contentAlignment = Alignment.CenterStart,
+                                ) {
+                                    if (currentSection > 0) {
+                                        IconButton(
+                                            onClick = {},
+                                            modifier = Modifier
+                                                .size(Constants.STD_BUTTON_HEIGHT.dp / 2)
+                                                .background(
+                                                    colorResource(R.color.std_purple), CircleShape
+                                                )
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                                contentDescription = "",
+                                                tint = Color.White,
+                                                modifier = Modifier.size(Constants.STD_INFO_BUTTON_SIZE.dp)
+                                            )
+                                        }
+                                    }
+                                }
+
+                                BlindSectionIndicators(
+                                    currentSection = currentSection, screenWidth = screenWidth
+                                )
+
+                                Box(
+                                    modifier = Modifier
+                                        .weight(0.3f)
+                                        .padding(end = 24.dp)
+                                        .semantics {
+                                            if (currentSection < 1) contentDescription =
+                                                getAccountSectionTextTTS(context)
+                                            else hideFromAccessibility()
+                                        }
+                                        .clickable {
+                                            if (currentSection < 1)
+                                                onSectionChange(currentSection + 1)
+                                        },
+                                    contentAlignment = Alignment.CenterEnd
+                                ) {
+                                    if (currentSection < 1) {
+                                        IconButton(
+                                            onClick = {},
+                                            modifier = Modifier
+                                                .size(Constants.STD_BUTTON_HEIGHT.dp / 2)
+                                                .background(
+                                                    colorResource(R.color.std_purple), CircleShape
+                                                )
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                                contentDescription = "",
+                                                tint = Color.White,
+                                                modifier = Modifier.size(Constants.STD_INFO_BUTTON_SIZE.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                onExportProfile()
+                            }
+                            .semantics {
+                                contentDescription =
+                                    if (AppConfig.mainLanguage.code == "en") "Export profile button"
+                                    else "Buton de exportare a profilului"
+                            }
+                            .weight(0.2f), verticalArrangement = Arrangement.Bottom) {
+                        // Export Profile Button
+                        Button(
+                            onClick = onExportProfile,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(Constants.STD_BUTTON_HEIGHT.dp)
+                                .padding(horizontal = 24.dp),
+                            shape = RoundedCornerShape(32.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = colorResource(R.color.std_purple)
+                            )
+                        ) {
+                            Text(
+                                text = getExportProfileText(context),
+                                fontSize = Constants.STD_BUTTON_FONT_SIZE.sp,
+                                color = Color.White,
+                                fontFamily = robotoExtraBold
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Sync Status Section
+                        SyncStatusSection(
+                            0, syncDays.toInt(), false, {}, true
+                        )
+                    }
+                }
+
+                // Bottom Navigation Bar
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .fillMaxHeight(navbarHeight)
+                ) {
+                    // Bottom Navigation
+                    BottomNavigationBar(
+                        onNavigateHome, {}, onNavigateSettings, false, 2
+                    )
+                }
             }
-        }
 
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(navBarHeightDp)  // Takes the height of status bar
-                .background(colorResource(R.color.std_light_purple))  // Your color!
-                .align(Alignment.BottomCenter)
-        )
-
-        BlockingOverlay(blockMainUI)
-
-        // Loading overlay
-        LoadingComponent(
-            isVisible = showLoading, loadingText = loadingText, animSpec = Pair(
-                fadeIn(initialAlpha = 0f, animationSpec = tween(durationMillis = 0)),
-                fadeOut(targetAlpha = 0f, animationSpec = tween(durationMillis = 0))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(navBarHeightDp)  // Takes the height of status bar
+                    .background(colorResource(R.color.std_light_purple))  // Your color!
+                    .align(Alignment.BottomCenter)
             )
-        )
 
-        NotificationDialog(
-            isVisible = showNotification,
-            type = LoadProfileActivity.NotificationType.NO_INTERNET,
-            message = notificationMessage,
-            firstButtonClick = firstButtonClick,
-        )
+            BlockingOverlay(blockMainUI)
 
-        PasswordConfirmationDialog(
-            showDialog = showPasswordDialog,
-            title = getPasswordTitle(context),
-            passwordValue = passwordValue,
-            onPasswordChange = onPasswordChange,
-            firstButtonLabel = if (AppConfig.mainLanguage.code == "en") "Cancel"
-            else context.getString(R.string.dont_button_ro),
-            secondButtonLabel = if (AppConfig.mainLanguage.code == "en") context.getString(R.string.delete_button_en)
-            else context.getString(R.string.delete_button_ro),
-            onFirstButtonClick = firstButtonClickPassword,
-            onSecondButtonClick = secondButtonClickPassword,
-            showErrorPassword = showErrorPassword
-        )
+            // Loading overlay
+            LoadingComponent(
+                isVisible = showLoading, loadingText = loadingText, animSpec = Pair(
+                    fadeIn(initialAlpha = 0f, animationSpec = tween(durationMillis = 0)),
+                    fadeOut(targetAlpha = 0f, animationSpec = tween(durationMillis = 0))
+                )
+            )
+
+            NotificationDialog(
+                isVisible = showNotification,
+                type = LoadProfileActivity.NotificationType.NO_INTERNET,
+                message = notificationMessage,
+                firstButtonClick = firstButtonClick,
+            )
+
+            PasswordConfirmationDialog(
+                showDialog = showPasswordDialog,
+                title = getPasswordTitle(context),
+                passwordValue = passwordValue,
+                onPasswordChange = onPasswordChange,
+                firstButtonLabel = if (AppConfig.mainLanguage.code == "en") "Cancel"
+                else context.getString(R.string.dont_button_ro),
+                secondButtonLabel = if (AppConfig.mainLanguage.code == "en") context.getString(R.string.delete_button_en)
+                else context.getString(R.string.delete_button_ro),
+                onFirstButtonClick = firstButtonClickPassword,
+                onSecondButtonClick = secondButtonClickPassword,
+                showErrorPassword = showErrorPassword
+            )
+        }
     }
 }
 

@@ -715,7 +715,7 @@ fun BlindMainCaptionScreen(
                     .clip(
                         RoundedCornerShape(16.dp)
                     )
-                    .background(Color(AppConfig.caption_bck_color.toColorInt())),
+                    .background(colorResource(R.color.std_purple)),
                 contentAlignment = Alignment.Center
             ) {
                 // Caption text (centered, scrollable if needed)
@@ -729,7 +729,7 @@ fun BlindMainCaptionScreen(
                     ,
                     text = captionText,
                     fontSize = currentTextSize.sp,
-                    color = Color(AppConfig.caption_color.toColorInt()),
+                    color = Color.White,
                     textAlign = TextAlign.Center,
                     fontFamily = robotoExtraBold,
                     lineHeight = (currentTextSize * 1.5f).sp
