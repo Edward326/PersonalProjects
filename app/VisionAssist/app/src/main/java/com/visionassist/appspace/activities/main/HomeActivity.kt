@@ -262,7 +262,7 @@ class HomeActivity : BaseActivity() {
         ) { isSuccess ->
             if (isSuccess) {
                 try {
-                    navigateToFindMyObjectWithBitmap()
+                    navigateToDetectionStaticOrCaptionWithBitmap()
                 } catch (e: IOException) {
                     Log.e(TAG, "Error loading captured image", e)
                     showCameraError()
@@ -271,6 +271,7 @@ class HomeActivity : BaseActivity() {
                 Log.e(TAG, "Image capture failed or cancelled")
                 uiLocked = false
                 locked = false
+                showDetectionOptions.value=false
             }
         }
 
@@ -338,9 +339,12 @@ class HomeActivity : BaseActivity() {
         onPermissionGranted = {
             checkPhoneStatusAndNavigate {
                 // Navigate to LiveDetectionActivity
+                showDetectionOptions.value=false
+                detectionIconColor.value=R.color.std_purple_dark
+                selectedDetectionOption.value = null
                 val intent = Intent(this, LiveDetectionActivity::class.java)
                 startActivity(intent)
-                finish()
+                //finish()
             }
         }
         PermissionChecker.checkAndRequestPermissions(this, AppConfig.blindness, onPermissionGranted)
@@ -379,8 +383,12 @@ class HomeActivity : BaseActivity() {
         }
     }
 
-    private fun navigateToFindMyObjectWithBitmap() {
+    private fun navigateToDetectionStaticOrCaptionWithBitmap() {
         try {
+            showDetectionOptions.value=false
+            detectionIconColor.value=R.color.std_purple_dark
+            selectedDetectionOption.value = null
+
             val intent = Intent(
                 this,
                 when (classOpt) {
@@ -393,7 +401,6 @@ class HomeActivity : BaseActivity() {
                 if (!PhoneStatusMonitor.getInstance().writingToHCFinished)
                     return
 
-            returnFromFindMyObject = true
             intent.putExtra(Constants.EXTRA_IMAGE_URI, currentPhotoUri.toString())
             startActivity(intent)
         } catch (e: Exception) {

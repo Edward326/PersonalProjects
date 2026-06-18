@@ -36,6 +36,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.activities.main.BlindHomeActivity
+import com.visionassist.appspace.activities.main.HomeActivity
 import com.visionassist.appspace.activities.tabs.LightManager
 import com.visionassist.appspace.activities.tabs.MotionManager
 import com.visionassist.appspace.jetpack.managers.ErrorDialogManager
@@ -49,6 +50,7 @@ import com.visionassist.appspace.utils.Constants
 import com.visionassist.appspace.utils.ImageUtils
 import com.visionassist.appspace.utils.PermissionChecker
 import com.visionassist.appspace.utils.haptic_model0
+import com.visionassist.appspace.utils.load_navigateToHome
 import com.visionassist.appspace.utils.load_speakNoObjectsFound
 import com.visionassist.appspace.utils.startBatteryLevelCheck
 import com.visionassist.appspace.utils.vibrate
@@ -117,10 +119,15 @@ class BlindDetectionActivity : ComponentActivity() {
         val bitmap: Bitmap?
     )
 
+    private var quickActionIndex = 0
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
+
+        val intent = getIntent()
+        quickActionIndex = intent.getIntExtra("QUICK_ACTION_INDEX", 0)
 
         extractIntentData()
         cameraExecutor = Executors.newSingleThreadExecutor()
@@ -130,11 +137,11 @@ class BlindDetectionActivity : ComponentActivity() {
         val tempAccModel = currentDetectorModel.acquireAccModel(5000)
         val tempNanoModel = currentDetectorModel.acquireNanoModel(5000)
 
-        canSwitchModels= tempAccModel != null && tempNanoModel != null
+        canSwitchModels = tempAccModel != null && tempNanoModel != null
 
-        if(tempAccModel != null)
+        if (tempAccModel != null)
             currentDetectorModel.releaseAccModel(tempAccModel)
-        if(tempNanoModel != null)
+        if (tempNanoModel != null)
             currentDetectorModel.releaseNanoModel(tempNanoModel)
 
         motionMonitor = MotionManager(
@@ -607,18 +614,21 @@ class BlindDetectionActivity : ComponentActivity() {
     private fun handleBackClick() {
         soundManager.releaseCallback()
         ttsManager.stopSpeaking()
+
         ttsManager.speak(
-            if (ttsManager.currentLocale.language == "en")
-                "Returning to home page"
-            else
-                "Se revine în pagina principală",
+            load_navigateToHome(this),
             AppConfig.tts_pitch,
             AppConfig.tts_speech_rate,
             false,
             haptic_model0()
         )
         waitForTTSSpeech {
-            finish()
+            if (quickActionIndex != 0) {
+                val intent = Intent(this, BlindHomeActivity::class.java)
+                startActivity(intent)
+                finish()
+            }
+            else finish()
         }
     }
 

@@ -666,10 +666,18 @@ fun load_homePageIntro(context: Context): String {
 }
 
 fun load_navigateToSettings(context: Context): String {
-    return when (AppConfig.mainLanguage.code) {
+    return when (PhoneStatusMonitor.getInstance().ttsManager.currentLocale.language) {
         "en" -> context.getString(R.string.navigating_to_settings_en)
         "ro" -> context.getString(R.string.navigating_to_settings_ro)
         else -> context.getString(R.string.navigating_to_settings_en)
+    }
+}
+
+fun load_navigateToHome(context: Context): String {
+    return when (PhoneStatusMonitor.getInstance().ttsManager.currentLocale.language) {
+        "en" -> context.getString(R.string.navigating_to_home_en)
+        "ro" -> context.getString(R.string.navigating_to_home_ro)
+        else -> context.getString(R.string.navigating_to_home_en)
     }
 }
 
@@ -1359,11 +1367,13 @@ fun getQuickActionEnabledMessage(context: Context): String {
     }
 }
 
-fun getQuickActionEnabledMessageTTS(context: Context): String {
+fun getQuickActionEnabledMessageTTS(context: Context, option: Int): String {
     return if (PhoneStatusMonitor.getInstance().ttsManager.currentLocale.language == "en") {
-        context.getString(R.string.quick_action_enabled_en)
+        context.getString(R.string.quick_action_enabled_en) +
+                getQuickAccessTypeBlind(context, option)
     } else {
-        context.getString(R.string.quick_action_enabled_ro)
+        context.getString(R.string.quick_action_enabled_ro) +
+                getQuickAccessTypeBlind(context, option)
     }
 }
 
@@ -1489,6 +1499,34 @@ fun getQuickAccessType(context: Context, type: Int): String {
             context.getString(R.string.quick_action_detection_dynamic_en)
         } else {
             context.getString(R.string.quick_action_detection_dynamic_ro)
+        }
+
+        else -> if (AppConfig.mainLanguage.code == "en") {
+            context.getString(R.string.quick_action_caption_en)
+        } else {
+            context.getString(R.string.quick_action_caption_ro)
+        }
+    }
+}
+
+fun getQuickAccessTypeBlind(context: Context, type: Int): String {
+    return when (type) {
+        0 -> if (AppConfig.mainLanguage.code == "en") {
+            context.getString(R.string.quick_action_disabled_en)
+        } else {
+            context.getString(R.string.quick_action_disabled_ro)
+        }
+
+        1 -> if (AppConfig.mainLanguage.code == "en") {
+            "Detection"
+        } else {
+            "Detecție"
+        }
+
+        2 -> if (AppConfig.mainLanguage.code == "en") {
+            context.getString(R.string.quick_action_caption_en)
+        } else {
+            context.getString(R.string.quick_action_caption_ro)
         }
 
         else -> if (AppConfig.mainLanguage.code == "en") {

@@ -136,6 +136,7 @@ import com.visionassist.appspace.utils.getProfileExportedMessageTutorial
 import com.visionassist.appspace.utils.getProfileSyncErrorMessage
 import com.visionassist.appspace.utils.getProfileSyncedMessage
 import com.visionassist.appspace.utils.getQuickAccessType
+import com.visionassist.appspace.utils.getQuickAccessTypeBlind
 import com.visionassist.appspace.utils.getQuickActionDisabledMessageTTS
 import com.visionassist.appspace.utils.getQuickActionEnabledMessageTTS
 import com.visionassist.appspace.utils.getQuickActionInfoMessage
@@ -148,6 +149,7 @@ import com.visionassist.appspace.utils.getSyncProfileText
 import com.visionassist.appspace.utils.haptic_model0
 import com.visionassist.appspace.utils.load_genericErrorDelete
 import com.visionassist.appspace.utils.load_genericErrorLogout
+import com.visionassist.appspace.utils.load_navigateToHome
 import com.visionassist.appspace.utils.load_noInternet
 import com.visionassist.appspace.utils.robotoExtraBold
 import com.visionassist.appspace.utils.vibrate
@@ -460,7 +462,7 @@ class BlindSettingsActivity : BaseActivity() {
                 slideMessage.value = getQuickActionDisabledMessageTTS(this)
             } else {
                 LockScreenService.startService(this, action)
-                slideMessage.value = getQuickActionEnabledMessageTTS(this)
+                slideMessage.value = getQuickActionEnabledMessageTTS(this, action)
             }
 
             showLoading.value = false
@@ -1213,8 +1215,7 @@ class BlindSettingsActivity : BaseActivity() {
         cancelAllHandlers()
 
         ttsManager.speak(
-            if (PhoneStatusMonitor.getInstance().ttsManager.currentLanguage == "en") "Navigating to home screen..."
-            else "Se intoarce la ecranul principal...",
+            load_navigateToHome(this),
             AppConfig.tts_pitch,
             AppConfig.tts_speech_rate,
             false,
@@ -1585,12 +1586,11 @@ fun BlindTopSettingsSection(
     onSoAInfoClick: () -> Unit,
     context: Context
 ) {
-    val listOfQuickAction = remember(selectedLanguage) {
+    val listOfQuickAction = remember(selectedQuickAction) {
         listOf(
-            getQuickAccessType(context, 0),
-            getQuickAccessType(context, 1),
-            getQuickAccessType(context, 2),
-            getQuickAccessType(context, 3)
+            getQuickAccessTypeBlind(context, 0),
+            getQuickAccessTypeBlind(context, 1),
+            getQuickAccessTypeBlind(context, 2)
         )
     }
 
@@ -1688,7 +1688,7 @@ fun BlindTopSettingsSection(
                 ) {
                     // Quick Action Selector
                     QuickActionSelector(
-                        selectedOption = getQuickAccessType(
+                        selectedOption = getQuickAccessTypeBlind(
                             LocalContext.current, selectedQuickAction
                         ),
                         availableOptions = listOfQuickAction,

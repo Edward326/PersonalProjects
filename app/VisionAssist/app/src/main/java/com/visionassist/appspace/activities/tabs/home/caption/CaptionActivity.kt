@@ -212,9 +212,25 @@ class CaptionActivity : BaseActivity() {
         BackgroundTaskExecutor.getInstance().executeAsync(
             {
                 // Load bitmap from URI
-                val inputStream = contentResolver.openInputStream(imageUri)
-                val bitmap = BitmapFactory.decodeStream(inputStream)
-                inputStream?.close()
+                var bitmap: Bitmap? = null
+                val absolutePath = intent.getStringExtra("ABSOLUTE_PATH")
+
+                if (absolutePath != null)
+                    intent.removeExtra("ABSOLUTE_PATH")
+
+                // 1. Dacă venim din MainActivity, citim direct fișierul fizic ocolind URI-ul
+                if (absolutePath != null && File(absolutePath).exists()) {
+                    bitmap = BitmapFactory.decodeFile(absolutePath)
+                    Log.d(TAG, "Poza a fost decodată din CALEA ABSOLUTĂ: $absolutePath")
+                }
+
+                // 2. Fallback: Dacă venim din HomeActivity (unde mergea deja perfect)
+                if (bitmap == null) {
+                    val inputStream = contentResolver.openInputStream(imageUri)
+                    bitmap = BitmapFactory.decodeStream(inputStream)
+                    inputStream?.close()
+                    Log.d(TAG, "Poza a fost decodată din URI-ul standard.")
+                }
 
                 if (bitmap == null) {
                     Log.e(TAG, "Failed to decode bitmap")
@@ -447,14 +463,14 @@ class CaptionActivity : BaseActivity() {
 
     // Navigation handlers
     private fun handleHomeClick() {
-        if (quickActionIndex == 3) {
+        if (AppConfig.haptics) vibrate(haptic_model0())
+
+        if (quickActionIndex != 0) {
             val intent = Intent(this, HomeActivity::class.java)
             startActivity(intent)
             finish()
-        }
-
-        if (AppConfig.haptics) vibrate(haptic_model0())
-        finish()
+        } else
+            finish()
     }
 
     private fun handleCameraClick() {

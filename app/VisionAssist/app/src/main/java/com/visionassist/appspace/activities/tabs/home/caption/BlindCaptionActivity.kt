@@ -2,6 +2,7 @@
 
 package com.visionassist.appspace.activities.tabs.home.caption
 
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -53,12 +54,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
-import androidx.core.graphics.toColorInt
 import androidx.core.net.toUri
 import androidx.core.view.WindowCompat
 import com.visionassist.appspace.BaseActivity
 import com.visionassist.appspace.PhoneStatusMonitor
 import com.visionassist.appspace.R
+import com.visionassist.appspace.activities.main.BlindHomeActivity
 import com.visionassist.appspace.activities.newprofile.LoadProfileActivity
 import com.visionassist.appspace.activities.tabs.home.caption.SemanticHash.computeFromDetections
 import com.visionassist.appspace.jetpack.design.LoadingComponent
@@ -71,6 +72,7 @@ import com.visionassist.appspace.utils.Constants
 import com.visionassist.appspace.utils.haptic_model0
 import com.visionassist.appspace.utils.load_captionError2
 import com.visionassist.appspace.utils.load_captioningScene
+import com.visionassist.appspace.utils.load_navigateToHome
 import com.visionassist.appspace.utils.robotoExtraBold
 import com.visionassist.appspace.utils.saveToHashCache
 import com.visionassist.appspace.utils.searchHashCache
@@ -116,10 +118,15 @@ class BlindCaptionActivity : BaseActivity() {
     private lateinit var takePictureLauncher: ActivityResultLauncher<Uri>
     private var currentPhotoUri: Uri? = null
 
+    private var quickActionIndex = 0
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
+
+        val intent = getIntent()
+        quickActionIndex = intent.getIntExtra("QUICK_ACTION_INDEX", 0)
 
         // Initialize camera launcher
         takePictureLauncher = registerForActivityResult(
@@ -176,9 +183,25 @@ class BlindCaptionActivity : BaseActivity() {
         BackgroundTaskExecutor.getInstance().executeAsync(
             {
                 // Load bitmap from URI
-                val inputStream = contentResolver.openInputStream(imageUri)
-                val bitmap = BitmapFactory.decodeStream(inputStream)
-                inputStream?.close()
+                var bitmap: Bitmap? = null
+                val absolutePath = intent.getStringExtra("ABSOLUTE_PATH")
+
+                if (absolutePath != null)
+                    intent.removeExtra("ABSOLUTE_PATH")
+
+                // 1. Dacă venim din MainActivity, citim direct fișierul fizic ocolind URI-ul
+                if (absolutePath != null && File(absolutePath).exists()) {
+                    bitmap = BitmapFactory.decodeFile(absolutePath)
+                    Log.d(TAG, "Poza a fost decodată din CALEA ABSOLUTĂ: $absolutePath")
+                }
+
+                // 2. Fallback: Dacă venim din HomeActivity (unde mergea deja perfect)
+                if (bitmap == null) {
+                    val inputStream = contentResolver.openInputStream(imageUri)
+                    bitmap = BitmapFactory.decodeStream(inputStream)
+                    inputStream?.close()
+                    Log.d(TAG, "Poza a fost decodată din URI-ul standard.")
+                }
 
                 if (bitmap == null) {
                     Log.e(TAG, "Failed to decode bitmap")
@@ -190,7 +213,7 @@ class BlindCaptionActivity : BaseActivity() {
             },
             object : BackgroundTaskExecutor.TaskCallback<Bitmap?> {
                 override fun onSuccess(result: Bitmap?) {
-                    if(isDestroyed)return
+                    if (isDestroyed) return
                     if (result != null) {
                         originalBitmap = result
                         startCaptionProcess(result)
@@ -274,7 +297,7 @@ class BlindCaptionActivity : BaseActivity() {
             },
             object : BackgroundTaskExecutor.TaskCallback<List<Int>?> {
                 override fun onSuccess(result: List<Int>?) {
-                    if(isDestroyed)return
+                    if (isDestroyed) return
                     if (result != null) {
                         Log.d(TAG, "Caption found in cache: ${result.size} tokens")
                         foundInCache = true
@@ -382,7 +405,7 @@ class BlindCaptionActivity : BaseActivity() {
     }
 
     private fun showResult() {
-        if(isDestroyed)return
+        if (isDestroyed) return
 
         showLoading.value = false
 
@@ -428,10 +451,7 @@ class BlindCaptionActivity : BaseActivity() {
         soundManager.releaseCallback()
         ttsManager.stopSpeaking()
         ttsManager.speak(
-            if (ttsManager.currentLocale.language == "en")
-                "Returning to home page"
-            else
-                "Se revine în pagina principală",
+            load_navigateToHome(this),
             AppConfig.tts_pitch,
             AppConfig.tts_speech_rate,
             false,
@@ -441,7 +461,12 @@ class BlindCaptionActivity : BaseActivity() {
         val checkRunnable = object : Runnable {
             override fun run() {
                 if (ttsManager.isDoneSpeaking) {
-                    finish()
+                    if (quickActionIndex != 0) {
+                        val intent = Intent(this@BlindCaptionActivity, BlindHomeActivity::class.java)
+                        startActivity(intent)
+                        finish()
+                    } else
+                        finish()
                 } else {
                     mainHandler.postDelayed(this, 350)
                 }
@@ -531,7 +556,7 @@ class BlindCaptionActivity : BaseActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        isDestroyed=true
+        isDestroyed = true
         mainHandler.removeCallbacksAndMessages(null)
         originalBitmap?.recycle()
     }
@@ -725,8 +750,7 @@ fun BlindMainCaptionScreen(
                         .semantics {
                             // ✅ Hide from TalkBack
                             hideFromAccessibility()
-                        }
-                    ,
+                        },
                     text = captionText,
                     fontSize = currentTextSize.sp,
                     color = Color.White,

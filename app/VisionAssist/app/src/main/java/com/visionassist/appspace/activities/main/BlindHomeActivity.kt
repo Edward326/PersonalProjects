@@ -192,8 +192,8 @@ class BlindHomeActivity : BaseActivity() {
         ) { isSuccess ->
             if (isSuccess) {
                 try {
+                    unlockUI()
                     val intent = Intent(this, BlindCaptionActivity::class.java)
-                    returnFromFindMyObject = true
                     intent.putExtra(Constants.EXTRA_IMAGE_URI, currentPhotoUri.toString())
                     startActivity(intent)
                 } catch (e: IOException) {
@@ -448,8 +448,9 @@ class BlindHomeActivity : BaseActivity() {
 
         onPermissionGranted = {
             checkPhoneStatusAndNavigate {
+                unlockUI()
+
                 val intent = Intent(this, BlindDetectionActivity::class.java)
-                returnFromFindMyObject = true
                 startActivity(intent)
             }
         }

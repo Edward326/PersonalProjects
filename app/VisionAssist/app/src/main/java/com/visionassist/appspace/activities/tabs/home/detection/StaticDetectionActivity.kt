@@ -190,10 +190,15 @@ class StaticDetectionActivity : ComponentActivity() {
         val errorType: Int
     )
 
+    private var quickActionIndex = 0
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
+
+        val intent = getIntent()
+        quickActionIndex = intent.getIntExtra("QUICK_ACTION_INDEX", 0)
 
         classifier = if (AppConfig.env_reports)
             PhoneStatusMonitor.getInstance().modelManager.classifier
@@ -283,10 +288,25 @@ class StaticDetectionActivity : ComponentActivity() {
         BackgroundTaskExecutor.getInstance().executeAsync(
             {
                 try {
-                    // Load bitmap from URI
-                    val inputStream = contentResolver.openInputStream(imageUri)
-                    val initBitmap = BitmapFactory.decodeStream(inputStream)
-                    inputStream?.close()
+                    var initBitmap: Bitmap? = null
+                    val absolutePath = intent.getStringExtra("ABSOLUTE_PATH")
+
+                    if (absolutePath != null)
+                        intent.removeExtra("ABSOLUTE_PATH")
+
+                    // 1. Dacă venim din MainActivity, citim direct fișierul fizic ocolind URI-ul
+                    if (absolutePath != null && File(absolutePath).exists()) {
+                        initBitmap = BitmapFactory.decodeFile(absolutePath)
+                        Log.d(TAG, "Poza a fost decodată din CALEA ABSOLUTĂ: $absolutePath")
+                    }
+
+                    // 2. Fallback: Dacă venim din HomeActivity (unde mergea deja perfect)
+                    if (initBitmap == null) {
+                        val inputStream = contentResolver.openInputStream(imageUri)
+                        initBitmap = BitmapFactory.decodeStream(inputStream)
+                        inputStream?.close()
+                        Log.d(TAG, "Poza a fost decodată din URI-ul standard.")
+                    }
 
                     if (initBitmap == null) {
                         Log.e(TAG, "Failed to decode bitmap from URI")
@@ -555,9 +575,13 @@ class StaticDetectionActivity : ComponentActivity() {
                         vibrate(haptic_model0())
                     }
                     infoNotificationManager.hideNotification()
-                    val intent = Intent(this, HomeActivity::class.java)
-                    startActivity(intent)
-                    finish()
+
+                    if (quickActionIndex != 0) {
+                        val intent = Intent(this, HomeActivity::class.java)
+                        startActivity(intent)
+                        finish()
+                    } else
+                        finish()
                 },
             )
         }, Constants.ANIMATION_DELAY.toLong())
@@ -576,7 +600,13 @@ class StaticDetectionActivity : ComponentActivity() {
         if (AppConfig.haptics) {
             vibrate(haptic_model0())
         }
-        finish()
+
+        if (quickActionIndex != 0) {
+            val intent = Intent(this, HomeActivity::class.java)
+            startActivity(intent)
+            finish()
+        } else
+            finish()
     }
 
     private fun handlePhotoClick() {

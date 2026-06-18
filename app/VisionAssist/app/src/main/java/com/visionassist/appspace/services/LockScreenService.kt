@@ -14,6 +14,7 @@ import com.visionassist.appspace.R
 import com.visionassist.appspace.activities.main.MainActivity
 import com.visionassist.appspace.utils.Constants
 import androidx.core.content.edit
+import com.visionassist.appspace.utils.AppConfig
 
 class LockScreenService : Service() {
 
@@ -26,7 +27,8 @@ class LockScreenService : Service() {
         private const val KEY_QUICK_ACTION_INDEX = "quick_action_index"
 
         const val ACTION_DISABLED = 0
-        const val ACTION_DISABLE_SERVICE = "com.visionassist.DISABLE_QUICK_ACTION"  // Action for disable button
+        const val ACTION_DISABLE_SERVICE =
+            "com.visionassist.DISABLE_QUICK_ACTION"  // Action for disable button
 
         fun startService(context: android.content.Context, actionIndex: Int) {
             saveQuickActionIndex(context, actionIndex)
@@ -123,12 +125,19 @@ class LockScreenService : Service() {
             }
         )
 
-        val actionName = getActionName(quickActionIndex)
+        val text = if (AppConfig.mainLanguage.code == "en")
+            "Tap to open " else
+            "Apăsați pentru a deschide "
+
+        val what = if (AppConfig.blindness)
+            getActionNameBlind(quickActionIndex)
+        else
+            getActionName(quickActionIndex)
 
         // Build notification with disable button
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("VisionAssist Quick Action")
-            .setContentText("Tap to open $actionName")
+            .setContentText(text+what)
             .setSmallIcon(R.drawable.vision_assist_logo_resized)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(launchPendingIntent)
@@ -138,7 +147,7 @@ class LockScreenService : Service() {
             // Add disable button
             .addAction(
                 R.drawable.ic_close,  // You need to add this icon or use android.R.drawable.ic_menu_close_clear_cancel
-                "Disable",
+                if(AppConfig.mainLanguage.code=="en")"Disable" else "Dezactivează",
                 disablePendingIntent
             )
             .setShowWhen(false)
@@ -170,12 +179,35 @@ class LockScreenService : Service() {
     }
 
     private fun getActionName(index: Int): String {
-        return when (index) {
-            1 -> "Detection-static"
-            2 -> "Detection-dynamic"
-            3 -> "Caption"
-            else -> "Quick Action"
-        }
+        if (AppConfig.mainLanguage.code == "en")
+            return when (index) {
+                1 -> "Detection-static"
+                2 -> "Detection-dynamic"
+                3 -> "Caption"
+                else -> "Detection-static"
+            }
+        else
+            return when (index) {
+                1 -> "Detecție-static"
+                2 -> "Detecție-live"
+                3 -> "Descriere textuală"
+                else -> "Descriere textuală"
+            }
+    }
+
+    private fun getActionNameBlind(index: Int): String {
+        if (AppConfig.mainLanguage.code == "en")
+            return when (index) {
+                1 -> "Detection"
+                2 -> "Caption"
+                else -> "Caption"
+            }
+        else
+            return when (index) {
+                1 -> "Detecție"
+                2 -> "Descriere textuală"
+                else -> "Descriere textuală"
+            }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

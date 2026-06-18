@@ -13,6 +13,7 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.accessibility.AccessibilityManager;
 import android.widget.ImageView;
+
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
@@ -23,7 +24,9 @@ import androidx.core.view.WindowCompat;
 import com.visionassist.appspace.ExceptionVisionAssist;
 import com.visionassist.appspace.PhoneStatusMonitor;
 import com.visionassist.appspace.R;
+import com.visionassist.appspace.activities.tabs.home.caption.BlindCaptionActivity;
 import com.visionassist.appspace.activities.tabs.home.caption.CaptionActivity;
+import com.visionassist.appspace.activities.tabs.home.detection.BlindDetectionActivity;
 import com.visionassist.appspace.activities.tabs.home.detection.LiveDetectionActivity;
 import com.visionassist.appspace.activities.tabs.home.detection.StaticDetectionActivity;
 import com.visionassist.appspace.database.DBManager;
@@ -35,8 +38,10 @@ import com.visionassist.appspace.utils.BackgroundTaskExecutor;
 import com.visionassist.appspace.utils.Constants;
 import com.visionassist.appspace.utils.PermissionChecker;
 import com.visionassist.appspace.utils.Utils;
+
 import org.json.JSONException;
 import org.json.JSONObject;
+
 import java.io.File;
 import java.io.IOException;
 
@@ -57,6 +62,7 @@ public class MainActivity extends AppCompatActivity {
     private int quickActionIndex;
     private ActivityResultLauncher<Uri> takePictureLauncher;
     private Uri currentPhotoUri;
+    private String currentPhotoPath;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -109,17 +115,20 @@ public class MainActivity extends AppCompatActivity {
     private void navigateToTargetActivityWithBitmap() {
         try {
             // Determine target activity class based on quick action
-            Class<?> targetActivityClass = switch (quickActionIndex) {
-                case 1 -> // StaticDetection
-                        StaticDetectionActivity.class;
-                case 3 -> // Caption
-                        CaptionActivity.class;
-                default -> StaticDetectionActivity.class;
-            };
+            Class<?> targetActivityClass =
+                    AppConfig.blindness ? BlindCaptionActivity.class :
+                            switch (quickActionIndex) {
+                                case 1 -> // StaticDetection
+                                        StaticDetectionActivity.class;
+                                case 3 -> // Caption
+                                        CaptionActivity.class;
+                                default -> StaticDetectionActivity.class;
+                            };
 
             // Create intent with image URI
             Intent intent = new Intent(this, targetActivityClass);
             intent.putExtra(Constants.EXTRA_IMAGE_URI, currentPhotoUri.toString());
+            intent.putExtra("ABSOLUTE_PATH", currentPhotoPath);
             intent.putExtra("QUICK_ACTION_INDEX", quickActionIndex);
 
             loadingManager.hideLoading();
@@ -138,6 +147,8 @@ public class MainActivity extends AppCompatActivity {
                     ".jpg",
                     getCacheDir()
             );
+
+            currentPhotoPath = photoFile.getAbsolutePath();
 
             currentPhotoUri = FileProvider.getUriForFile(
                     this,
@@ -280,11 +291,15 @@ public class MainActivity extends AppCompatActivity {
     private void navigateToHome() {
         isNavigateToHome = true;
         try {
-            DBManager dbManager = monitor.getDBManager();
-            if (dbManager.isRemoteProfile(profileData, loadingManager))
-                synchronizeProfile(dbManager);
-            else
+            if (quickActionIndex != 0)
                 navigateToHomeEnd();
+            else {
+                DBManager dbManager = monitor.getDBManager();
+                if (dbManager.isRemoteProfile(profileData, loadingManager))
+                    synchronizeProfile(dbManager);
+                else
+                    navigateToHomeEnd();
+            }
         } catch (ExceptionVisionAssist e) {
             handleProfileError(e);
         }
@@ -303,14 +318,26 @@ public class MainActivity extends AppCompatActivity {
             finish();
         } else {
             loadingManager.hideLoading();
-            switch (quickActionIndex) {
-                case 1, 3:
-                    launchCamera();
-                    break;
-                case 2:
-                    Intent intent = new Intent(this, LiveDetectionActivity.class);
+            if (!AppConfig.blindness)
+                switch (quickActionIndex) {
+                    case 1, 3:
+                        launchCamera();
+                        break;
+                    case 2:
+                        Intent intent = new Intent(this, LiveDetectionActivity.class);
+                        intent.putExtra("QUICK_ACTION_INDEX", quickActionIndex);
+                        startActivity(intent);
+                        finish();
+                }
+            else switch (quickActionIndex) {
+                case 1:
+                    Intent intent = new Intent(this, BlindDetectionActivity.class);
+                    intent.putExtra("QUICK_ACTION_INDEX", quickActionIndex);
                     startActivity(intent);
                     finish();
+                    break;
+                case 2:
+                    launchCamera();
             }
         }
     }

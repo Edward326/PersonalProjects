@@ -50,6 +50,7 @@ import com.visionassist.appspace.utils.Constants
 import com.visionassist.appspace.utils.ImageUtils
 import com.visionassist.appspace.utils.PermissionChecker
 import com.visionassist.appspace.utils.haptic_model0
+import com.visionassist.appspace.utils.load_navigateToHome
 import com.visionassist.appspace.utils.startBatteryLevelCheck
 import com.visionassist.appspace.utils.vibrate
 import java.io.OutputStream
@@ -642,7 +643,7 @@ class BlindFindMyObjectActivity : ComponentActivity() {
         soundManager.releaseCallback()
         ttsManager.stopSpeaking()
         ttsManager.speak(
-            "Returning to home page",
+            load_navigateToHome(this),
             AppConfig.tts_pitch,
             AppConfig.tts_speech_rate,
             false,

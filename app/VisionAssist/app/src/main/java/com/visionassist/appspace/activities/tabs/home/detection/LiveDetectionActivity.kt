@@ -170,10 +170,15 @@ class LiveDetectionActivity : ComponentActivity() {
         val classifierLatency: Long
     )
 
+    private var quickActionIndex = 0
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
+
+        val intent = getIntent()
+        quickActionIndex = intent.getIntExtra("QUICK_ACTION_INDEX", 0)
 
         classifier = if (AppConfig.env_reports)
             PhoneStatusMonitor.getInstance().modelManager.classifier
@@ -278,9 +283,13 @@ class LiveDetectionActivity : ComponentActivity() {
             vibrate(haptic_model0())
         }
 
-        val intent = Intent(this, HomeActivity::class.java)
-        startActivity(intent)
-        finish()
+        if(quickActionIndex!=0){
+            val intent = Intent(this, HomeActivity::class.java)
+            startActivity(intent)
+            finish()
+        }
+        else
+            finish()
     }
 
     private fun startCameraX(previewView: PreviewView) {

@@ -214,10 +214,12 @@
     </string>
     <string name="navigating_to_settings_en">Navigating to settings page</string>
     <string name="navigating_to_settings_ro">Navigare către pagina de setări</string>
+    <string name="navigating_to_home_en">Navigating to home page</string>
+    <string name="navigating_to_home_ro">Navigare către pagina principală</string>
 
     <!-- StaticDetectionActivity -->
     <string name="scanning_scene_en">Scanning the scene…</string>
-    <string name="scanning_scene_ro">Se scanează scena în care te aflii…</string>
+    <string name="scanning_scene_ro">Se scanează scena în care te afli…</string>
     <string name="no_objects_found_en">No objects detected in the image</string>
     <string name="no_objects_found_ro">Nu au fost detectate obiecte în imagine</string>
 
@@ -302,8 +304,8 @@
     <string name="delete_button_ro">Șterge</string>
     <string name="language_changed_en">Language changed successfully</string>
     <string name="language_changed_ro">Limba a fost schimbată cu succes</string>
-    <string name="quick_action_enabled_en">Quick action enabled on lock screen</string>
-    <string name="quick_action_enabled_ro">Quick action activat pe ecranul de blocare</string>
+    <string name="quick_action_enabled_en">Quick action enabled to</string>
+    <string name="quick_action_enabled_ro">Quick action activat pe</string>
     <string name="cache_cleared_en">Cache cleared successfully</string>
     <string name="cache_cleared_ro">Cache-ul a fost șters cu succes</string>
     <string name="reports_cleared_en">Reports cleared successfully</string>
