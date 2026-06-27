@@ -781,8 +781,8 @@ class BlindHomeActivity : BaseActivity() {
                         resetSpeechStates()
                         launchSpeechRecognition(false)
                     } else {
-                        //uiLocked = true
-                        locked = true
+                        // uiLocked = true
+                        // locked = true
                         // Launch static detection
                         ttsManager.speak(
                             if (ttsManager.currentLanguage == "en")
@@ -800,7 +800,7 @@ class BlindHomeActivity : BaseActivity() {
 
             KeyEvent.KEYCODE_VOLUME_DOWN -> {
                 if (!locked) {
-                    uiLocked = true
+                    //uiLocked = true
                     if (!handleVolumeDownControl) {
                         if (!showSpeechDialog.value)
                             handleVolumeDownControl = true

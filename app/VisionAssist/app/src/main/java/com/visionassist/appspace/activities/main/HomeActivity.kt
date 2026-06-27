@@ -750,12 +750,13 @@ class HomeActivity : BaseActivity() {
                     //uiLocked=true
                     if (retrySpeech.value) {
                         // Retry speech recognition
+                        uiLocked = true
                         locked = true
                         resetSpeechStates()
                         launchSpeechRecognition(false)
                     } else {
-                        uiLocked = true
-                        locked = true
+                        //uiLocked = true
+                        //locked = true
                         // Launch static detection
                         launchStaticDetection()
                     }
@@ -765,7 +766,6 @@ class HomeActivity : BaseActivity() {
 
             KeyEvent.KEYCODE_VOLUME_DOWN -> {
                 if (!locked) {
-                    uiLocked = true
                     if (!handleVolumeDownControl) {
                         if (!showSpeechDialog.value)
                             handleVolumeDownControl = true
@@ -775,6 +775,7 @@ class HomeActivity : BaseActivity() {
                         )
                     } else {
                         mainHandler.removeCallbacksAndMessages(null)
+                        uiLocked = true
                         locked = true
                         handleVolumeDownControl = false
                         launchSpeechRecognition(true)
