@@ -808,20 +808,26 @@ fun load_classificationSuccess(sceneName: String): String {
 fun load_speakNoObjectsFound(index: Int): String {
     return when (PhoneStatusMonitor.getInstance().ttsManager.currentLanguage) {
         "en" ->
-            if (index + 1 > 1)
-                "The application detected $index objects in your environment"
+            if (index + 1 > 1){
+                val index2=index+1
+                "The application detected $index2 objects in your environment"
+                }
             else
                 "The application detected an single object in your environment"
 
         "ro" ->
-            if (index + 1 > 1)
-                "Aplicația a detectat $index obiecte în spațiul în care vă aflați"
+            if (index + 1 > 1) {
+                val index2=index+1
+                "Aplicația a detectat $index2 obiecte în spațiul în care vă aflați"
+            }
             else
                 "Aplicația a detectat un singur obiect în spațiul în care vă aflați"
 
         else ->
-            if (index + 1 > 1)
-                "The application detected $index objects in your environment"
+            if (index + 1 > 1){
+                val index2=index+1
+                "The application detected $index2 objects in your environment"
+            }
             else
                 "The application detected an single object in your environment"
     }
