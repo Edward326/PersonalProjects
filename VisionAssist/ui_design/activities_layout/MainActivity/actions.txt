@@ -1,4 +1,0 @@
--verifica permisiuni
--verifica profilul local
--daca nu e ok(!=0) lansaeaza profileSelector,
--daca e ok uploadProfile, sync daca e cazul, si navigheaza la home

@@ -1,4 +1,0 @@
-Scene cele mai des intalintie
-Obiecte cele mai des intalintie din toate scenele
-Selectarea o scena si un pop up componenet7 cu un menu in care sunt obicetele cu procentajul lor de cat de comune sunt ele
-component7 se dezacticeaza la apasarea but. OK

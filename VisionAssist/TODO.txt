@@ -1,9 +1,0 @@
--fine tuning(detector, classifier(indoorcvpr), captioner)
-
--testarea pe telefoane + debugging
-
--realizat docs, prezentare si altele
-
-*
--low eyesight: fara TTS, cu sau fara Talkback
--blindness: cu TTS, main page, notificare evenimente, noitificarea il vorbeste TTS, apsarea butoanelor il voerbeste Talkback

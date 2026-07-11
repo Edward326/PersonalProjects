@@ -1,8 +1,0 @@
-Text,Background:
--se va seta constanta r,g,b prin slider(0->255) pentru text,backround si se va actualiza real time pe imaginea de exemplu culoarea
-
-Switch Haprics:
--va seta cionstata de virbatii
-
-Next:
--seteaza constantele si merge la UserHashCaching
