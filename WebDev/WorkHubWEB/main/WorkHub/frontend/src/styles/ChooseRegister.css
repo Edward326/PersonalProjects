@@ -1,0 +1,328 @@
+/* ============================================
+   CHOOSE REGISTER PAGE STYLES
+   ============================================ */
+
+.choose-register-container {
+  min-height: 100vh;
+  width: 100%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Animated background effect */
+.choose-register-container::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+  background-size: 50px 50px;
+  animation: moveBackground 20s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes moveBackground {
+  0% {
+    transform: translate(0, 0);
+  }
+  100% {
+    transform: translate(50px, 50px);
+  }
+}
+
+.choose-register-content {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  animation: fadeInUp 0.8s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Title Section */
+.choose-register-title {
+  font-size: 56px;
+  font-weight: 700;
+  color: white;
+  margin: 0 0 16px 0;
+  text-shadow: 2px 4px 8px rgba(0, 0, 0, 0.3);
+  animation: fadeInDown 0.8s ease-out 0.2s both;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.choose-register-subtitle {
+  font-size: 20px;
+  color: rgba(255, 255, 255, 0.95);
+  margin: 0 0 60px 0;
+  text-shadow: 1px 2px 4px rgba(0, 0, 0, 0.2);
+  animation: fadeInDown 0.8s ease-out 0.4s both;
+}
+
+/* Cards Container */
+.cards-container {
+  display: flex;
+  gap: 40px;
+  justify-content: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  animation: fadeInUp 0.8s ease-out 0.6s both;
+}
+
+/* Register Card */
+.register-card {
+  background: white;
+  border-radius: 20px;
+  width: 300px;
+  min-height: 140px;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  position: relative;
+}
+
+.register-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.register-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+}
+
+/* Hovered state - expand height */
+.register-card.hovered {
+  min-height: 320px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.register-card.hovered::before {
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+  height: 8px;
+}
+
+.register-card.hovered .card-header .card-title {
+  color: white;
+}
+
+.register-card.hovered .card-icon {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* Card Header */
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 32px 28px;
+  transition: all 0.4s ease;
+}
+
+/* Card Icon */
+.card-icon {
+  width: 64px;
+  height: 64px;
+  min-width: 64px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid #e9ecef;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.card-icon img {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  filter: brightness(0) saturate(100%) invert(42%) sepia(93%) saturate(1352%) hue-rotate(223deg) brightness(97%) contrast(91%);
+  transition: all 0.4s ease;
+}
+
+.register-card.hovered .card-icon img {
+  filter: brightness(0) invert(1);
+  transform: scale(1.1);
+}
+
+/* Card Title */
+.card-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #2c3e50;
+  margin: 0;
+  transition: all 0.4s ease;
+  text-shadow: none;
+}
+
+.register-card.hovered .card-title {
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Card Description */
+.card-description {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 0 28px;
+}
+
+.register-card.hovered .card-description {
+  max-height: 200px;
+  opacity: 1;
+  padding: 0 28px 32px 28px;
+}
+
+.card-description p {
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 15px;
+  line-height: 1.7;
+  margin: 0;
+  text-align: left;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Animation for cards appearing */
+.register-card:nth-child(1) {
+  animation: slideInLeft 0.6s ease-out 0.8s both;
+}
+
+.register-card:nth-child(2) {
+  animation: slideInRight 0.6s ease-out 0.8s both;
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Hover pulse effect */
+.register-card:hover .card-icon {
+  animation: pulse 0.6s ease-in-out;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .choose-register-title {
+    font-size: 42px;
+  }
+
+  .choose-register-subtitle {
+    font-size: 18px;
+    margin-bottom: 40px;
+  }
+
+  .cards-container {
+    gap: 24px;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .register-card {
+    width: 100%;
+    max-width: 350px;
+  }
+
+  .register-card.hovered {
+    min-height: 300px;
+  }
+}
+
+@media (max-width: 480px) {
+  .choose-register-title {
+    font-size: 36px;
+  }
+
+  .choose-register-subtitle {
+    font-size: 16px;
+  }
+
+  .card-header {
+    padding: 24px 20px;
+  }
+
+  .card-icon {
+    width: 56px;
+    height: 56px;
+    min-width: 56px;
+  }
+
+  .card-icon img {
+    width: 32px;
+    height: 32px;
+  }
+
+  .card-title {
+    font-size: 24px;
+  }
+
+  .card-description p {
+    font-size: 14px;
+  }
+
+  .register-card.hovered .card-description {
+    padding: 0 20px 24px 20px;
+  }
+}
