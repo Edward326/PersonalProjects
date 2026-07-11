@@ -1,0 +1,9 @@
+Home button:
+-merge in Home
+
+Settings button:
+-seteaza fps ce vor fii rporxcesate de catre model
+-va trage spre dreapda un slider cu stops, si dispare home, dupa ce se apasa din nou setarile dispare slider si apare home
+
+-Notificarea de battery:
+-cand se consuima prea multa baterie se anunta ulilizatorul

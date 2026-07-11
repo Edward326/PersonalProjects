@@ -1,0 +1,10 @@
+Butonul de back:
+-merge la activiatea anterioara
+
+Butonul de next:
+-merge la UserInfoActivity cu local profile option
+
+Switch:
+-cand e yes prompt animatie cu compoenneta de account creation
+-dupa ce se fac verificarile se creeaza contul si se merge in UserInfoActivity cu remote profile option
+-daca intampina eroare la creearea profilului arata copmponenta 12 

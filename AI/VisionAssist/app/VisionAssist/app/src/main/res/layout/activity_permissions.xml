@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/welcome_background"
+    tools:context=".activities.newprofile.PermissionsActivity">
+
+    <!-- Status Bar Spacer -->
+    <View
+        android:id="@+id/status_bar_spacer"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:layout_alignParentTop="true" />
+    <!-- Home Bar Spacer -->
+    <View
+        android:id="@+id/home_bar_spacer"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:layout_alignParentBottom="true" />
+
+    <!-- Permissions-->
+    <TextView
+        android:id="@+id/permissions_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_centerVertical="true"
+        android:text="@string/permissions"
+        android:textColor="@color/std_cyan"
+        android:textSize="32sp"
+        android:fontFamily="@font/roboto_semibold"
+        android:letterSpacing="0" />
+
+    <!-- Allways Allow Box -->
+    <androidx.compose.ui.platform.ComposeView
+        android:id="@+id/permission_dialog_box"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_centerVertical="true" />
+
+    <!-- LoadingBox -->
+    <androidx.compose.ui.platform.ComposeView
+        android:id="@+id/loading_box"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_centerVertical="true" />
+</RelativeLayout>

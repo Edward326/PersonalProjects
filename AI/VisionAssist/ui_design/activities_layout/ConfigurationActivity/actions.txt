@@ -1,0 +1,10 @@
+-Cand se deschide activiatea:
+	-(speak)What is your visual propobklem?
+	-in the right u have low eyesiught and in the left u blidjnenesws
+
+-fiecare buton virbeaza si speakuieste oprinuea
+-daca se selecteaza loweyesight scire in profile blindness:false si se duce in WelcomeActivity
+-daca se selecteaza blindesss apare warningul care se speak+in the right u have ok and in the left u reopeat +  vibreaza si speakuieste optiunea
+-duopa ce se da ok si s-a selectat blidness merge in:
+	-WelcomeActivity,Permission,Loadfingf,UserInfo1,E1,E3,E4,uahscahce,si directe in blindHomeacitivty
+	-daca se incarca propfil sau de la inceput e salvat in profile.json se duce in blindhomeactivity

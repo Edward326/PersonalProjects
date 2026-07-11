@@ -1,0 +1,5 @@
+Volume of assistsatnt:
+	-volumul cand se apasa butoane si se speakusiste optinuea
+Speed of assistasnt:
+	-viteza asistentuoui cand se apasa butoane si se speakusiste optinuea, se mai poate 
+	modifica si in detection si in caption priunn volume(voulme_up=faster/volume_down=lower)

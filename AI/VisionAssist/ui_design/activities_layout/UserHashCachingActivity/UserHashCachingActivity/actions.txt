@@ -1,0 +1,9 @@
+intai vor aparea pe activity basic dialog, dupa apsarea Next, basic dialog2, dupa ok va incarca efectiv activtatea
+Butonul de info:
+-afisesaza information tabul care se descatv prin apasarea but. de OK
+
+Selector:
+-implciit va fii don't use
+
+Next:
+-seteaza constantele si merhe la UserObjectOcc

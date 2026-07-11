@@ -1,0 +1,5 @@
+input text:
+-trintoduce numele afectiunii
+
+Next:
+-verifica daca sintaxa textului e ok, daca da merge la UserInfo1, daca nu arata eroarea care se dezact prin apasarea but. OK

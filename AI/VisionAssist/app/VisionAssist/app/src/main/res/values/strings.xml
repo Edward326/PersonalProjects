@@ -1,0 +1,375 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- WelcomeActivity -->
+    <string name="app_name">VisionAssist</string>
+    <string name="welcome_to">Welcome to</string>
+    <string name="vision_assist_logo">VisionAssist Logo</string>
+
+    <!-- PermissionsActivity -->
+    <string name="permissions">Permissions</string>
+    <string name="audio_permission_warning_en">Permissions are required for the app.Please select allow, to all dialogs in the next page</string>
+    <string name="audio_permission_warning_ro">Sunt necesare permisiuni pentru aplicație. Vă rugăm să selectați tot timpul, in dialogurile din urmatoarea pagina</string>
+    <string name="always_allow_en">Please allow access, for correct execution of the app</string>
+    <string name="always_allow_ro">Vă rugăm să permiteți accesul, pentru o funcționare corectă a aplicației</string>
+    <string name="settings_open_en">Please allow access from the settings page, in the Permissions section, for correct execution of the app</string>
+    <string name="settings_open_ro">Vă rugăm să permiteți accesul din pagina de setări, în secțiunea Permisiuni, pentru o funcționare corectă a aplicației</string>
+    <string name="settings_button_en">Settings</string>
+    <string name="settings_button_ro">Setări</string>
+    <string name="camera_permission_info_en">
+        The application needs camera access to help you identify objects,
+        read text, and navigate your surroundings.
+        This permission is essential for the app to function</string>
+    <string name="camera_permission_info_ro">
+        Aplicația are nevoie de acces la cameră pentru a te ajuta să identifici obiecte,
+        să citești text și să navighezi în împrejurimi.
+        Această permisiune este esențială pentru ca aplicația să funcționeze</string>
+    <string name="storage_permission_info_en">
+        The application needs storage access to save and retrieve your profile settings and preferences</string>
+    <string name="storage_permission_info_ro">
+        Aplicația are nevoie de acces la spațiul de stocare pentru a salva
+        și a recupera setările și preferințele profilului dvs</string>
+    <string name="microphone_permission_info_en">
+        The application needs microphone access to enable voice
+        commands for the \"Find My Objects\" feature</string>
+    <string name="microphone_permission_info_ro">
+        Aplicația are nevoie de acces la microfon pentru a activa comenzile vocale
+        folosite de functia \"Find My Objects\"</string>
+    <string name="microphone_denied_info_en">
+        Without microphone access, you won\'t be able to use the \"Find My Object\" feature.
+        Would you like to grant access?</string>
+    <string name="microphone_denied_info_ro">
+        Fără acces la microfon, nu veți putea utiliza funcția \"Find My Object\".
+        Doriți să acordați acces?</string>
+    <string name="notification_permission_info_en">
+        VisionAssist needs notification permission to show quick action shortcuts on your lock screen(QuickAction Feature).
+    </string>
+    <string name="notification_permission_info_ro">
+        VisionAssist necesită permisiunea de notificare pentru a afișa scurtături rapide pe ecranul de blocare(QuickAction Feature).
+    </string>
+    <string name="give_access_en">Give Access</string>
+    <string name="dont_give_en">Don\'t Give</string>
+    <string name="give_access_ro">Permite acces</string>
+    <string name="dont_give_ro">Nu permite acces</string>
+
+    <!-- ConfigurationActivity -->
+    <string name="problem">What is your</string>
+    <string name="problem2">visual problem?</string>
+    <string name="initial_blindness_notification">
+        For the following setup steps, please ensure that you have the TalkBack feature enabled on your device.
+    </string>
+    <string name="tutorial_speak">
+        Welcome to VissionAssist app,
+        the sound you heard is telling you that,
+        the following content that will be spoken
+        could be repeated.
+        By pressing volume down button once you will,
+        repeat the spoken sentence at a slower rate,
+        and by pressing volume down second time,
+        repeat at an higher rate.
+        After the spoken sentence the system will wait 2 seconds
+        if you wish to repeat the sentence
+    </string>
+    <string name="config_activity">
+        The current page is about deciding whether you want a low-eyesight or blindness profile.
+        In the buttom of the page there exists 2 buttons.
+        The left one is for choosing blindness profile.
+        The right one is for choosing low-eyesight profile.
+    </string>
+
+    <!-- WelcomeActivity -->
+    <string name="language_icon">Language selection icon</string>
+    <string name="dropdown_arrow">Dropdown arrow</string>
+    <string name="load_profile_info_en">
+        Choose this option if you have an existing profile saved locally on your device or stored remotely in the cloud.
+    </string>
+    <string name="load_profile_info_ro">
+        Alegeți această opțiune dacă aveți un profil existent salvat local pe dispozitiv sau stocat remote în cloud.
+    </string>
+    <string name="new_profile_info_en">
+        Choose this option if you are new to the platform or want to create a fresh profile from scratch.
+    </string>
+    <string name="new_profile_info_ro">
+        Alegeți această opțiune dacă sunteți nou pe platformă sau doriți să creați un profil nou de la zero.
+    </string>
+    <string name="load_profile_en">Load profile</string>
+    <string name="load_profile_ro">Încarcă profil</string>
+    <string name="new_profile_en">New profile</string>
+    <string name="new_profile_ro">Creează profil</string>
+
+    <!-- LoadProfileActivity -->
+    <string name="network_miss_en">The device has no access to the internet, try to connect to a network and try again</string>
+    <string name="network_miss_ro">Dispozitivul nu are acces la internet, încercați să vă conectați la o rețea și încercați din nou</string>
+    <string name="account_ne_en">The email is not registered in the database</string>
+    <string name="account_ne_ro">Adresa de e-mail nu este înregistrată în baza de date</string>
+    <string name="generic_error_en">Error was encountered while fetching the profile</string>
+    <string name="generic_error_ro">A apărut o eroare la preluarea profilului</string>
+
+    <!-- NewProfileActivity -->
+    <string name="create_account_en">Creating account, please wait</string>
+    <string name="create_account_ro">Contul se creează, vă rugăm așteptați</string>
+    <string name="created_account_en">Account created successfully</string>
+    <string name="created_account_ro">Cont creeat cu succes</string>
+    <string name="already_exists_account_en">Email already exists</string>
+    <string name="already_exists_account_ro">Email-ul deja există</string>
+    <string name="invalid_email_en">Invalid mail address, please provide an email address that exists</string>
+    <string name="invalid_email_ro">Email-ul este invalid, vă rugăm să furnizați o adresă de e-mail existentă</string>
+    <string name="generic_error2_en">Error was encountered while creating the profile</string>
+    <string name="generic_error2_ro">A apărut o eroare la crearea profilului</string>
+
+    <!-- UserInfoActivity -->
+    <string name="invalid_chars_en">Invalid combination of characters, only letters accepted, not digits, should start with capital letter and continue with lowercase</string>
+    <string name="invalid_chars_ro">Combinație invalidă de caractere, se acceptă doar litere, nu cifre, ar trebui să înceapă cu majusculă și să continue cu litere de mână</string>
+    <string name="contribute_en">
+        Contribute to our research?~\n\nBy agreeing with this statement,
+        you will send your personal data such as name, age, and vision problems to our database, to help us target more persons with vision difficulties
+    </string>
+    <string name="contribute_ro">
+        Contribui la cercetarea noastră?~\n\n
+        Prin acceptarea acestei declarații, veți trimite datele dvs. personale precum numele,
+        vârsta și problemele de vedere în baza noastră de date, pentru a ne ajuta să țintim mai multe persoane cu dificultăți de vedere
+    </string>
+    <string name="hello_en">What\'s your name?</string>
+    <string name="hello_ro">Care este numele tău?</string>
+    <string name="old_en">How old are you?</string>
+    <string name="old_ro">Câți ani aveți?</string>
+    <string name="visual_condition_en">What type of vision difficulty do you have?</string>
+    <string name="visual_condition_ro">Ce tip de deficiență de vedere aveți?</string>
+    <string name="about_en">A little about yourself</string>
+    <string name="about_ro">Puțin despre tine</string>
+
+    <!-- UserInfoE3Activity -->
+    <string name="tts_pitch_en">Pitch of assistant</string>
+    <string name="tts_pitch_ro">Ton asistent</string>
+    <string name="tts_speed_en">Speed of assistant</string>
+    <string name="tts_speed_ro">Viteza asistentului</string>
+
+    <!-- UserAccessibility1Activity -->
+    <!-- BoundingBox Info -->
+    <string name="bbox_info_en">In this page you can select the color of bounding boxes, text background and text for detection activity.\nBoxes can be of various sizes, in e.g 20x20, 40x40, 80x80</string>
+    <string name="bbox_info_ro">În această pagină poți selecta culoarea casetelor de delimitare, fundalul textului și textul pentru activitatea de detecție.\nCasetele pot avea diferite dimensiuni, de exemplu 20x20, 40x40, 80x80</string>
+    <!-- Caption Info -->
+    <string name="caption_info_en">In this page you can select the color of text background and text for caption activity</string>
+    <string name="caption_info_ro">În această pagină poți selecta culoarea fundalului textului și a textului pentru activitatea de subtitrare</string>
+    <!-- UI Size Info -->
+    <string name="ui_size_info_en">UI style and size~\n\nWe inform you that, the general size of the user interface(buttons, text) will be your phone\'s default.\nAlthough with this settings, you can still manually resize the outputs of the AI models:\nwidth of boxes and sizes of labels and text</string>
+    <string name="ui_size_info_ro">Stil și dimensiune UI~\n\nVă informăm că, dimensiunea generală a interfeței utilizatorului(butoane, text) va fi cea implicită a telefonului dvs.\nDeși cu aceste setări, puteți totuși redimensiona manual rezultatele modelelor AI:\nlățimea casetelor și dimensiunile etichetelor și textului</string>
+    <string name="std_caption">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce odio sed tellus eleifend tempor</string>
+
+    <!-- UserHashCachingActivity -->
+    <string name="hash_cache_title_en">Use\nHash Caching?</string>
+    <string name="hash_cache_title_ro">Foloseşti\nHash Caching?</string>
+    <string name="hash_cache_info_first_en">Hash Caching~To save you time, the app can remember similar photos you\'ve already taken. If you capture the same scene again, it reuses the old description instead of processing it again. This makes the app much faster</string>
+    <string name="hash_cache_info_first_ro">Hash Caching~Pentru a vă economisi timp, aplicaţia poate reţine fotografiile similare pe care le-aţi făcut deja. Dacă capturaţi aceeaşi scenă din nou, reutilizează descrierea veche în loc să o proceseze din nou. Acest lucru face aplicaţia mult mai rapidă</string>
+    <string name="hash_cache_info_second_en">Hash Caching~Light:\n-will use less storage, but inference may be slower\n\nHeavy:\n-will use more storage, but inference will be fast</string>
+    <string name="hash_cache_info_second_ro">Hash Caching~Light:\n-va folosi mai puţin spaţiu, dar inferenţa poate fi mai lentă\n\nHeavy:\n-va folosi mai mult spaţiu, dar inferenţa va fi rapidă</string>
+    <string name="env_reports_title_en">Enable Environment\nReports?</string>
+    <string name="env_reports_title_ro">Activează rapoartele\nde mediu?</string>
+    <string name="env_reports_info_en">Environment reports~The application will use another model when making detections, to help identify the main scene, in order to record the objects found in that environment.\n\nThis will make statistics about objects encountered in every scene\n\nDisadvantages:\n-inference may be slower because of an added model</string>
+    <string name="env_reports_info_ro">Rapoarte de mediu~Aplicaţia va folosi un alt model la efectuarea detectărilor, pentru a ajuta la identificarea scenei principale, în scopul de a înregistra obiectele găsite în acel mediu.\n\nAcest lucru va crea o statistică despre obiectele întâlnite în fiecare scenă\n\nDezavantaje:\n-inferenţa poate fi mai lentă din cauza unui model adăugat</string>
+
+    <!-- HomeActivity -->
+    <string name="detect1_en">Press ~volume up~ button to launch static detection activity</string>
+    <string name="detect1_ro">Apasă butonul de ~volum sus~ pentru a lansa activitatea de detecție</string>
+    <string name="detect2_en">The detection activity could be ~shortcut~ on lock screen, feature available in settings</string>
+    <string name="detect2_ro">Activitatea de detecție poate fi accesata din ecranul de blocare, poți activa acest lucru din setări</string>
+    <string name="caption1_en">Press ~volume down~ button to launch caption activity</string>
+    <string name="caption1_ro">Apasă butonul de ~volum jos~ pentru a lansa activitatea de caption</string>
+    <string name="caption2_en">The caption activity could be ~shortcut~ on lock screen, feature available in settings</string>
+    <string name="caption2_ro">Activitatea de caption poate fi accesata din ecranul de blocare, poți activa acest lucru din setări</string>
+    <string name="findmyobj1_en">Rapidly press ~volume down~ button twice to enable the Find My Object feature</string>
+    <string name="findmyobj2_en">When the model will listen, ~words~ recognised will be prompted on screen in white</string>
+    <string name="findmyobj3_en">When the model detected that you are done speaking, ~caption~ will change color in dark purple</string>
+    <string name="findmyobj4_en">After sentence is recognized, press ~volume down~ to send the caption to processing</string>
+    <string name="findmyobj5_en">After processing is done, if known model objects are detected, press ~volume up~ to launch camera</string>
+    <string name="findmyobj6_en">Press ~volume up~ to retry speaking</string>
+    <string name="findmyobj7_en">Press anytime, anywhere on ~screen~ to disable the Find My Object feature</string>
+    <string name="sync_error_en">Sync failed, make sure you have network access and restart the app to solve this</string>
+    <string name="sync_error_ro">Sincronizarea a eșuat, asigură-te că ai acces la rețea și repornește aplicația pentru a rezolva acest lucru</string>
+    <string name="stt_unavailable_en">The Find My Object feature is currently not supported for the romanian language</string>
+    <string name="stt_unavailable_ro">Feature-ul Find My Object, nu este suportat momentan pentru limba română</string>
+    <string name="stt_error_load_en">The Find My Object feature is currently unavailable, due to initial loading error</string>
+    <string name="stt_error_runtime_en">The Find My Object feature is currently unavailable, due to en runtime error</string>
+
+    <!-- FindMyObjectActivity -->
+    <string name="detection_result">Detection Result</string>
+    <string name="looking_for">Looking for: %s</string>
+    <string name="objects_found">Found %d objects</string>
+    <string name="fps_label">FPS</string>
+    <string name="detection_speed">Detection Speed</string>
+
+    <!-- BlindHomeActivity -->
+    <string name="talkback_error_en">Application detected that talkback feature is not enabled. Please enable TalkBack for best in app experience.Opening accessibility settings page now</string>
+    <string name="talkback_error_ro">Aplicația a detectat că funcția TalkBack nu este activată. Pentru o experiență cât mai bună in folosirea aplicației, va rugăm să îl activați.Pagina de setări de accesibilitate se deschide acum</string>
+    <string name="intro_dialog_en">You have now on the screen the tutorial dialog, tap anywhere and the next prompt will show up visually and auditive, by swiping up you will close the dialog</string>
+    <string name="intro_dialog_ro">Acum aveți pe ecran dialogul tutorial, atingeți oriunde și următorul prompt va apărea vizual și auditiv, glisând în sus veți închide dialogul</string>
+    <string name="home_page_intro_en">
+        You are now on the application home page, after this prompt the tutorial dialog will close.
+        In the middle section you have the detection and caption buttons, tap anywhere near them to launch their pages.
+        Below the buttons is the navigation bar, tap it or tap above it, or you can swipe from right to left to navigate to settings page
+    </string>
+    <string name="home_page_intro_ro">
+        Acum vă aflați pe pagina principală a aplicației, iar ecranul de tutorial se va închide după acest prompt.
+        În secțiunea din mijloc aveți butoanele de detectare și legendă; atingeți oriunde lângă ele pentru a lansa paginile corespunzătoare.
+        Sub butoane se află bara de navigare; atingeți-o sau atingeți deasupra ei sau puteți glisa de la dreapta la stânga pentru a naviga la pagina de setări
+    </string>
+    <string name="navigating_to_settings_en">Navigating to settings page</string>
+    <string name="navigating_to_settings_ro">Navigare către pagina de setări</string>
+    <string name="navigating_to_home_en">Navigating to home page</string>
+    <string name="navigating_to_home_ro">Navigare către pagina principală</string>
+
+    <!-- StaticDetectionActivity -->
+    <string name="scanning_scene_en">Scanning the scene…</string>
+    <string name="scanning_scene_ro">Se scanează scena în care te afli…</string>
+    <string name="no_objects_found_en">No objects detected in the image</string>
+    <string name="no_objects_found_ro">Nu au fost detectate obiecte în imagine</string>
+
+    <!-- CaptionActivity -->
+    <string name="captioning_scene_en">Generating scene description…</string>
+    <string name="captioning_scene_ro">Se generează descrierea textuală a scenei în care te aflii…</string>
+    <string name="caption_error_en">Failed to generate caption. You can try again or return to home page</string>
+    <string name="caption_error_ro">Nu s-a reușit generarea descrierii textuale. Poți încearca din nou sau poți să revii în pagina principala</string>
+
+    <!-- CaptionActivity -->
+    <string name="blind_caption_error_en">Failed to generate caption. You can try again or return to home page. This dialog is center on the screen, press the left side of the screen to retry caption, or right to return to home page</string>
+    <string name="blind_caption_error_ro">Nu s-a reușit generarea descrierii textuale. Poți încearca din nou sau poți să revii în pagina principala. Această dialog este situat central pe ecran, apăsați pe partea stângă a ecranului pentru a reîncerca sau dreaptă pentru a reveni în pagina principală</string>
+
+    <!-- EnvironmentReportsActivity -->
+    <string name="making_reports_en">Loading statistics…</string>
+    <string name="making_reports_ro">Se încarcă statisticile…</string>
+    <string name="making_reports_error_en">Failed to load reports page. You can try again or return to home page</string>
+    <string name="making_reports_error_ro">Nu s-a reușit încărcarea raportului. Poți încearca din nou sau poți să revii în pagina principala</string>
+    <string name="reports_empty_error_en">At the moment the reports database is empty. After you will use the models, reports will show up here</string>
+    <string name="reports_empty_error_ro">În acest moment, baza de date cu rapoarte este goală. După ce veți utiliza modelele, rapoartele vor apărea aici</string>
+
+    <!-- SettingsActivity -->
+    <string name="language_option_en">Language</string>
+    <string name="language_option_ro">Limbă</string>
+    <string name="quick_action_option_en">Quick Action</string>
+    <string name="haptics_option_en">Haptics</string>
+    <string name="haptics_option_ro">Feedback vibrații</string>
+    <string name="soa_option_en">SoA</string>
+    <string name="appearance_section_en">Appearance</string>
+    <string name="appearance_section_ro">Aspect</string>
+    <string name="general_section_en">General Settings</string>
+    <string name="general_section_ro">Setări Generale</string>
+    <string name="storage_section_en">Storage Management</string>
+    <string name="storage_section_ro">Gestionare Stocare</string>
+    <string name="account_section_en">Account Management</string>
+    <string name="account_section_ro">Gestionare Cont</string>
+    <string name="change_detection_colors_en">Change detection colors</string>
+    <string name="change_detection_colors_ro">Schimbă culorile detecției</string>
+    <string name="change_tts_parameters_en">Change Text To Speech parameters</string>
+    <string name="change_tts_parameters_ro">Schimbă parametrii modelului TTS</string>
+    <string name="change_caption_colors_en">Change caption colors</string>
+    <string name="change_caption_colors_ro">Schimbă culorile textului</string>
+    <string name="clear_cache_en">Clear Cache</string>
+    <string name="clear_cache_ro">Șterge Cache-ul</string>
+    <string name="clear_reports_en">Clear Reports</string>
+    <string name="clear_reports_ro">Șterge Rapoartele</string>
+    <string name="sync_profile_en">Sync profile</string>
+    <string name="sync_profile_ro">Sincronizează profilul</string>
+    <string name="log_out_en">Log out</string>
+    <string name="log_out_ro">Deconectare</string>
+    <string name="delete_account_en">Delete account</string>
+    <string name="delete_account_ro">Șterge contul</string>
+    <string name="export_profile_en">Export profile</string>
+    <string name="export_profile_ro">Exportă profilul</string>
+    <string name="applying_settings_en">Applying settings, please wait</string>
+    <string name="applying_settings_ro">Se aplică setările, vă rugăm așteptați</string>
+    <string name="syncing_en">Syncing profile, please wait</string>
+    <string name="syncing_ro">Se sincronizează profilul, vă rugăm așteptați</string>
+    <string name="logging_off_en">Logging off, please wait</string>
+    <string name="logging_off_ro">Deconectare, vă rugăm așteptați</string>
+    <string name="deleting_account_en">Deleting account, please wait</string>
+    <string name="deleting_account_ro">Se șterge contul, vă rugăm așteptați</string>
+    <string name="quick_action_info_en">Quick Action~This option will allow you to access the app quickly from the lock screen. Once configured, a notification will appear on your lock screen with a button to launch the selected activity (e.g., detection-static, detection-dynamic, caption) directly without opening the app first.</string>
+    <string name="quick_action_info_ro">Quick Action~Această opțiune vă va permite să accesați aplicația rapid din ecranul de blocare. Odată configurată, va apărea o notificare pe ecranul de blocare cu un buton pentru a lansa activitatea selectată (de ex., detecție-statică, detecție-dinamică, legendă) direct, fără a deschide mai întâi aplicația.</string>
+    <string name="soa_info_en">Speed Over Accuracy~This option will let you customize the continuous streaming based actions (live detection/ find my object feature), such that if being a high active movement person, the models could respond faster, at an impact of slightly lower accuracy. If higher accuracy is preferred over speed, you can turn this feature off.</string>
+    <string name="soa_info_ro">Speed Over Accuracy~Această opțiune vă permite să personalizați acțiunile bazate pe streaming continuu (detecție live/ funcția găsește obiectul meu), astfel încât dacă ești o persoană cu mișcare activă ridicată, modelele pot răspunde mai rapid, cu un impact de acuratețe ușor mai scăzută. Dacă preferați acuratețe mai mare în detrimentul vitezei, puteți dezactiva această funcție.</string>
+    <string name="clear_cache_message_en">Clear Cache~By deleting the cache you will have more storage space but the prediction may be slower</string>
+    <string name="clear_cache_message_ro">Șterge Cache-ul~Prin ștergerea cache-ului veți avea mai mult spațiu de stocare, dar predicția poate fi mai lentă</string>
+    <string name="clear_reports_message_en">Clear Reports~By deleting the reports you will free up storage space but all environment statistics will be lost</string>
+    <string name="clear_reports_message_ro">Șterge Rapoartele~Prin ștergerea rapoartelor veți elibera spațiu de stocare, dar toate statisticile de mediu vor fi pierdute</string>
+    <string name="dont_button_en">Don\'t</string>
+    <string name="dont_button_ro">Renunță</string>
+    <string name="clear_button_en">Clear</string>
+    <string name="clear_button_ro">Șterge</string>
+    <string name="logout_message_en">Log Out~Are you sure you want to log out? All local data will be cleared.</string>
+    <string name="logout_message_ro">Deconectare~Sigur doriți să vă deconectați? Toate datele locale vor fi șterse.</string>
+    <string name="logout_button_en">Log Out</string>
+    <string name="logout_button_ro">Deconectează-te</string>
+    <string name="delete_account_message_en">Delete Account~Are you sure you want to delete your account? This action is permanent and cannot be undone. All your data will be deleted from our servers.</string>
+    <string name="delete_account_message_ro">Șterge Contul~Sigur doriți să ștergeți contul? Această acțiune este permanentă și nu poate fi anulată. Toate datele dvs. vor fi șterse de pe serverele noastre.</string>
+    <string name="delete_button_en">Delete</string>
+    <string name="delete_button_ro">Șterge</string>
+    <string name="language_changed_en">Language changed successfully</string>
+    <string name="language_changed_ro">Limba a fost schimbată cu succes</string>
+    <string name="quick_action_enabled_en">Quick action enabled to</string>
+    <string name="quick_action_enabled_ro">Quick action activat pe</string>
+    <string name="cache_cleared_en">Cache cleared successfully</string>
+    <string name="cache_cleared_ro">Cache-ul a fost șters cu succes</string>
+    <string name="reports_cleared_en">Reports cleared successfully</string>
+    <string name="reports_cleared_ro">Rapoartele au fost șterse cu succes</string>
+    <string name="profile_synced_en">Profile synced successfully</string>
+    <string name="profile_synced_ro">Profilul a fost sincronizat cu succes</string>
+    <string name="profile_sync_error_en">Profile sync failed. Please try again</string>
+    <string name="profile_sync_error_ro">Sincronizarea profilului a eșuat. Vă rugăm încercați din nou</string>
+    <string name="logout_error_en">Logout failed. Application will restart to protect integrity of your data</string>
+    <string name="logout_error_ro">Deconectarea a eșuat. Aplicația va fi restartată pentru a asigura integritatea datelor dumneavoastră</string>
+    <string name="delete_account_error_en">Account deletion failed. Application will restart to protect integrity of your data</string>
+    <string name="delete_account_error_ro">Ștergerea profilului a eșuat. Aplicația va fi restartată pentru a asigura integritatea datelor dumneavoastră</string>
+    <string name="password_title_en">Insert your password for confirmation</string>
+    <string name="password_title_ro">Introduceți parola pentru confirmare</string>
+    <string name="password_title_tts_en">Insert your password in the field below for confirmation</string>
+    <string name="password_title_tts_ro">Introduceți parola in câmpul de mai jos pentru confirmare</string>
+    <string name="profile_exported_tutorial_en">Press the button below to select the location of where to save the profile data. When you want to import the profile, you will use this location when selecting the folder to import from</string>
+    <string name="profile_exported_tutorial_ro">Apăsați butonul de mai jos pentru a selecta locația unde să salvați datele profilului. Când doriți să importați profilul, veți utiliza această locație atunci când selectați folderul din care să importați</string>
+    <string name="profile_exported_en">Profile exported successfully</string>
+    <string name="profile_exported_ro">Profilul a fost exportat cu succes</string>
+    <string name="profile_export_error_en">An error occurred during export. Please try again</string>
+    <string name="profile_export_error_ro">A apărut o eroare în timpul exportului. Vă rugăm încercați din nou</string>
+    <string name="ok_button_en">OK</string>
+    <string name="quick_action_disabled_en">Quick Action disabled</string>
+    <string name="quick_action_disabled_ro">Quick Action dezactivat</string>
+    <string name="quick_action_detection_static_en">Detection-static</string>
+    <string name="quick_action_detection_static_ro">Detecție-static</string>
+    <string name="quick_action_detection_dynamic_en">Detection-dynamic</string>
+    <string name="quick_action_detection_dynamic_ro">Detecție-dinamic</string>
+    <string name="quick_action_caption_en">Caption</string>
+    <string name="quick_action_caption_ro">Descriere textuală</string>
+
+
+    <!-- Common values -->
+    <string name="forward_arrow">Forward arrow</string>
+    <string name="back_button">Back navigation button</string>
+    <string name="home_button">Home navigation button</string>
+    <string name="recent_apps_button">Recent apps navigation button</string>
+    <string name="continue_button">Continue</string>
+    <string name="next">Next</string>
+    <string name="back">Back</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
+    <string name="wait_en">Please wait</string>
+    <string name="wait_ro">Vă rugăm așteptați</string>
+    <string name="verifying_en">Verifying profile, please wait</string>
+    <string name="verifying_ro">Profilul se verifică, vă rugăm așteptați</string>
+    <string name="exit_error_en">A critical error has occurred and the application needs to close to protect the integrity of your data. If this happens again, contact support with the code below</string>
+    <string name="exit_error_ro">A apărut o eroare critică și aplicația trebuie închisă pentru a proteja integritatea datelor dumneavoastră. Dacă se întâmplă din nou acest lucru, contactați asistența cu codul de mai jos</string>
+    <string name="exit_error2_en">A critical error has occurred and the application needs to close to protect the integrity of your data. If this happens again, contact support with the code</string>
+    <string name="exit_error2_ro">A apărut o eroare critică și aplicația trebuie închisă pentru a proteja integritatea datelor dumneavoastră. Dacă se întâmplă din nou acest lucru, contactați asistența cu codul</string>
+    <string name="temp_error_en">Device temperature is too high.The application will shut down to prevent damage</string>
+    <string name="temp_error_ro">Temperatura dispozitivului este prea mare.Aplicația se va opri pentru a preveni deteriorarea</string>
+    <string name="battery_low_en">Battery level is too low.Please charge your device immediately.Application will shutdown</string>
+    <string name="battery_low_ro"> Nivelul bateriei este prea scăzut.Vă rugăm să încărcați dispozitivul imediat.Aplicația se va opri</string>
+    <string name="critical_warning_en">Critical Warning!</string>
+    <string name="critical_warning_ro">Avertisment critic!</string>
+    <string name="uploading_loading_en">Uploading profile, please wait</string>
+    <string name="uploading_loading_ro">Profilul se încarcă, vă rugăm așteptați</string>
+    <string name="classifier_error_en">Scene Classifier Model could not be loaded. You can still use object detection and captioning features but without reports section</string>
+    <string name="classifier_error_ro">Modelul de clasificare a scenelor nu a putut fi încărcat. Puteți utiliza în continuare funcțiile de detectare a obiectelor și de subtitrare, dar fără secțiunea de rapoarte</string>
+    <string name="stt_error_en">Speech Recognition Model could not be loaded. You can still use other features but without \"Find My Object\" feature</string>
+    <string name="translator_error_ro">Funcția de traducere nu a putut fi încărcată. Modelul de caption va fi doar în limba engleză</string>
+
+</resources>

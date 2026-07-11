@@ -1,0 +1,13 @@
+BOx:
+-selecteaza widthul liniei de bbox, slide cu stoprui si virbatii
+-actualizaesza in timp real detaliile pe imagine
+
+Text:
+-selecteaza widthul boxului de text, slide cu stoprui si virbatii
+-actualizaesza in timp real detaliile pe imagine
+
+Butonul de info:
+-afisesaza info si se dezactiv prin apsare but. de OK
+
+Camera button:
+-merge la LiveCameraXActivity
