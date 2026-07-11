@@ -1,0 +1,110 @@
+m255
+K3
+13
+cModel Technology
+Z0 dC:\Users\Andrei\Desktop\faculta\proiect CN\Proiect-CN\ADDER_SUBTR_UNIT
+vCSkA
+!s100 m6YMaIM[eW2Z87zAkOkBm3
+IcGV<^S<Cm@_Ufj:Wd5>Z13
+V?___<SRFYDB<HlgU6T4aT2
+Z1 w1711386957
+Z2 8correctedAdunare.v
+Z3 FcorrectedAdunare.v
+L0 97
+Z4 OV;L;6.5b;42
+r1
+!s85 0
+31
+!s101 -O0
+o-O0
+n@c@sk@a
+vCSkA_tb
+!s100 L06iCoQP`LNm_GKS`IJnb0
+ICXC0M5WUDBR2X9]RA??D<3
+V1ReOMAzdEAJz_?QDX;`>L0
+R1
+R2
+R3
+L0 180
+R4
+r1
+!s85 0
+31
+!s101 -O0
+o-O0
+n@c@sk@a_tb
+vFAC
+!s100 `K??K8oAPKF<][0O5koUg3
+Ig:Z^DTPMKS:W2BTIT_SzS2
+VAI4KPmT>bcdZg@5]4Sz?R0
+R1
+R2
+R3
+L0 22
+R4
+r1
+!s85 0
+31
+!s101 -O0
+o-O0
+n@f@a@c
+vFAC_Star
+!s100 ;IQ`TZ;d@=LCWX5l5VNfJ1
+IFmF[Hj`Tb2OUHoLze>@8l1
+VY]YSHQRiPIE8VhodbRmg30
+R1
+R2
+R3
+L0 58
+R4
+r1
+!s85 0
+31
+!s101 -O0
+o-O0
+n@f@a@c_@star
+vmakeXor
+!s100 jKc1;GEY=QB5K`3hPCNa^2
+ILP[a3?3Of4hA8P7z<^SYV2
+VB<MfAY;`adk<GZO4V6FmD0
+R1
+R2
+R3
+L0 73
+R4
+r1
+!s85 0
+31
+!s101 -O0
+o-O0
+nmake@xor
+vRCA
+!s100 `HWD?>IFaf96LY2XAg^;c3
+I24[KhP2^A<Y]9L`96gM9G1
+VY[LUnBWBoaL?7cGh[K:_12
+R1
+R2
+R3
+L0 1
+R4
+r1
+!s85 0
+31
+!s101 -O0
+o-O0
+n@r@c@a
+vRCA_Star
+!s100 bI`khIdZ@Kln^lZlTB;lm3
+IZ8?1jfF<>;U?3EbjXQMlA1
+V0O_SOUB:o>WQ1[VSLNBRM2
+R1
+R2
+R3
+L0 34
+R4
+r1
+!s85 0
+31
+!s101 -O0
+o-O0
+n@r@c@a_@star

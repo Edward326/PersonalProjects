@@ -1,0 +1,11 @@
+vom aloca constructia cache-ului in 10 zile:
+
+vineri:17.05 voi face eu,Eduard, fsm-ul
+
+sambata-duminica:incercam sa facem fct de detectare a liniei in cache cu toate intrarile si outpurile necesare functiei
+
+luni-miercuri:facem fct activate de starile:ReadHIT,UpdateAgeReg(update age reg when cache miss,and cache not full),EVICT(update age reg when cache miss,and cache full),Alloc(writes from MM(RAM) to cache ,in our case writes an random generated block data in the index's refferenced block in cache)
+
+joi-vineri:facem fct de scriere in cache:WriteHIT
+
+sambata-duminica:Testing

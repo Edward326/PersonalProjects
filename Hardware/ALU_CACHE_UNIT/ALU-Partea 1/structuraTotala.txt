@@ -1,0 +1,2 @@
+vom face fisiere verilog separate pentru fiecare unitate
+fisierele fiecarei unitati vor fii in folderele lor,pentru ca ma apoi respectivele fisiere sa le putem folosii ca niste bilbioteci pe care le vom importa in fisierul verilog principal aflat in folderul mainframeALU_UNIT(unde acolo vom lega toate functionalitatile pe care le facem saptamanile astea)

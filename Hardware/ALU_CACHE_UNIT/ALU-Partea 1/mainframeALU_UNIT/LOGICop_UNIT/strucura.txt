@@ -1,0 +1,12 @@
+va fii un modul in care veti apela patru instane catre moduelele:
+de shiftare st
+de shiftare de
+de and
+de or
+ele vor scoate in acelasi timp rezultatul pe 67de b !!! ,pe acelasi clk 
+
+astea 4 rezultate vor intra in muxul principal impreuna cu rez de la celelalte unitati(mutlitplier,devider,adder/subtr),iar selectorul la acest mux va fii op pe 4 b
+
+practic unitatea asta de op logice va scaote 4 outputuri ,corepsondent fiecqarei op logice
+
+aveti descris totul pe foaie ,succes;)

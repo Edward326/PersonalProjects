@@ -1,0 +1,410 @@
+                                                                               Arithmethic Logic Unit , with operands on 32b
+
+Cuprinde operatii de adunare ,inmultire,op logice ,adunare diferenta sincronizate pe cicluri de tact
+
+totul se ruleza din fisierul "centralUnit.v" unde se configureaza:
+{
+    in modulul alu_tb se modifica nr dorite pentru operatie X,Y
+    iar dupa se alege operatia dorita punand la op=5'd(nrOp)
+    nrOp:
+    0-N
+    1-Sum
+    2-Differnce 
+    3-Multiply
+    4-Divide 
+    5-shiftXtoLeft
+    6-shiftXtoRight 
+    7-shiftYtoLeft 
+    8-shiftYtoRight 
+    9-makeAndOp
+    10-makeOrOp 
+    11-makeXorOp
+}
+
+Op de inmultire si impartire sunt necesare un nr de cicluri de tact(se conf la intial begin la cycles=nrdeCiluriDorite = SUNT SINCRONIZATE PE CICLURI DE TACT:
+
+-DACA NU SE DAU UN NR SUFICENT DE CICLURI DE TACT PT COMPUTAREA CORECTA A REZULTATULUI LA IESIRE SE VA RETINE REZ-0(PT A EVITA CORUPTIA,RETINEREA UNUI REZULTAT CARE NU E REZULTATUL REAL)
+
+-DACA SE DAU UN NR SUFICEINT SAU CHIAR MAI MULT DECAT SUFICIENT DE CICLURI DE TACT,
+LA REZULTAT SE VA RETINE EXACT REZULTATUL REAL,FARA A SE MAI MODIFICA (LA MAI MULTE CICLURI DECAT SUNT NECESARE PENTRU A SE SCOATE REZ. CORECT,UNITATEA ALU E FACUTA SA SE OPREASCA SINGURA DUPA OBTINEREA REZULATULUI CORECT)
+
+
+
+UNITATEA CUPRINDE,in fct de op selectata:
+
+->0=N: OPERATIE IN CARE LA IESIRE UNITATEA VA SCOATE 67B SETATI PE 0 ,SI INDICA FAPTUL CA ALU E INTR O STARE NEUTRA,NU S A SELECTAT NICIO OPERATIE
+
+->1,2=SUM/SCAZATOR: OPERATIA FOLOSESTE SUMATORUL CSKA,4 UNITATI RCA(2 UNITATI RCA NORMALE,SI 2 RCA* ,CARE CALUCLEAZA IN PLUS SI VAIRBILA DE PROPAGATE,PENTRU A ACCELERA CAND E CAZUL SUMATORUL,PRIN PROPAGAREA CARRY-ULUI,PRACTIC NU SE MAI ASTEAPTA PENTRU GENERAREA URMATORULUI CARRY,CARE AR DURA MAI MULT SA SE GENEREZE)
+CELE 2 UNITATI RCA* FOLOSESC SUBUNITATI FAC* IAR CELE RCA FOLOSESC FAC:
+SCADEREA SE FACE UTILIZAND O FORMULA COMB LA CIN ,EA ACTIVANDUSE PE 1 CAND SE SELECTEAZA OP DE SCADERE,IAR IN ACELASI TIMP IN TOATE UNITATILE DE RCA Y VA INTRA CA Y^CIN astfel incat SA SE OBTINA C1 CAND E CAZUL DE SCADERE
+
+modulul fac*:
+module FAC_Star(
+  input A,
+  input B,
+  input cin,
+  output sum,
+  output cout,
+  output pi
+  );
+  
+  assign sum = A ^ B ^ cin;
+  assign cout = (A & B) | (A & cin) | (B & cin);
+  assign pi =A | B;
+endmodule
+
+modulul fac:
+module FAC(
+  input A,
+  input B,
+  input cin,
+  output sum,
+  output cout
+);
+assign sum = A ^ B ^ cin;
+assign cout = (A & B) | (A & cin) | (B & cin);
+endmodule
+
+->3=INMULTIRE: OPERATIE CARE SE BAZEAZA PE ARHITECTURA BOOTH RADIX8,CARE MERGE PANA LA 32B/4 ITERATII(0-7),IAR PENTRU OP DE ADUNARE EL SE FOLOSESTE DE SUMATORUL CSKA DAR CU INTRAI PE 34B(REG A VA FII PE 34B)
+OP DE INMULTIRE ARE NEVOIE INTRE:[20,27]CC PENTRU A CALCULA REZ CORECT IN FCT DE NR DATE
+REZ VA FII PE 67B(34B A + 33B Q)==>TOATE CELALTE OP VOR LUA NR PE 32B ,VA CALCULA OP SPECIFICA SI IL VA CONVERTII IN NR PE 67B
+INUMTIREA SE FOLOSESTE DE UN CONTROL UNIT(IMPLEMENTAT PRINTR UN FSM) PE BAZA CARUIA MIGREAZA IN ANUMITE STARI CARE ACTIVEAZA ANUMITE SEMNALE DE CONTROL,IAR PE BAZA SEMNALELOR DE CONTROL SE ACTIVEAZA ANUMITE OP SPECIFICE PE NR ,SPECIFICE ALGORITMULUI BOOTH RADIX8
+module controlUnit(
+input clk,rst_b,
+input START,
+input [2:0] cnt,
+input w,x,y,z,
+output reg [7:0] cSig
+);
+localparam s0 = 1;
+localparam s1 = 2;
+localparam s2 = 4;
+localparam s3 = 8;
+localparam s4 = 16;
+localparam s5 = 32;
+localparam s6 = 64;
+localparam s7 = 128;
+localparam s8 = 256;
+localparam s9 = 512;
+localparam s10 = 1024;
+localparam s11 = 2048;
+localparam s12 = 4096;
+localparam s13 = 8192;
+
+reg [14:0] cst,nxst;
+
+always @* begin
+case(cst)
+s0:begin
+if(START==1'b1)
+nxst=s1;
+else
+nxst=s0;
+end
+
+s1:begin
+nxst=s2;
+end
+
+s2:begin
+nxst=s3;
+end
+
+s3:begin
+if( ((w)&(x)&(y)&(z)) | ((~w)&(~x)&(~y)&(~z)) )//0
+nxst=s12;
+else
+if( ((~w)&(~x)&(~y)&(z)) | ((~w)&(~x)&(y)&(~z)) )//1
+nxst=s4;
+else
+if( ((w)&(x)&(~y)&(z)) | ((w)&(x)&(y)&(~z)) )//-1
+nxst=s5;
+else
+if( ((~w)&(~x)&(y)&(z)) | ((~w)&(x)&(~y)&(~z)) )//2
+nxst=s6;
+else
+if( ((w)&(x)&(~y)&(~z)) | ((w)&(~x)&(y)&(z)) )//-2
+nxst=s7;
+else
+if( ((~w)&(x)&(~y)&(z)) | ((~w)&(x)&(y)&(~z)) )//3
+nxst=s8;
+else
+if( ((w)&(~x)&(~y)&(z)) | ((w)&(~x)&(y)&(~z)) )//-3
+nxst=s9;
+else
+if((~w)&(x)&(y)&(z))//4
+nxst=s10;
+else
+if((w)&(~x)&(~y)&(~z))//-4
+nxst=s11;
+end
+
+s4:begin
+nxst=s12;
+end
+s5:begin
+nxst=s12;
+end
+s6:begin
+nxst=s12;
+end
+s7:begin
+nxst=s12;
+end
+s8:begin
+nxst=s12;
+end
+s9:begin
+nxst=s12;
+end
+s10:begin
+nxst=s12;
+end
+s11:begin
+nxst=s12;
+end
+
+s12:begin
+if(cnt[0]&cnt[1]&cnt[2])
+nxst=s13;
+else
+nxst=s3;
+end
+
+s13:begin
+nxst=s0;
+end
+endcase
+end
+
+always @* begin
+    case (cst)
+        s1:cSig=8'd1;
+        s2:cSig=8'd2;
+        
+        s3:begin
+        if( ((w)&(x)&(y)&(z)) | ((~w)&(~x)&(~y)&(~z)) )
+        cSig=8'd32;  
+        end
+        
+        s4:cSig=8'd160;
+        s5:cSig=8'd164;
+        s6:cSig=8'd176;
+        s7:cSig=8'd180;
+        s8:cSig=8'd168;
+        s9:cSig=8'd172;
+        s10:cSig=8'd184;
+        s11:cSig=8'd188;
+        s13:cSig=8'd64;
+        
+        default: cSig=8'd0;
+    endcase
+end
+
+always @(posedge clk,negedge rst_b) begin
+//$display("q = %b", cst);
+if(!rst_b)begin
+cst<=s0;
+end
+else
+cst<=nxst;       
+end
+endmodule
+
+
+-->4=IMPARTIRE: OPERATIA SE BAZEAZA PE ARHITECTURA RESTORING,CARE MERGE PANA LA 32 DE ITERATII(0-31),IAR PENTRU ADUNARI EA SE FOLOSESTE TOT DE UNITATEA CSKA
+OP DE IMPARTIRE VA FOLOSII UN NR FIX DE CICLURI DE TACT=167CC PENTRU ORICE NUMAR, PENTRU A CALCULA REZ CORECT
+IMPARTIREA SE FOLOSESTE DE UN CONTROL UNIT(IMPLEMENTAT PRINTR UN FSM) PE BAZA CARUIA MIGREAZA IN ANUMITE STARI CARE ACTICVEAZA ANUMITE SEMNALE DE CONTROL,IAR PE BAZA SEMNALELOR DE CONTROL SE ACTIVEAZA ANUMITE OP SPECIFICE PE NR ,SPECIFICE ALGORITMULUI RESTORING
+module controlUnit(
+input clk,rst_b,
+input START,
+input [4:0] cnt,
+input w,
+output reg [7:0] cSig
+);
+localparam s0 = 1;
+localparam s1 = 2;
+localparam s2 = 4;
+localparam s3 = 8;
+localparam s4 = 16;
+localparam s5 = 32;
+localparam s6 = 64;
+localparam s7 = 128;
+localparam s8 = 256;
+localparam s9 = 512;
+localparam s10 = 1024;
+
+reg [10:0] cst,nxst;
+
+always @* begin
+case(cst)
+s0:begin
+if(START==1'b1)
+nxst=s1;
+else
+nxst=s0;
+end
+
+s1:begin
+nxst=s2;
+end
+
+s2:begin
+nxst=s3;
+end
+
+s3:begin
+nxst=s4;
+end
+
+s4:begin
+nxst=s5;
+end
+
+s5:begin
+if(~w)
+nxst=s7;
+else
+nxst=s6;
+end
+
+s6:begin
+nxst=s8;
+end
+s7:begin
+nxst=s8;
+end
+
+s8:begin
+if(cnt[0]&cnt[1]&cnt[2]&cnt[3]&cnt[4])
+nxst=s10;
+else
+nxst=s9;
+end
+
+s9:begin
+nxst=s4;
+end
+
+s10:begin
+nxst=s0;
+end
+endcase
+end
+
+always @* begin
+    case (cst)
+        s1:cSig=8'd1;
+        s2:cSig=8'd2;
+        s3:cSig=8'd4;  
+        s4:cSig=8'd24;
+        s6:cSig=8'd8;
+        s7:cSig=8'd32;
+        s9:cSig=8'd64;
+        s10:cSig=8'd128;
+        default: cSig=8'd0;
+    endcase
+end
+
+always @(posedge clk,negedge rst_b) begin
+//$display("q = %b", cst);
+if(!rst_b)begin
+cst<=s0;
+end
+else
+cst<=nxst;       
+end
+endmodule
+
+
+-->5,6,7,8,9,10,11=OP LOGICE:
+5,6SHIFTEZA X LA ST RESPECTIV DR   7,8SHIFTEZA Y LA ST RESPECTIV DR
+9,10,11 RELIZEAZA OP DE SI,SAU,XOR INTRE X SI Y
+
+SCADEREA SE VA EXECUTA IN SERIE,DOAR ATUNCI CAND E ACTIVATA
+ADUNAREA OP,LOGICE SE VOR EXECUTA IN PARALEL CU INMULTIREA SI IMPARTIREA
+
+LA IESIRE VOM INTRODUCE REZULTATELE DE LA TOATE OP SI VOM SELECTA CU SEMNALUL DE OP(MUX11TO1 CARE DACA NU S -A SELECTAT O OPERATIE SAU S A SELECTAT DAR INCA NU S A CALCULAT REZ SE VA RETINE 0, RESPECTIVE REZ ATUNCI CAND E GATA CALCULAT) OP DORITA LA IESIRE
+LA IESIRE AVEM:
+UN REGISTRU DE REZULTAT(67B)-->REZ INMULTIRII/IMPARTIRII/OPLOGICE/ADUNARI,SCADERI
+UN REGISTRU DE REST(33B)-->MEREU PE 0 ,CU EXCEPTIA CAND SE VA SELECTA OP DE IMPARTIRE IAR RESTUL A APUCAT SA SE CALCULEZE(I S AU DAT 167 DE CICLURI)
+MUX(11TO1)
+module mux11to1(
+    input [66:0] data_in0,
+    input [66:0] data_in1,
+    input [66:0] data_in2,
+    input [66:0] data_in3,
+    input [66:0] data_in4,
+    input [66:0] data_in5,
+    input [66:0] data_in6,
+    input [66:0] data_in7,
+    input [66:0] data_in8,
+    input [66:0] data_in9,
+    input [66:0] data_in10,
+    input [4:0] select,
+    input [3:0] suff,
+    output reg [66:0] data_out
+);
+always @* begin
+    case (select)
+        5'd1: if(suff[0])
+        data_out = data_in0;
+        else data_out = 67'd0;
+        
+        5'd2: if(suff[0])
+        data_out = data_in1;
+        else data_out = 67'd0;
+        
+        5'd3: if(suff[1])
+        data_out = data_in2;
+        else data_out = 67'd0;
+        
+        5'd4: if(suff[2])
+        data_out = data_in3;
+        else data_out = 67'd0;
+        
+        5'd5: if(suff[3])
+        data_out = data_in4;
+        else data_out = 67'd0;
+        
+        5'd6:if(suff[3])
+        data_out = data_in5;
+        else data_out = 67'd0;
+        
+        5'd7: if(suff[3])
+        data_out = data_in6;
+        else data_out = 67'd0;
+        
+        5'd8: if(suff[3])
+        data_out = data_in7;
+        else data_out = 67'd0;
+        
+        5'd9: if(suff[3])
+        data_out = data_in8;
+        else data_out = 67'd0;
+        
+        5'd10: if(suff[3])
+        data_out = data_in9;
+        else data_out = 67'd0;
+        
+        5'd11: if(suff[3])
+        data_out = data_in10;
+        else data_out = 67'd0;
+        
+        default: data_out = 67'd0; // Handle invalid select values
+    endcase
+end
+endmodule
+
+
+A NU SE FOLOSII NR PT OPERATII, MAI MARI DECAT 2^30 
+INTERVALUL DE NR(X,Y) CARE ASIGURA UN REZ CORECT: X,Y ∈ [-2147483647,+2147483647]
+
+
+
+
+CREDITS:
+Mucioniu Andrei Constantin
+Sperneac Catalin
+Vesea Eduard
+
