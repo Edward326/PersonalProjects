@@ -1,0 +1,18 @@
+*de fiecare data cand intra in aplicatie, se vor veirifca dreputirle pentru oareacare dezact din setarile telefonului,
+	no change in rights->merge in HomeActivity
+	change in rights-> merg in PermissionsActivity
+
+@User:
+-e inclocuit cu numele setat intiial
+
+Butonul de Detection:
+-prin virbatie merge deschide doua otpinu, iar userul va mentine degetul pe ecran pentru deschide acea optine(live/static)
+
+Butonul de Caption:
+-prin virbatie merge deschide activtatea de caption
+
+Butonul de Reports(OPTIONAL->activat in UserObjectOcc):
+-merge catre prima activtate de reports
+
+Butonul de Settings:
+-metge catre prima activtate de setari

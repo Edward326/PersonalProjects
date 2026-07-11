@@ -1,0 +1,4 @@
+Loading circle pentru 2 secunde si dupa permisiuni:
+    -camera, fisiere, baterie
+
+daca nu sunt date toate permisunuile pe always, atunci eroare, care dispare dupa apsare butuonului de ok, si dupa se repeta chestia de mai sus

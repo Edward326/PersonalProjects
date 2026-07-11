@@ -1,0 +1,10 @@
+-initiial va speakui ce face ficare buton(e.g volume up detectie)
+Detection:
+	-vibreaza si speakuieste optinuea, se poate seelcta din volume up
+	-merge in DetectionCameraXActivity
+Caption:
+	-vibreaza si speakuieste optinuea, se poate seelcta din volume down
+	-merge in CaptionCameraXActivity
+Settings:
+	-vibreaza si speakuieste optinuea, se poate selecta din volume down de doua ori
+	-merge in BlindSettigjnsactitivity

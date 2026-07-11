@@ -1,0 +1,8 @@
+Switch Enable Env Reports:
+-va seta constanta in fuctie de setare, default->off
+
+Butnoul de info:
+-afiseaz tabul de info, care e descatv prin apasarea but. OK
+
+Next:
+-seteaza constantele si merge catre HomeActivity
